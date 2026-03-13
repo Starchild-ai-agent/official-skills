@@ -17,48 +17,61 @@ jobs:
 
       - name: Build and validate skills.json
         run: |
-          python3 -c '
+          python3 << 'PYEOF'
           import json, os, re, sys
 
           SKIP = {".git", ".github", "scripts", "node_modules"}
 
           def parse_fm(content):
               m = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
-              if not m: return {}
+              if not m:
+                  return {}
               fm = {}
               for line in m.group(1).split("\n"):
                   line = line.strip()
-                  if not line or line.startswith("#"): continue
+                  if not line or line.startswith("#"):
+                      continue
                   if ":" in line:
                       k, v = line.split(":", 1)
-                      k, v = k.strip(), v.strip().strip("\"").strip("'\''")
+                      k = k.strip()
+                      v = v.strip().strip('"').strip("'")
                       if k in ("name", "version", "description"):
                           fm[k] = v
               return fm
 
           skills, errors = [], []
           for name in sorted(os.listdir(".")):
-              if name.startswith(".") or name in SKIP: continue
-              if not os.path.isdir(name): continue
+              if name.startswith(".") or name in SKIP:
+                  continue
+              if not os.path.isdir(name):
+                  continue
               md = os.path.join(name, "SKILL.md")
-              if not os.path.exists(md): continue
-              with open(md) as f: content = f.read()
+              if not os.path.exists(md):
+                  continue
+              with open(md) as f:
+                  content = f.read()
               fm = parse_fm(content)
-              missing = [f for f in ("name","version","description") if f not in fm]
-              if missing: errors.append(f"{name}: missing {', '.join(missing)}")
-              skills.append({"name": fm.get("name",name), "path": f"{name}/SKILL.md",
-                  "version": fm.get("version","0.0.0"), "description": fm.get("description","")})
+              missing = [field for field in ("name", "version", "description") if field not in fm]
+              if missing:
+                  errors.append(name + ": missing " + ", ".join(missing))
+              skills.append({
+                  "name": fm.get("name", name),
+                  "path": name + "/SKILL.md",
+                  "version": fm.get("version", "0.0.0"),
+                  "description": fm.get("description", ""),
+              })
 
           if errors:
               print("Validation errors:", file=sys.stderr)
-              for e in errors: print(f"  - {e}", file=sys.stderr)
+              for e in errors:
+                  print("  - " + e, file=sys.stderr)
               sys.exit(1)
 
-          with open("skills.json","w") as f:
-              json.dump({"registry":"starchild-official","skills":skills}, f, indent=2, ensure_ascii=False)
+          with open("skills.json", "w") as f:
+              json.dump({"registry": "starchild-official", "skills": skills}, f, indent=2, ensure_ascii=False)
               f.write("\n")
-          print(f"skills.json: {len(skills)} skills")
-          '
+          print("skills.json: " + str(len(skills)) + " skills")
+          PYEOF
 
       - name: Commit and push if changed
         run: |

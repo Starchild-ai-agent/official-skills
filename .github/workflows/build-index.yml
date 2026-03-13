@@ -1,0 +1,70 @@
+name: Build skills.json index
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "*/SKILL.md"
+      - "**/SKILL.md"
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and validate skills.json
+        run: |
+          python3 -c '
+          import json, os, re, sys
+
+          SKIP = {".git", ".github", "scripts", "node_modules"}
+
+          def parse_fm(content):
+              m = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
+              if not m: return {}
+              fm = {}
+              for line in m.group(1).split("\n"):
+                  line = line.strip()
+                  if not line or line.startswith("#"): continue
+                  if ":" in line:
+                      k, v = line.split(":", 1)
+                      k, v = k.strip(), v.strip().strip("\"").strip("'\''")
+                      if k in ("name", "version", "description"):
+                          fm[k] = v
+              return fm
+
+          skills, errors = [], []
+          for name in sorted(os.listdir(".")):
+              if name.startswith(".") or name in SKIP: continue
+              if not os.path.isdir(name): continue
+              md = os.path.join(name, "SKILL.md")
+              if not os.path.exists(md): continue
+              with open(md) as f: content = f.read()
+              fm = parse_fm(content)
+              missing = [f for f in ("name","version","description") if f not in fm]
+              if missing: errors.append(f"{name}: missing {', '.join(missing)}")
+              skills.append({"name": fm.get("name",name), "path": f"{name}/SKILL.md",
+                  "version": fm.get("version","0.0.0"), "description": fm.get("description","")})
+
+          if errors:
+              print("Validation errors:", file=sys.stderr)
+              for e in errors: print(f"  - {e}", file=sys.stderr)
+              sys.exit(1)
+
+          with open("skills.json","w") as f:
+              json.dump({"registry":"starchild-official","skills":skills}, f, indent=2, ensure_ascii=False)
+              f.write("\n")
+          print(f"skills.json: {len(skills)} skills")
+          '
+
+      - name: Commit and push if changed
+        run: |
+          git diff --quiet skills.json && echo "No changes" && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add skills.json
+          git commit -m "chore: update skills.json index"
+          git push

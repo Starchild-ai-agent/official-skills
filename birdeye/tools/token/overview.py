@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""
+Birdeye Token Overview Module
+
+Get comprehensive token data including price, volume, market cap, liquidity.
+"""
+
+import os
+import sys
+import json
+import argparse
+from typing import Dict, Any, Optional
+
+try:
+    from dotenv import load_dotenv
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../../..'))
+    load_dotenv(os.path.join(project_root, '.env'))
+except ImportError:
+    pass
+
+import requests
+from core.http_client import proxied_get
+
+BASE_URL = "https://public-api.birdeye.so"
+HEADER_KEY = "X-API-KEY"
+CHAINS = ["solana", "ethereum", "arbitrum", "avalanche", "bsc", "optimism", "polygon", "base", "zksync", "sui"]
+
+
+def _get_api_key() -> Optional[str]:
+    return os.getenv("BIRDEYE_API_KEY")
+
+
+def get_token_overview(address: str, chain: str = "solana") -> Optional[Dict[str, Any]]:
+    """Get comprehensive token overview with price, volume, market data."""
+    api_key = _get_api_key()
+    if not api_key:
+        print("Error: BIRDEYE_API_KEY environment variable is required", file=sys.stderr)
+        return None
+
+    if chain not in CHAINS:
+        print(f"Error: Unsupported chain '{chain}'", file=sys.stderr)
+        return None
+
+    url = f"{BASE_URL}/defi/token_overview"
+    headers = {"accept": "application/json", HEADER_KEY: api_key, "x-chain": chain}
+    params = {"address": address}
+
+    try:
+        response = proxied_get(url, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        if not data.get("success"):
+            print(f"API Error: {data.get('message', 'Unknown error')}", file=sys.stderr)
+            return None
+        return data
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}", file=sys.stderr)
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse response: {e}", file=sys.stderr)
+        return None
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Birdeye token overview")
+    parser.add_argument("--address", "-a", required=True, help="Token address")
+    parser.add_argument("--chain", "-c", default="solana", choices=CHAINS)
+    parser.add_argument("--json", "-j", action="store_true")
+    args = parser.parse_args()
+
+    result = get_token_overview(args.address, args.chain)
+    if result and result.get("success"):
+        if args.json:
+            print(json.dumps(result, indent=2))
+        else:
+            data = result.get("data", {})
+            print(f"\nToken Overview: {data.get('symbol', 'N/A')}")
+            print("=" * 60)
+            print(f"Price:        ${data.get('price', 0):.6f}")
+            print(f"24h Change:   {data.get('price_change_24h', 0):.2f}%")
+            print(f"Volume 24h:   ${data.get('volume_24h', 0):,.2f}")
+            print(f"Market Cap:   ${data.get('market_cap', 0):,.2f}")
+            print(f"Liquidity:    ${data.get('liquidity', 0):,.2f}")
+    else:
+        print("Failed to fetch token overview")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

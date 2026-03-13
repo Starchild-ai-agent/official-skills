@@ -1,0 +1,161 @@
+{
+  "registry": "starchild-official",
+  "skills": [
+    {
+      "name": "1inch",
+      "path": "1inch/SKILL.md",
+      "version": "1.0.0",
+      "description": "Swap tokens via 1inch DEX aggregator"
+    },
+    {
+      "name": "aave",
+      "path": "aave/SKILL.md",
+      "version": "1.0.0",
+      "description": "Supply and withdraw tokens on Aave V3 lending pools"
+    },
+    {
+      "name": "backtest",
+      "path": "backtest/SKILL.md",
+      "version": "1.0.0",
+      "description": "Build and run backtests against real historical data. Use when a strategy needs validation, the user wants performance numbers, or before committing to a trade approach."
+    },
+    {
+      "name": "birdeye",
+      "path": "birdeye/SKILL.md",
+      "version": "1.0.0",
+      "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis."
+    },
+    {
+      "name": "browser-preview",
+      "path": "browser-preview/SKILL.md",
+      "version": "1.0.0",
+      "description": "Browser preview panel knowledge — the iframe-based Browser tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, 白屏, 页面挂了, tab 不见了, preview not loading, or asks about running services."
+    },
+    {
+      "name": "charting",
+      "path": "charting/SKILL.md",
+      "version": "1.0.0",
+      "description": "Generate TradingView-style candlestick charts with indicators. Use when the user wants a visual chart, price visualization, or technical analysis plot."
+    },
+    {
+      "name": "coder",
+      "path": "coder/SKILL.md",
+      "version": "1.0.0",
+      "description": "Code specialist for writing, debugging, and technical implementation. Use when the user needs code written, bugs fixed, files edited, or features built."
+    },
+    {
+      "name": "coingecko",
+      "path": "coingecko/SKILL.md",
+      "version": "1.0.0",
+      "description": "CoinGecko crypto price data, charts, market discovery, and global stats"
+    },
+    {
+      "name": "coinglass",
+      "path": "coinglass/SKILL.md",
+      "version": "3.0.0",
+      "description": "Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data"
+    },
+    {
+      "name": "dashboard",
+      "path": "dashboard/SKILL.md",
+      "version": "1.0.0",
+      "description": "Create HTML/CSS/JS dashboards with data visualization and real-time updates"
+    },
+    {
+      "name": "hyperliquid",
+      "path": "hyperliquid/SKILL.md",
+      "version": "1.0.0",
+      "description": "Trade perpetual futures and spot on Hyperliquid DEX"
+    },
+    {
+      "name": "lunarcrush",
+      "path": "lunarcrush/SKILL.md",
+      "version": "1.0.0",
+      "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity"
+    },
+    {
+      "name": "orderly",
+      "path": "orderly/SKILL.md",
+      "version": "1.0.0",
+      "description": "Trade perpetual futures and spot on Orderly Network DEX"
+    },
+    {
+      "name": "orderly-one",
+      "path": "orderly-one/SKILL.md",
+      "version": "1.0.0",
+      "description": "Create and manage your own DEX on Orderly Network"
+    },
+    {
+      "name": "polymarket",
+      "path": "polymarket/SKILL.md",
+      "version": "1.0.0",
+      "description": "Browse and analyze Polymarket prediction markets. Use when the user asks about prediction markets, event probabilities, political odds, or wants market sentiment on real-world events."
+    },
+    {
+      "name": "preview-dev",
+      "path": "preview-dev/SKILL.md",
+      "version": "1.0.0",
+      "description": "Frontend & fullstack development with live preview. Use when the user wants to build a web page, frontend app, fullstack project, or any web UI — including React, Vue, Vite, static HTML, Express, FastAPI, or any framework that produces a browser-viewable result. Also use when the user wants to deploy, publish, or share a preview to the public internet (community publish)."
+    },
+    {
+      "name": "script-generator",
+      "path": "script-generator/SKILL.md",
+      "version": "1.0.0",
+      "description": "Write and schedule trading scripts for strategy automation. Use when the user needs a recurring monitor, price alert, indicator script, or any automated data pipeline."
+    },
+    {
+      "name": "skill-creator",
+      "path": "skill-creator/SKILL.md",
+      "version": "1.0.0",
+      "description": "Create and scaffold new skills with proper frontmatter, directory structure, and validation. Use when the user asks to build a new capability, integrate a new API, or extend the system with a repeatable workflow."
+    },
+    {
+      "name": "skillmarketplace",
+      "path": "skillmarketplace/SKILL.md",
+      "version": "4.0.0",
+      "description": "Search, install, and publish skills. Use search_skills tool for discovery + auto-install. Manual publish via gateway."
+    },
+    {
+      "name": "taapi",
+      "path": "taapi/SKILL.md",
+      "version": "1.0.0",
+      "description": "Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators"
+    },
+    {
+      "name": "tg-bot-binding",
+      "path": "tg-bot-binding/SKILL.md",
+      "version": "1.0.0",
+      "description": "Guide users through the Telegram Bot binding process — creating a bot, adding it to Starchild, verifying ownership, and troubleshooting common issues."
+    },
+    {
+      "name": "trading-strategy",
+      "path": "trading-strategy/SKILL.md",
+      "version": "1.0.0",
+      "description": "Thinking partner for developing trading theses — from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, \"what do you think about\", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill)."
+    },
+    {
+      "name": "twelvedata",
+      "path": "twelvedata/SKILL.md",
+      "version": "1.0.0",
+      "description": "Stocks and forex price data, time series, quotes, and reference data"
+    },
+    {
+      "name": "twitter",
+      "path": "twitter/SKILL.md",
+      "version": "1.0.0",
+      "description": "Twitter/X data lookup — search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts."
+    },
+    {
+      "name": "wallet",
+      "path": "wallet/SKILL.md",
+      "version": "1.0.0",
+      "description": "Multi-chain wallet operations - balance, transfers, signing, and transaction history via Privy Server Wallets (EVM + Solana)"
+    },
+    {
+      "name": "wallet-policy",
+      "path": "wallet-policy/SKILL.md",
+      "version": "1.0.0",
+      "description": "Generate Privy wallet policy rules from natural language. Use when the user wants to set up, modify, or review wallet security policies — transfer limits, address allowlists, method restrictions, time windows, etc."
+    }
+  ]
+}

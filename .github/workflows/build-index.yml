@@ -3,9 +3,6 @@ name: Build skills.json index
 on:
   push:
     branches: [main]
-    paths:
-      - "*/SKILL.md"
-      - "**/SKILL.md"
 
 jobs:
   build-index:

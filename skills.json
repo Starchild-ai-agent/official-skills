@@ -74,6 +74,12 @@
       "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity"
     },
     {
+      "name": "orderly-onboarding",
+      "path": "orderly-onboarding/SKILL.md",
+      "version": "1.0.0",
+      "description": "Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart"
+    },
+    {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "1.0.0",

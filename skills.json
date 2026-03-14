@@ -74,18 +74,6 @@
       "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity"
     },
     {
-      "name": "orderly",
-      "path": "orderly/SKILL.md",
-      "version": "1.0.0",
-      "description": "Trade perpetual futures and spot on Orderly Network DEX"
-    },
-    {
-      "name": "orderly-one",
-      "path": "orderly-one/SKILL.md",
-      "version": "1.0.0",
-      "description": "Create and manage your own DEX on Orderly Network"
-    },
-    {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "1.0.0",

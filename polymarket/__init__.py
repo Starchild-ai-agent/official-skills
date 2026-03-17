@@ -1,15 +1,19 @@
 """
-Polymarket Extension — Browse and Analyze Prediction Markets
+Polymarket Skill — Browse, Analyze, and Trade Prediction Markets
 
-Provides 10 read-only tools for Polymarket prediction markets:
-- Market discovery: search, markets, event, tags
-- Price & trading: price, book, history, trades
-- Analytics: leaderboard, holders
+Uses the official Polymarket Rust CLI for all operations.
 
-No API key required — all endpoints are public.
+Provides 21 tools for Polymarket prediction markets:
+- Market data (6): markets, event, tags, price, book, leaderboard
+- Trading (8): limit/market orders, cancel orders, get orders/positions/balances/trades
+- Approvals (2): check/set contract approvals
+- CTF operations (3): split, merge, redeem conditional tokens
+- Bridge (2): deposit addresses, deposit status
 
-Usage:
-    This extension is auto-loaded by the ExtensionLoader.
+Market data requires no authentication.
+Trading and on-chain operations require wallet configuration via polymarket wallet commands.
+
+No Privy wallet integration - users manage their own private keys.
 """
 
 import logging
@@ -32,51 +36,95 @@ def register(api) -> List[str]:
 
     try:
         from .tools import (
-            # Market Discovery (4)
-            PolymarketSearchTool,
+            # Market Data (6)
             PolymarketMarketsTool,
             PolymarketEventTool,
             PolymarketTagsTool,
-            # Price & Trading Data (4)
             PolymarketPriceTool,
             PolymarketBookTool,
-            PolymarketHistoryTool,
-            PolymarketTradesTool,
-            # Analytics (2)
             PolymarketLeaderboardTool,
-            PolymarketHoldersTool,
+            # Trading (8)
+            PolymarketPlaceLimitOrderTool,
+            PolymarketPlaceMarketOrderTool,
+            PolymarketCancelOrderTool,
+            PolymarketCancelAllOrdersTool,
+            PolymarketGetOrdersTool,
+            PolymarketGetBalancesTool,
+            PolymarketGetPositionsTool,
+            PolymarketGetTradesTool,
+            # Approvals (2)
+            PolymarketCheckApprovalsTool,
+            PolymarketSetApprovalsTool,
+            # CTF Operations (3)
+            PolymarketCTFSplitTool,
+            PolymarketCTFMergeTool,
+            PolymarketCTFRedeemTool,
+            # Bridge (2)
+            PolymarketBridgeDepositTool,
+            PolymarketBridgeStatusTool,
         )
 
-        # Market Discovery
-        api.register_tool(PolymarketSearchTool())
+        # Market Data (6)
         api.register_tool(PolymarketMarketsTool())
         api.register_tool(PolymarketEventTool())
         api.register_tool(PolymarketTagsTool())
-
-        # Price & Trading Data
         api.register_tool(PolymarketPriceTool())
         api.register_tool(PolymarketBookTool())
-        api.register_tool(PolymarketHistoryTool())
-        api.register_tool(PolymarketTradesTool())
-
-        # Analytics
         api.register_tool(PolymarketLeaderboardTool())
-        api.register_tool(PolymarketHoldersTool())
+
+        # Trading (8)
+        api.register_tool(PolymarketPlaceLimitOrderTool())
+        api.register_tool(PolymarketPlaceMarketOrderTool())
+        api.register_tool(PolymarketCancelOrderTool())
+        api.register_tool(PolymarketCancelAllOrdersTool())
+        api.register_tool(PolymarketGetOrdersTool())
+        api.register_tool(PolymarketGetBalancesTool())
+        api.register_tool(PolymarketGetPositionsTool())
+        api.register_tool(PolymarketGetTradesTool())
+
+        # Approvals (2)
+        api.register_tool(PolymarketCheckApprovalsTool())
+        api.register_tool(PolymarketSetApprovalsTool())
+
+        # CTF Operations (3)
+        api.register_tool(PolymarketCTFSplitTool())
+        api.register_tool(PolymarketCTFMergeTool())
+        api.register_tool(PolymarketCTFRedeemTool())
+
+        # Bridge (2)
+        api.register_tool(PolymarketBridgeDepositTool())
+        api.register_tool(PolymarketBridgeStatusTool())
 
         registered = [
-            "polymarket_search",
+            # Market Data
             "polymarket_markets",
             "polymarket_event",
             "polymarket_tags",
             "polymarket_price",
             "polymarket_book",
-            "polymarket_history",
-            "polymarket_trades",
             "polymarket_leaderboard",
-            "polymarket_holders",
+            # Trading
+            "polymarket_place_limit_order",
+            "polymarket_place_market_order",
+            "polymarket_cancel_order",
+            "polymarket_cancel_all_orders",
+            "polymarket_get_orders",
+            "polymarket_get_balances",
+            "polymarket_get_positions",
+            "polymarket_get_trades",
+            # Approvals
+            "polymarket_check_approvals",
+            "polymarket_set_approvals",
+            # CTF Operations
+            "polymarket_ctf_split",
+            "polymarket_ctf_merge",
+            "polymarket_ctf_redeem",
+            # Bridge
+            "polymarket_bridge_deposit",
+            "polymarket_bridge_status",
         ]
 
-        logger.info(f"Registered Polymarket tools ({len(registered)} tools)")
+        logger.info(f"Registered Polymarket tools ({len(registered)} tools via official Rust CLI)")
     except Exception as e:
         logger.warning(f"Failed to load Polymarket tools: {e}")
 
@@ -86,19 +134,35 @@ def register(api) -> List[str]:
 # Extension metadata
 EXTENSION_INFO = {
     "name": "polymarket",
-    "version": "1.0.0",
-    "description": "Polymarket prediction markets — browse, search, and analyze event probabilities",
+    "version": "5.0.0",
+    "description": "Polymarket prediction markets via official Rust CLI — market data, analytics, trading, CTF operations, approvals, and bridge deposits",
     "tools": [
-        "polymarket_search",
+        # Market Data (6)
         "polymarket_markets",
         "polymarket_event",
         "polymarket_tags",
         "polymarket_price",
         "polymarket_book",
-        "polymarket_history",
-        "polymarket_trades",
         "polymarket_leaderboard",
-        "polymarket_holders",
+        # Trading (8)
+        "polymarket_place_limit_order",
+        "polymarket_place_market_order",
+        "polymarket_cancel_order",
+        "polymarket_cancel_all_orders",
+        "polymarket_get_orders",
+        "polymarket_get_balances",
+        "polymarket_get_positions",
+        "polymarket_get_trades",
+        # Approvals (2)
+        "polymarket_check_approvals",
+        "polymarket_set_approvals",
+        # CTF Operations (3)
+        "polymarket_ctf_split",
+        "polymarket_ctf_merge",
+        "polymarket_ctf_redeem",
+        # Bridge (2)
+        "polymarket_bridge_deposit",
+        "polymarket_bridge_status",
     ],
-    "env_vars": [],
+    "env_vars": [],  # No env vars needed - users configure via polymarket wallet commands
 }

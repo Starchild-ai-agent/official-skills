@@ -1,117 +1,37 @@
 """
-Polymarket Prediction Market Tools — BaseTool subclasses for agent use.
+Polymarket Prediction Market Tools — CLI Wrapper Edition.
 
-All 10 tools are read-only (no wallet required, no API key needed).
+Uses the official Polymarket Rust CLI for all operations.
+Users manage their own private keys via polymarket wallet commands.
 """
 
-import json
 import logging
+from typing import Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
-from .client import PolymarketClient
+from .cli_wrapper import PolymarketCLI, PolymarketCLIError
 
 logger = logging.getLogger(__name__)
 
-# Module-level shared client instance
-_client: PolymarketClient = None
+# Module-level shared CLI instance
+_cli: Optional[PolymarketCLI] = None
 
 
-def _get_client() -> PolymarketClient:
-    global _client
-    if _client is None:
-        _client = PolymarketClient()
-    return _client
-
-
-def _parse_json_field(value):
-    """Parse a JSON string field from Gamma API (clobTokenIds, outcomes, outcomePrices)."""
-    if isinstance(value, str):
+def _get_cli() -> PolymarketCLI:
+    """Get or create Polymarket CLI instance."""
+    global _cli
+    if _cli is None:
         try:
-            return json.loads(value)
-        except (json.JSONDecodeError, TypeError):
-            return value
-    return value
+            _cli = PolymarketCLI()
+        except PolymarketCLIError as e:
+            logger.error(f"Failed to initialize Polymarket CLI: {e}")
+            raise
+    return _cli
 
 
-def _format_market(market: dict) -> dict:
-    """Extract key fields from a Gamma market dict."""
-    outcomes = _parse_json_field(market.get("outcomes"))
-    prices = _parse_json_field(market.get("outcomePrices"))
-    clob_ids = _parse_json_field(market.get("clobTokenIds"))
-
-    result = {
-        "id": market.get("id") or market.get("conditionId") or market.get("condition_id"),
-        "question": market.get("question"),
-        "slug": market.get("slug"),
-        "outcomes": outcomes,
-        "prices": prices,
-        "clobTokenIds": clob_ids,
-        "volume24hr": market.get("volume24hr"),
-        "liquidity": market.get("liquidity"),
-        "active": market.get("active"),
-    }
-    # Include neg_risk if present
-    if market.get("neg_risk") is not None:
-        result["neg_risk"] = market.get("neg_risk")
-    return result
-
-
-# ── Market Discovery (Gamma API) ─────────────────────────────────────────────
-
-
-class PolymarketSearchTool(BaseTool):
-    """Search Polymarket prediction markets by keyword."""
-
-    @property
-    def name(self) -> str:
-        return "polymarket_search"
-
-    @property
-    def description(self) -> str:
-        return """Search Polymarket prediction markets by keyword.
-
-Returns matching markets and events with questions, outcomes, prices, and volume.
-
-Parameters:
-- query: Search keyword (e.g. "bitcoin", "election", "Trump")
-
-Returns: List of matching markets with question, outcomes, probabilities, volume"""
-
-    @property
-    def parameters(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": "Search keyword",
-                },
-            },
-            "required": ["query"],
-        }
-
-    async def execute(self, ctx: ToolContext, query: str = "", **kwargs) -> ToolResult:
-        if not query:
-            return ToolResult(success=False, error="'query' is required")
-        try:
-            client = _get_client()
-            data = await client.search(query)
-
-            # Format results — search may return markets list or mixed data
-            if isinstance(data, list):
-                markets = [_format_market(m) for m in data[:20]]
-            elif isinstance(data, dict):
-                # May have separate markets/events keys
-                markets = []
-                for m in data.get("markets", data.get("data", [])):
-                    markets.append(_format_market(m))
-                markets = markets[:20]
-            else:
-                markets = data
-
-            return ToolResult(success=True, output={"results": markets, "count": len(markets) if isinstance(markets, list) else 0})
-        except Exception as e:
-            return ToolResult(success=False, error=str(e))
+# ══════════════════════════════════════════════════════════════════════════
+# Market Discovery Tools (6)
+# ══════════════════════════════════════════════════════════════════════════
 
 
 class PolymarketMarketsTool(BaseTool):
@@ -127,9 +47,9 @@ class PolymarketMarketsTool(BaseTool):
 
 Parameters:
 - status: "active" (default), "closed", or "all"
-- sort: "volume" (default), "liquidity", or "newest"
-- tag: Category slug to filter by (use polymarket_tags to see options)
+- sort: "volume", "liquidity", or "created_at" (newest first)
 - limit: Number of results, 1-25 (default 10)
+- offset: Pagination offset
 
 Returns: List of markets with question, outcomes, prices, volume, liquidity"""
 
@@ -145,38 +65,34 @@ Returns: List of markets with question, outcomes, prices, volume, liquidity"""
                 },
                 "sort": {
                     "type": "string",
-                    "description": "Sort by: volume (default), liquidity, or newest",
-                    "enum": ["volume", "liquidity", "newest"],
-                },
-                "tag": {
-                    "type": "string",
-                    "description": "Category slug to filter by",
+                    "description": "Sort by: volume, liquidity, or created_at",
+                    "enum": ["volume", "liquidity", "created_at"],
                 },
                 "limit": {
                     "type": "integer",
                     "description": "Number of results (1-25, default 10)",
                 },
+                "offset": {
+                    "type": "integer",
+                    "description": "Pagination offset",
+                },
             },
         }
 
     async def execute(
-        self, ctx: ToolContext,
+        self,
+        ctx: ToolContext,
         status: str = "active",
         sort: str = "volume",
-        tag: str = "",
         limit: int = 10,
+        offset: int = 0,
         **kwargs,
     ) -> ToolResult:
         try:
-            # Map sort param to Gamma API order field
-            sort_map = {
-                "volume": "volume24hr",
-                "liquidity": "liquidity",
-                "newest": "created_at",
-            }
-            order = sort_map.get(sort, "volume24hr")
+            cli = _get_cli()
+            limit = max(1, min(25, limit))
 
-            # Map status to active/closed bools
+            # Map status to active/closed params
             active = None
             closed = None
             if status == "active":
@@ -184,142 +100,20 @@ Returns: List of markets with question, outcomes, prices, volume, liquidity"""
             elif status == "closed":
                 closed = True
 
-            limit = max(1, min(25, limit))
-
-            client = _get_client()
-
-            # Resolve tag slug to tag_id if provided
-            tag_id = None
-            if tag:
-                tags = await client.get_tags()
-                if isinstance(tags, list):
-                    for t in tags:
-                        if t.get("slug") == tag or t.get("label", "").lower() == tag.lower():
-                            tag_id = t.get("id")
-                            break
-
-            data = await client.get_markets(
-                active=active,
-                closed=closed,
+            markets = cli.markets_list(
                 limit=limit,
-                order=order,
-                ascending=(sort == "newest"),
-                tag_id=tag_id,
+                offset=offset,
+                order=sort,
+                active=active,
+                closed=closed
             )
 
-            markets = []
-            if isinstance(data, list):
-                markets = [_format_market(m) for m in data]
-            elif isinstance(data, dict):
-                for m in data.get("data", data.get("markets", [])):
-                    markets.append(_format_market(m))
-
             return ToolResult(success=True, output={"markets": markets, "count": len(markets)})
-        except Exception as e:
+        except PolymarketCLIError as e:
             return ToolResult(success=False, error=str(e))
-
-
-class PolymarketEventTool(BaseTool):
-    """Get a Polymarket event with all child markets."""
-
-    @property
-    def name(self) -> str:
-        return "polymarket_event"
-
-    @property
-    def description(self) -> str:
-        return """Get a Polymarket event with all its child markets.
-
-An event groups related markets (e.g. "2024 Election" has markets for each state/race).
-
-Parameters:
-- event_id: Event ID (from search or markets results)
-
-Returns: Event title, description, and list of child markets with outcomes and prices"""
-
-    @property
-    def parameters(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "event_id": {
-                    "type": "string",
-                    "description": "Event ID",
-                },
-            },
-            "required": ["event_id"],
-        }
-
-    async def execute(self, ctx: ToolContext, event_id: str = "", **kwargs) -> ToolResult:
-        if not event_id:
-            return ToolResult(success=False, error="'event_id' is required")
-        try:
-            client = _get_client()
-            data = await client.get_event(event_id)
-
-            if not data:
-                return ToolResult(success=False, error=f"Event not found: {event_id}")
-
-            # Format child markets
-            child_markets = []
-            for m in data.get("markets", []):
-                child_markets.append(_format_market(m))
-
-            result = {
-                "id": data.get("id"),
-                "title": data.get("title"),
-                "description": data.get("description"),
-                "slug": data.get("slug"),
-                "markets": child_markets,
-                "market_count": len(child_markets),
-            }
-            return ToolResult(success=True, output=result)
         except Exception as e:
+            logger.error(f"Unexpected error in polymarket_markets: {e}", exc_info=True)
             return ToolResult(success=False, error=str(e))
-
-
-class PolymarketTagsTool(BaseTool):
-    """List Polymarket market categories."""
-
-    @property
-    def name(self) -> str:
-        return "polymarket_tags"
-
-    @property
-    def description(self) -> str:
-        return """List all Polymarket market categories/tags.
-
-Use these to filter markets with polymarket_markets(tag="...").
-
-Returns: List of categories with id, label, and slug"""
-
-    @property
-    def parameters(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {},
-        }
-
-    async def execute(self, ctx: ToolContext, **kwargs) -> ToolResult:
-        try:
-            client = _get_client()
-            data = await client.get_tags()
-
-            tags = []
-            if isinstance(data, list):
-                for t in data:
-                    tags.append({
-                        "id": t.get("id"),
-                        "label": t.get("label"),
-                        "slug": t.get("slug"),
-                    })
-
-            return ToolResult(success=True, output={"tags": tags, "count": len(tags)})
-        except Exception as e:
-            return ToolResult(success=False, error=str(e))
-
-
-# ── Price & Trading Data (CLOB API) ──────────────────────────────────────────
 
 
 class PolymarketPriceTool(BaseTool):
@@ -333,12 +127,10 @@ class PolymarketPriceTool(BaseTool):
     def description(self) -> str:
         return """Get live price/probability for a Polymarket prediction market.
 
-Prices represent probabilities: $0.75 = 75% chance. Accepts a market slug or condition ID.
-
 Parameters:
-- market_id: Market slug (e.g. "will-bitcoin-reach-100k-2025") or condition ID
+- market_id: Market slug (e.g. "will-bitcoin-reach-100k") or condition ID
 
-Returns: Market question, each outcome with probability %, volume, liquidity, neg_risk flag"""
+Returns: Market question, outcomes with probabilities, volume, liquidity"""
 
     @property
     def parameters(self) -> dict:
@@ -357,75 +149,98 @@ Returns: Market question, each outcome with probability %, volume, liquidity, ne
         if not market_id:
             return ToolResult(success=False, error="'market_id' is required")
         try:
-            client = _get_client()
-
-            # Try slug first, fallback to condition ID
-            market = None
-            try:
-                market = await client.get_market_by_slug(market_id)
-            except Exception:
-                pass
-
-            if not market or (isinstance(market, list) and not market):
-                try:
-                    market = await client.get_market_by_id(market_id)
-                except Exception:
-                    pass
+            cli = _get_cli()
+            market = cli.markets_get(market_id)
 
             if not market:
                 return ToolResult(success=False, error=f"Market not found: {market_id}")
 
-            outcomes = _parse_json_field(market.get("outcomes"))
-            clob_ids = _parse_json_field(market.get("clobTokenIds"))
-            static_prices = _parse_json_field(market.get("outcomePrices"))
-
-            # Try to get live CLOB midpoint prices
-            live_prices = []
-            if clob_ids and isinstance(clob_ids, list):
-                for token_id in clob_ids:
-                    try:
-                        mid = await client.get_midpoint(token_id)
-                        price = mid.get("mid") if isinstance(mid, dict) else mid
-                        live_prices.append(float(price) if price else None)
-                    except Exception:
-                        live_prices.append(None)
-
-            # Build outcome list
-            outcome_list = []
-            if outcomes and isinstance(outcomes, list):
-                for i, outcome_name in enumerate(outcomes):
-                    price = None
-                    # Prefer live CLOB price
-                    if i < len(live_prices) and live_prices[i] is not None:
-                        price = live_prices[i]
-                    elif static_prices and isinstance(static_prices, list) and i < len(static_prices):
-                        try:
-                            price = float(static_prices[i])
-                        except (ValueError, TypeError):
-                            price = None
-
-                    entry = {"outcome": outcome_name}
-                    if price is not None:
-                        entry["price"] = round(price, 4)
-                        entry["probability"] = f"{price * 100:.1f}%"
-                    if clob_ids and isinstance(clob_ids, list) and i < len(clob_ids):
-                        entry["token_id"] = clob_ids[i]
-                    outcome_list.append(entry)
-
-            result = {
-                "id": market.get("id") or market.get("conditionId") or market.get("condition_id"),
-                "question": market.get("question"),
-                "slug": market.get("slug"),
-                "outcomes": outcome_list,
-                "volume24hr": market.get("volume24hr"),
-                "liquidity": market.get("liquidity"),
-                "active": market.get("active"),
-            }
-            if market.get("neg_risk") is not None:
-                result["neg_risk"] = market.get("neg_risk")
-
-            return ToolResult(success=True, output=result)
+            return ToolResult(success=True, output=market)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
         except Exception as e:
+            logger.error(f"Unexpected error in polymarket_price: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketEventTool(BaseTool):
+    """Get a Polymarket event with all child markets."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_event"
+
+    @property
+    def description(self) -> str:
+        return """Get a Polymarket event with all its child markets.
+
+An event groups related markets (e.g. "2024 Election" contains multiple state/race markets).
+
+Parameters:
+- event_id: Event ID
+
+Returns: Event title, description, and list of child markets"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "event_id": {
+                    "type": "string",
+                    "description": "Event ID",
+                },
+            },
+            "required": ["event_id"],
+        }
+
+    async def execute(self, ctx: ToolContext, event_id: str = "", **kwargs) -> ToolResult:
+        if not event_id:
+            return ToolResult(success=False, error="'event_id' is required")
+        try:
+            cli = _get_cli()
+            event = cli.events_get(event_id)
+
+            if not event:
+                return ToolResult(success=False, error=f"Event not found: {event_id}")
+
+            return ToolResult(success=True, output=event)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_event: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketTagsTool(BaseTool):
+    """List Polymarket market categories."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_tags"
+
+    @property
+    def description(self) -> str:
+        return """List all Polymarket market categories/tags.
+
+Use these to filter markets.
+
+Returns: List of categories with id, label, and slug"""
+
+    @property
+    def parameters(self) -> dict:
+        return {"type": "object", "properties": {}}
+
+    async def execute(self, ctx: ToolContext, **kwargs) -> ToolResult:
+        try:
+            cli = _get_cli()
+            tags = cli.tags_list()
+
+            return ToolResult(success=True, output={"tags": tags, "count": len(tags)})
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_tags: {e}", exc_info=True)
             return ToolResult(success=False, error=str(e))
 
 
@@ -440,12 +255,12 @@ class PolymarketBookTool(BaseTool):
     def description(self) -> str:
         return """Get orderbook depth for a Polymarket CLOB token.
 
-Shows bid/ask levels, spread, and liquidity. Use token_id from polymarket_price results.
+Shows bid/ask levels, spread, and liquidity.
 
 Parameters:
 - token_id: CLOB token ID (from polymarket_price output)
 
-Returns: Top 10 bid/ask levels, best bid, best ask, spread, mid price"""
+Returns: Bid/ask levels, best bid, best ask, spread"""
 
     @property
     def parameters(self) -> dict:
@@ -464,168 +279,15 @@ Returns: Top 10 bid/ask levels, best bid, best ask, spread, mid price"""
         if not token_id:
             return ToolResult(success=False, error="'token_id' is required")
         try:
-            client = _get_client()
-            data = await client.get_book(token_id)
+            cli = _get_cli()
+            book = cli.clob_book(token_id)
 
-            bids = data.get("bids", [])
-            asks = data.get("asks", [])
-
-            # Take top 10
-            top_bids = bids[:10] if isinstance(bids, list) else []
-            top_asks = asks[:10] if isinstance(asks, list) else []
-
-            # Calculate spread
-            best_bid = float(top_bids[0].get("price", 0)) if top_bids else 0
-            best_ask = float(top_asks[0].get("price", 0)) if top_asks else 0
-            spread = round(best_ask - best_bid, 4) if best_bid and best_ask else None
-            mid = round((best_bid + best_ask) / 2, 4) if best_bid and best_ask else None
-
-            result = {
-                "token_id": token_id,
-                "bids": top_bids,
-                "asks": top_asks,
-                "best_bid": best_bid,
-                "best_ask": best_ask,
-                "spread": spread,
-                "mid_price": mid,
-            }
-            return ToolResult(success=True, output=result)
-        except Exception as e:
+            return ToolResult(success=True, output=book)
+        except PolymarketCLIError as e:
             return ToolResult(success=False, error=str(e))
-
-
-class PolymarketHistoryTool(BaseTool):
-    """Get price history timeseries for a Polymarket token."""
-
-    @property
-    def name(self) -> str:
-        return "polymarket_history"
-
-    @property
-    def description(self) -> str:
-        return """Get price history timeseries for a Polymarket CLOB token.
-
-Parameters:
-- token_id: CLOB token ID (from polymarket_price output)
-- interval: Time interval — "1m" (1 minute), "1h" (1 hour, default), "1d" (1 day)
-- fidelity: Minutes between data points (optional, overrides interval)
-
-Returns: Array of {timestamp, price} data points"""
-
-    @property
-    def parameters(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "token_id": {
-                    "type": "string",
-                    "description": "CLOB token ID",
-                },
-                "interval": {
-                    "type": "string",
-                    "description": "Time interval: 1m, 1h (default), or 1d",
-                },
-                "fidelity": {
-                    "type": "integer",
-                    "description": "Minutes between data points (overrides interval)",
-                },
-            },
-            "required": ["token_id"],
-        }
-
-    async def execute(
-        self, ctx: ToolContext,
-        token_id: str = "",
-        interval: str = "1h",
-        fidelity: int = 0,
-        **kwargs,
-    ) -> ToolResult:
-        if not token_id:
-            return ToolResult(success=False, error="'token_id' is required")
-        try:
-            # Map interval to fidelity (minutes) if not explicitly set
-            if not fidelity:
-                fidelity_map = {"1m": 1, "1h": 60, "1d": 1440}
-                fidelity = fidelity_map.get(interval, 60)
-
-            client = _get_client()
-            data = await client.get_prices_history(token_id, fidelity=fidelity)
-
-            # Normalize to consistent format
-            points = []
-            if isinstance(data, dict):
-                history = data.get("history", [])
-            elif isinstance(data, list):
-                history = data
-            else:
-                history = []
-
-            for pt in history:
-                points.append({
-                    "timestamp": pt.get("t"),
-                    "price": pt.get("p"),
-                })
-
-            return ToolResult(success=True, output={"token_id": token_id, "points": points, "count": len(points)})
         except Exception as e:
+            logger.error(f"Unexpected error in polymarket_book: {e}", exc_info=True)
             return ToolResult(success=False, error=str(e))
-
-
-class PolymarketTradesTool(BaseTool):
-    """Get recent trades for a Polymarket market."""
-
-    @property
-    def name(self) -> str:
-        return "polymarket_trades"
-
-    @property
-    def description(self) -> str:
-        return """Get recent trades for a Polymarket prediction market.
-
-Parameters:
-- condition_id: Market condition ID (from search/markets/price results)
-- limit: Number of trades (default 20, max 50)
-
-Returns: List of recent trades with price, size, side, timestamp"""
-
-    @property
-    def parameters(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "condition_id": {
-                    "type": "string",
-                    "description": "Market condition ID",
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "Number of trades (default 20, max 50)",
-                },
-            },
-            "required": ["condition_id"],
-        }
-
-    async def execute(
-        self, ctx: ToolContext,
-        condition_id: str = "",
-        limit: int = 20,
-        **kwargs,
-    ) -> ToolResult:
-        if not condition_id:
-            return ToolResult(success=False, error="'condition_id' is required")
-        try:
-            limit = max(1, min(50, limit))
-            client = _get_client()
-            data = await client.get_trades(condition_id, limit=limit)
-
-            trades = data if isinstance(data, list) else data.get("data", data.get("trades", []))
-
-            return ToolResult(success=True, output={"trades": trades, "count": len(trades) if isinstance(trades, list) else 0})
-        except Exception as e:
-            return ToolResult(success=False, error=str(e))
-
-
-# ── Community & Analytics (Data API) ─────────────────────────────────────────
 
 
 class PolymarketLeaderboardTool(BaseTool):
@@ -640,7 +302,8 @@ class PolymarketLeaderboardTool(BaseTool):
         return """Get top Polymarket traders ranked by profit.
 
 Parameters:
-- window: Time window — "1d", "7d", "30d", or "all" (default)
+- period: Time period — "week", "month", "year", or "all" (default)
+- order_by: Sort field — "pnl", "volume", or "trades" (default: pnl)
 - limit: Number of traders (default 10, max 25)
 
 Returns: Ranked list of traders with profit, volume, number of trades"""
@@ -650,10 +313,15 @@ Returns: Ranked list of traders with profit, volume, number of trades"""
         return {
             "type": "object",
             "properties": {
-                "window": {
+                "period": {
                     "type": "string",
-                    "description": "Time window: 1d, 7d, 30d, or all (default)",
-                    "enum": ["1d", "7d", "30d", "all"],
+                    "description": "Time period",
+                    "enum": ["week", "month", "year", "all"],
+                },
+                "order_by": {
+                    "type": "string",
+                    "description": "Sort field",
+                    "enum": ["pnl", "volume", "trades"],
                 },
                 "limit": {
                     "type": "integer",
@@ -663,68 +331,695 @@ Returns: Ranked list of traders with profit, volume, number of trades"""
         }
 
     async def execute(
-        self, ctx: ToolContext,
-        window: str = "all",
+        self,
+        ctx: ToolContext,
+        period: str = "month",
+        order_by: str = "pnl",
         limit: int = 10,
         **kwargs,
     ) -> ToolResult:
         try:
+            cli = _get_cli()
             limit = max(1, min(25, limit))
-            client = _get_client()
-            data = await client.get_leaderboard(window=window, limit=limit)
+            leaderboard = cli.data_leaderboard(period=period, order_by=order_by, limit=limit)
 
-            return ToolResult(success=True, output=data)
+            return ToolResult(success=True, output={"traders": leaderboard, "count": len(leaderboard)})
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
         except Exception as e:
+            logger.error(f"Unexpected error in polymarket_leaderboard: {e}", exc_info=True)
             return ToolResult(success=False, error=str(e))
 
 
-class PolymarketHoldersTool(BaseTool):
-    """Get top holders of a Polymarket token."""
+# ══════════════════════════════════════════════════════════════════════════
+# Trading Tools (8) — Require Wallet Configuration
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class PolymarketPlaceLimitOrderTool(BaseTool):
+    """Place a limit order on Polymarket."""
 
     @property
     def name(self) -> str:
-        return "polymarket_holders"
+        return "polymarket_place_limit_order"
 
     @property
     def description(self) -> str:
-        return """Get top holders of a Polymarket market token.
+        return """Place a limit order (GTC) on Polymarket.
+
+Requires wallet configuration (polymarket wallet import <private_key>).
 
 Parameters:
-- token_id: CLOB token ID (from polymarket_price output)
-- limit: Number of holders (default 10, max 20)
+- token_id: CLOB token ID
+- side: "buy" or "sell"
+- price: Limit price (0.01-0.99, e.g., 0.65 for 65%)
+- size: Order size in shares
+- post_only: Maker-only mode (default false)
 
-Returns: List of top holders with address and position size"""
+Returns: Order details with order_id"""
 
     @property
     def parameters(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "token_id": {
-                    "type": "string",
-                    "description": "CLOB token ID",
-                },
-                "limit": {
-                    "type": "integer",
-                    "description": "Number of holders (default 10, max 20)",
-                },
+                "token_id": {"type": "string", "description": "CLOB token ID"},
+                "side": {"type": "string", "enum": ["buy", "sell"], "description": "Order side"},
+                "price": {"type": "number", "description": "Limit price (0.01-0.99)"},
+                "size": {"type": "number", "description": "Order size in shares"},
+                "post_only": {"type": "boolean", "description": "Maker-only mode"},
             },
-            "required": ["token_id"],
+            "required": ["token_id", "side", "price", "size"],
         }
 
     async def execute(
-        self, ctx: ToolContext,
+        self,
+        ctx: ToolContext,
         token_id: str = "",
-        limit: int = 10,
+        side: str = "",
+        price: float = 0,
+        size: float = 0,
+        post_only: bool = False,
         **kwargs,
     ) -> ToolResult:
-        if not token_id:
-            return ToolResult(success=False, error="'token_id' is required")
-        try:
-            limit = max(1, min(20, limit))
-            client = _get_client()
-            data = await client.get_holders(token_id, limit=limit)
+        if not all([token_id, side, price, size]):
+            return ToolResult(success=False, error="Missing required parameters")
 
-            return ToolResult(success=True, output=data)
+        try:
+            cli = _get_cli()
+            order = cli.clob_create_order(
+                token_id=token_id,
+                side=side,
+                price=price,
+                size=size,
+                post_only=post_only
+            )
+
+            return ToolResult(success=True, output=order)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
         except Exception as e:
+            logger.error(f"Unexpected error in polymarket_place_limit_order: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketPlaceMarketOrderTool(BaseTool):
+    """Place a market order (FOK) on Polymarket."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_place_market_order"
+
+    @property
+    def description(self) -> str:
+        return """Place a market order (Fill-or-Kill) on Polymarket.
+
+Market orders execute immediately at best available price or cancel.
+Requires wallet configuration.
+
+Parameters:
+- token_id: CLOB token ID
+- side: "buy" or "sell"
+- amount: For BUY = dollars to spend, for SELL = shares to sell
+- price: Worst acceptable price (slippage protection, optional)
+
+Returns: Order details with order_id"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "token_id": {"type": "string", "description": "CLOB token ID"},
+                "side": {"type": "string", "enum": ["buy", "sell"], "description": "Order side"},
+                "amount": {"type": "number", "description": "Amount ($ for buy, shares for sell)"},
+                "price": {"type": "number", "description": "Worst acceptable price (slippage limit)"},
+            },
+            "required": ["token_id", "side", "amount"],
+        }
+
+    async def execute(
+        self,
+        ctx: ToolContext,
+        token_id: str = "",
+        side: str = "",
+        amount: float = 0,
+        price: Optional[float] = None,
+        **kwargs,
+    ) -> ToolResult:
+        if not all([token_id, side, amount]):
+            return ToolResult(success=False, error="Missing required parameters")
+
+        try:
+            cli = _get_cli()
+            order = cli.clob_market_order(
+                token_id=token_id,
+                side=side,
+                amount=amount,
+                price=price
+            )
+
+            return ToolResult(success=True, output=order)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_place_market_order: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketCancelOrderTool(BaseTool):
+    """Cancel an order on Polymarket."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_cancel_order"
+
+    @property
+    def description(self) -> str:
+        return "Cancel a single order by ID (requires wallet configuration)"
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "order_id": {"type": "string", "description": "Order ID"},
+            },
+            "required": ["order_id"],
+        }
+
+    async def execute(self, ctx: ToolContext, order_id: str = "", **kwargs) -> ToolResult:
+        if not order_id:
+            return ToolResult(success=False, error="'order_id' is required")
+        try:
+            cli = _get_cli()
+            result = cli.clob_cancel(order_id)
+            return ToolResult(success=True, output=result)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_cancel_order: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketCancelAllOrdersTool(BaseTool):
+    """Cancel all orders."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_cancel_all_orders"
+
+    @property
+    def description(self) -> str:
+        return """Cancel ALL open orders (requires wallet configuration).
+
+Use with caution! Optionally filter by market."""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "market": {"type": "string", "description": "Filter by market condition ID (optional)"},
+            },
+        }
+
+    async def execute(self, ctx: ToolContext, market: str = "", **kwargs) -> ToolResult:
+        try:
+            cli = _get_cli()
+            result = cli.clob_cancel_all(market if market else None)
+            return ToolResult(success=True, output=result)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_cancel_all_orders: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketGetOrdersTool(BaseTool):
+    """Get open orders."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_get_orders"
+
+    @property
+    def description(self) -> str:
+        return "Get your open orders (requires wallet configuration)"
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "market": {"type": "string", "description": "Filter by market condition ID (optional)"},
+            },
+        }
+
+    async def execute(self, ctx: ToolContext, market: str = "", **kwargs) -> ToolResult:
+        try:
+            cli = _get_cli()
+            orders = cli.clob_orders(market if market else None)
+            return ToolResult(success=True, output={"orders": orders, "count": len(orders)})
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_get_orders: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketGetBalancesTool(BaseTool):
+    """Get account balances."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_get_balances"
+
+    @property
+    def description(self) -> str:
+        return """Get your USDC collateral balance (requires wallet configuration).
+
+Returns: Balance information"""
+
+    @property
+    def parameters(self) -> dict:
+        return {"type": "object", "properties": {}}
+
+    async def execute(self, ctx: ToolContext, **kwargs) -> ToolResult:
+        try:
+            cli = _get_cli()
+            balance = cli.clob_balance(asset_type="collateral")
+            return ToolResult(success=True, output=balance)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_get_balances: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketGetPositionsTool(BaseTool):
+    """Get user positions."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_get_positions"
+
+    @property
+    def description(self) -> str:
+        return """Get current open positions (requires wallet address).
+
+Shows all markets where you hold position tokens.
+
+Parameters:
+- address: Wallet address to query positions for
+
+Returns: List of positions with market info, size, current value, PnL"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "address": {"type": "string", "description": "Wallet address"},
+            },
+            "required": ["address"],
+        }
+
+    async def execute(self, ctx: ToolContext, address: str = "", **kwargs) -> ToolResult:
+        if not address:
+            return ToolResult(success=False, error="'address' is required")
+
+        try:
+            cli = _get_cli()
+            positions = cli.data_positions(address)
+
+            return ToolResult(success=True, output={"positions": positions, "count": len(positions)})
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_get_positions: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketGetTradesTool(BaseTool):
+    """Get trade history."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_get_trades"
+
+    @property
+    def description(self) -> str:
+        return """Get your trade history (requires wallet configuration).
+
+Parameters:
+- limit: Number of trades (default 50, max 100)
+
+Returns: List of historical trades"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer", "description": "Number of trades (default 50)"},
+            },
+        }
+
+    async def execute(self, ctx: ToolContext, limit: int = 50, **kwargs) -> ToolResult:
+        try:
+            cli = _get_cli()
+            limit = max(1, min(100, limit))
+            trades = cli.clob_trades(limit)
+
+            return ToolResult(success=True, output={"trades": trades, "count": len(trades)})
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_get_trades: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Contract Approval Tools (2) — NEW
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class PolymarketCheckApprovalsTool(BaseTool):
+    """Check contract approval status."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_check_approvals"
+
+    @property
+    def description(self) -> str:
+        return """Check ERC-20 and ERC-1155 contract approval status.
+
+Before trading, Polymarket contracts need approvals for USDC (collateral) and CTF tokens.
+
+Parameters:
+- address: Wallet address to check (optional, defaults to configured wallet)
+
+Returns: Approval status for each contract"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "address": {"type": "string", "description": "Wallet address (optional)"},
+            },
+        }
+
+    async def execute(self, ctx: ToolContext, address: str = "", **kwargs) -> ToolResult:
+        try:
+            cli = _get_cli()
+            approvals = cli.approve_check(address if address else None)
+
+            return ToolResult(success=True, output=approvals)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_check_approvals: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketSetApprovalsTool(BaseTool):
+    """Set all contract approvals (on-chain transaction)."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_set_approvals"
+
+    @property
+    def description(self) -> str:
+        return """Approve all Polymarket contracts for trading.
+
+IMPORTANT: This sends 6 on-chain transactions and requires MATIC for gas.
+Only needs to be done once per wallet.
+
+Returns: Transaction hashes and status messages"""
+
+    @property
+    def parameters(self) -> dict:
+        return {"type": "object", "properties": {}}
+
+    async def execute(self, ctx: ToolContext, **kwargs) -> ToolResult:
+        try:
+            cli = _get_cli()
+            result = cli.approve_set()
+
+            return ToolResult(success=True, output={"message": result})
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_set_approvals: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# CTF Token Operation Tools (3) — NEW
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class PolymarketCTFSplitTool(BaseTool):
+    """Split collateral into conditional tokens."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_ctf_split"
+
+    @property
+    def description(self) -> str:
+        return """Split USDC collateral into conditional tokens (YES/NO shares).
+
+This is an on-chain operation that converts USDC into outcome tokens.
+Requires MATIC for gas fees.
+
+Parameters:
+- condition_id: Market condition ID (0x... format)
+- amount: Amount in USDC to split (e.g., 10 = $10)
+
+Returns: Transaction output with tx hash"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "condition_id": {"type": "string", "description": "Market condition ID (0x...)"},
+                "amount": {"type": "number", "description": "Amount in USDC to split"},
+            },
+            "required": ["condition_id", "amount"],
+        }
+
+    async def execute(
+        self,
+        ctx: ToolContext,
+        condition_id: str = "",
+        amount: float = 0,
+        **kwargs,
+    ) -> ToolResult:
+        if not condition_id or amount <= 0:
+            return ToolResult(success=False, error="Missing required parameters or invalid amount")
+
+        try:
+            cli = _get_cli()
+            result = cli.ctf_split(condition_id, amount)
+
+            return ToolResult(success=True, output={"message": result})
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_ctf_split: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketCTFMergeTool(BaseTool):
+    """Merge conditional tokens back to collateral."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_ctf_merge"
+
+    @property
+    def description(self) -> str:
+        return """Merge conditional tokens (YES/NO shares) back into USDC collateral.
+
+Requires holding BOTH outcome tokens in equal amounts.
+On-chain operation requiring MATIC for gas.
+
+Parameters:
+- condition_id: Market condition ID (0x... format)
+- amount: Amount to merge (in token units)
+
+Returns: Transaction output with tx hash"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "condition_id": {"type": "string", "description": "Market condition ID (0x...)"},
+                "amount": {"type": "number", "description": "Amount to merge"},
+            },
+            "required": ["condition_id", "amount"],
+        }
+
+    async def execute(
+        self,
+        ctx: ToolContext,
+        condition_id: str = "",
+        amount: float = 0,
+        **kwargs,
+    ) -> ToolResult:
+        if not condition_id or amount <= 0:
+            return ToolResult(success=False, error="Missing required parameters or invalid amount")
+
+        try:
+            cli = _get_cli()
+            result = cli.ctf_merge(condition_id, amount)
+
+            return ToolResult(success=True, output={"message": result})
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_ctf_merge: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketCTFRedeemTool(BaseTool):
+    """Redeem winning tokens after market resolution."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_ctf_redeem"
+
+    @property
+    def description(self) -> str:
+        return """Redeem winning conditional tokens for USDC after market resolution.
+
+Only works for resolved markets. Winning tokens pay $1 per share.
+On-chain operation requiring MATIC for gas.
+
+Parameters:
+- condition_id: Market condition ID (0x... format)
+
+Returns: Transaction output with tx hash"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "condition_id": {"type": "string", "description": "Market condition ID (0x...)"},
+            },
+            "required": ["condition_id"],
+        }
+
+    async def execute(self, ctx: ToolContext, condition_id: str = "", **kwargs) -> ToolResult:
+        if not condition_id:
+            return ToolResult(success=False, error="'condition_id' is required")
+
+        try:
+            cli = _get_cli()
+            result = cli.ctf_redeem(condition_id)
+
+            return ToolResult(success=True, output={"message": result})
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_ctf_redeem: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Bridge Deposit Tools (2) — NEW
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class PolymarketBridgeDepositTool(BaseTool):
+    """Get deposit addresses for bridging to Polymarket."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_bridge_deposit"
+
+    @property
+    def description(self) -> str:
+        return """Get deposit addresses for bridging assets from other chains to Polygon.
+
+Supports deposits from EVM chains, Solana, and Bitcoin.
+
+Parameters:
+- address: Your Polygon wallet address (destination)
+
+Returns: Deposit addresses for each supported chain"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "address": {"type": "string", "description": "Destination Polygon address"},
+            },
+            "required": ["address"],
+        }
+
+    async def execute(self, ctx: ToolContext, address: str = "", **kwargs) -> ToolResult:
+        if not address:
+            return ToolResult(success=False, error="'address' is required")
+
+        try:
+            cli = _get_cli()
+            deposit_addresses = cli.bridge_deposit(address)
+
+            return ToolResult(success=True, output=deposit_addresses)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_bridge_deposit: {e}", exc_info=True)
+            return ToolResult(success=False, error=str(e))
+
+
+class PolymarketBridgeStatusTool(BaseTool):
+    """Check bridge deposit status."""
+
+    @property
+    def name(self) -> str:
+        return "polymarket_bridge_status"
+
+    @property
+    def description(self) -> str:
+        return """Check status of bridge deposits (pending or completed).
+
+Parameters:
+- deposit_address: The deposit address to check
+
+Returns: Status information with pending/completed deposits"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "deposit_address": {"type": "string", "description": "Deposit address to check"},
+            },
+            "required": ["deposit_address"],
+        }
+
+    async def execute(self, ctx: ToolContext, deposit_address: str = "", **kwargs) -> ToolResult:
+        if not deposit_address:
+            return ToolResult(success=False, error="'deposit_address' is required")
+
+        try:
+            cli = _get_cli()
+            status = cli.bridge_status(deposit_address)
+
+            return ToolResult(success=True, output=status)
+        except PolymarketCLIError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            logger.error(f"Unexpected error in polymarket_bridge_status: {e}", exc_info=True)
             return ToolResult(success=False, error=str(e))

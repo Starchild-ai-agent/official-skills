@@ -3,8 +3,7 @@
 import sys, os, re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-_parent = os.path.join(os.path.dirname(__file__), "..")
-REPO = _parent if os.path.isdir(os.path.join(_parent, "hyperliquid")) else os.path.join(_parent, "repo")
+REPO = os.path.join(os.path.dirname(__file__), "..", "repo")
 SKILLS_WITH_TOOLS = [s for s in os.listdir(REPO) 
     if os.path.isdir(os.path.join(REPO, s)) 
     and os.path.exists(os.path.join(REPO, s, "tools.py"))]

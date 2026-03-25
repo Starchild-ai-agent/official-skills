@@ -3,9 +3,13 @@
 import sys, os, re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-REPO = os.path.join(os.path.dirname(__file__), "..", "repo")
+_base = os.path.join(os.path.dirname(__file__), "..")
+REPO = os.path.join(_base, "repo") if os.path.isdir(os.path.join(_base, "repo")) else _base
+EXCLUDED_DIRS = {"tests", "patches", ".pytest_cache", "__pycache__", "node_modules", "output", "docs", "fork-workspace", "repo"}
 ALL_PY = []
 for skill in os.listdir(REPO):
+    if skill in EXCLUDED_DIRS:
+        continue
     skill_dir = os.path.join(REPO, skill)
     if not os.path.isdir(skill_dir):
         continue

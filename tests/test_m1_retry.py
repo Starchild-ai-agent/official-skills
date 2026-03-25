@@ -131,7 +131,7 @@ def test_async_retry_succeeds():
         return 42
     
     cfg = RetryConfig(max_retries=3, base_delay=0.01, jitter=0.0)
-    result = asyncio.get_event_loop().run_until_complete(
+    result = asyncio.run(
         async_retry(flaky_async, config=cfg, tool_name="test_async")
     )
     assert result == 42
@@ -166,7 +166,7 @@ def test_decorator_async():
             raise TimeoutError("temp")
         return "async_ok"
     
-    result = asyncio.get_event_loop().run_until_complete(decorated_async())
+    result = asyncio.run(decorated_async())
     assert result == "async_ok"
 
 

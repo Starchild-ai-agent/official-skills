@@ -1,0 +1,6 @@
+fork-workspace
+repo
+.coverage
+test_results.json
+*.log
+*_result.json

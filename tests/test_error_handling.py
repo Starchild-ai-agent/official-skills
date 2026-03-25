@@ -2,8 +2,11 @@
 Test 1: Error Handling Quality
 核心问题: silent except:pass 让小模型无法知道出了什么错，无法自我修正。
 """
-import os, re, ast, json
+import os
+import re
+import json
 from config import REPO_ROOT, SKILLS_WITH_CODE
+
 
 class ErrorHandlingTester:
     def __init__(self):
@@ -51,7 +54,7 @@ class ErrorHandlingTester:
                     'issue': issue_type,
                     'impact': 'Small model receives empty/None, cannot diagnose failure',
                     'context': context,
-                    'fix': f'Replace with: raise ToolError("{{skill}}/{{tool}}: {{specific_reason}}")'
+                    'fix': 'Replace with: raise ToolError("{skill}/{tool}: {specific_reason}")'
                 })
 
     def _check_bare_return_on_error(self, skill, fname, content, lines):
@@ -82,7 +85,14 @@ class ErrorHandlingTester:
                 msg_match = re.search(r'raise\s+\w+\(["\'](.+?)["\']', stripped)
                 if msg_match:
                     msg = msg_match.group(1)
-                    has_context = any(k in msg.lower() for k in [skill, 'failed', 'invalid', 'missing', 'expected', 'got'])
+                    has_context = any(
+                        k in msg.lower() for k in [
+                            skill,
+                            'failed',
+                            'invalid',
+                            'missing',
+                            'expected',
+                            'got'])
                     if not has_context and len(msg) < 20:
                         self.results.append({
                             'skill': skill,
@@ -92,7 +102,7 @@ class ErrorHandlingTester:
                             'issue': 'VAGUE_ERROR_MESSAGE',
                             'impact': f'Error message too vague for small model: "{msg}"',
                             'context': self._get_context(lines, i + 1, 2),
-                            'fix': f'Include skill name, tool name, what was expected vs got'
+                            'fix': 'Include skill name, tool name, what was expected vs got'
                         })
 
     def _check_retry_logic(self, skill, fname, content, lines):
@@ -117,17 +127,18 @@ class ErrorHandlingTester:
         http_calls = list(re.finditer(r'(?:proxied_get|proxied_post|requests\.get|requests\.post)\s*\(', content))
         for m in http_calls:
             # Look ahead 200 chars for timeout parameter
-            snippet = content[m.start():m.start()+300]
+            snippet = content[m.start():m.start() + 300]
             paren_depth = 0
             end = 0
             for j, c in enumerate(snippet):
-                if c == '(': paren_depth += 1
-                elif c == ')': 
+                if c == '(':
+                    paren_depth += 1
+                elif c == ')':
                     paren_depth -= 1
                     if paren_depth == 0:
                         end = j
                         break
-            call_text = snippet[:end+1] if end else snippet
+            call_text = snippet[:end + 1] if end else snippet
             if 'timeout' not in call_text:
                 line_no = content[:m.start()].count('\n') + 1
                 self.results.append({
@@ -147,7 +158,7 @@ class ErrorHandlingTester:
         for m in http_calls:
             line_no = content[:m.start()].count('\n') + 1
             # Check next 10 lines for status check
-            check_region = '\n'.join(lines[line_no:line_no+10])
+            check_region = '\n'.join(lines[line_no:line_no + 10])
             has_check = bool(re.search(r'(?:status|status_code|\.ok|raise_for_status)', check_region))
             if not has_check:
                 self.results.append({
@@ -174,7 +185,7 @@ class ErrorHandlingTester:
 def run_test():
     tester = ErrorHandlingTester()
     results = tester.run()
-    return {
+    report = {
         'test_name': 'Error Handling Quality',
         'total_issues': len(results),
         'by_severity': {
@@ -189,11 +200,14 @@ def run_test():
     # Aggregate by skill
     for r in results:
         s = r['skill']
-        if s not in result['by_skill']:
-            result['by_skill'][s] = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'total': 0}
-        result['by_skill'][s][r['severity']] += 1
-        result['by_skill'][s]['total'] += 1
-    return result
+        if s not in report['by_skill']:
+            report['by_skill'][s] = {
+                'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'total': 0
+            }
+        report['by_skill'][s][r['severity']] += 1
+        report['by_skill'][s]['total'] += 1
+    return report
+
 
 if __name__ == '__main__':
     r = run_test()

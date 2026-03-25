@@ -129,7 +129,7 @@ class TestSkillInternalConsistency:
 
     def test_referenced_scripts_exist(self, skill):
         """Scripts referenced via actual import/run patterns should exist.
-        
+
         Only checks patterns like:
           - `python scripts/foo.py`
           - `bash scripts/foo.sh`
@@ -138,10 +138,9 @@ class TestSkillInternalConsistency:
         """
         # Find script refs that look like real usage (outside fenced code blocks)
         content = skill["content"]
-        
+
         # Extract fenced code blocks to separate them
-        code_blocks = re.findall(r"```[\s\S]*?```", content)
-        
+
         # Real usage patterns: direct references to run/source scripts
         real_refs = []
         for line in content.split("\n"):

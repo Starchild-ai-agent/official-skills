@@ -52,6 +52,7 @@ class RetryConfig:
       - backoff_factor (alias for exponential multiplier)
       - jitter: bool (True/False) or float (backward compat, >0 = True)
     """
+
     def __init__(
         self,
         max_attempts: int = 3,

@@ -3,14 +3,15 @@
 Tests for M1-T2: shared/validators.py
 Validates input sanitization for crypto-critical operations.
 """
-import sys, os, warnings
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'patches'))
-
 from shared.validators import (
     validate_evm_address, validate_order_size, validate_leverage,
     validate_amount_vs_balance, parse_token_amount, to_raw_amount,
-    validate_chain_id, to_checksum_address, KNOWN_CHAINS,
+    validate_chain_id,
 )
+import sys
+import os
+import warnings
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'patches'))
 
 
 # ─── EVM Address Tests ──────────────────────────────────────────
@@ -18,6 +19,7 @@ from shared.validators import (
 def test_valid_address_lowercase():
     result = validate_evm_address("0xd8da6bf26964af9d7eed9e03e53415d37aa96045")
     assert result.startswith("0x") and len(result) == 42
+
 
 def test_valid_address_checksummed():
     """Checksum output should be deterministic and valid hex."""
@@ -28,6 +30,7 @@ def test_valid_address_checksummed():
     result2 = validate_evm_address("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
     assert result == result2, "Checksum should be deterministic"
 
+
 def test_invalid_address_short():
     try:
         validate_evm_address("0x123")
@@ -35,12 +38,14 @@ def test_invalid_address_short():
     except ValueError as e:
         assert "not a valid EVM address" in str(e)
 
+
 def test_invalid_address_empty():
     try:
         validate_evm_address("")
         assert False, "Should raise"
     except ValueError as e:
         assert "empty" in str(e)
+
 
 def test_zero_address_rejected():
     try:
@@ -50,9 +55,11 @@ def test_zero_address_rejected():
         assert "zero address" in str(e)
         assert "burn funds" in str(e)
 
+
 def test_zero_address_allowed():
     result = validate_evm_address("0x" + "0" * 40, allow_zero=True)
     assert result  # Should not raise
+
 
 def test_address_whitespace_trimmed():
     result = validate_evm_address("  0xd8da6bf26964af9d7eed9e03e53415d37aa96045  ")
@@ -65,6 +72,7 @@ def test_valid_order_size():
     result = validate_order_size(0.01, min_sz=0.00001, asset="BTC")
     assert result == 0.01
 
+
 def test_order_size_below_minimum():
     try:
         validate_order_size(0.000001, min_sz=0.00001, asset="BTC")
@@ -73,12 +81,14 @@ def test_order_size_below_minimum():
         msg = str(e)
         assert "below minimum" in msg, f"Expected 'below minimum' in error: {msg}"
 
+
 def test_order_size_zero():
     try:
         validate_order_size(0, min_sz=0.00001, asset="BTC")
         assert False, "Should raise"
     except ValueError as e:
         assert "positive" in str(e)
+
 
 def test_order_size_negative():
     try:
@@ -87,12 +97,14 @@ def test_order_size_negative():
     except ValueError as e:
         assert "positive" in str(e)
 
+
 def test_order_size_max_exceeded():
     try:
         validate_order_size(1000.0, min_sz=0.01, asset="BTC", max_sz=100.0)
         assert False, "Should raise"
     except ValueError as e:
         assert "exceeds maximum" in str(e)
+
 
 def test_order_size_rounding():
     result = validate_order_size(0.123456, min_sz=0.00001, asset="BTC", sz_decimals=5)
@@ -104,6 +116,7 @@ def test_order_size_rounding():
 def test_valid_leverage():
     assert validate_leverage(10, max_leverage=40, asset="BTC") == 10
 
+
 def test_leverage_too_high():
     try:
         validate_leverage(100, max_leverage=40, asset="BTC")
@@ -111,6 +124,7 @@ def test_leverage_too_high():
     except ValueError as e:
         assert "exceeds maximum" in str(e)
         assert "40x" in str(e)
+
 
 def test_leverage_zero():
     try:
@@ -126,6 +140,7 @@ def test_valid_amount():
     result = validate_amount_vs_balance(100, balance=500, asset="USDC")
     assert result == 100
 
+
 def test_insufficient_balance():
     try:
         validate_amount_vs_balance(600, balance=500, asset="USDC")
@@ -133,6 +148,7 @@ def test_insufficient_balance():
     except ValueError as e:
         assert "Insufficient" in str(e)
         assert "500" in str(e)
+
 
 def test_balance_with_reserve():
     try:
@@ -151,21 +167,26 @@ def test_usdc_6_decimals():
     human = parse_token_amount(raw, decimals=6, token_symbol="USDC")
     assert abs(human - 75554.957065) < 0.001
 
+
 def test_wbtc_8_decimals():
     human = parse_token_amount(100000000, decimals=8, token_symbol="WBTC")
     assert human == 1.0
+
 
 def test_eth_18_decimals():
     human = parse_token_amount(1000000000000000000, decimals=18, token_symbol="ETH")
     assert human == 1.0
 
+
 def test_to_raw_amount():
     raw = to_raw_amount(1.5, decimals=18, token_symbol="ETH")
     assert raw == 1500000000000000000
 
+
 def test_to_raw_usdc():
     raw = to_raw_amount(100.0, decimals=6, token_symbol="USDC")
     assert raw == 100000000
+
 
 def test_invalid_decimals():
     try:
@@ -180,6 +201,7 @@ def test_invalid_decimals():
 def test_known_chain():
     assert validate_chain_id(1) == 1
     assert validate_chain_id(42161) == 42161
+
 
 def test_unknown_chain_warns():
     with warnings.catch_warnings(record=True) as w:
@@ -222,12 +244,12 @@ if __name__ == "__main__":
         ("known_chain", test_known_chain),
         ("unknown_chain_warns", test_unknown_chain_warns),
     ]
-    
+
     passed = failed = 0
     print("=" * 60)
     print("  M1-T2: Validators Tests")
     print("=" * 60)
-    
+
     for name, fn in tests:
         try:
             fn()
@@ -236,7 +258,7 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"  ❌ {name}: {e}")
             failed += 1
-    
+
     print(f"\n  TOTAL: {passed} passed, {failed} failed ({passed + failed} total)")
     print("=" * 60)
     sys.exit(1 if failed else 0)

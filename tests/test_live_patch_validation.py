@@ -7,18 +7,24 @@ NOT mocked. Calls real APIs, applies real patches, validates real output.
 
 Requires: Starchild proxy env (COINGLASS_API_KEY, COINGECKO_API_KEY)
 """
-import sys, os, json, pytest, time
+import sys
+import os
+import json
+import pytest
+
+# Path setup MUST come before local imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "patches", "live"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "patches", "shared"))
 
+from fix_response_size import truncate_response  # noqa: E402
+from fix_funding_rate import normalize_funding_rates  # noqa: E402
+from fix_error_messages import reclassify_error  # noqa: E402
+from fix_liquidation import fix_liquidation_data, fix_liquidation_analysis  # noqa: E402
+
 # Import patches
-from fix_liquidation import fix_liquidation_data, fix_liquidation_analysis
-from fix_error_messages import reclassify_error
-from fix_funding_rate import normalize_funding_rates
-from fix_response_size import truncate_response
-from fix_error_format import normalize_error
 
 # ─── Helpers ─────────────────────────────────────────────
+
 
 def call_api_safe(func, *args, **kwargs):
     """Call an API function, return (result, error) tuple."""
@@ -34,10 +40,10 @@ def is_api_available():
     try:
         import requests
         resp = requests.get("https://open-api-v3.coinglass.com/api/futures/supported-coins",
-                          headers={"coinglassSecret": os.environ.get("COINGLASS_API_KEY", "")},
-                          timeout=5)
+                            headers={"coinglassSecret": os.environ.get("COINGLASS_API_KEY", "")},
+                            timeout=5)
         return resp.status_code == 200
-    except:
+    except BaseException:
         return False
 
 
@@ -57,18 +63,54 @@ class TestBug1LiquidationTotals:
         "short_percent": 0,
         "num_exchanges": 12,
         "exchanges": [
-            {"exchange": "Hyperliquid", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 20825666.88},
-            {"exchange": "Bybit", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 18754799.93},
-            {"exchange": "HTX", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 13713251.29},
-            {"exchange": "Bitget", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 12297435.65},
-            {"exchange": "Binance", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 11960688.05},
-            {"exchange": "Gate", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 9945569.76},
-            {"exchange": "OKX", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 4757583.18},
-            {"exchange": "Aster", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 1312047.63},
-            {"exchange": "CoinEx", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 443172.13},
-            {"exchange": "Lighter", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 338806.74},
-            {"exchange": "Bitmex", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 235207.53},
-            {"exchange": "Bitfinex", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 99820.51},
+            {"exchange": "Hyperliquid",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 20825666.88},
+            {"exchange": "Bybit",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 18754799.93},
+            {"exchange": "HTX",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 13713251.29},
+            {"exchange": "Bitget",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 12297435.65},
+            {"exchange": "Binance",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 11960688.05},
+            {"exchange": "Gate",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 9945569.76},
+            {"exchange": "OKX",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 4757583.18},
+            {"exchange": "Aster",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 1312047.63},
+            {"exchange": "CoinEx",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 443172.13},
+            {"exchange": "Lighter",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 338806.74},
+            {"exchange": "Bitmex",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 235207.53},
+            {"exchange": "Bitfinex",
+             "long_liquidations_usd": 0,
+             "short_liquidations_usd": 0,
+             "total_liquidations_usd": 99820.51},
         ]
     }
 
@@ -271,7 +313,7 @@ class TestBug6FundingRate:
 
 class TestBug4ResponseSize:
     """Verify large responses get truncated for small models.
-    
+
     Note: truncate_response only truncates when data EXCEEDS the budget.
     Budget for 'small' = 2000 tokens × 3.5 = 7000 chars.
     We need test data >7000 chars to trigger truncation.
@@ -315,7 +357,7 @@ class TestBug4ResponseSize:
             "long_liquidations_usd": 45000000,
             "short_liquidations_usd": 35000000,
             "exchanges": [
-                {"exchange": f"Exchange-{i}-With-Long-Name", 
+                {"exchange": f"Exchange-{i}-With-Long-Name",
                  "total_liquidations_usd": 10000000 - i * 100000,
                  "long_liquidations_usd": 6000000 - i * 50000,
                  "short_liquidations_usd": 4000000 - i * 50000,

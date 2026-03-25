@@ -2,8 +2,11 @@
 Test 2: Return Format Consistency
 核心问题: 小模型需要可预测的返回格式。混用 dict/str/ToolResult/None 会导致解析混乱。
 """
-import os, re, ast, json
+import os
+import re
+import json
 from config import REPO_ROOT, SKILLS_WITH_CODE
+
 
 class ReturnFormatTester:
     def __init__(self):
@@ -44,7 +47,7 @@ class ReturnFormatTester:
 
             # Find function body
             func_start = m.end()
-            indent_match = re.search(r'\n(\s+)', content[func_start:func_start+100])
+            indent_match = re.search(r'\n(\s+)', content[func_start:func_start + 100])
             if not indent_match:
                 continue
 
@@ -66,7 +69,10 @@ class ReturnFormatTester:
                     'line': line_no,
                     'severity': 'HIGH',
                     'issue': 'MIXED_RETURN_TYPES',
-                    'impact': f'Tool "{func_name}" returns multiple types: {return_patterns}. Small model cannot predict parse strategy.',
+                    'impact': (
+                        f'Tool "{func_name}" returns multiple types: '
+                        f'{return_patterns}. Small model cannot predict parse strategy.'
+                    ),
                     'context': f'Function: {func_name}',
                     'fix': 'Standardize: always return dict on success, always raise ToolError on failure'
                 })
@@ -98,7 +104,6 @@ class ReturnFormatTester:
     def _check_return_type_consistency(self, skill, fname, content, lines):
         """检查同一文件内的工具函数是否用一致的返回模式"""
         # Already covered by _analyze_tool_returns at function level
-        pass
 
     def _check_json_serialization(self, skill, fname, content, lines):
         """检查是否有返回无法 JSON 序列化的对象"""
@@ -132,8 +137,13 @@ class ReturnFormatTester:
             func_name = m.group(1)
             func_start = m.start()
             # Check next 50 lines for evidence of pagination/limit
-            region = content[func_start:func_start+3000]
-            returns_list = bool(re.search(r'return\s+\[', region) or re.search(r'return\s+(?:data|results|items)', region))
+            region = content[func_start:func_start + 3000]
+            returns_list = bool(
+                re.search(
+                    r'return\s+\[',
+                    region) or re.search(
+                    r'return\s+(?:data|results|items)',
+                    region))
             has_limit = bool(re.search(r'(?:limit|max_results|page|[:]\s*\d+\]|truncat)', region))
 
             if returns_list and not has_limit and not func_name.startswith('_'):
@@ -168,7 +178,10 @@ class ReturnFormatTester:
                 'line': 0,
                 'severity': 'HIGH',
                 'issue': 'INCONSISTENT_CROSS_SKILL_FORMATS',
-                'impact': f'{len(pattern_groups)} different return patterns across skills. Small model must learn each one.',
+                'impact': (
+                    f'{len(pattern_groups)} different return patterns across '
+                    'skills. Small model must learn each one.'
+                ),
                 'context': json.dumps({str(k): len(v) for k, v in pattern_groups.items()}, indent=2),
                 'fix': 'Standardize on: success → dict with typed fields, error → ToolError with message'
             })
@@ -218,6 +231,7 @@ def run_test():
         'tool_signatures': {s: t for s, t in tester.tool_signatures.items() if t},
         'details': results
     }
+
 
 if __name__ == '__main__':
     r = run_test()

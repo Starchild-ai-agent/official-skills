@@ -10,30 +10,8 @@ Uncovered lines:
   validators.py: 35-44,141,189,240
   crypto_safety:  147
 """
-import sys
-import os
-import asyncio
-import time
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from patches.shared.errors import (
-    SkillError,
-    ServiceUnavailableError,
-    TimeoutError,
-    UserInputError,
-    InvalidParameterError,
-    UnsupportedAssetError,
-)
-from patches.shared.response import (
-    fmt_price,
-    fmt_balance,
-    fmt_table,
-)
-from patches.shared.retry import (
-    RetryConfig,
-    sync_retry,
-    async_retry,
+from patches.shared.crypto_safety import (
+    suggest_slippage,
 )
 from patches.shared.validators import (
     validate_evm_address,
@@ -42,12 +20,28 @@ from patches.shared.validators import (
     to_raw_amount,
     validate_chain_id,
 )
-from patches.shared.crypto_safety import (
-    suggest_slippage,
-    get_finality_info,
-    estimate_gas_needed,
-    verification_checklist,
+from patches.shared.retry import (
+    RetryConfig,
+    sync_retry,
+    async_retry,
 )
+from patches.shared.response import (
+    fmt_price,
+    fmt_balance,
+    fmt_table,
+)
+from patches.shared.errors import (
+    ServiceUnavailableError,
+    TimeoutError,
+    UserInputError,
+    InvalidParameterError,
+    UnsupportedAssetError,
+)
+import sys
+import os
+import asyncio
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 # ═══════════ errors.py ═══════════

@@ -9,9 +9,9 @@ import json
 
 # Token budgets by model class
 MODEL_BUDGETS = {
-    "small":  2000,   # ~1500 chars — Gemini Flash Lite, GPT-3.5
+    "small": 2000,   # ~1500 chars — Gemini Flash Lite, GPT-3.5
     "medium": 8000,   # ~6000 chars — Claude Haiku, GPT-4-mini
-    "large":  32000,  # ~24000 chars — Claude Sonnet, GPT-4o
+    "large": 32000,  # ~24000 chars — Claude Sonnet, GPT-4o
 }
 
 CHAR_PER_TOKEN = 3.5  # rough average for JSON data
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     large_liqs = {
         "symbol": "BTC",
         "total_liquidations_usd": 86000000,
-        "exchanges": [{"exchange": f"Ex{i}", "total_liquidations_usd": 10000000 - i*1000} for i in range(20)]
+        "exchanges": [{"exchange": f"Ex{i}", "total_liquidations_usd": 10000000 - i * 1000} for i in range(20)]
     }
     truncated2 = truncate_response(large_liqs, "small")
     assert len(truncated2["exchanges"]) <= 5

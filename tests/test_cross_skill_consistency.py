@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Cross-skill consistency tests — verify shared patterns."""
-import sys, os, re
+import sys
+import os
+import re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 REPO = os.path.join(os.path.dirname(__file__), "..", "repo")
-SKILLS_WITH_TOOLS = [s for s in os.listdir(REPO) 
-    if os.path.isdir(os.path.join(REPO, s)) 
-    and os.path.exists(os.path.join(REPO, s, "tools.py"))]
+SKILLS_WITH_TOOLS = [s for s in os.listdir(REPO)
+                     if os.path.isdir(os.path.join(REPO, s))
+                     and os.path.exists(os.path.join(REPO, s, "tools.py"))]
+
 
 def test_all_skills_have_docstrings():
     missing = []
@@ -28,6 +31,7 @@ def test_all_skills_have_docstrings():
     ))
     assert ratio < 0.5, f"{len(missing)} functions missing docstrings ({ratio:.0%}): {missing[:5]}..."
 
+
 def test_no_hardcoded_urls_without_base():
     """Skills should use configurable base URLs, not hardcoded."""
     issues = []
@@ -44,10 +48,12 @@ def test_no_hardcoded_urls_without_base():
     # Informational — many skills do this
     assert len(issues) < 50, f"Too many hardcoded API URLs: {issues[:10]}"
 
+
 def test_all_tool_skills_have_init():
-    missing = [s for s in SKILLS_WITH_TOOLS 
+    missing = [s for s in SKILLS_WITH_TOOLS
                if not os.path.exists(os.path.join(REPO, s, "__init__.py"))]
     assert len(missing) == 0, f"Skills missing __init__.py: {missing}"
+
 
 def test_skill_md_has_tools_section():
     missing = []
@@ -59,6 +65,7 @@ def test_skill_md_has_tools_section():
             if "tools:" not in content and "tools :" not in content:
                 missing.append(skill)
     assert len(missing) == 0, f"SKILL.md missing tools section: {missing}"
+
 
 def test_consistent_error_return_pattern():
     """Check if skills use consistent error return patterns."""
@@ -76,6 +83,7 @@ def test_consistent_error_return_pattern():
             patterns.setdefault("return_string", []).append(skill)
     # More than 3 different patterns = inconsistency problem
     assert len(patterns) <= 4, f"Too many error patterns across skills: {list(patterns.keys())}"
+
 
 if __name__ == "__main__":
     import pytest

@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 """Security audit tests for all skills."""
-import sys, os, re
+import sys
+import os
+import re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 _base = os.path.join(os.path.dirname(__file__), "..")
 REPO = os.path.join(_base, "repo") if os.path.isdir(os.path.join(_base, "repo")) else _base
-EXCLUDED_DIRS = {"tests", "patches", ".pytest_cache", "__pycache__", "node_modules", "output", "docs", "fork-workspace", "repo"}
+EXCLUDED_DIRS = {
+    "tests",
+    "patches",
+    ".pytest_cache",
+    "__pycache__",
+    "node_modules",
+    "output",
+    "docs",
+    "fork-workspace",
+    "repo"}
 ALL_PY = []
 for skill in os.listdir(REPO):
     if skill in EXCLUDED_DIRS:
@@ -17,11 +28,12 @@ for skill in os.listdir(REPO):
         if fname.endswith(".py"):
             ALL_PY.append((skill, os.path.join(skill_dir, fname)))
 
+
 def test_no_hardcoded_secrets():
     """No API keys, tokens, or passwords hardcoded."""
     secret_patterns = [
         r'["\'](sk-[a-zA-Z0-9]{20,})["\'"]',
-        r'["\'](ghp_[a-zA-Z0-9]{20,})["\'"]', 
+        r'["\'](ghp_[a-zA-Z0-9]{20,})["\'"]',
         r'api_key\s*=\s*["\'"][a-zA-Z0-9]{20,}["\'"]',
         r'password\s*=\s*["\'"][^"\'\']{8,}["\'"]',
     ]
@@ -34,6 +46,7 @@ def test_no_hardcoded_secrets():
             if matches:
                 found.append(f"{skill}/{os.path.basename(fpath)}: {pat}")
     assert len(found) == 0, f"Hardcoded secrets found: {found}"
+
 
 def test_no_eval_exec():
     """No eval() or exec() — code injection risk."""
@@ -48,6 +61,7 @@ def test_no_eval_exec():
                     found.append(f"{skill}/{os.path.basename(fpath)}:{i}")
     assert len(found) == 0, f"eval/exec found: {found}"
 
+
 def test_no_shell_injection():
     """subprocess calls should not use shell=True with user input."""
     found = []
@@ -59,6 +73,7 @@ def test_no_shell_injection():
             if re.search(r'subprocess\..*shell=True.*f["\'"]', content, re.DOTALL):
                 found.append(f"{skill}/{os.path.basename(fpath)}")
     assert len(found) == 0, f"Potential shell injection: {found}"
+
 
 def test_no_path_traversal():
     """File operations should not allow ../ traversal."""
@@ -72,13 +87,14 @@ def test_no_path_traversal():
     # Many skills legitimately use .. for imports
     assert len(found) < 5, f"Potential path traversal: {found}"
 
+
 def test_env_vars_not_logged():
     """API keys from env should not be printed/logged."""
     found = []
     for skill, fpath in ALL_PY:
         with open(fpath) as f:
             lines = f.readlines()
-            
+
         for i, line in enumerate(lines, 1):
             if line.strip().startswith('#'):
                 continue
@@ -89,6 +105,7 @@ def test_env_vars_not_logged():
                         if '{' in line and '}' in line or '%' in line or ',' in line:
                             found.append(f"{skill}/{os.path.basename(fpath)}:{i}")
     assert len(found) == 0, f"Secrets potentially logged: {found}"
+
 
 if __name__ == "__main__":
     import pytest

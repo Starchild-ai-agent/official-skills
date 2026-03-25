@@ -22,9 +22,12 @@ SKIP = 0
 
 def record(test, status, detail=""):
     global PASS, FAIL, SKIP
-    if status == "PASS": PASS += 1
-    elif status == "SKIP": SKIP += 1
-    else: FAIL += 1
+    if status == "PASS":
+        PASS += 1
+    elif status == "SKIP":
+        SKIP += 1
+    else:
+        FAIL += 1
     RESULTS.append({"test": test, "status": status, "detail": detail[:300]})
 
 
@@ -104,16 +107,15 @@ def test_hl_candle_schema():
     """Validate candle data has t,o,h,l,c,v,n fields"""
     now = int(time.time() * 1000)
     resp = requests.post("https://api.hyperliquid.xyz/info",
-        json={"type": "candleSnapshot", "req": {
-            "coin": "BTC", "interval": "1h",
-            "startTime": now - 7200_000, "endTime": now
-        }}, timeout=15)
+                         json={"type": "candleSnapshot", "req": {
+                             "coin": "BTC", "interval": "1h",
+                             "startTime": now - 7200_000, "endTime": now
+                         }}, timeout=15)
     data = resp.json()
 
     if not data or not isinstance(data, list):
         return record("hl_candle_schema", "FAIL", f"Empty or non-list: {type(data)}")
 
-    expected = {"t", "T", "s", "i", "o", "c", "h", "l", "v", "n"}
     actual = set(data[0].keys())
     missing = {"o", "h", "l", "c", "v", "t"} - actual
 
@@ -130,16 +132,16 @@ def test_cg_simple_price_schema():
     """Validate CoinGecko simple/price output structure"""
     time.sleep(2)
     resp = requests.get("https://api.coingecko.com/api/v3/simple/price",
-        params={"ids": "bitcoin", "vs_currencies": "usd",
-                "include_market_cap": "true",
-                "include_24hr_vol": "true",
-                "include_24hr_change": "true",
-                "include_last_updated_at": "true"},
-        timeout=15)
+                        params={"ids": "bitcoin", "vs_currencies": "usd",
+                                "include_market_cap": "true",
+                                "include_24hr_vol": "true",
+                                "include_24hr_change": "true",
+                                "include_last_updated_at": "true"},
+                        timeout=15)
 
     if resp.status_code == 429:
         return record("cg_simple_price_schema", "SKIP",
-                       "Rate limited (429) — demonstrates need for retry logic")
+                      "Rate limited (429) — demonstrates need for retry logic")
 
     data = resp.json()
     if "bitcoin" not in data:
@@ -161,7 +163,7 @@ def test_cg_ohlc_schema():
     """Validate OHLC returns [timestamp, open, high, low, close] arrays"""
     time.sleep(3)
     resp = requests.get("https://api.coingecko.com/api/v3/coins/bitcoin/ohlc",
-        params={"vs_currency": "usd", "days": "1"}, timeout=15)
+                        params={"vs_currency": "usd", "days": "1"}, timeout=15)
 
     if resp.status_code == 429:
         return record("cg_ohlc_schema", "SKIP", "Rate limited (429)")
@@ -173,7 +175,7 @@ def test_cg_ohlc_schema():
     candle = data[0]
     if len(candle) != 5:
         return record("cg_ohlc_schema", "FAIL",
-                       f"Candle has {len(candle)} fields, expected 5 [ts,o,h,l,c]")
+                      f"Candle has {len(candle)} fields, expected 5 [ts,o,h,l,c]")
 
     # Validate types
     assert isinstance(candle[0], (int, float)), "timestamp not numeric"
@@ -188,9 +190,9 @@ def test_cg_ohlc_schema():
 def test_rpc_error_schema():
     """Validate RPC error response structure — skills must parse this"""
     resp = requests.post("https://ethereum-rpc.publicnode.com",
-        json={"jsonrpc": "2.0", "method": "eth_getBalance",
-              "params": ["0xinvalid", "latest"], "id": 1},
-        timeout=15)
+                         json={"jsonrpc": "2.0", "method": "eth_getBalance",
+                               "params": ["0xinvalid", "latest"], "id": 1},
+                         timeout=15)
     data = resp.json()
 
     if "error" in data:
@@ -207,8 +209,8 @@ def test_rpc_error_schema():
 def test_rpc_success_schema():
     """Validate RPC success response — skills expect result field"""
     resp = requests.post("https://ethereum-rpc.publicnode.com",
-        json={"jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 1},
-        timeout=15)
+                         json={"jsonrpc": "2.0", "method": "eth_blockNumber", "params": [], "id": 1},
+                         timeout=15)
     data = resp.json()
 
     expected = {"jsonrpc", "id", "result"}
@@ -242,7 +244,7 @@ def test_skill_code_field_usage():
             # Find dict access patterns: data["field"] or data.get("field")
             bracket_access = re.findall(r'\[[\"\'](\w+)[\"\']\]', code)
             get_access = re.findall(r'\.get\([\"\']([\w]+)[\"\']\)', code)
-            all_fields = set(bracket_access + get_access)
+            set(bracket_access + get_access)
 
             # Flag potentially dangerous patterns
             if 'except:' in code or 'except Exception:' in code:
@@ -290,6 +292,7 @@ def main():
         json.dump(report, f, indent=2)
 
     return 1 if FAIL > 0 else 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

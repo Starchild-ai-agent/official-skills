@@ -3,14 +3,17 @@
 Master Test Runner — Patch Validation Suite
 Runs all 5 test suites (A-E) and reports grand total.
 """
-import subprocess, sys, time, re
+import subprocess
+import sys
+import time
+import re
 
 SUITES = [
-    ("A", "Error Handling",  "test_patches_errors.py"),
-    ("B", "Response Format",  "test_patches_response.py"),
-    ("C", "Retry Logic",      "test_patches_retry.py"),
-    ("D", "Crypto Safety",    "test_patches_crypto_safety.py"),
-    ("E", "End-to-End",       "test_patches_e2e.py"),
+    ("A", "Error Handling", "test_patches_errors.py"),
+    ("B", "Response Format", "test_patches_response.py"),
+    ("C", "Retry Logic", "test_patches_retry.py"),
+    ("D", "Crypto Safety", "test_patches_crypto_safety.py"),
+    ("E", "End-to-End", "test_patches_e2e.py"),
 ]
 
 total_pass = 0
@@ -27,16 +30,16 @@ for label, name, filename in SUITES:
         capture_output=True, text=True,
         cwd=__import__('os').path.dirname(__import__('os').path.abspath(__file__))
     )
-    
+
     output = result.stdout
     print(output)
-    
+
     if result.stderr:
         # Only show stderr if it's not just warnings
-        filtered = [l for l in result.stderr.splitlines() if 'Warning' not in l]
+        filtered = [ln for ln in result.stderr.splitlines() if "Warning" not in ln]
         if filtered:
             print(f"  ⚠️  STDERR: {''.join(filtered[:3])}")
-    
+
     # Parse results line: "Results: X/Y passed"
     match = re.search(r'Results:\s*(\d+)/(\d+)\s*passed', output)
     if match:

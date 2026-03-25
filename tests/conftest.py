@@ -21,8 +21,12 @@ if "core.http_client" not in sys.modules:
 if "core.tool" not in sys.modules:
     sys.modules["core.tool"] = ModuleType("core.tool")
 
-# Ensure the project root is on the path
+# Ensure the project root and patches dir are on the path
 import os
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+
+PATCHES_DIR = os.path.join(PROJECT_ROOT, "patches")
+if PATCHES_DIR not in sys.path:
+    sys.path.insert(0, PATCHES_DIR)

@@ -2,14 +2,17 @@
 """
 Master Test Runner — runs all 5 test suites and generates unified report.
 """
-import sys, os, json, time
+from test_crypto_workflows import run_test as test_crypto
+from test_tool_interface import run_test as test_interface
+from test_skill_doc import run_test as test_docs
+from test_return_formats import run_test as test_formats
+from test_error_handling import run_test as test_errors
+import sys
+import os
+import json
+import time
 sys.path.insert(0, os.path.dirname(__file__))
 
-from test_error_handling import run_test as test_errors
-from test_return_formats import run_test as test_formats
-from test_skill_doc import run_test as test_docs
-from test_tool_interface import run_test as test_interface
-from test_crypto_workflows import run_test as test_crypto
 
 def calc_skill_score(all_results):
     """计算每个 skill 的综合评分 (0-100)"""
@@ -40,6 +43,7 @@ def calc_skill_score(all_results):
 
     return dict(sorted(scores.items(), key=lambda x: x[1]['score']))
 
+
 def gen_improvement_map(all_results):
     """按 skill 生成具体改进清单 — 优先级排序"""
     fixes = {}
@@ -66,13 +70,14 @@ def gen_improvement_map(all_results):
 
     return fixes
 
+
 def format_report(all_results, scores, fixes, doc_scores, elapsed):
     """Generate markdown report"""
     lines = []
     lines.append("# 🧪 Official-Skills 全面质量测试报告")
     lines.append(f"\n**测试时间:** {time.strftime('%Y-%m-%d %H:%M UTC')}")
     lines.append(f"**耗时:** {elapsed:.1f}s")
-    lines.append(f"**核心标准:** 小模型可用性 (清晰接口 + 明确错误 + 一致格式)")
+    lines.append("**核心标准:** 小模型可用性 (清晰接口 + 明确错误 + 一致格式)")
     lines.append("")
 
     # Executive summary
@@ -83,8 +88,8 @@ def format_report(all_results, scores, fixes, doc_scores, elapsed):
     low = sum(s.get('by_severity', {}).get('LOW', 0) for s in all_results)
 
     lines.append("## 📊 Executive Summary")
-    lines.append(f"\n| Metric | Count |")
-    lines.append(f"|--------|-------|")
+    lines.append("\n| Metric | Count |")
+    lines.append("|--------|-------|")
     lines.append(f"| Total Issues | **{total}** |")
     lines.append(f"| 🔴 CRITICAL | **{crit}** |")
     lines.append(f"| 🟠 HIGH | **{high}** |")
@@ -94,31 +99,43 @@ def format_report(all_results, scores, fixes, doc_scores, elapsed):
 
     # Suite-level results
     lines.append("## 📋 Test Suite Results")
-    lines.append(f"\n| Suite | Issues | 🔴 | 🟠 | 🟡 | 🔵 |")
-    lines.append(f"|-------|--------|-----|-----|-----|-----|")
+    lines.append("\n| Suite | Issues | 🔴 | 🟠 | 🟡 | 🔵 |")
+    lines.append("|-------|--------|-----|-----|-----|-----|")
     for s in all_results:
         sv = s.get('by_severity', {})
-        lines.append(f"| {s['test_name']} | {s['total_issues']} | {sv.get('CRITICAL',0)} | {sv.get('HIGH',0)} | {sv.get('MEDIUM',0)} | {sv.get('LOW',0)} |")
+        lines.append(
+            "| {} | {} | {} | {} | {} | {} |".format(
+                s['test_name'], s['total_issues'],
+                sv.get('CRITICAL', 0), sv.get('HIGH', 0),
+                sv.get('MEDIUM', 0), sv.get('LOW', 0)))
     lines.append("")
 
     # Skill scorecard
     lines.append("## 🏆 Skill Scorecard (小模型可用性评分)")
-    lines.append(f"\n| Skill | Score | Grade | 🔴 | 🟠 | 🟡 | 🔵 | Total |")
-    lines.append(f"|-------|-------|-------|-----|-----|-----|-----|-------|")
+    lines.append("\n| Skill | Score | Grade | 🔴 | 🟠 | 🟡 | 🔵 | Total |")
+    lines.append("|-------|-------|-------|-----|-----|-----|-----|-------|")
     for skill, data in sorted(scores.items(), key=lambda x: x[1]['score'], reverse=True):
         c = data['issues']
-        emoji = {'A':'✅','B':'🟢','C':'🟡','D':'🟠','F':'🔴'}.get(data['grade'],'❓')
-        lines.append(f"| {skill} | {data['score']}/100 | {emoji} {data['grade']} | {c['CRITICAL']} | {c['HIGH']} | {c['MEDIUM']} | {c['LOW']} | {data['total_issues']} |")
+        emoji = {'A': '✅', 'B': '🟢', 'C': '🟡', 'D': '🟠', 'F': '🔴'}.get(data['grade'], '❓')
+        lines.append(
+            "| {} | {}/100 | {} {} | {} | {} | {} | {} | {} |".format(
+                skill, data['score'], emoji, data['grade'],
+                c['CRITICAL'], c['HIGH'], c['MEDIUM'],
+                c['LOW'], data['total_issues']))
     lines.append("")
 
     # SKILL.md doc scores
     if doc_scores:
         lines.append("## 📚 SKILL.md 文档评分")
-        lines.append(f"\n| Skill | Score | Grade | Lines | Characters |")
-        lines.append(f"|-------|-------|-------|-------|------------|")
+        lines.append("\n| Skill | Score | Grade | Lines | Characters |")
+        lines.append("|-------|-------|-------|-------|------------|")
         for skill, data in sorted(doc_scores.items(), key=lambda x: x[1]['pct'], reverse=True):
-            emoji = {'A':'✅','B':'🟢','C':'🟡','D':'🟠','F':'🔴'}.get(data['grade'],'❓')
-            lines.append(f"| {skill} | {data['score']}/{data['max_score']} ({data['pct']}%) | {emoji} {data['grade']} | {data['line_count']} | {data['char_count']} |")
+            emoji = {'A': '✅', 'B': '🟢', 'C': '🟡', 'D': '🟠', 'F': '🔴'}.get(data['grade'], '❓')
+            lines.append(
+                "| {} | {}/{} ({}%) | {} {} | {} | {} |".format(
+                    skill, data['score'], data['max_score'],
+                    data['pct'], emoji, data['grade'],
+                    data['line_count'], data['char_count']))
         lines.append("")
 
     # Top issues by skill (crypto-core only)
@@ -130,7 +147,7 @@ def format_report(all_results, scores, fixes, doc_scores, elapsed):
         issues = fixes[skill]
         lines.append(f"\n### {skill} ({len(issues)} issues)")
         for i, fix in enumerate(issues[:15]):
-            sev_emoji = {'CRITICAL':'🔴','HIGH':'🟠','MEDIUM':'🟡','LOW':'🔵'}.get(fix['severity'],'❓')
+            sev_emoji = {'CRITICAL': '🔴', 'HIGH': '🟠', 'MEDIUM': '🟡', 'LOW': '🔵'}.get(fix['severity'], '❓')
             loc = f"`{fix['file']}:{fix['line']}`" if fix['line'] else f"`{fix['file']}`"
             lines.append(f"\n{i+1}. {sev_emoji} **{fix['issue']}** — {loc}")
             lines.append(f"   - Impact: {fix['impact']}")
@@ -142,7 +159,7 @@ def format_report(all_results, scores, fixes, doc_scores, elapsed):
     if 'CROSS_SKILL' in fixes:
         lines.append("## 🌐 Cross-Skill Systemic Issues")
         for fix in fixes['CROSS_SKILL']:
-            sev_emoji = {'CRITICAL':'🔴','HIGH':'🟠','MEDIUM':'🟡','LOW':'🔵'}.get(fix['severity'],'❓')
+            sev_emoji = {'CRITICAL': '🔴', 'HIGH': '🟠', 'MEDIUM': '🟡', 'LOW': '🔵'}.get(fix['severity'], '❓')
             lines.append(f"\n- {sev_emoji} **{fix['issue']}**: {fix['impact']}")
             if fix['fix']:
                 lines.append(f"  - Fix: {fix['fix']}")
@@ -217,6 +234,7 @@ def main():
             'timestamp': time.strftime('%Y-%m-%dT%H:%M:%SZ'),
         }, f, indent=2, default=str)
     print(f"📊 Raw data: {json_path}")
+
 
 if __name__ == '__main__':
     main()

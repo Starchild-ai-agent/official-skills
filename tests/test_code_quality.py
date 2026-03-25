@@ -70,7 +70,7 @@ class TestImportQuality:
 
     def test_no_sys_exit_in_libraries(self, pyfile):
         """Library code should raise exceptions, not call sys.exit().
-        
+
         KNOWN ISSUE: 13 tool files use sys.exit() instead of raising exceptions.
         These are flagged as xfail — they work but should be refactored.
         """
@@ -118,7 +118,7 @@ class TestCodeStyle:
             pytest.skip("Scripts may use print()")
         if os.path.basename(pyfile["path"]) in ("__init__.py",):
             pytest.skip("__init__.py typically has no prints")
-        
+
         lines = pyfile["content"].split("\n")
         debug_prints = []
         for i, line in enumerate(lines, 1):
@@ -128,7 +128,7 @@ class TestCodeStyle:
             # Find print() calls that look like debug output
             if re.search(r'\bprint\s*\(.*debug|print\s*\(.*TODO|print\s*\(.*FIXME', stripped, re.IGNORECASE):
                 debug_prints.append(i)
-        
+
         assert len(debug_prints) == 0, \
             f"{pyfile['rel']}: debug print() at lines {debug_prints}"
 
@@ -138,15 +138,15 @@ class TestCodeStyle:
             tree = ast.parse(pyfile["content"])
         except SyntaxError:
             pytest.skip("SyntaxError")
-        
+
         functions = [n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))]
         public_funcs = [f for f in functions if not f.name.startswith("_")]
-        
+
         if not public_funcs:
             pytest.skip("No public functions")
-        
+
         missing_docs = [f.name for f in public_funcs if not ast.get_docstring(f)]
-        
+
         # Allow up to 30% missing (not all functions need docs)
         ratio = len(missing_docs) / len(public_funcs) if public_funcs else 0
         if ratio > 0.7:
@@ -187,7 +187,7 @@ class TestCodeCoverage:
 
     def test_all_skills_with_code_have_tests(self):
         """Every skill with Python code should be tested by skill_quality or specific tests.
-        
+
         test_skill_quality.py covers all skills via SKILL.md discovery.
         This test checks that skill_quality actually found these skills.
         """
@@ -198,7 +198,7 @@ class TestCodeCoverage:
         test_files = glob.glob(os.path.join(REPO_ROOT, "tests", "test_*.py"))
         assert len(test_files) >= 15, \
             f"Only {len(test_files)} test files, expected >= 15"
-        
+
         # Verify all coded skills have SKILL.md (so they're in quality tests)
         for skill in SKILLS_WITH_CODE:
             skill_md = os.path.join(REPO_ROOT, skill, "SKILL.md")

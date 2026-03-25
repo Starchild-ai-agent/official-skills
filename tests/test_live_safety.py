@@ -17,10 +17,13 @@ RESULTS = []
 PASS = 0
 FAIL = 0
 
+
 def record(test, status, detail=""):
     global PASS, FAIL
-    if status == "PASS": PASS += 1
-    else: FAIL += 1
+    if status == "PASS":
+        PASS += 1
+    else:
+        FAIL += 1
     RESULTS.append({"test": test, "status": status, "detail": detail[:300]})
 
 
@@ -37,6 +40,7 @@ def test_wei_precision():
            f"float({wei_str})={as_float:.0f} vs int={as_int}. "
            f"Precision lost: {lost_precision} (skills MUST use int for wei)")
 
+
 def test_usdc_6_decimals():
     """USDC has 6 decimals, not 18. Common source of 1e12x errors"""
     # Real ERC20 call: USDC balanceOf on Ethereum
@@ -45,9 +49,9 @@ def test_usdc_6_decimals():
     calldata = "0x70a08231000000000000000000000000" + vitalik[2:]
 
     resp = requests.post("https://ethereum-rpc.publicnode.com",
-        json={"jsonrpc":"2.0","method":"eth_call",
-              "params":[{"to":usdc,"data":calldata},"latest"],"id":1},
-        timeout=15)
+                         json={"jsonrpc": "2.0", "method": "eth_call",
+                               "params": [{"to": usdc, "data": calldata}, "latest"], "id": 1},
+                         timeout=15)
     raw = int(resp.json()["result"], 16)
 
     # If skill assumes 18 decimals: balance would be 1e-12 of actual
@@ -59,14 +63,15 @@ def test_usdc_6_decimals():
            f"Raw={raw} @6dec=${as_6_dec:,.2f} @18dec=${as_18_dec:.14f}. "
            f"Wrong decimals = {ratio:.0f}x error. Skills MUST read decimals().")
 
+
 def test_wbtc_8_decimals():
     """WBTC has 8 decimals — another common trap"""
     wbtc = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
     # decimals() selector = 0x313ce567
     resp = requests.post("https://ethereum-rpc.publicnode.com",
-        json={"jsonrpc":"2.0","method":"eth_call",
-              "params":[{"to":wbtc,"data":"0x313ce567"},"latest"],"id":1},
-        timeout=15)
+                         json={"jsonrpc": "2.0", "method": "eth_call",
+                               "params": [{"to": wbtc, "data": "0x313ce567"}, "latest"], "id": 1},
+                         timeout=15)
     decimals = int(resp.json()["result"], 16)
     record("wbtc_8_decimals", "PASS" if decimals == 8 else "FAIL",
            f"WBTC decimals={decimals} (expected 8). Skills must not assume 18.")
@@ -78,13 +83,14 @@ def test_zero_address_balance():
     """Zero address (0x000...0) — some skills don't filter this"""
     zero_addr = "0x0000000000000000000000000000000000000000"
     resp = requests.post("https://ethereum-rpc.publicnode.com",
-        json={"jsonrpc":"2.0","method":"eth_getBalance",
-              "params":[zero_addr,"latest"],"id":1},
-        timeout=15)
+                         json={"jsonrpc": "2.0", "method": "eth_getBalance",
+                               "params": [zero_addr, "latest"], "id": 1},
+                         timeout=15)
     data = resp.json()
     balance = int(data["result"], 16) / 1e18
     record("zero_address_balance", "PASS",
            f"Zero addr has {balance:.4f} ETH. Skills should reject 0x0 as destination.")
+
 
 def test_checksum_mismatch():
     """Mixed-case address (EIP-55 checksum) — skills should normalize"""
@@ -93,11 +99,11 @@ def test_checksum_mismatch():
     mixed = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
 
     r1 = requests.post("https://ethereum-rpc.publicnode.com",
-        json={"jsonrpc":"2.0","method":"eth_getBalance",
-              "params":[lower,"latest"],"id":1}, timeout=15)
+                       json={"jsonrpc": "2.0", "method": "eth_getBalance",
+                             "params": [lower, "latest"], "id": 1}, timeout=15)
     r2 = requests.post("https://ethereum-rpc.publicnode.com",
-        json={"jsonrpc":"2.0","method":"eth_getBalance",
-              "params":[mixed,"latest"],"id":1}, timeout=15)
+                       json={"jsonrpc": "2.0", "method": "eth_getBalance",
+                             "params": [mixed, "latest"], "id": 1}, timeout=15)
 
     b1 = int(r1.json()["result"], 16)
     b2 = int(r2.json()["result"], 16)
@@ -111,7 +117,7 @@ def test_hl_zero_size_order_schema():
     """HL order with size 0 — what does the API actually return?"""
     # We can't send orders without a wallet, but we can test the meta validation
     resp = requests.post("https://api.hyperliquid.xyz/info",
-        json={"type": "meta"}, timeout=15)
+                         json={"type": "meta"}, timeout=15)
     meta = resp.json()
     btc = next(a for a in meta["universe"] if a["name"] == "BTC")
     min_sz = 10 ** (-btc["szDecimals"])
@@ -119,20 +125,22 @@ def test_hl_zero_size_order_schema():
            f"BTC minSz={min_sz} (szDecimals={btc['szDecimals']}). "
            f"Skills must reject sz < {min_sz}")
 
+
 def test_hl_max_leverage():
     """HL max leverage per asset — skills should not allow exceeding"""
     resp = requests.post("https://api.hyperliquid.xyz/info",
-        json={"type": "meta"}, timeout=15)
+                         json={"type": "meta"}, timeout=15)
     meta = resp.json()
     btc = next(a for a in meta["universe"] if a["name"] == "BTC")
     max_lev = btc["maxLeverage"]
     record("hl_max_leverage", "PASS",
            f"BTC maxLeverage={max_lev}x. Skills must validate leverage <= {max_lev}")
 
+
 def test_hl_spot_meta():
     """HL spot meta — different structure from perps, skills must handle both"""
     resp = requests.post("https://api.hyperliquid.xyz/info",
-        json={"type": "spotMeta"}, timeout=15)
+                         json={"type": "spotMeta"}, timeout=15)
     data = resp.json()
     has_tokens = "tokens" in data
     has_universe = "universe" in data
@@ -151,11 +159,11 @@ def test_chain_id_matters():
     addr = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"
 
     eth_resp = requests.post("https://ethereum-rpc.publicnode.com",
-        json={"jsonrpc":"2.0","method":"eth_getBalance",
-              "params":[addr,"latest"],"id":1}, timeout=15)
+                             json={"jsonrpc": "2.0", "method": "eth_getBalance",
+                                   "params": [addr, "latest"], "id": 1}, timeout=15)
     base_resp = requests.post("https://mainnet.base.org",
-        json={"jsonrpc":"2.0","method":"eth_getBalance",
-              "params":[addr,"latest"],"id":1}, timeout=15)
+                              json={"jsonrpc": "2.0", "method": "eth_getBalance",
+                                    "params": [addr, "latest"], "id": 1}, timeout=15)
 
     eth_bal = int(eth_resp.json()["result"], 16) / 1e18
     base_bal = int(base_resp.json()["result"], 16) / 1e18
@@ -170,10 +178,10 @@ def test_chain_id_matters():
 def test_hl_price_staleness():
     """Check if HL prices are being updated (compare 2 snapshots)"""
     r1 = requests.post("https://api.hyperliquid.xyz/info",
-        json={"type": "allMids"}, timeout=15).json()
+                       json={"type": "allMids"}, timeout=15).json()
     time.sleep(2)
     r2 = requests.post("https://api.hyperliquid.xyz/info",
-        json={"type": "allMids"}, timeout=15).json()
+                       json={"type": "allMids"}, timeout=15).json()
 
     btc1 = float(r1["BTC"])
     btc2 = float(r2["BTC"])
@@ -214,6 +222,7 @@ def main():
         json.dump(report, f, indent=2)
 
     return 1 if FAIL > 0 else 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

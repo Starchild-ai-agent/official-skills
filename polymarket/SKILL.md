@@ -1,473 +1,335 @@
 ---
-name: polymarket
-version: 2.0.0
-description: Browse, analyze, and trade on Polymarket prediction markets using the official Rust CLI. Market discovery, live prices, orderbook analysis, position tracking, trading (limit/market orders), CTF token operations, contract approvals, and cross-chain bridge deposits. User-managed authentication via private key configuration.
+name: "Polymarket"
+version: 2.2.0
+description: Place real bets on Polymarket prediction markets using the agent wallet. Buy/sell outcome tokens, check balances, manage orders. Requires USDC on Polygon and wallet policy allowing EIP-712 signing. 🚀 Optimized workflow + auto VPN detection!
+author: starchild
+tags: [polymarket, trading, prediction-markets, polygon, defi]
 tools:
-  # Market Data (6)
-  - polymarket_markets
-  - polymarket_event
-  - polymarket_tags
-  - polymarket_price
-  - polymarket_book
-  - polymarket_leaderboard
-  # Trading (8)
-  - polymarket_place_limit_order
-  - polymarket_place_market_order
-  - polymarket_cancel_order
-  - polymarket_cancel_all_orders
-  - polymarket_get_orders
-  - polymarket_get_balances
+  - polymarket_lookup
+  - polymarket_search
+  - polymarket_quick_prepare
   - polymarket_get_positions
+  - polymarket_get_balance
+  - polymarket_get_orders
   - polymarket_get_trades
-  # Approvals (2)
-  - polymarket_check_approvals
-  - polymarket_set_approvals
-  # CTF Operations (3)
-  - polymarket_ctf_split
-  - polymarket_ctf_merge
-  - polymarket_ctf_redeem
-  # Bridge (2)
-  - polymarket_bridge_deposit
-  - polymarket_bridge_status
+  - polymarket_post_order
+  - polymarket_orderbook
+  - polymarket_rr_analysis
+  - polymarket_cancel_order
+  - polymarket_cancel_all
+  - polymarket_prepare_order
+  - polymarket_auth
+  - wallet_sign_typed_data
+  - wallet_transfer
+  - web_search
+  - web_fetch
 metadata:
   starchild:
-    emoji: "🔮"
-    skillKey: polymarket
+    emoji: "🎲"
+    skillKey: polymarket-trade
     requires:
-      bins: ["polymarket"]
-      env: []  # User manages private key via polymarket wallet commands
-    install:
-      - kind: shell
-        command: "curl -sSL https://raw.githubusercontent.com/Polymarket/polymarket-cli/main/install.sh | sh"
-        bins: ["polymarket"]
-        description: "Install Polymarket CLI (official Rust binary)"
-user-invocable: true
-disable-model-invocation: false
+      env:
+        - POLY_API_KEY
+        - POLY_SECRET
+        - POLY_PASSPHRASE
+        - POLY_WALLET
+        # VPN is auto-detected (no config needed!)
 ---
 
-# Polymarket Prediction Markets
+# Polymarket Trading Skill
 
-Browse, analyze, and trade on Polymarket — the world's largest prediction market platform on Polygon. Market prices represent crowd-implied probabilities (0.0-1.0 = 0%-100%) of real-world event outcomes.
+Trade on Polymarket CLOB using the agent's Polygon wallet in **EOA mode** (signature_type=0).
 
-Uses the official [Polymarket Rust CLI](https://github.com/Polymarket/polymarket-cli) for all operations.
+## Architecture
 
-## Overview
+| Mode | sig_type | How it works | Gas? |
+|---|---|---|---|
+| **EOA (we use this)** | `0` | Agent wallet = signer AND maker. No proxy. | Yes — POL for one-time approvals |
+| Safe/Proxy | `2` | Gnosis Safe proxy holds funds, EOA signs. | No (relayer pays) |
 
-**What you can do:**
-- 📊 **Market Discovery** - Browse active markets by volume, category, or recency
-- 💰 **Price Analysis** - Get live probabilities, spreads, and liquidity depth
-- 📈 **Position Tracking** - Monitor open positions with PnL
-- 🔄 **Trading** - Place limit/market orders, manage positions
-- 🔧 **CTF Operations** - Split, merge, and redeem conditional tokens on-chain
-- ✅ **Approvals** - Manage contract approvals for trading
-- 🌉 **Bridge Deposits** - Cross-chain deposits from EVM, Solana, Bitcoin
+**Why EOA?** Simpler — no proxy deployment, no relayer. Only gas cost is ~$0.01 POL for one-time approvals. CLOB orders are gasless after that.
 
-**Authentication:** Market data is public (no auth). Trading and on-chain operations require wallet configuration via `polymarket wallet` commands.
+## Quick Start
 
-## Setup & Configuration
+### For Users: "I want to trade on Polymarket"
 
-### 1. Install the Polymarket CLI
+Just say **"I want to trade on Polymarket"** and the agent will:
 
-The skill installer automatically installs the binary via:
+1. ✅ Check if you have credentials (auto-detects from `.env`)
+2. ✅ If not, walk you through creating them (one signature, saves automatically)
+3. ✅ Check your USDC balance on Polygon
+4. ✅ You're ready to trade!
+
+**That's it!** No manual config needed. The agent handles everything.
+
+---
+
+## VPN Auto-Detection (Zero Configuration!)
+
+**No setup required!** The skill automatically handles geo-blocking:
+
+### How It Works
+
+1. **First request**: Tries direct access (fast path)
+2. **If 403 geo-block detected**:
+   - Automatically tests all VPN regions in parallel (br, ar, mx, my, th, au, za)
+   - Picks the fastest working region
+   - Retries the request through VPN
+   - Caches the working region to `.polymarket_vpn_cache.json`
+3. **Subsequent requests**: Uses cached VPN region automatically
+
+**Zero configuration, zero manual intervention!**
+
+### Optional Overrides
+
+Only needed for debugging or advanced use:
+
 ```bash
-curl -sSL https://raw.githubusercontent.com/Polymarket/polymarket-cli/main/install.sh | sh
+# Force a specific VPN region (skip auto-detection)
+POLY_VPN_REGION=br  # Options: br, ar, mx, my, th, au, za
+
+# Force direct access (disable VPN even on 403)
+POLY_DISABLE_VPN=true
 ```
 
-Or install manually:
-- **Homebrew (macOS/Linux)**: `brew tap Polymarket/polymarket-cli && brew install polymarket`
-- **Build from source**: `git clone https://github.com/Polymarket/polymarket-cli && cd polymarket-cli && cargo install --path .`
+### Performance
 
-### 2. Configure Your Wallet
+- **Not geo-blocked**: Direct access (~0.5s per request)
+- **First request when geo-blocked**: Auto-detection + retry (~3-5s one-time cost)
+- **Subsequent requests**: Cached VPN region (~0.7s per request)
 
-**Option A: Import existing private key**
-```bash
-polymarket wallet import 0xYOUR_PRIVATE_KEY
-```
-
-**Option B: Create new wallet**
-```bash
-polymarket wallet create
-```
-
-**Option C: Use environment variable**
-```bash
-export POLYMARKET_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
-```
-
-The configuration is stored at `~/.config/polymarket/config.json`:
-```json
-{
-  "private_key": "0x...",
-  "chain_id": 137,
-  "signature_type": "proxy"
-}
-```
-
-⚠️ **IMPORTANT - No Agent Wallet Integration:**
-
-This skill does **NOT** support agent-managed wallets (like Privy or other embedded wallet systems). You must provide your own Ethereum/Polygon private key that you control directly. The agent cannot access or export wallet keys on your behalf.
-
-**Why?** The Polymarket CLI requires direct private key access to sign transactions. For security, this skill does not integrate with any wallet abstraction layers.
-
-### 3. Set Contract Approvals (One-Time Setup)
-
-Before trading, approve Polymarket contracts for USDC and CTF tokens:
-
-**Check approval status:**
-```
-polymarket_check_approvals()
-```
-
-**Set all approvals** (requires MATIC for gas):
-```
-polymarket_set_approvals()
-```
-
-This sends 6 on-chain transactions and only needs to be done once per wallet.
-
-## Tool Reference
-
-### Market Discovery Tools (6) — No Auth Required
-
-| Tool | Purpose | Required Params | Optional Params |
-|------|---------|-----------------|-----------------|
-| `polymarket_markets` | Browse/filter markets to get valid slugs | (none) | `status` (active/closed/all), `sort` (volume/liquidity/created_at), `limit`, `offset` |
-| `polymarket_price` | Get live probability + token IDs | `market_id` (slug or condition ID) | (none) |
-| `polymarket_event` | Get all sub-markets for an event | `event_id` | (none) |
-| `polymarket_book` | Check orderbook depth & spread | `token_id` (from price) | (none) |
-| `polymarket_tags` | List all market categories | (none) | (none) |
-| `polymarket_leaderboard` | Top traders by profit | (none) | `period` (week/month/year/all), `order_by` (pnl/volume/trades), `limit` |
-
-### Trading Tools (8) — Require Wallet Configuration
-
-| Tool | Purpose | Required Params | Notes |
-|------|---------|-----------------|-------|
-| `polymarket_place_limit_order` | Place GTC limit order | `token_id`, `side` (buy/sell), `price` (0.01-0.99), `size` (shares) | Optional: `post_only` (maker-only) |
-| `polymarket_place_market_order` | Place FOK market order | `token_id`, `side`, `amount` ($ for BUY, shares for SELL) | Optional: `price` (slippage limit) |
-| `polymarket_get_positions` | View open positions + PnL | `address` (wallet address) | — |
-| `polymarket_get_balances` | Check USDC balance | (none) | — |
-| `polymarket_get_orders` | View open orders | (none) | Optional: `market` filter |
-| `polymarket_get_trades` | Trade history | (none) | Optional: `limit` (default 50) |
-| `polymarket_cancel_order` | Cancel specific order | `order_id` | — |
-| `polymarket_cancel_all_orders` | Cancel ALL open orders | (none) | ⚠️ Use with caution |
-
-### Contract Approval Tools (2) — One-Time Setup
-
-| Tool | Purpose | Notes |
-|------|---------|-------|
-| `polymarket_check_approvals` | Check ERC-20/ERC-1155 approval status | Optional: `address` param |
-| `polymarket_set_approvals` | Approve all contracts for trading | Sends 6 on-chain txs, requires MATIC gas |
-
-### CTF Token Operation Tools (3) — On-Chain Operations
-
-| Tool | Purpose | Required Params | Notes |
-|------|---------|-----------------|-------|
-| `polymarket_ctf_split` | Split USDC into outcome tokens | `condition_id` (0x...), `amount` (USDC) | Requires MATIC for gas |
-| `polymarket_ctf_merge` | Merge tokens back to USDC | `condition_id`, `amount` | Must hold BOTH outcome tokens |
-| `polymarket_ctf_redeem` | Redeem winning tokens after resolution | `condition_id` | Only for resolved markets |
-
-### Bridge Deposit Tools (2) — Cross-Chain Deposits
-
-| Tool | Purpose | Required Params | Notes |
-|------|---------|-----------------|-------|
-| `polymarket_bridge_deposit` | Get deposit addresses for bridging | `address` (Polygon destination) | Supports EVM, Solana, Bitcoin |
-| `polymarket_bridge_status` | Check deposit status | `deposit_address` | Shows pending/completed deposits |
-
-## Step-by-Step Workflows
-
-### Workflow 1: Check Event Probability (Read-Only)
-
-**User asks:** "What are the odds Trump wins the 2024 election?"
-
-**Step 1:** Find the market
-```
-polymarket_markets(status="active", sort="volume", limit=20)
-```
-
-**Result:** Returns list with exact slugs:
-```json
-{
-  "slug": "will-donald-trump-win-the-2024-us-presidential-election",
-  "question": "Will Donald Trump win the 2024 US Presidential Election?",
-  "outcomes": ["Yes", "No"]
-}
-```
-
-**Step 2:** Get live probability
-```
-polymarket_price(market_id="will-donald-trump-win-the-2024-us-presidential-election")
-```
-
-**Result:** Returns current probability (e.g., 0.62 = 62% chance)
+**Cache persists across restarts** - VPN selection happens once and works forever!
 
 ---
 
-### Workflow 2: Deep Market Analysis
+## First-Time Setup (Automatic)
 
-**User asks:** "How liquid is the Bitcoin $100K market?"
+When you first use Polymarket tools, the agent will automatically:
 
-**Step 1:** Discover market
-```
-polymarket_markets(status="active", sort="volume", limit=10)
+### 1. Create API Credentials
+
+The `polymarket_auth` tool will:
+- Get your wallet address
+- Build an EIP-712 `ClobAuth` message
+- Ask you to sign it (free, no gas)
+- Submit to Polymarket CLOB API
+- **Save credentials to `.env` automatically**
+- Credentials work **immediately** (no restart needed!)
+
+**Technical Details:**
+
+Domain: `{ name: "ClobAuthDomain", version: "1", chainId: 137, verifyingContract: "0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E" }`
+Types: `ClobAuth: [address, timestamp(string), nonce(uint256), message(string)]`
+Message: `{ address: WALLET, timestamp: NOW, nonce: "0", message: "This message attests that I control the given wallet" }`
+
+**Flow:**
+1. Sign with `wallet_sign_typed_data`
+2. POST `https://clob.polymarket.com/auth/api-key` with L1 auth headers
+3. Save to `.env`: `POLY_API_KEY`, `POLY_SECRET`, `POLY_PASSPHRASE`, `POLY_WALLET`
+
+### 2. Fund Your Wallet (If Needed)
+Send to the agent wallet address on Polygon:
+- **USDC** (native Polygon USDC `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`) — betting bankroll
+- **POL** (~1 POL / ~$0.20) — gas for approval txs
+
+### 4. Approve USDC (One-Time, needs POL)
+Approve both CTF Exchange contracts to spend USDC (max allowance):
+
+```python
+from eth_abi import encode
+from eth_utils import function_signature_to_4byte_selector
+sel = function_signature_to_4byte_selector("approve(address,uint256)")
+USDC = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+# Approval 1: CTF Exchange
+data1 = sel + encode(['address','uint256'], ['0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E', 2**256-1])
+# wallet_transfer(to=USDC, amount="0", chain_id=137, data="0x"+data1.hex())
+# Approval 2: CTF Exchange Neg-Risk
+data2 = sel + encode(['address','uint256'], ['0xC5d563A36AE78145C45a50134d48A1215220f80a', 2**256-1])
+# wallet_transfer(to=USDC, amount="0", chain_id=137, data="0x"+data2.hex())
 ```
 
-**Step 2:** Get price + token ID
+### 4. Verify Setup
 ```
-polymarket_price(market_id="<exact-slug-from-step-1>")
+polymarket_get_balance()
 ```
-
-**Result:** Returns `clobTokenIds` array (e.g., `["123456", "789012"]` for Yes/No)
-
-**Step 3:** Check orderbook depth
-```
-polymarket_book(token_id="123456")
-```
-
-**Result:** Returns bid/ask levels, spread, liquidity depth
+Should show your USDC balance and allowance. You're ready to trade!
 
 ---
 
-### Workflow 3: Place a Trade
+## How Credentials Work
 
-**User asks:** "Buy $100 of Yes shares at 65%"
+**New Dynamic Loading (No Restart Needed!):**
+- Credentials are read from `.env` **every time** a tool is called
+- When `polymarket_auth` saves credentials, they work **immediately**
+- No container restart required
+- No browser refresh needed
 
-**Prerequisites:**
-1. Wallet configured: `polymarket wallet import 0x...`
-2. Approvals set: `polymarket_set_approvals()`
+**Where credentials are stored:**
+- `/data/workspace/.env` — read automatically by all tools
 
-**Step 1:** Find market + get token ID
+**Required credentials:**
 ```
-polymarket_price(market_id="<exact-slug>")
-```
-
-**Step 2:** Place limit order
-```
-polymarket_place_limit_order(
-  token_id="123456",
-  side="buy",
-  price=0.65,
-  size=153.85,  # $100 / 0.65
-  post_only=false
-)
+POLY_API_KEY=...
+POLY_SECRET=...
+POLY_PASSPHRASE=...
+POLY_WALLET=0xYour_Address
 ```
 
-**Alternative:** Market order (instant execution)
-```
-polymarket_place_market_order(
-  token_id="123456",
-  side="buy",
-  amount=100,  # $100 to spend
-  price=0.70   # worst acceptable price (slippage protection)
-)
-```
+### Wallet Policy
+Agent needs: `eth_signTypedData_v4` (order signing) + `eth_sendTransaction` on chain 137 (approvals).
 
 ---
 
-### Workflow 4: Split Collateral into Shares (On-Chain)
+## API Endpoints
 
-**User asks:** "Convert $50 USDC into Yes/No shares for a market"
+Polymarket has three separate APIs for different purposes:
 
-**Prerequisites:**
-1. Wallet configured and funded with USDC + MATIC (gas)
-2. Approvals set
+| API | Base URL | What it handles | Auth? | VPN? |
+|-----|----------|-----------------|-------|------|
+| **CLOB API** | `clob.polymarket.com` | Orders, balance, orderbook, pricing | ✅ HMAC L2 | ⚠️ Optional |
+| **Data API** | `data-api.polymarket.com` | Positions, trades (historical/settled) | ❌ Public | ❌ No |
+| **Gamma API** | `gamma-api.polymarket.com` | Markets, events, search | ❌ Public | ❌ No |
 
-**Step 1:** Get condition ID from market
-```
-polymarket_price(market_id="<market-slug>")
-```
+### Key Differences: EOA Mode
 
-**Result:** Extract `conditionId` or `condition_id` from response
+We use **EOA mode (signature_type=0)** which means:
+- ❌ **NO proxy wallet** - Your raw wallet is the maker
+- ✅ All trades execute directly from your wallet
+- ✅ All positions belong to your wallet address
 
-**Step 2:** Split collateral
-```
-polymarket_ctf_split(
-  condition_id="0xABC123...",
-  amount=50
-)
-```
+**Positions** (`polymarket_get_positions`):
+- Uses public **Data API** (`data-api.polymarket.com/positions?user={wallet}`)
+- Shows settled/finalized positions
+- No auth needed, no VPN needed
+- Query parameter: `user={your_wallet_address}`
 
-**Result:** Transaction hash, you now hold 50 Yes + 50 No shares
+**Trades** (`polymarket_get_trades`):
+- Uses public **Data API** (`data-api.polymarket.com/trades?user={wallet}`)
+- Shows historical trade activity
+- No auth needed, no VPN needed
+- Query parameter: `user={your_wallet_address}`
 
-**Later:** Merge back to USDC (if holding both):
-```
-polymarket_ctf_merge(
-  condition_id="0xABC123...",
-  amount=50
-)
-```
+**Orders** (`polymarket_get_orders`):
+- Uses authenticated **CLOB API** (`clob.polymarket.com/data/orders`)
+- Shows currently open orders
+- Requires L2 auth (VPN optional, only if geo-blocked)
 
----
-
-### Workflow 5: Redeem Winning Position
-
-**User asks:** "Market resolved, redeem my winning tokens"
-
-**Step 1:** Check position
-```
-polymarket_get_positions(address="0xYOUR_ADDRESS")
-```
-
-**Step 2:** Redeem (requires resolved market)
-```
-polymarket_ctf_redeem(condition_id="0xABC123...")
-```
-
-**Result:** Winning tokens converted to USDC (1 token = $1)
+**Balance** (`polymarket_get_balance`):
+- Uses authenticated **CLOB API** (`clob.polymarket.com/balance-allowance`)
+- Shows USDC balance and allowances
+- Requires L2 auth (VPN optional, only if geo-blocked)
 
 ---
 
-### Workflow 6: Bridge Deposits from Other Chains
+## Contracts (Polygon)
 
-**User asks:** "How do I deposit USDC from Ethereum mainnet?"
+| Contract | Address |
+|---|---|
+| CTF Exchange | `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E` |
+| CTF Exchange (neg-risk) | `0xC5d563A36AE78145C45a50134d48A1215220f80a` |
+| USDC | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` |
 
-**Step 1:** Get deposit addresses
-```
-polymarket_bridge_deposit(address="0xYOUR_POLYGON_ADDRESS")
-```
+## ⚠️ MANDATORY: User Confirmation Before Betting
 
-**Result:** Deposit addresses for EVM chains, Solana, Bitcoin
+**NEVER place a bet without explicit user confirmation.** Always:
+1. Research & analyze → present findings
+2. Suggest bet with R/R → user reviews
+3. User requests changes → adjust
+4. **User explicitly confirms** → ONLY THEN execute
 
-**Step 2:** Send assets to the provided deposit address (via wallet)
+## Available Tools
 
-**Step 3:** Monitor status
-```
-polymarket_bridge_status(deposit_address="<address-from-step-1>")
-```
+### Market Discovery
+- `polymarket_lookup` - Look up market from URL or slug
+- `polymarket_search` - Search for markets
+- `polymarket_orderbook` - Analyze orderbook depth
+- `polymarket_rr_analysis` - Risk/reward analysis
 
-**Result:** Shows pending/completed deposits
+### Trading
+- 🚀 **`polymarket_quick_prepare`** - **FAST** one-shot preparation (balance + orderbook + R/R + order prep in ONE call)
+- `polymarket_prepare_order` - Prepare order for signing (manual workflow)
+- `polymarket_post_order` - Post signed order
+- `polymarket_cancel_order` - Cancel specific order
+- `polymarket_cancel_all` - Cancel all orders
+- `polymarket_get_balance` - Check USDC balance
+- `polymarket_get_orders` - List open orders
+- `polymarket_get_positions` - View positions
+- `polymarket_get_trades` - Trade history
+
+### Authentication
+- `polymarket_auth` - Create API credentials (one-time setup)
+
+## Workflow: Link → Bet
+
+### 🚀 FAST Workflow (Recommended)
+
+Use `polymarket_quick_prepare` for speed - combines 4+ operations into ONE tool call:
+
+**Steps:**
+1. **Lookup market** → `polymarket_lookup(url)`
+2. **Quick prepare** → `polymarket_quick_prepare(token_id="123456", side="YES", size_usd=10)`
+   - ✅ Checks balance
+   - ✅ Analyzes orderbook
+   - ✅ Calculates R/R
+   - ✅ Prepares order
+   - Returns everything in one response!
+3. **Sign** → `wallet_sign_typed_data(eip712)`
+4. **Post** → `polymarket_post_order(token_id, signature, meta)`
+
+**Total: 4 tool calls vs 8+ in manual workflow** ⚡
 
 ---
 
-## Interpreting Prices
+### Manual Workflow (Original)
 
-Polymarket prices = probabilities. Each share pays $1 if the outcome occurs.
+### 1. Market Lookup
+```
+polymarket_lookup(url_or_slug="https://polymarket.com/event/...")
+```
 
-| Price Range | Interpretation |
-|-------------|---------------|
-| $0.90-$1.00 | Near-certain — strong consensus |
-| $0.70-$0.89 | Strong consensus — likely to happen |
-| $0.50-$0.69 | Lean yes, significant uncertainty |
-| $0.30-$0.49 | Lean no, but uncertain |
-| $0.01-$0.29 | Unlikely — market thinks probably not |
+### 2. Research
+- Read resolution criteria, end date, sources
+- `web_search` for news, expert opinions, data
+- Assess market price vs estimated fair probability
+- Present: overview, prices, key facts, probability estimate, edge
 
-## Spread & Liquidity Analysis
+### 3. Orderbook & R/R
+```
+polymarket_orderbook(token_id="123456")
+polymarket_rr_analysis(token_id="123456", side="YES", size_usd=20)
+```
 
-| Spread | Meaning |
-|--------|---------|
-| < $0.02 | Tight — reliable price signal, high confidence |
-| $0.02-$0.05 | Normal — decent liquidity |
-| $0.05-$0.10 | Wide — lower confidence, less liquid |
-| > $0.10 | Very wide — unreliable, thin market |
+### 4. Present Suggested Bet (WAIT for confirmation)
+```
+📊 Suggested Bet:
+  Market: "Will X happen?"
+  Side: YES @ $0.35 (market: 35%, est: 55%)
+  Size: $20 → 57.14 tokens
+  Win: +$37.14 | Lose: -$20.00 | R/R: 1:1.86
+```
 
-Check `polymarket_book` to see actual depth. A tight spread with shallow depth can still be unreliable.
+### 5. Execute (ONLY after confirmation)
+```
+# a. Check balance
+polymarket_get_balance()
 
-## Multi-Outcome & Negative Risk Markets
+# b. Prepare order (outputs domain/types/message/meta JSON)
+polymarket_prepare_order(token_id="123456", side="BUY", price=0.35, size=57.14)
 
-- **Binary markets**: Yes/No — prices sum to ~$1.00
-- **Multi-outcome**: 3+ outcomes (e.g. "Who wins?") — all outcomes sum to ~$1.00
-- **Negative risk (`neg_risk=true`)**: Market uses a special mechanism where shares are minted as a group. Prices still represent probabilities.
+# c. Sign with wallet_sign_typed_data (primaryType: "Order")
 
-Always iterate all outcomes — never hardcode Yes/No.
+# d. Post signed order
+polymarket_post_order(token_id="123456", signature="0x...", meta={...})
 
-## Common Patterns
+# e. Verify
+polymarket_get_orders()
+```
 
-- **Sentiment check**: Prediction prices as leading indicators for crypto/political events
-- **Event risk assessment**: Combine prediction market odds with crypto price data for risk analysis
-- **Contrarian signals**: Extreme probabilities ($0.95+) with declining volume may indicate complacency
-- **Smart money tracking**: Leaderboard reveals top traders and their performance
-
-## Troubleshooting
-
-### CLI Installation Issues
-
-**Error: "Polymarket CLI not found"**
-- Install via: `curl -sSL https://raw.githubusercontent.com/Polymarket/polymarket-cli/main/install.sh | sh`
-- Or use Homebrew: `brew tap Polymarket/polymarket-cli && brew install polymarket`
-- Verify installation: `polymarket --version`
-
-### Wallet Configuration Issues
-
-**Error: "Failed to derive credentials" or "No private key configured"**
-- Import your private key: `polymarket wallet import 0xYOUR_KEY`
-- Or use environment variable: `export POLYMARKET_PRIVATE_KEY=0xYOUR_KEY`
-- Check configuration: `polymarket wallet show`
-
-### Trading Errors
-
-| Error | Cause | Solution |
-|-------|-------|----------|
-| **"Insufficient allowance"** | Contracts not approved | Run `polymarket_set_approvals()` |
-| **"Insufficient balance"** | Not enough USDC | Deposit USDC to your wallet |
-| **"Order failed"** | Invalid price/size | Check token_id is correct, price is 0.01-0.99 |
-| **"Transaction failed"** (CTF ops) | Out of MATIC for gas | Add MATIC to your Polygon wallet |
-
-### Market Discovery Issues
-
-| Error | Cause | Solution |
-|-------|-------|----------|
-| **"Market not found"** | Slug typo or market doesn't exist | Use `polymarket_markets()` to get exact slug |
-| **Empty results** | Too restrictive filters | Broaden search criteria |
-
-### On-Chain Operation Issues
-
-**Error: "Insufficient funds for gas"**
-- CTF operations (split/merge/redeem) and approvals require MATIC on Polygon
-- Get MATIC: Bridge from other chains or use faucets for testnet
-
-**Error: "Cannot merge - insufficient balance"**
-- Merging requires holding BOTH outcome tokens in equal amounts
-- Check your positions: `polymarket_get_positions(address="0xYOUR_ADDRESS")`
-
-## Security Best Practices
-
-🔒 **Private Key Management:**
-- Never share your private key
-- Store config file (`~/.config/polymarket/config.json`) securely
-- Use environment variables for temporary sessions
-- Consider using a dedicated trading wallet with limited funds
-
-⚠️ **Trading Safety:**
-- Start with small amounts to test the integration
-- Always verify market details before placing orders
-- Use `post_only` for limit orders to avoid unexpected fills
-- Set slippage limits on market orders via the `price` parameter
-
-🔐 **On-Chain Operations:**
-- Verify condition IDs carefully before CTF operations
-- Keep some MATIC for gas fees (CTF ops typically cost ~$0.10-0.50)
-- Test approvals on small amounts first
-
-## CLI Command Reference
-
-For advanced users who want to use the CLI directly:
-
-**Market discovery:**
-- `polymarket markets list --limit 10`
-- `polymarket markets search "bitcoin"`
-- `polymarket markets get <slug>`
-
-**Trading:**
-- `polymarket clob create-order --token <id> --side buy --price 0.5 --size 10`
-- `polymarket clob orders`
-- `polymarket clob balance --asset-type collateral`
-
-**CTF operations:**
-- `polymarket ctf split --condition 0x... --amount 10`
-- `polymarket ctf merge --condition 0x... --amount 10`
-- `polymarket ctf redeem --condition 0x...`
-
-**Approvals:**
-- `polymarket approve check`
-- `polymarket approve set`
-
-**JSON output (for scripting):**
-- Add `-o json` to any command: `polymarket -o json markets list --limit 5`
-
-See full CLI docs: https://github.com/Polymarket/polymarket-cli
-
-## Additional Resources
-
-- **Official CLI Repo**: https://github.com/Polymarket/polymarket-cli
-- **Polymarket Platform**: https://polymarket.com
-- **Documentation**: https://docs.polymarket.com
-- **Discord**: https://discord.gg/polymarket
+## Notes
+- Prices = probabilities: $0.55 = 55% implied, costs $0.55/token, pays $1 if correct
+- tick_size: 0.01 or 0.001 (from market data — always check)
+- neg_risk markets use CTF_EXCHANGE_NEG
+- Orders are GTC by default
+- **Fee rate auto-queries from market** (typically 1000 bps = 10% maker fee)
+- Min order ~5 tokens (varies by market)
+- EOA = 0

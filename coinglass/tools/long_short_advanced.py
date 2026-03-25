@@ -27,7 +27,7 @@ import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 try:
     from dotenv import load_dotenv
@@ -340,9 +340,18 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["global-account", "top-account", "top-position", "taker-exchanges", "net-position", "net-position-v2"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["global-account",
+                     "top-account",
+                     "top-position",
+                     "taker-exchanges",
+                     "net-position",
+                     "net-position-v2"],
+            help="Function to call"
+    )
     parser.add_argument("--symbol", "-s", help="Symbol (BTC, ETH, etc.)")
     parser.add_argument("--exchange", "-e", help="Exchange name (Binance, OKX, etc.)")
     parser.add_argument("--interval", "-i", default="1h", help="Time interval (default: 1h)")

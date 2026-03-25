@@ -245,9 +245,18 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["flows", "net-assets", "premium-discount", "history", "list", "hk-flows"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["flows",
+                     "net-assets",
+                     "premium-discount",
+                     "history",
+                     "list",
+                     "hk-flows"],
+            help="Function to call"
+    )
     parser.add_argument("--ticker", "-t", help="ETF ticker (e.g. IBIT, FBTC, GBTC)")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 

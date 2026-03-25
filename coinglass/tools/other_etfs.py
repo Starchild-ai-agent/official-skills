@@ -134,9 +134,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["eth-flows", "eth-list", "sol-flows", "xrp-flows"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["eth-flows",
+                     "eth-list",
+                     "sol-flows",
+                     "xrp-flows"],
+            help="Function to call"
+    )
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()

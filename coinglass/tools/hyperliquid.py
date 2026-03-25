@@ -27,7 +27,7 @@ import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 try:
     from dotenv import load_dotenv
@@ -255,9 +255,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["whale-alerts", "whale-positions", "positions-by-coin", "user-positions", "position-distribution"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["whale-alerts",
+                     "whale-positions",
+                     "positions-by-coin",
+                     "user-positions",
+                     "position-distribution"],
+            help="Function to call"
+    )
     parser.add_argument("--user", "-u", help="User address (for user-positions)")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 

@@ -344,9 +344,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["taker-volume", "aggregated-taker", "cvd", "netflow", "volume-ohlc"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["taker-volume",
+                     "aggregated-taker",
+                     "cvd",
+                     "netflow",
+                     "volume-ohlc"],
+            help="Function to call"
+    )
     parser.add_argument("--symbol", "-s", help="Symbol (BTC, ETH, etc.)")
     parser.add_argument("--exchange", "-e", help="Exchange name (Binance, OKX, etc.)")
     parser.add_argument("--interval", "-i", default="1h", help="Time interval (default: 1h)")

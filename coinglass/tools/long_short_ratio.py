@@ -322,8 +322,7 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch Coinglass long/short ratios")
     parser.add_argument("--symbol", "-s", required=True, help="Symbol to query (BTC, ETH, etc.)")
     parser.add_argument("--exchange", "-e", help="Specific exchange (Binance, OKX, etc.)")
-    parser.add_argument("--time-type", "-t", default="h1",
-                       choices=TIME_TYPES, help="Time interval (default: h1)")
+    parser.add_argument("--time-type", "-t", default="h1", choices=TIME_TYPES, help="Time interval (default: h1)")
     parser.add_argument("--sentiment", action="store_true", help="Show sentiment analysis")
     parser.add_argument("--compare", action="store_true", help="Compare across exchanges")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")

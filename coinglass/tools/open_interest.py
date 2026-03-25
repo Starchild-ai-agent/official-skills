@@ -10,7 +10,7 @@ import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 try:
     from dotenv import load_dotenv
@@ -230,9 +230,17 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch Coinglass open interest data")
     parser.add_argument("--symbol", "-s", required=True, help="Symbol (BTC, ETH, etc.)")
     parser.add_argument("--history", action="store_true", help="Get historical data")
-    parser.add_argument("--interval", "-i", default="h24",
-                       choices=["0", "h1", "h4", "h12", "h24"],
-                       help="History interval")
+    parser.add_argument(
+            "--interval",
+            "-i",
+            default="h24",
+            choices=["0",
+                     "h1",
+                     "h4",
+                     "h12",
+                     "h24"],
+            help="History interval"
+    )
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
     parser.add_argument("--schema", action="store_true", help="Output MCP schema")
 
@@ -261,9 +269,11 @@ def main():
                 else:
                     print(f"Total OI (USD): ${result['total_open_interest_usd']:,.0f}")
                     print(f"Total OI (Coin): {result['total_open_interest_coin']:,.2f}")
-                    print(f"\nTop exchanges:")
+                    print("\nTop exchanges:")
                     for ex in result['exchanges'][:5]:
-                        print(f"  {ex['exchange']:15s} ${ex['open_interest_usd']:>15,.0f} ({ex.get('change_24h', 0):+.2f}% 24h)")
+                        oi_usd = ex['open_interest_usd']
+                        chg = ex.get('change_24h', 0)
+                        print(f"  {ex['exchange']:15s} ${oi_usd:>15,.0f} ({chg:+.2f}% 24h)")
             return 0
         else:
             print(f"No data found for {args.symbol}", file=sys.stderr)

@@ -9,20 +9,21 @@
 
 ## Executive Summary
 
-Full audit of 28 official skills across 8 iterations. Delivered **6 production patches**, **23 test suites** (531 tests), and **9 Quick Reference guides**. All tests pass. Three milestone branches pushed to fork.
+Full audit of 28 official skills across 10 iterations. Delivered **6 production patches**, **24 test suites** (1127 tests), **9 Quick Reference guides**, and **13 code quality findings**. All tests pass. Five milestone branches pushed to fork.
 
 ## Test Suite Results
 
 ```
-531 passed, 0 failed, 3 skipped (21s)
+1127 passed, 91 skipped, 13 xfailed, 0 failures (24s)
 ```
 
 | Test File | Tests | Category |
 |-----------|-------|----------|
+| test_code_quality.py | 596 | Python syntax, imports, docstrings, sys.exit detection, module structure |
 | test_skill_quality.py | 310 | All 28 skills: docs, security, consistency |
-| test_coverage_gaps.py | 77 | Patch validation + edge cases |
+| test_coverage_gaps.py | 77 | Patch validation + edge cases, unicode, concurrency |
+| test_live_patch_validation.py | 28 | Live API patch chain verification |
 | test_m1_validators.py | 27 | Chain/address/amount validators |
-| test_live_patch_validation.py | 27 | Live API patch chain verification |
 | test_live_endpoints.py | 22 | Real endpoint connectivity |
 | test_m1_retry.py | 14 | Retry logic with backoff |
 | test_live_safety.py | 10 | Safety constraints |
@@ -32,7 +33,11 @@ Full audit of 28 official skills across 8 iterations. Delivered **6 production p
 | test_skill_charting.py | 5 | Charting skill specifics |
 | test_skill_polymarket.py | 5 | Polymarket skill specifics |
 | test_skill_twitter.py | 5 | Twitter skill specifics |
-| 8 more suites | 10 | Crypto workflows, error handling, etc. |
+| 10 legacy suites | ~10 | Crypto workflows, error handling, patch e2e |
+
+### Key Finding: `sys.exit()` in Library Code
+
+13 tool files use `sys.exit()` instead of raising exceptions. This is flagged as `xfail` — these tools work but should be refactored to `raise SystemExit` or proper exceptions for better error handling by the agent runtime.
 
 ## Production Patches Delivered
 
@@ -128,6 +133,9 @@ For full test suite execution with live endpoint tests:
 | `feat/evolution-m1` | Validators, retry logic, crypto safety |
 | `feat/evolution-m2` | Error handling, response truncation, live patches |
 | `feat/evolution-m3` | Full test suite, documentation, integration tests |
+| `feat/evolution-m4` | Skill quality audit, live patch validation, fork sync |
+| `feat/evolution-m5` | Code quality analysis (596 tests), coverage gaps (77 tests), sys.exit findings |
+| `feat/audit-v2-rebased` | **PR branch** — all work consolidated, rebased on upstream main |
 
 ## How to Run Tests
 

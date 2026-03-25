@@ -1,0 +1,52 @@
+{
+  "pass": 7,
+  "fail": 0,
+  "skip": 2,
+  "results": [
+    {
+      "test": "cg_ohlc_schema",
+      "status": "SKIP",
+      "detail": "Rate limited (429)"
+    },
+    {
+      "test": "cg_simple_price_schema",
+      "status": "SKIP",
+      "detail": "Rate limited (429) \u2014 demonstrates need for retry logic"
+    },
+    {
+      "test": "hl_asset_ctx_schema",
+      "status": "PASS",
+      "detail": "All expected fields present. Fields: ['dayBaseVlm', 'dayNtlVlm', 'funding', 'impactPxs', 'markPx', 'midPx', 'openInterest', 'oraclePx', 'premium', 'prevDayPx']"
+    },
+    {
+      "test": "hl_candle_schema",
+      "status": "PASS",
+      "detail": "Candle fields: ['T', 'c', 'h', 'i', 'l', 'n', 'o', 's', 't', 'v']"
+    },
+    {
+      "test": "hl_l2book_schema",
+      "status": "PASS",
+      "detail": "Bid/Ask structure correct. Entry fields: ['n', 'px', 'sz']"
+    },
+    {
+      "test": "hl_meta_schema",
+      "status": "PASS",
+      "detail": "All expected fields present. Extra fields: {'marginTableId'}"
+    },
+    {
+      "test": "rpc_error_schema",
+      "status": "PASS",
+      "detail": "Error has code=True message=True: invalid argument 0: json: cannot unmarshal hex string of odd length into Go value of type common.Add"
+    },
+    {
+      "test": "rpc_success_schema",
+      "status": "PASS",
+      "detail": "Correct JSON-RPC response: ['id', 'jsonrpc', 'result']"
+    },
+    {
+      "test": "skill_code_field_usage",
+      "status": "PASS",
+      "detail": "AUDIT: 2 issues found: tools.py: 1 bare except clauses (silent failures); client.py: 3 bare except clauses (silent failures)"
+    }
+  ]
+}

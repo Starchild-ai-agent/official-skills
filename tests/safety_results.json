@@ -1,0 +1,56 @@
+{
+  "pass": 10,
+  "fail": 0,
+  "results": [
+    {
+      "test": "chain_id_matters",
+      "status": "PASS",
+      "detail": "Vitalik: ETH chain=32.1473 Base chain=0.0724. DIFFERENT balances \u2014 skills MUST specify chain!"
+    },
+    {
+      "test": "checksum_mismatch",
+      "status": "PASS",
+      "detail": "RPC treats both cases same: True. Skills should normalize to checksum."
+    },
+    {
+      "test": "hl_max_leverage",
+      "status": "PASS",
+      "detail": "BTC maxLeverage=40x. Skills must validate leverage <= 40"
+    },
+    {
+      "test": "hl_price_staleness",
+      "status": "PASS",
+      "detail": "Price @t1=71153.5 @t2=71153.5 changed=False. Skills should check freshness for time-sensitive operations."
+    },
+    {
+      "test": "hl_spot_meta",
+      "status": "PASS",
+      "detail": "Spot has 449 tokens, 283 pairs"
+    },
+    {
+      "test": "hl_zero_size_guard",
+      "status": "PASS",
+      "detail": "BTC minSz=1e-05 (szDecimals=5). Skills must reject sz < 1e-05"
+    },
+    {
+      "test": "usdc_6_decimals",
+      "status": "PASS",
+      "detail": "Raw=75554957065 @6dec=$75,554.96 @18dec=$0.00000007555496. Wrong decimals = 1000000000000x error. Skills MUST read decimals()."
+    },
+    {
+      "test": "wbtc_8_decimals",
+      "status": "PASS",
+      "detail": "WBTC decimals=8 (expected 8). Skills must not assume 18."
+    },
+    {
+      "test": "wei_precision",
+      "status": "PASS",
+      "detail": "float(1000000000000000001)=1000000000000000000 vs int=1000000000000000001. Precision lost: True (skills MUST use int for wei)"
+    },
+    {
+      "test": "zero_address_balance",
+      "status": "PASS",
+      "detail": "Zero addr has 14135.6329 ETH. Skills should reject 0x0 as destination."
+    }
+  ]
+}

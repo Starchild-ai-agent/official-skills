@@ -1,0 +1,45 @@
+--- twitter/client.py
++++ twitter/client.py
+@@ -32,6 +32,9 @@
+         api_key = os.getenv("TWITTER_API_KEY")
+         if not api_key:
+             raise ValueError("TWITTER_API_KEY environment variable is not set. Please set it in workspace/.env")
++            
++        import time
++        import requests
+ 
+         headers = {"X-API-Key": api_key, "Accept": "application/json"}
+         url = f"{TWITTERAPI_BASE_URL}{endpoint}"
+@@ -39,12 +42,26 @@
+         if params:
+             filtered_params = {k: v for k, v in params.items() if v is not None}
+ 
+-        logger.debug(f"Twitter API GET {url}")
+-        response = proxied_get(url, headers=headers, params=filtered_params, timeout=15)
+-
+-        if response.status_code != 200:
+-            logger.error(f"Twitter API error: {response.status_code} - {response.text}")
+-            response.raise_for_status()
++        max_retries = 3
++        for attempt in range(max_retries):
++            logger.debug(f"Twitter API GET {url} (attempt {attempt+1})")
++            response = proxied_get(url, headers=headers, params=filtered_params, timeout=15)
++            
++            if response.status_code == 429:
++                logger.warning("Twitter API rate limit hit (429)")
++                if attempt < max_retries - 1:
++                    wait_time = int(response.headers.get("x-rate-limit-reset", time.time() + 30)) - int(time.time())
++                    # Cap wait time to avoid hanging too long
++                    sleep_time = max(1, min(wait_time + 1, 30))
++                    logger.info(f"Waiting {sleep_time}s before retry...")
++                    time.sleep(sleep_time)
++                    continue
++                    
++            if response.status_code != 200:
++                logger.error(f"Twitter API error: {response.status_code} - {response.text}")
++                response.raise_for_status()
++                
++            break
+ 
+         return response.json()
+ 

@@ -19,7 +19,7 @@ from shared.crypto_safety import (
 PASSED = 0
 FAILED = 0
 
-def test(name, fn):
+def run_check(name, fn):
     global PASSED, FAILED
     try:
         fn()
@@ -29,7 +29,7 @@ def test(name, fn):
         FAILED += 1
         print(f"  ❌ {name}: {e}")
 
-def atest(name, coro):
+def arun_check(name, coro):
     global PASSED, FAILED
     try:
         asyncio.get_event_loop().run_until_complete(coro)
@@ -62,7 +62,7 @@ async def t_price_query_flow():
     assert response["status"] == "ok"
     assert "BTC" in response["summary"]
     assert "$67,500" in response["summary"]
-atest("E1: Price query — retry on 502 → success → formatted response", t_price_query_flow())
+arun_check("E1: Price query — retry on 502 → success → formatted response", t_price_query_flow())
 
 # E2: Swap pre-check → safety validation → execute → verification
 def t_swap_safety_flow():
@@ -88,7 +88,7 @@ def t_swap_safety_flow():
     msg = format_finality_message("arbitrum", tx_hash="0xfake123")
     assert "⏳" in msg
     assert "arbiscan.io" in msg
-test("E2: Swap flow — slippage → gas → execute → verify → finality msg", t_swap_safety_flow)
+run_check("E2: Swap flow — slippage → gas → execute → verify → finality msg", t_swap_safety_flow)
 
 # E3: Swap rejected by safety — clear error for small model
 def t_swap_rejected():
@@ -116,7 +116,7 @@ def t_swap_rejected():
     )
     assert "PRE_TRADE_FAIL" in rejection
     assert "Deposit more USDC" in rejection
-test("E3: Swap rejected — safety checks produce actionable error", t_swap_rejected)
+run_check("E3: Swap rejected — safety checks produce actionable error", t_swap_rejected)
 
 # E4: Multi-chain balance query — all succeed or fail cleanly
 def t_multichain_balance():
@@ -148,7 +148,7 @@ def t_multichain_balance():
     
     # Failed chain has actionable error
     assert "Retry" in results["base"]
-test("E4: Multi-chain balance — 3 ok + 1 fail, all structured", t_multichain_balance)
+run_check("E4: Multi-chain balance — 3 ok + 1 fail, all structured", t_multichain_balance)
 
 # E5: Error chain — API fail + retry exhaust + structured final error
 async def t_error_chain():
@@ -178,7 +178,7 @@ async def t_error_chain():
 async def _always_fail():
     raise ConnectionError("connection refused")
 
-atest("E5: Error chain — retry exhaust → structured error for user", t_error_chain())
+arun_check("E5: Error chain — retry exhaust → structured error for user", t_error_chain())
 
 # E6: Integration — all modules importable and compatible
 def t_integration_imports():
@@ -191,7 +191,7 @@ def t_integration_imports():
     assert callable(retry.with_retry)
     assert callable(crypto_safety.suggest_slippage)
     assert callable(crypto_safety.get_finality_info)
-test("E6: All 4 patches import together without conflicts", t_integration_imports)
+run_check("E6: All 4 patches import together without conflicts", t_integration_imports)
 
 # E7: SkillError + response.fail produce consistent format
 def t_error_response_consistency():
@@ -204,8 +204,14 @@ def t_error_response_consistency():
     # Both should start with ❌
     assert err_str.startswith("❌"), f"SkillError should start with ❌: {err_str}"
     assert resp_str.startswith("❌"), f"fail() should start with ❌: {resp_str}"
-test("E7: SkillError and response.fail both produce ❌-prefixed strings", t_error_response_consistency)
+run_check("E7: SkillError and response.fail both produce ❌-prefixed strings", t_error_response_consistency)
 
 print(f"\n{'='*50}")
 print(f"Results: {PASSED}/{PASSED+FAILED} passed")
 print(f"{'='*50}")
+
+
+# ---- pytest-compatible entry point ----
+def test_all_checks_pass():
+    """Wraps the standalone test suite for pytest discovery."""
+    assert FAILED == 0, f"{FAILED} check(s) failed — run this file standalone for details"

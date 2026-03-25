@@ -226,7 +226,8 @@ def test_rpc_success_schema():
 
 def test_skill_code_field_usage():
     """Scan skill Python files for field access patterns, check against real API"""
-    repo_root = os.path.join(os.path.dirname(__file__), "..", "repo")
+    _p = os.path.join(os.path.dirname(__file__), "..")
+    repo_root = _p if os.path.isdir(os.path.join(_p, "hyperliquid")) else os.path.join(_p, "repo")
     issues = []
 
     # Check hyperliquid skill's field access

@@ -1,148 +1,49 @@
-# Starchild Official Skills
+# Official Skills Audit — Patches & Test Suite
 
-Official skills maintained by the Starchild team. Installed via [`npx skills`](https://github.com/vercel-labs/skills).
+Automated quality patches and comprehensive test suite for [Starchild official-skills](https://github.com/Starchild-ai-agent/official-skills).
 
-## Install a Skill
+## What's Here
+
+### `patches/` — Improvement Code
+
+Shared utility modules that all skills can use:
+
+| Module | Purpose |
+|--------|---------|
+| `shared/errors.py` | Unified error hierarchy (SkillError → APIError, ValidationError, RateLimitError) |
+| `shared/response.py` | Consistent response formatting (tables, truncation, numeric normalization) |
+| `shared/validators.py` | Input validation (ETH addresses, amounts, chain IDs, slippage) |
+| `shared/retry.py` | Smart retry with exponential backoff + jitter |
+| `shared/crypto_safety.py` | DeFi safety checks (slippage, gas, approvals, health factors) |
+| `1inch/swap_safety.py` | Pre-swap safety validation for 1inch |
+| `aave/lending_safety.py` | Lending safety checks for AAVE |
+| `coinglass/api_error_handling.py` | CoinGlass API error normalization |
+| `hyperliquid/*.py` | Hyperliquid error context enhancement |
+
+### `tests/` — 194 Automated Tests
+
+```
+194 passed, 0 failed, ~20s runtime
+```
+
+See **[TESTING_GUIDE.md](./TESTING_GUIDE.md)** for full walkthrough (中英双语).
+
+## Quick Start
 
 ```bash
-npx skills add Starchild-ai-agent/official-skills --skill hyperliquid
+pip install pytest requests
+python -m pytest tests/ -v
 ```
 
-Or within a Starchild agent conversation:
-
-```
-search_skills(query="hyperliquid")    # searches + auto-installs
-```
-
-## Repository Structure
-
-```
-official-skills/
-├── skills.json              ← auto-generated index (do not edit manually)
-├── .github/workflows/
-│   └── build-index.yml      ← CI: validates + rebuilds skills.json on push
-├── hyperliquid/
-│   └── SKILL.md
-├── birdeye/
-│   ├── SKILL.md
-│   ├── token.py             ← tool scripts (optional)
-│   └── templates/
-└── ...
-```
-
-Each skill lives in its own top-level directory. The only required file is `SKILL.md`.
-
-## SKILL.md Format
-
-Every `SKILL.md` must have YAML frontmatter with three required fields:
-
-```yaml
----
-name: my-skill
-version: 1.0.0
-description: Short summary of what this skill does
----
-
-# My Skill
-
-Instructions, usage examples, API references, etc.
-```
-
-### Required Fields
-
-| Field | Rules | Example |
-|-------|-------|---------|
-| `name` | Lowercase, alphanumeric + hyphens | `hyperliquid` |
-| `version` | Semver | `1.0.0` |
-| `description` | One-line summary for search | `Trade perpetual futures on Hyperliquid DEX` |
-
-### Optional Fields
-
-| Field | Purpose | Example |
-|-------|---------|---------|
-| `tools` | List of tool names this skill provides | `[hl_account, hl_order]` |
-| `metadata` | Starchild-specific metadata (emoji, skillKey) | `starchild: { emoji: "📊" }` |
-| `user-invocable` | Whether users can invoke this skill directly | `true` |
-| `tags` | Search tags | `[trading, defi]` |
-
-### Multi-File Skills
-
-Skills can include additional files (Python scripts, templates, configs). Place them alongside `SKILL.md` in the same directory:
-
-```
-birdeye/
-├── SKILL.md
-├── __init__.py
-├── token.py
-├── wallet.py
-└── tools/
-```
-
-`npx skills add` copies the entire directory recursively.
-
-## Development Workflow
-
-### Add a New Skill
-
-1. Create a directory:
+## Coverage
 
 ```bash
-mkdir my-new-skill
+pip install pytest-cov
+python -m pytest tests/ --cov=patches --cov-report=term-missing
 ```
 
-2. Write `SKILL.md` with the required frontmatter (name, version, description).
+Target: 96%+ on `patches/` code.
 
-3. Push to `main`:
+## License
 
-```bash
-git add my-new-skill/
-git commit -m "feat: add my-new-skill"
-git push
-```
-
-4. GitHub Actions automatically validates the frontmatter and updates `skills.json`.
-
-### Update an Existing Skill
-
-1. Edit the skill files.
-
-2. **Bump the version** in the frontmatter:
-
-```yaml
-version: 1.0.0  →  version: 1.1.0
-```
-
-3. Push. CI updates `skills.json` automatically.
-
-> Users who already installed the skill will get the new version on next `npx skills add` (npx detects the changed `computedHash`).
-
-### Remove a Skill
-
-1. Delete the directory:
-
-```bash
-rm -rf old-skill
-git add -A && git commit -m "chore: remove old-skill" && git push
-```
-
-2. CI updates `skills.json` automatically (skill removed from index).
-
-3. To also remove from running user containers, add the skill name to `config/skill-removals.txt` in the [starchild-clawd](https://github.com/Starchild-ai-agent/starchild-clawd) repo.
-
-## CI Pipeline
-
-On every push to `main` that touches `*/SKILL.md`:
-
-1. **Validate** — scans all `SKILL.md` files, fails if any are missing `name`, `version`, or `description`
-2. **Rebuild** — generates `skills.json` from frontmatter
-3. **Commit** — if `skills.json` changed, auto-commits and pushes
-
-> `skills.json` is auto-generated. Do not edit it manually — your changes will be overwritten.
-
-## Conventions
-
-- **Naming**: lowercase, hyphens only (e.g. `trading-strategy`, not `TradingStrategy`)
-- **Versioning**: semver — bump patch for fixes, minor for new features, major for breaking changes
-- **One skill per directory**: each directory = one installable unit
-- **Keep skills focused**: one skill = one integration or workflow (e.g. `hyperliquid`, not `all-exchanges`)
-- **Description matters**: it's the primary search field — make it specific and keyword-rich
+Same as upstream [official-skills](https://github.com/Starchild-ai-agent/official-skills).

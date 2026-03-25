@@ -1,0 +1,143 @@
+{
+  "timestamp": "2026-03-25T09:52:30.999916",
+  "summary": {
+    "pass": 20,
+    "fail": 0,
+    "skip": 2,
+    "total": 22
+  },
+  "results": [
+    {
+      "test": "arb_block_number",
+      "status": "PASS",
+      "detail": "Block #445,463,387",
+      "duration_ms": 110.0
+    },
+    {
+      "test": "base_block_number",
+      "status": "PASS",
+      "detail": "Block #43,821,497",
+      "duration_ms": 142.8
+    },
+    {
+      "test": "cg_invalid_coin",
+      "status": "PASS",
+      "detail": "Returns empty dict for unknown coin (skill must check for this!)",
+      "duration_ms": 127.7
+    },
+    {
+      "test": "cg_ohlc",
+      "status": "PASS",
+      "detail": "48 candles, latest O=71004.0",
+      "duration_ms": 31.5
+    },
+    {
+      "test": "cg_ping",
+      "status": "PASS",
+      "detail": "gecko_says=(V3) To the Moon!",
+      "duration_ms": 112.8
+    },
+    {
+      "test": "cg_price_bitcoin",
+      "status": "PASS",
+      "detail": "BTC=$71,172 24h=-0.10%",
+      "duration_ms": 94.7
+    },
+    {
+      "test": "cg_price_multi",
+      "status": "PASS",
+      "detail": "BTC=$71,172 ETH=$2,179 SOL=$92.3",
+      "duration_ms": 38.7
+    },
+    {
+      "test": "cg_rate_limit_headers",
+      "status": "SKIP",
+      "detail": "Rate limited (429)",
+      "duration_ms": 29.7
+    },
+    {
+      "test": "erc20_balance_call",
+      "status": "PASS",
+      "detail": "Vitalik USDC balance: 75,554.96",
+      "duration_ms": 146.6
+    },
+    {
+      "test": "eth_block_number",
+      "status": "PASS",
+      "detail": "Block #24,733,793",
+      "duration_ms": 113.1
+    },
+    {
+      "test": "eth_get_balance",
+      "status": "PASS",
+      "detail": "Vitalik has 32.15 ETH",
+      "duration_ms": 122.5
+    },
+    {
+      "test": "eth_invalid_address",
+      "status": "PASS",
+      "detail": "RPC returns error for invalid addr: True, resp={'jsonrpc': '2.0', 'id': 1, 'error': {'code': -32602, 'message': 'invalid argument 0: json: cannot unmarshal hex string of odd length into Go value of",
+      "duration_ms": 121.1
+    },
+    {
+      "test": "hl_all_mids",
+      "status": "PASS",
+      "detail": "BTC mid=71,155.5, 532 assets",
+      "duration_ms": 214.7
+    },
+    {
+      "test": "hl_candles",
+      "status": "PASS",
+      "detail": "13 candles, latest close=71155.0",
+      "duration_ms": 175.8
+    },
+    {
+      "test": "hl_funding_rates",
+      "status": "PASS",
+      "detail": "BTC funding=0.000008 OI=27,253",
+      "duration_ms": 353.9
+    },
+    {
+      "test": "hl_invalid_coin",
+      "status": "PASS",
+      "detail": "Response for fake coin: None",
+      "duration_ms": 165.6
+    },
+    {
+      "test": "hl_meta",
+      "status": "PASS",
+      "detail": "229 perps, BTC szDec=5",
+      "duration_ms": 257.5
+    },
+    {
+      "test": "hl_orderbook",
+      "status": "PASS",
+      "detail": "Bid=71,153.0 Ask=71,154.0 Spread=0.0014%",
+      "duration_ms": 163.9
+    },
+    {
+      "test": "malformed_json_body",
+      "status": "PASS",
+      "detail": "HTTP 400 for malformed JSON (skill must handle non-200)",
+      "duration_ms": 168.8
+    },
+    {
+      "test": "price_consistency",
+      "status": "SKIP",
+      "detail": "CoinGecko rate limited (429)",
+      "duration_ms": 33.7
+    },
+    {
+      "test": "response_time_budget",
+      "status": "PASS",
+      "detail": "All endpoints < 5s",
+      "duration_ms": 0
+    },
+    {
+      "test": "timeout_behavior",
+      "status": "PASS",
+      "detail": "Correctly raised Timeout in 8ms",
+      "duration_ms": 0
+    }
+  ]
+}

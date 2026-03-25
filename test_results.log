@@ -1,0 +1,256 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║            OFFICIAL SKILLS AUDIT — LIVE TEST RESULTS               ║
+║              Generated: 2026-03-25T11:15:00Z                       ║
+║              Environment: Starchild Agent (Real Tools)              ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════
+ SECTION 1: ISSUE REPRODUCTION (6 Bugs Confirmed)
+═══════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ BUG-1: Liquidation Long/Short Split Returns 0                      │
+│ Severity: 🔴 CRITICAL  │  Tool: cg_liquidations                   │
+├─────────────────────────────────────────────────────────────────────┤
+│ REPRODUCED: YES                                                    │
+│ Input:  cg_liquidations(symbol="BTC", time_type="h24")             │
+│ Result:                                                            │
+│   total_liquidations_usd = 0  ← should be $86M+ (sum of exchanges)│
+│   long_liquidations_usd  = 0  ← no breakdown available            │
+│   short_liquidations_usd = 0  ← no breakdown available            │
+│   long_percent  = 0                                                │
+│   short_percent = 0                                                │
+│   BUT per-exchange totals exist:                                   │
+│     Hyperliquid: $19.3M                                            │
+│     Bybit:       $15.3M                                            │
+│     HTX:         $13.2M                                            │
+│     Binance:     $11.3M                                            │
+│     Bitget:      $10.9M                                            │
+│     Gate:        $9.6M                                             │
+│     OKX:         $4.3M                                             │
+│     ... + 5 more exchanges                                         │
+│                                                                    │
+│ ROOT CAUSE: Upstream API returns total per-exchange but long/short │
+│ split is 0 across all exchanges. Top-level aggregation inherits 0. │
+│                                                                    │
+│ IMPACT: Any strategy using long vs short liquidation balance for   │
+│ sentiment analysis will always see "balanced" — completely useless.│
+│ Small models will report "no liquidation pressure" when $86M was   │
+│ actually liquidated.                                               │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ BUG-2: Analysis Says "Shorts Dominate" With Zero Data              │
+│ Severity: 🔴 CRITICAL  │  Tool: cg_liquidation_analysis           │
+├─────────────────────────────────────────────────────────────────────┤
+│ REPRODUCED: YES                                                    │
+│ Input:  cg_liquidation_analysis(symbol="BTC", time_type="h24")     │
+│ Result:                                                            │
+│   total_liquidations_usd = 0                                       │
+│   long_liquidations_usd  = 0                                       │
+│   short_liquidations_usd = 0                                       │
+│   analysis.sentiment     = "Balanced liquidations"                 │
+│   analysis.dominant_side = "shorts"  ← CONTRADICTION!              │
+│   analysis.imbalance     = 0                                       │
+│                                                                    │
+│ ROOT CAUSE: Analysis layer has a default fallback to "shorts" when │
+│ both sides are 0, rather than "unknown" or "data_unavailable".     │
+│                                                                    │
+│ IMPACT: Small model reads "shorts dominate" and may advise going   │
+│ long based on phantom data. Directly misleading for trading.       │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ BUG-3: Invalid Coin → "Check API KEY" Error                        │
+│ Severity: 🟡 HIGH  │  Tool: cg_open_interest                      │
+├─────────────────────────────────────────────────────────────────────┤
+│ REPRODUCED: YES                                                    │
+│ Input:  cg_open_interest(symbol="INVALIDCOIN999")                  │
+│ Result: "Failed to fetch open interest. Check COINGLASS_API_KEY."  │
+│                                                                    │
+│ ROOT CAUSE: Upstream returns HTTP 500 for invalid symbols. The     │
+│ error handler catches all non-200 as "API KEY" issue.              │
+│                                                                    │
+│ IMPACT: Agent wastes time debugging auth instead of correcting     │
+│ the symbol. User loses trust in the platform.                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ BUG-4: Tool Outputs Too Large for Small Models                     │
+│ Severity: 🟡 HIGH  │  Affected: funding_rate, cg_liquidations     │
+├─────────────────────────────────────────────────────────────────────┤
+│ REPRODUCED: YES                                                    │
+│ Input:  funding_rate(symbol="BTC")                                 │
+│ Result: 5,847 chars of JSON (21 exchanges × uMargin + cMargin)    │
+│                                                                    │
+│ Analysis of output sizes:                                          │
+│   funding_rate(BTC):      ~5.8K chars (manageable but bloated)     │
+│   cg_liquidations(BTC):   ~2.5K chars (reasonable)                 │
+│   cg_coins_market_data(): 25K-400K chars (KILLS small models)     │
+│                                                                    │
+│ ROOT CAUSE: Raw API data passed through without summarization.     │
+│ No output budget enforcement.                                      │
+│                                                                    │
+│ IMPACT: 4K-context models (Gemini Flash Lite, GPT-3.5) cannot     │
+│ process these responses. Even 8K models struggle with the full     │
+│ coins_market_data dump.                                            │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ BUG-5: Inconsistent Error Formats Across Tool Families             │
+│ Severity: 🟡 MEDIUM  │  Affected: coinglass, coingecko, hl tools  │
+├─────────────────────────────────────────────────────────────────────┤
+│ REPRODUCED: YES                                                    │
+│ Observed formats:                                                  │
+│   Coinglass: "❌ Error: Failed to fetch X. Check API_KEY."        │
+│   CoinGecko: HTTP status codes + raw JSON errors                   │
+│   Hyperliquid: Various Python exception strings                    │
+│                                                                    │
+│ ROOT CAUSE: Each skill family implements its own error handling    │
+│ with different conventions. No shared error schema.                 │
+│                                                                    │
+│ IMPACT: Agents need per-family error parsing logic. Small models   │
+│ can't reliably distinguish "auth error" from "bad input" from      │
+│ "network timeout" across different tools.                          │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ BUG-6: Funding Rate Format Inconsistency                           │
+│ Severity: 🟢 LOW  │  Tool: funding_rate                           │
+├─────────────────────────────────────────────────────────────────────┤
+│ REPRODUCED: YES                                                    │
+│ Observed:                                                          │
+│   Binance:     rate=0.000409, interval=8h                          │
+│   Kraken:      rate=0.0001268, interval=1h                         │
+│   Hyperliquid: rate=0.00125, interval=1h                           │
+│   Bitfinex:    rate=0.00404, NO interval field                     │
+│   HTX:         rate=-0.0120, NO interval field                     │
+│                                                                    │
+│ ROOT CAUSE: Exchanges report funding at different intervals.       │
+│ Some include fundingIntervalHours, some don't. No normalization.   │
+│                                                                    │
+│ IMPACT: Comparing Binance (8h) vs Hyperliquid (1h) rates without │
+│ normalization gives wrong conclusion. Kraken's 0.01% per 1h ≈     │
+│ Binance's 0.04% per 8h, but raw numbers suggest Binance is 4x.   │
+└─────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+ SECTION 2: WORKING TOOLS (Verified Healthy)
+═══════════════════════════════════════════════════════════════════════
+
+┌──────────────────────────┬────────┬───────────────────────────────┐
+│ Tool                     │ Status │ Sample Output                 │
+├──────────────────────────┼────────┼───────────────────────────────┤
+│ coin_price(BTC)          │   ✅   │ $87,395.00 (current)          │
+│ cg_global()              │   ✅   │ 18,009 active cryptos         │
+│ cg_trending()            │   ✅   │ TAO #1 trending               │
+│ funding_rate(BTC)        │   ✅*  │ Data received (format issues)  │
+│ cg_liquidations(BTC)     │   ✅*  │ Data received (split=0 issue)  │
+│ cg_liquidation_analysis  │   ✅*  │ Data received (logic bug)      │
+│ cg_open_interest(BTC)    │   ✅   │ OI data received correctly     │
+└──────────────────────────┴────────┴───────────────────────────────┘
+  * = works but output has quality issues documented above
+
+═══════════════════════════════════════════════════════════════════════
+ SECTION 3: PROPOSED PATCHES
+═══════════════════════════════════════════════════════════════════════
+
+
+For each bug, a Python middleware patch was created in patches/live/:
+
+┌──────────┬─────────────────────────┬────────────────────────────────┐
+│ Bug ID   │ Patch File              │ Strategy                       │
+├──────────┼─────────────────────────┼────────────────────────────────┤
+│ FIX-1    │ fix_liquidation.py      │ Recompute total from exchange  │
+│          │                         │ data; mark splits as None      │
+│ FIX-2    │ fix_liquidation.py      │ Guard analysis: if data=0,     │
+│          │                         │ dominant_side="unknown"        │
+│ FIX-3    │ fix_error_messages.py   │ Reclassify "Check API KEY" to  │
+│          │                         │ "symbol not found" when valid  │
+│ FIX-4    │ fix_response_size.py    │ Smart truncation: keep top 5   │
+│          │                         │ exchanges, drop logos/padding  │
+│ FIX-5    │ fix_error_format.py     │ Unified error schema with      │
+│          │                         │ category + suggestion fields   │
+│ FIX-6    │ fix_funding_rate.py     │ Normalize all rates to 8h      │
+│          │                         │ equivalent; infer missing vals │
+└──────────┴─────────────────────────┴────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════
+ SECTION 4: INTEGRATION TEST RESULTS (19/19 PASS)
+═══════════════════════════════════════════════════════════════════════
+
+Run: 2026-03-25T11:19 UTC
+Data: 100% real (captured from live Starchild tool calls)
+Mocks: ZERO
+
+┌─────┬────────────────────────────────────────────────┬────────┐
+│  #  │ Test                                           │ Result │
+├─────┼────────────────────────────────────────────────┼────────┤
+│  1  │ BTC total recomputed from exchanges            │   ✅   │
+│  2  │ Long/short marked as unknown (not false 0)     │   ✅   │
+│  3  │ Patch note present in output                   │   ✅   │
+│  4  │ ETH total recomputed ($32.9M)                  │   ✅   │
+│  5  │ Dominant side corrected to 'unknown'           │   ✅   │
+│  6  │ Sentiment reflects data unavailability          │   ✅   │
+│  7  │ Total still recomputed after analysis fix      │   ✅   │
+│  8  │ Invalid symbol detected (not API key error)    │   ✅   │
+│  9  │ Helpful message provided for bad symbol        │   ✅   │
+│ 10  │ Valid symbol kept as possible API issue         │   ✅   │
+│ 11  │ Error normalized has error=True                │   ✅   │
+│ 12  │ Normalized error has category field            │   ✅   │
+│ 13  │ Normalized error has suggestion field          │   ✅   │
+│ 14  │ Non-error response passes through unchanged    │   ✅   │
+│ 15  │ Binance 8h rate unchanged after normalization  │   ✅   │
+│ 16  │ Kraken 1h → 8h normalized correctly            │   ✅   │
+│ 17  │ Hyperliquid 1h → 8h normalized correctly       │   ✅   │
+│ 18  │ Bitfinex interval inferred when missing        │   ✅   │
+│ 19  │ HTX interval inferred when missing             │   ✅   │
+└─────┴────────────────────────────────────────────────┴────────┘
+
+═══════════════════════════════════════════════════════════════════════
+ SECTION 5: IMPACT ASSESSMENT
+═══════════════════════════════════════════════════════════════════════
+
+Before Patches → After Patches:
+
+🔴 BTC liquidation data shows "$0 total, balanced"
+   → Now correctly shows "$83.9M total, split unavailable — do NOT use for sentiment"
+
+🔴 ETH analysis says "shorts dominate" (false)
+   → Now says "Long/short breakdown unavailable" with total = $32.9M
+
+🟡 "INVALIDCOIN" error says "Check API KEY"
+   → Now says "Symbol 'INVALIDCOIN999' not recognized"
+
+🟡 Funding rate: Binance 0.04% looks 3x Kraken 0.01%
+   → Normalized: Binance 0.04% ≈ Kraken 0.10% (per 8h) — Kraken actually 2.5x higher
+
+🟡 Different error formats across tool families
+   → Unified schema: {error, tool, category, message, suggestion}
+
+═══════════════════════════════════════════════════════════════════════
+ SECTION 6: RECOMMENDATIONS
+═══════════════════════════════════════════════════════════════════════
+
+1. UPSTREAM (Official Skills Repo):
+   - Apply fix_liquidation.py logic to coinglass skill's liquidation handler
+   - Add symbol validation before API calls (check cg_supported_coins)
+   - Add fundingIntervalHours inference table for known exchanges
+   - Standardize error format across all skill families
+
+2. PLATFORM (Starchild Core):
+   - Add response size guard middleware for small model contexts
+   - Consider adding rate normalization as a built-in transformation
+   - Add "data quality" metadata to all tool responses
+
+3. AGENT BEHAVIOR:
+   - When liquidation long/short = 0, ALWAYS sum exchange totals
+   - Never trust "dominant_side" when both values are 0
+   - Normalize funding rates before cross-exchange comparison
+   - When "Check API KEY" error occurs, first verify symbol validity
+
+═══════════════════════════════════════════════════════════════════════
+ END OF REPORT
+ Files: patches/live/{fix_liquidation,fix_error_messages,fix_response_size,
+        fix_error_format,fix_funding_rate}.py + integration_test.py
+═══════════════════════════════════════════════════════════════════════

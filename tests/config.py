@@ -3,7 +3,10 @@ Test config — paths and constants
 """
 import os
 
-REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
+# In fork-workspace, skills are at repo root (parent of tests/)
+# In audit workspace, they were in a 'repo' subfolder
+_parent = os.path.join(os.path.dirname(__file__), "..")
+REPO_ROOT = _parent if os.path.isdir(os.path.join(_parent, "hyperliquid")) else os.path.join(_parent, "repo")
 SKILLS_WITH_CODE = [
     "1inch", "aave", "birdeye", "coingecko", "coinglass",
     "debank", "hyperliquid", "lunarcrush", "polymarket",

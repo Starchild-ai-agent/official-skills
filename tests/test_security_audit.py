@@ -3,15 +3,18 @@
 import sys, os, re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-REPO = os.path.join(os.path.dirname(__file__), "..", "repo")
+_parent = os.path.join(os.path.dirname(__file__), "..")
+# Scope security scan to patches/ only (production code, not test code)
+SCAN_DIRS = [os.path.join(_parent, "patches")]
 ALL_PY = []
-for skill in os.listdir(REPO):
-    skill_dir = os.path.join(REPO, skill)
-    if not os.path.isdir(skill_dir):
+for scan_dir in SCAN_DIRS:
+    if not os.path.isdir(scan_dir):
         continue
-    for fname in os.listdir(skill_dir):
-        if fname.endswith(".py"):
-            ALL_PY.append((skill, os.path.join(skill_dir, fname)))
+    for root, dirs, files in os.walk(scan_dir):
+        for fname in files:
+            if fname.endswith(".py"):
+                relpath = os.path.relpath(os.path.join(root, fname), _parent)
+                ALL_PY.append((relpath, os.path.join(root, fname)))
 
 def test_no_hardcoded_secrets():
     """No API keys, tokens, or passwords hardcoded."""

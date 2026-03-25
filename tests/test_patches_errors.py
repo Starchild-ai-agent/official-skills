@@ -15,7 +15,7 @@ from shared.errors import (
 PASSED = 0
 FAILED = 0
 
-def test(name, fn):
+def run_check(name, fn):
     global PASSED, FAILED
     try:
         fn()
@@ -25,7 +25,7 @@ def test(name, fn):
         FAILED += 1
         print(f"  ❌ {name}: {e}")
 
-def atest(name, coro):
+def arun_check(name, coro):
     """Async test helper"""
     global PASSED, FAILED
     try:
@@ -46,7 +46,7 @@ def t_skill_error_format():
     assert "SKILL_ERROR" in s, f"Should have code, got: {s}"
     assert "test/tool" in s, "Should include tool name"
     assert "try again" in s, "Should include suggestion"
-test("SkillError formats with code + tool + suggestion", t_skill_error_format)
+run_check("SkillError formats with code + tool + suggestion", t_skill_error_format)
 
 # A2: SkillError context kwargs
 def t_skill_error_context():
@@ -54,7 +54,7 @@ def t_skill_error_context():
     s = e.format()
     assert "balance: 100" in s
     assert "required: 500" in s
-test("SkillError includes context kwargs in format", t_skill_error_context)
+run_check("SkillError includes context kwargs in format", t_skill_error_context)
 
 # A3: Transient errors are retryable
 def t_transient_retryable():
@@ -62,14 +62,14 @@ def t_transient_retryable():
     assert RateLimitError.retryable is True
     assert ServiceUnavailableError.retryable is True
     assert TimeoutError.retryable is True
-test("Transient errors have retryable=True", t_transient_retryable)
+run_check("Transient errors have retryable=True", t_transient_retryable)
 
 # A4: User errors are NOT retryable
 def t_user_not_retryable():
     assert UserInputError.retryable is False
     assert InvalidParameterError.retryable is False
     assert UnsupportedAssetError.retryable is False
-test("User input errors have retryable=False", t_user_not_retryable)
+run_check("User input errors have retryable=False", t_user_not_retryable)
 
 # A5: RateLimitError includes retry_after
 def t_rate_limit_retry_after():
@@ -78,7 +78,7 @@ def t_rate_limit_retry_after():
     assert "RATE_LIMITED" in s
     assert "30" in s
     assert "coinglass" in s
-test("RateLimitError includes service name + retry_after", t_rate_limit_retry_after)
+run_check("RateLimitError includes service name + retry_after", t_rate_limit_retry_after)
 
 # A6: InsufficientBalanceError shows shortfall
 def t_insufficient_balance():
@@ -87,7 +87,7 @@ def t_insufficient_balance():
     assert "INSUFFICIENT_BALANCE" in s
     assert "400" in s, f"Should show shortfall of 400, got: {s}"
     assert "USDC" in s
-test("InsufficientBalanceError calculates and shows shortfall", t_insufficient_balance)
+run_check("InsufficientBalanceError calculates and shows shortfall", t_insufficient_balance)
 
 # A7: InsufficientGasError derives from InsufficientBalanceError
 def t_gas_error():
@@ -95,7 +95,7 @@ def t_gas_error():
     s = str(e)
     assert "INSUFFICIENT_GAS" in s
     assert "ETH" in s, f"Should mention native token ETH for arbitrum, got: {s}"
-test("InsufficientGasError maps chain to native token", t_gas_error)
+run_check("InsufficientGasError maps chain to native token", t_gas_error)
 
 # A8: SlippageExceededError calculates actual slippage
 def t_slippage_error():
@@ -103,7 +103,7 @@ def t_slippage_error():
     s = str(e)
     assert "5.00%" in s, f"Should calculate 5% slippage, got: {s}"
     assert "SLIPPAGE_EXCEEDED" in s
-test("SlippageExceededError calculates actual slippage %", t_slippage_error)
+run_check("SlippageExceededError calculates actual slippage %", t_slippage_error)
 
 # A9: TransactionRevertedError
 def t_tx_reverted():
@@ -112,7 +112,7 @@ def t_tx_reverted():
     assert "TX_REVERTED" in s
     assert "0xabc123" in s
     assert "transfer amount exceeds balance" in s
-test("TransactionRevertedError includes tx hash + reason", t_tx_reverted)
+run_check("TransactionRevertedError includes tx hash + reason", t_tx_reverted)
 
 # A10: safe_call wraps normal exception into SkillError
 async def t_safe_call_wraps():
@@ -125,7 +125,7 @@ async def t_safe_call_wraps():
         s = str(e)
         assert "SKILL_ERROR" in s
         assert "something broke" in s
-atest("safe_call wraps ValueError into SkillError", t_safe_call_wraps())
+arun_check("safe_call wraps ValueError into SkillError", t_safe_call_wraps())
 
 # A11: safe_call classifies 429 as RateLimitError
 async def t_safe_call_429():
@@ -136,7 +136,7 @@ async def t_safe_call_429():
         assert False, "Should have raised"
     except RateLimitError:
         pass  # Correct classification
-atest("safe_call classifies '429' in error msg as RateLimitError", t_safe_call_429())
+arun_check("safe_call classifies '429' in error msg as RateLimitError", t_safe_call_429())
 
 # A12: safe_call rejects None results
 async def t_safe_call_none():
@@ -147,7 +147,7 @@ async def t_safe_call_none():
         assert False, "Should have raised"
     except SkillError as e:
         assert "None" in str(e) or "empty" in str(e).lower()
-atest("safe_call raises SkillError when function returns None", t_safe_call_none())
+arun_check("safe_call raises SkillError when function returns None", t_safe_call_none())
 
 # A13: safe_call passes through already-structured SkillError
 async def t_safe_call_passthrough():
@@ -158,7 +158,7 @@ async def t_safe_call_passthrough():
         assert False, "Should have raised"
     except InsufficientBalanceError:
         pass  # Correct — passed through, not re-wrapped
-atest("safe_call passes through SkillError subclasses", t_safe_call_passthrough())
+arun_check("safe_call passes through SkillError subclasses", t_safe_call_passthrough())
 
 # A14: Error hierarchy
 def t_hierarchy():
@@ -167,8 +167,14 @@ def t_hierarchy():
     assert issubclass(InsufficientGasError, InsufficientBalanceError)
     assert issubclass(SlippageExceededError, ChainError)
     assert issubclass(InvalidParameterError, UserInputError)
-test("Error hierarchy is correct", t_hierarchy)
+run_check("Error hierarchy is correct", t_hierarchy)
 
 print(f"\n{'='*50}")
 print(f"Results: {PASSED}/{PASSED+FAILED} passed")
 print(f"{'='*50}")
+
+
+# ---- pytest-compatible entry point ----
+def test_all_checks_pass():
+    """Wraps the standalone test suite for pytest discovery."""
+    assert FAILED == 0, f"{FAILED} check(s) failed — run this file standalone for details"

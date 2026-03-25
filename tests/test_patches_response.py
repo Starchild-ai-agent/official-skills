@@ -10,7 +10,7 @@ from shared.response import ok, fail, fmt_price, fmt_balance, fmt_table
 PASSED = 0
 FAILED = 0
 
-def test(name, fn):
+def run_check(name, fn):
     global PASSED, FAILED
     try:
         fn()
@@ -29,7 +29,7 @@ def t_ok_dict():
     assert r["summary"] == "BTC at $1,234.56"
     assert r["price"] == 1234.56
     assert r["change"] == "+5.2%"
-test("ok() with dict merges data into result", t_ok_dict)
+run_check("ok() with dict merges data into result", t_ok_dict)
 
 # B2: ok() with list
 def t_ok_list():
@@ -38,14 +38,14 @@ def t_ok_list():
     assert r["status"] == "ok"
     assert r["count"] == 2
     assert r["items"] == items
-test("ok() with list wraps as items + count", t_ok_list)
+run_check("ok() with list wraps as items + count", t_ok_list)
 
 # B3: ok() with scalar
 def t_ok_scalar():
     r = ok(data=42.5)
     assert r["status"] == "ok"
     assert r["value"] == 42.5
-test("ok() with scalar wraps as value", t_ok_scalar)
+run_check("ok() with scalar wraps as value", t_ok_scalar)
 
 # B4: fail() basic
 def t_fail_basic():
@@ -53,7 +53,7 @@ def t_fail_basic():
     assert "❌" in r
     assert "hyperliquid/hl_order" in r
     assert "Insufficient margin" in r
-test("fail() includes tool name + reason", t_fail_basic)
+run_check("fail() includes tool name + reason", t_fail_basic)
 
 # B5: fail() with got/need/suggestion
 def t_fail_full():
@@ -62,7 +62,7 @@ def t_fail_full():
     assert "Expected: 500" in r
     assert "Increase funds" in r
     assert "MARGIN_LOW" in r
-test("fail() includes got, need, suggestion, code", t_fail_full)
+run_check("fail() includes got, need, suggestion, code", t_fail_full)
 
 # B6: fmt_price high value
 def t_price_high():
@@ -70,13 +70,13 @@ def t_price_high():
     assert "$67,543.21" in r
     assert "+3.5%" in r
     assert "2.5B" in r
-test("fmt_price formats high value with commas + volume", t_price_high)
+run_check("fmt_price formats high value with commas + volume", t_price_high)
 
 # B7: fmt_price low value (< $1)
 def t_price_low():
     r = fmt_price("SHIB", 0.0000234)
     assert "$0.000023" in r
-test("fmt_price shows 6 decimals for sub-$1 tokens", t_price_low)
+run_check("fmt_price shows 6 decimals for sub-$1 tokens", t_price_low)
 
 # B8: fmt_price negative change
 def t_price_neg():
@@ -84,7 +84,7 @@ def t_price_neg():
     assert "-2.3%" in r
     # Should NOT have a + prefix
     assert "+−" not in r and "+-" not in r
-test("fmt_price negative change has no + prefix", t_price_neg)
+run_check("fmt_price negative change has no + prefix", t_price_neg)
 
 # B9: fmt_balance
 def t_balance():
@@ -97,13 +97,13 @@ def t_balance():
     assert "ETH" in r
     assert "$6,250.00" in r  # Total
     assert "| Asset |" in r  # Table header
-test("fmt_balance creates markdown table with total", t_balance)
+run_check("fmt_balance creates markdown table with total", t_balance)
 
 # B10: fmt_balance empty
 def t_balance_empty():
     r = fmt_balance([], title="Empty")
     assert "No assets found" in r
-test("fmt_balance handles empty list gracefully", t_balance_empty)
+run_check("fmt_balance handles empty list gracefully", t_balance_empty)
 
 # B11: fmt_table generic
 def t_table():
@@ -116,20 +116,20 @@ def t_table():
     assert "| symbol |" in r or "| BTC |" in r
     lines = r.strip().split('\n')
     assert len(lines) >= 4  # title + header + separator + 2 rows
-test("fmt_table creates markdown table from dict list", t_table)
+run_check("fmt_table creates markdown table from dict list", t_table)
 
 # B12: fmt_table caps at 50 rows
 def t_table_cap():
     rows = [{"n": i} for i in range(100)]
     r = fmt_table(rows)
     assert "50 more rows" in r
-test("fmt_table caps at 50 rows with overflow message", t_table_cap)
+run_check("fmt_table caps at 50 rows with overflow message", t_table_cap)
 
 # B13: fmt_table empty
 def t_table_empty():
     r = fmt_table([], title="Empty Data")
     assert "No data" in r
-test("fmt_table handles empty gracefully", t_table_empty)
+run_check("fmt_table handles empty gracefully", t_table_empty)
 
 # B14: ok() preserves summary for small models
 def t_ok_summary_priority():
@@ -137,8 +137,14 @@ def t_ok_summary_priority():
     # Small model should be able to grab summary directly
     assert "summary" in r
     assert r["summary"] == "BTC is $67K, up 3%"
-test("ok() summary field is directly accessible for small models", t_ok_summary_priority)
+run_check("ok() summary field is directly accessible for small models", t_ok_summary_priority)
 
 print(f"\n{'='*50}")
 print(f"Results: {PASSED}/{PASSED+FAILED} passed")
 print(f"{'='*50}")
+
+
+# ---- pytest-compatible entry point ----
+def test_all_checks_pass():
+    """Wraps the standalone test suite for pytest discovery."""
+    assert FAILED == 0, f"{FAILED} check(s) failed — run this file standalone for details"

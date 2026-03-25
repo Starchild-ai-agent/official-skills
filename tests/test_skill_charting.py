@@ -3,7 +3,8 @@
 import sys, os, re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-REPO = os.path.join(os.path.dirname(__file__), "..", "repo", "charting")
+_parent = os.path.join(os.path.dirname(__file__), "..")
+REPO = os.path.join(_parent if os.path.isdir(os.path.join(_parent, "hyperliquid")) else os.path.join(_parent, "repo"), "charting")
 
 def test_charting_skill_doc_exists():
     assert os.path.exists(os.path.join(REPO, "SKILL.md"))
@@ -26,10 +27,14 @@ def test_charting_dependencies_declared():
     assert "pandas" in content, "Missing pandas dependency"
 
 def test_charting_templates_exist():
-    """Check if charting has template scripts."""
-    py_files = [f for f in os.listdir(REPO) if f.endswith(".py")]
-    md_files = [f for f in os.listdir(REPO) if f.endswith(".md")]
-    assert len(py_files) + len(md_files) >= 2, f"Charting skill too sparse: {py_files + md_files}"
+    """Check if charting has template scripts (may be in scripts/ subdir)."""
+    all_py = []
+    all_md = []
+    for root, dirs, files in os.walk(REPO):
+        for f in files:
+            if f.endswith(".py"): all_py.append(f)
+            if f.endswith(".md"): all_md.append(f)
+    assert len(all_py) + len(all_md) >= 2, f"Charting skill too sparse: {all_py + all_md}"
 
 if __name__ == "__main__":
     import pytest

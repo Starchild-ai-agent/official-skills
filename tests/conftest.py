@@ -4,7 +4,8 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "patches"))
 
-REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "repo")
+_parent = os.path.join(os.path.dirname(__file__), "..")
+REPO_ROOT = _parent if os.path.isdir(os.path.join(_parent, "hyperliquid")) else os.path.join(_parent, "repo")
 
 import pytest
 

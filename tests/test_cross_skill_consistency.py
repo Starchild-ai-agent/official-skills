@@ -3,7 +3,8 @@
 import sys, os, re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-REPO = os.path.join(os.path.dirname(__file__), "..", "repo")
+_parent = os.path.join(os.path.dirname(__file__), "..")
+REPO = _parent if os.path.isdir(os.path.join(_parent, "hyperliquid")) else os.path.join(_parent, "repo")
 SKILLS_WITH_TOOLS = [s for s in os.listdir(REPO) 
     if os.path.isdir(os.path.join(REPO, s)) 
     and os.path.exists(os.path.join(REPO, s, "tools.py"))]
@@ -15,10 +16,10 @@ def test_all_skills_have_docstrings():
             content = f.read()
         funcs = re.findall(r'def\s+(\w+)\s*\(', content)
         for func in funcs:
-            pattern = f'def {func}\s*\([^)]*\).*?:\s*\n\s*"""'
+            pattern = rf'def {func}\s*\([^)]*\).*?:\s*\n\s*"""'
             if not re.search(pattern, content, re.DOTALL):
                 # Check single-line
-                pattern2 = f"def {func}\s*\([^)]*\).*?:\s*\n\s*\'"
+                pattern2 = rf"def {func}\s*\([^)]*\).*?:\s*\n\s*\'"
                 if not re.search(pattern2, content, re.DOTALL):
                     missing.append(f"{skill}/{func}")
     # Allow up to 30% missing (audit finding, not hard fail)

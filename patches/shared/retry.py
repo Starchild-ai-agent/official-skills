@@ -12,10 +12,10 @@ Unified Retry Module for Crypto Skills
 用法:
     # 异步 (coinglass, 1inch, hyperliquid)
     result = await async_retry(api_call, args, tool_name="hl_order")
-    
+
     # 同步 (twitter, debank, charting scripts)
     result = sync_retry(api_call, args, tool_name="coin_price")
-    
+
     # 装饰器
     @with_retry(max_attempts=3)
     async def my_api_call(): ...
@@ -45,7 +45,7 @@ NON_RETRYABLE_CODES: Set[int] = {400, 401, 403, 404, 422}
 
 class RetryConfig:
     """Tunable retry parameters per skill/tool.
-    
+
     Accepts both naming conventions:
       - max_attempts / max_retries  (both → max_attempts internally)
       - retry_on_status / retryable_status_codes
@@ -119,7 +119,7 @@ PRESETS = {
 
 def _calc_delay(attempt: int, config: RetryConfig) -> float:
     """Exponential backoff with optional jitter.
-    
+
     attempt is 1-indexed: attempt=1 → base_delay * backoff^0 = base_delay.
     """
     raw = config.base_delay * (config.backoff_factor ** (attempt - 1))
@@ -265,13 +265,13 @@ def with_retry(
     **extra_config,
 ):
     """Decorator for automatic retry.
-    
+
     @with_retry(preset="coinglass")
     async def get_funding_rate(symbol): ...
-    
+
     @with_retry(max_attempts=3, retry_on=[429, 502])
     async def my_call(): ...
-    
+
     @with_retry(config=RetryConfig(max_attempts=5))
     def sync_api_call(): ...
     """
@@ -316,9 +316,9 @@ async def retry_api_call(
     **kwargs: Any,
 ) -> T:
     """Functional-style async retry — pass a callable, get retried result.
-    
+
     Raises RuntimeError with tool_name + attempt count on exhaustion.
-    
+
     Example:
         data = await retry_api_call(
             client.get_funding, "BTC",

@@ -10,19 +10,18 @@ Crypto-Specific Safety Checks
 这些是通用的 pre/post-transaction 检查，所有交易类 skill 应该复用。
 """
 
-from typing import Optional
 
 # ── Chain Finality Constants ──────────────────────
 
 CHAIN_FINALITY = {
     # chain_id: (expected_seconds, min_confirmations, description)
-    "ethereum":  (180, 12, "~3 min for finality (12 blocks × 12s)"),
-    "arbitrum":  (15, 1, "~15s (L2, but 7-day challenge period for withdrawals to L1)"),
-    "base":      (15, 1, "~15s (L2, 7-day challenge for L1 withdrawals)"),
-    "optimism":  (15, 1, "~15s (L2, 7-day challenge for L1 withdrawals)"),
-    "polygon":   (120, 64, "~2 min (64 confirmations for safety)"),
-    "linea":     (60, 1, "~60s (zkRollup, proof takes longer)"),
-    "solana":    (0.4, 1, "~400ms per slot, finalized in ~13s (32 slots)"),
+    "ethereum": (180, 12, "~3 min for finality (12 blocks × 12s)"),
+    "arbitrum": (15, 1, "~15s (L2, but 7-day challenge period for withdrawals to L1)"),
+    "base": (15, 1, "~15s (L2, 7-day challenge for L1 withdrawals)"),
+    "optimism": (15, 1, "~15s (L2, 7-day challenge for L1 withdrawals)"),
+    "polygon": (120, 64, "~2 min (64 confirmations for safety)"),
+    "linea": (60, 1, "~60s (zkRollup, proof takes longer)"),
+    "solana": (0.4, 1, "~400ms per slot, finalized in ~13s (32 slots)"),
     "hyperliquid": (2, 1, "~2s (L1, single slot finality)"),
 }
 
@@ -59,7 +58,7 @@ def format_finality_message(chain: str, tx_hash: str = "") -> str:
     Small models should include this in responses after any on-chain action.
     """
     info = get_finality_info(chain)
-    parts = [f"⏳ Transaction submitted"]
+    parts = ["⏳ Transaction submitted"]
     if tx_hash:
         explorer = _get_explorer_url(chain, tx_hash)
         parts[0] += f": [{tx_hash[:10]}...]({explorer})"
@@ -124,7 +123,7 @@ DEFAULT_SLIPPAGE = {
 STABLECOINS = {"USDC", "USDT", "DAI", "BUSD", "FRAX", "TUSD", "LUSD", "crvUSD"}
 
 
-def suggest_slippage(token_a: str, token_b: str, 
+def suggest_slippage(token_a: str, token_b: str,
                      volume_24h: float = None) -> dict:
     """
     Suggest appropriate slippage tolerance.
@@ -138,7 +137,7 @@ def suggest_slippage(token_a: str, token_b: str,
         category = "stablecoin_swap"
     # Major pairs
     elif a_upper in {"BTC", "ETH", "WBTC", "WETH", "stETH"} or \
-         b_upper in {"BTC", "ETH", "WBTC", "WETH", "stETH"}:
+            b_upper in {"BTC", "ETH", "WBTC", "WETH", "stETH"}:
         category = "major_pair"
     # Use volume as a proxy for liquidity
     elif volume_24h and volume_24h > 10_000_000:
@@ -164,8 +163,8 @@ def suggest_slippage(token_a: str, token_b: str,
 
 # ── Post-Transaction Verification Template ────────
 
-def verification_checklist(operation: str, chain: str, 
-                          tx_hash: str = "", expected: dict = None) -> str:
+def verification_checklist(operation: str, chain: str,
+                           tx_hash: str = "", expected: dict = None) -> str:
     """
     Generate a verification checklist for the LLM to follow after a transaction.
     This is a PROMPT for the model, not automated execution.
@@ -184,12 +183,12 @@ def verification_checklist(operation: str, chain: str,
         if 'balance_change' in expected:
             checks.append(
                 f"2. 💰 Verify balance changed by ~{expected['balance_change']} "
-                f"(call wallet_balance or hl_account)"
+                "(call wallet_balance or hl_account)"
             )
         if 'position_change' in expected:
             checks.append(
                 f"3. 📊 Verify position: {expected['position_change']} "
-                f"(call hl_account)"
+                "(call hl_account)"
             )
     else:
         checks.append("2. 💰 Call balance tool to verify funds changed")

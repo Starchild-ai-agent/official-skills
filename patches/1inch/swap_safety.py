@@ -3,7 +3,7 @@
 =========================
 Issues found:
 1. No pre-swap balance check in swap_tokens tool
-2. No slippage default safeguard  
+2. No slippage default safeguard
 3. No post-swap verification
 4. Fusion order status polling doesn't surface clear progress
 

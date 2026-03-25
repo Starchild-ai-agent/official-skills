@@ -14,7 +14,7 @@ Standardized Response Wrapper for All Skills
     return fail("hyperliquid/hl_order", "Insufficient margin", got={"available": 100}, need={"required": 500})
 """
 
-from typing import Any, Optional
+from typing import Any
 # NOTE: ToolResult is the platform-provided response object
 # This module provides factory functions that WRAP it consistently
 
@@ -38,8 +38,8 @@ def ok(data: Any, summary: str = "", tool_name: str = "") -> dict:
     return result
 
 
-def fail(tool_name: str, reason: str, 
-         got: Any = None, need: Any = None, 
+def fail(tool_name: str, reason: str,
+         got: Any = None, need: Any = None,
          suggestion: str = "", code: str = "") -> str:
     """
     Standard error response — optimized for small model diagnosis.
@@ -65,7 +65,7 @@ def fail(tool_name: str, reason: str,
     return '\n'.join(parts)
 
 
-def fmt_price(symbol: str, price: float, change_24h: float = None, 
+def fmt_price(symbol: str, price: float, change_24h: float = None,
               volume_24h: float = None, source: str = "") -> str:
     """Format price data for consistent display across skills"""
     sign = "+" if change_24h and change_24h > 0 else ""
@@ -86,7 +86,7 @@ def fmt_balance(balances: list[dict], title: str = "Balances") -> str:
     """
     if not balances:
         return f"{title}: No assets found"
-    
+
     lines = [f"**{title}**", "| Asset | Amount | USD Value |", "|-------|--------|-----------|"]
     total_usd = 0
     for b in balances:
@@ -102,7 +102,7 @@ def fmt_table(rows: list[dict], columns: list[str] = None, title: str = "") -> s
     """Generic dict-list → markdown table"""
     if not rows:
         return f"{title}: No data" if title else "No data"
-    
+
     cols = columns or list(rows[0].keys())
     lines = []
     if title:
@@ -118,9 +118,12 @@ def fmt_table(rows: list[dict], columns: list[str] = None, title: str = "") -> s
 
 
 def _fmt_large(n: float) -> str:
-    if n >= 1e9: return f"{n/1e9:.1f}B"
-    if n >= 1e6: return f"{n/1e6:.1f}M"
-    if n >= 1e3: return f"{n/1e3:.1f}K"
+    if n >= 1e9:
+        return f"{n/1e9:.1f}B"
+    if n >= 1e6:
+        return f"{n/1e6:.1f}M"
+    if n >= 1e3:
+        return f"{n/1e3:.1f}K"
     return f"{n:.0f}"
 
 
@@ -129,7 +132,10 @@ def _fmt_amount(n) -> str:
         n = float(n)
     except (TypeError, ValueError):
         return str(n)
-    if n >= 1000: return f"{n:,.2f}"
-    if n >= 1: return f"{n:.4f}"
-    if n >= 0.0001: return f"{n:.6f}"
+    if n >= 1000:
+        return f"{n:,.2f}"
+    if n >= 1:
+        return f"{n:.4f}"
+    if n >= 0.0001:
+        return f"{n:.6f}"
     return f"{n:.8f}"

@@ -164,7 +164,7 @@ EXAMPLE_AFTER = '''
 TOOLS_TO_PATCH = [
     ("hl_account",    {"dex": "dex"}),
     ("hl_balances",   {}),
-    ("hl_open_orders",{"dex": "dex"}),
+    ("hl_open_orders", {"dex": "dex"}),
     ("hl_market",     {"coin": "coin"}),
     ("hl_orderbook",  {"coin": "coin"}),
     ("hl_fills",      {"coin": "coin"}),

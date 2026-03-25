@@ -16,7 +16,7 @@ import glob
 import pytest
 
 REPO_ROOT = os.path.join(os.path.dirname(__file__), "..")
-EXCLUDED = {"tests", "patches", "docs", "repo", "fork-workspace", "output",
+EXCLUDED = {"tests", "patches", "docs", "repo", "fork-workspace", "output", "utils",
             ".pytest_cache", "__pycache__", "node_modules", "shared"}
 
 # Collect all Python files from skill directories

@@ -11,7 +11,7 @@ Structured Error Taxonomy for Crypto Skills
 
 用法:
     from shared.errors import (
-        InsufficientBalanceError, RateLimitError, 
+        InsufficientBalanceError, RateLimitError,
         ChainError, safe_call
     )
 
@@ -36,7 +36,7 @@ class SkillError(Exception):
     code: str = "SKILL_ERROR"
     retryable: bool = False
 
-    def __init__(self, message: str, suggestion: str = "", 
+    def __init__(self, message: str, suggestion: str = "",
                  tool_name: str = "", **context):
         self.message = message
         self.suggestion = suggestion
@@ -138,12 +138,12 @@ class UnsupportedAssetError(UserInputError):
 class InsufficientBalanceError(SkillError):
     code = "INSUFFICIENT_BALANCE"
 
-    def __init__(self, available: float, required: float, 
+    def __init__(self, available: float, required: float,
                  asset: str = "", **kw):
-        suggestion = kw.pop('suggestion', 
-            f"Need {required - available:.4f} more {asset}. "
-            f"Deposit funds or reduce the amount."
-        )
+        suggestion = kw.pop('suggestion',
+                            f"Need {required - available:.4f} more {asset}. "
+                            f"Deposit funds or reduce the amount."
+                            )
         super().__init__(
             f"Insufficient {asset} balance",
             suggestion=suggestion,
@@ -158,7 +158,7 @@ class InsufficientGasError(InsufficientBalanceError):
     code = "INSUFFICIENT_GAS"
 
     def __init__(self, chain: str, available: float, estimated_gas: float, **kw):
-        native = {"ethereum": "ETH", "arbitrum": "ETH", "base": "ETH", 
+        native = {"ethereum": "ETH", "arbitrum": "ETH", "base": "ETH",
                   "optimism": "ETH", "polygon": "MATIC", "solana": "SOL"}.get(chain, "native token")
         super().__init__(
             available=available, required=estimated_gas, asset=native,
@@ -189,7 +189,7 @@ class TransactionRevertedError(ChainError):
 class SlippageExceededError(ChainError):
     code = "SLIPPAGE_EXCEEDED"
 
-    def __init__(self, expected_price: float, actual_price: float, 
+    def __init__(self, expected_price: float, actual_price: float,
                  max_slippage: float = None, **kw):
         actual_slippage = abs(actual_price - expected_price) / expected_price * 100
         super().__init__(
@@ -218,7 +218,7 @@ class NonceError(ChainError):
 
 # ── Safe Call Wrapper ────────────────────────────────────
 
-async def safe_call(fn, *args, tool_name: str = "", 
+async def safe_call(fn, *args, tool_name: str = "",
                     fallback_msg: str = "Operation failed", **kwargs):
     """
     Wrap any async function call with structured error handling.

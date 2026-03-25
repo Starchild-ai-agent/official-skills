@@ -2,7 +2,6 @@
 Integration test: Apply all patches to REAL tool output data.
 Data captured from live Starchild tool calls on 2026-03-25.
 """
-import json
 import sys
 
 from fix_liquidation import fix_liquidation_data, fix_liquidation_analysis
@@ -16,12 +15,14 @@ print("=" * 70)
 
 results = {"pass": 0, "fail": 0, "tests": []}
 
+
 def test(name, condition, detail=""):
     status = "PASS" if condition else "FAIL"
     results["pass" if condition else "fail"] += 1
     results["tests"].append({"name": name, "status": status, "detail": detail})
     icon = "✅" if condition else "❌"
     print(f"  {icon} {name}" + (f" — {detail}" if detail else ""))
+
 
 # ─── FIX-1: BTC Liquidation Data ───
 print("\n🔧 FIX-1: Liquidation Long/Short Split")
@@ -30,20 +31,43 @@ btc_liq = {
     "long_liquidations_usd": 0, "short_liquidations_usd": 0,
     "long_percent": 0, "short_percent": 0,
     "exchanges": [
-        {"exchange": "Hyperliquid", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 19309486.50839},
-        {"exchange": "Bybit", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 15334106.2764},
-        {"exchange": "HTX", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 13219810.8396},
-        {"exchange": "Binance", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 11303323.10456},
-        {"exchange": "Bitget", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 10888181.02209332},
-        {"exchange": "Gate", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 9571298.88745},
-        {"exchange": "OKX", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 4300397.56458},
+        {"exchange": "Hyperliquid", "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0, "total_liquidations_usd": 19309486.50839},
+        {
+            "exchange": "Bybit",
+            "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0,
+            "total_liquidations_usd": 15334106.2764
+        },
+        {
+            "exchange": "HTX",
+            "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0,
+            "total_liquidations_usd": 13219810.8396
+        },
+        {"exchange": "Binance", "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0, "total_liquidations_usd": 11303323.10456},
+        {"exchange": "Bitget", "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0, "total_liquidations_usd": 10888181.02209332},
+        {
+            "exchange": "Gate",
+            "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0,
+            "total_liquidations_usd": 9571298.88745
+        },
+        {
+            "exchange": "OKX",
+            "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0,
+            "total_liquidations_usd": 4300397.56458
+        },
     ]
 }
 
 fixed = fix_liquidation_data(btc_liq.copy())
 computed_total = sum(ex["total_liquidations_usd"] for ex in btc_liq["exchanges"])
 
-test("Total recomputed from exchanges", 
+test("Total recomputed from exchanges",
      abs(fixed["total_liquidations_usd"] - computed_total) < 1,
      f"${fixed['total_liquidations_usd']:,.0f}")
 
@@ -60,9 +84,20 @@ eth_liq = {
     "long_liquidations_usd": 0, "short_liquidations_usd": 0,
     "long_percent": 0, "short_percent": 0,
     "exchanges": [
-        {"exchange": "Binance", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 15853863.28789},
-        {"exchange": "HTX", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 9676122.1352},
-        {"exchange": "Bybit", "long_liquidations_usd": 0, "short_liquidations_usd": 0, "total_liquidations_usd": 7419534.0258},
+        {"exchange": "Binance", "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0, "total_liquidations_usd": 15853863.28789},
+        {
+            "exchange": "HTX",
+            "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0,
+            "total_liquidations_usd": 9676122.1352
+        },
+        {
+            "exchange": "Bybit",
+            "long_liquidations_usd": 0,
+            "short_liquidations_usd": 0,
+            "total_liquidations_usd": 7419534.0258
+        },
     ]
 }
 fixed_eth = fix_liquidation_data(eth_liq.copy())
@@ -106,8 +141,8 @@ test("Valid symbol → kept as API issue", err2["category"] == "possible_api_err
 # ─── FIX-5: Error Format Normalization ───
 print("\n🔧 FIX-5: Unified Error Format")
 norm1 = normalize_error("❌ Error: Failed to fetch data. Check COINGLASS_API_KEY.",
-                       tool_name="cg_open_interest", symbol="FAKECOIN")
-test("Normalized has error=True", norm1.get("error") == True)
+                        tool_name="cg_open_interest", symbol="FAKECOIN")
+test("Normalized has error=True", norm1.get("error") is True)
 test("Has category field", "category" in norm1)
 test("Has suggestion field", "suggestion" in norm1)
 
@@ -146,10 +181,10 @@ test("Hyperliquid 1h → 8h normalized",
      f"{entries[2]['rate']} → {entries[2]['rate_normalized_8h']}")
 
 test("Bitfinex interval inferred",
-     entries[3].get("_interval_inferred") == True)
+     entries[3].get("_interval_inferred") is True)
 
 test("HTX interval inferred",
-     entries[4].get("_interval_inferred") == True)
+     entries[4].get("_interval_inferred") is True)
 
 # ─── Summary ───
 print("\n" + "=" * 70)

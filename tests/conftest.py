@@ -1,29 +1,28 @@
-#!/usr/bin/env python3
-"""Shared pytest configuration and fixtures."""
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "patches"))
+"""
+Shared test configuration for coinglass skill tests.
 
-REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "repo")
+Stubs out core.http_client before any coinglass modules are imported,
+ensuring consistent mock behavior across all test files.
+"""
+import sys
+from types import ModuleType
+from unittest.mock import MagicMock
 
-import pytest
+# Only stub if not already stubbed
+if "core" not in sys.modules:
+    core_mod = ModuleType("core")
+    sys.modules["core"] = core_mod
 
-@pytest.fixture
-def repo_root():
-    return REPO_ROOT
+if "core.http_client" not in sys.modules:
+    http_mod = ModuleType("core.http_client")
+    http_mod.proxied_get = MagicMock()
+    sys.modules["core.http_client"] = http_mod
 
-@pytest.fixture
-def skill_path():
-    def _get(name):
-        return os.path.join(REPO_ROOT, name)
-    return _get
+if "core.tool" not in sys.modules:
+    sys.modules["core.tool"] = ModuleType("core.tool")
 
-@pytest.fixture
-def read_skill():
-    def _read(name, filename):
-        fpath = os.path.join(REPO_ROOT, name, filename)
-        if not os.path.exists(fpath):
-            return None
-        with open(fpath) as f:
-            return f.read()
-    return _read
+# Ensure the project root is on the path
+import os
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)

@@ -11,7 +11,7 @@ so small models get structured error messages with suggestions.
         validate_evm_address, validate_order_size,
         validate_leverage, validate_amount_vs_balance
     )
-    
+
     addr = validate_evm_address("0xabc...")  # returns checksummed
     validate_order_size(0.001, min_sz=0.00001, asset="BTC")
 """
@@ -48,7 +48,7 @@ def to_checksum_address(addr: str) -> str:
     """Convert to EIP-55 checksummed address."""
     addr_lower = addr[2:].lower()
     hash_hex = _keccak256(addr_lower.encode('utf-8')).hex()
-    
+
     result = '0x'
     for i, char in enumerate(addr_lower):
         if char in '0123456789':
@@ -66,11 +66,11 @@ def validate_evm_address(
     allow_zero: bool = False
 ) -> str:
     """Validate and return checksummed EVM address.
-    
+
     Raises ValidationError if:
     - Not valid hex format (0x + 40 hex chars)
     - Is zero address (unless allow_zero=True)
-    
+
     Returns checksummed address string.
     """
     if not addr or not isinstance(addr, str):
@@ -78,23 +78,23 @@ def validate_evm_address(
             f"Invalid {param_name}: empty or not a string. "
             f"Expected format: 0x followed by 40 hex characters."
         )
-    
+
     addr = addr.strip()
-    
+
     if not _HEX_ADDR.match(addr):
         raise ValueError(
             f"Invalid {param_name}: '{addr[:20]}...' is not a valid EVM address. "
             f"Expected: 0x + 40 hex characters (e.g., 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045). "
             f"→ Check for typos or extra characters."
         )
-    
+
     if addr.lower() == _ZERO_ADDR and not allow_zero:
         raise ValueError(
             f"Invalid {param_name}: zero address (0x000...000) detected. "
             f"Sending to zero address would burn funds permanently. "
             f"→ Double-check the destination address."
         )
-    
+
     return to_checksum_address(addr)
 
 
@@ -108,7 +108,7 @@ def validate_order_size(
     sz_decimals: Optional[int] = None,
 ) -> float:
     """Validate order size meets exchange minimums.
-    
+
     Args:
         size: Requested order size
         min_sz: Exchange's minimum size for this asset
@@ -121,19 +121,19 @@ def validate_order_size(
             f"Invalid order size: {size} {asset}. Size must be positive. "
             f"→ Check your amount calculation."
         )
-    
+
     if size < min_sz:
         raise ValueError(
             f"Order size {size} {asset} is below minimum {min_sz} {asset}. "
             f"→ Increase size to at least {min_sz} {asset}."
         )
-    
+
     if max_sz and size > max_sz:
         raise ValueError(
             f"Order size {size} {asset} exceeds maximum {max_sz} {asset}. "
             f"→ Reduce size or split into multiple orders."
         )
-    
+
     # Round to allowed decimals
     if sz_decimals is not None:
         size = round(size, sz_decimals)
@@ -142,7 +142,7 @@ def validate_order_size(
                 f"After rounding to {sz_decimals} decimals, size {size} < minSz {min_sz}. "
                 f"→ Use a larger size."
             )
-    
+
     return size
 
 
@@ -159,13 +159,13 @@ def validate_leverage(
             f"Invalid leverage: {leverage}x. Minimum is 1x. "
             f"→ Use leverage between 1x and {max_leverage}x."
         )
-    
+
     if leverage > max_leverage:
         raise ValueError(
             f"Leverage {leverage}x exceeds maximum {max_leverage}x for {asset}. "
             f"→ Reduce leverage to at most {max_leverage}x."
         )
-    
+
     return leverage
 
 
@@ -178,7 +178,7 @@ def validate_amount_vs_balance(
     reserve_pct: float = 0.0,
 ) -> float:
     """Validate amount doesn't exceed available balance.
-    
+
     Args:
         amount: Amount to spend/send
         balance: Available balance
@@ -189,9 +189,9 @@ def validate_amount_vs_balance(
         raise ValueError(
             f"Invalid amount: {amount} {asset}. Must be positive."
         )
-    
+
     effective_balance = balance * (1 - reserve_pct)
-    
+
     if amount > effective_balance:
         reserve_note = ""
         if reserve_pct > 0:
@@ -201,7 +201,7 @@ def validate_amount_vs_balance(
             f"Full balance: {balance:.6f} {asset}. "
             f"→ Reduce amount or deposit more {asset}."
         )
-    
+
     return amount
 
 
@@ -213,10 +213,10 @@ def parse_token_amount(
     token_symbol: str = "token",
 ) -> float:
     """Convert raw on-chain value to human-readable amount.
-    
+
     CRITICAL: Using wrong decimals causes catastrophic misrepresentation.
     - USDC/USDT: 6 decimals
-    - WBTC: 8 decimals  
+    - WBTC: 8 decimals
     - Most ERC-20: 18 decimals
     """
     if decimals < 0 or decimals > 77:
@@ -233,18 +233,18 @@ def to_raw_amount(
     token_symbol: str = "token",
 ) -> int:
     """Convert human-readable amount to raw on-chain value (wei/satoshi/etc).
-    
+
     Uses integer math to avoid float precision issues.
     """
     if decimals < 0 or decimals > 77:
         raise ValueError(f"Invalid decimals={decimals} for {token_symbol}.")
-    
+
     # Use string splitting to avoid float precision loss
     str_amount = f"{human_amount:.{decimals}f}"
     parts = str_amount.split(".")
     integer_part = int(parts[0]) * (10 ** decimals)
     decimal_part = int(parts[1]) if len(parts) > 1 else 0
-    
+
     return integer_part + decimal_part
 
 
@@ -260,6 +260,7 @@ KNOWN_CHAINS = {
     59144: "Linea",
     324: "zkSync Era",
 }
+
 
 def validate_chain_id(chain_id: int) -> int:
     """Validate chain ID is known. Warns on unknown chains."""

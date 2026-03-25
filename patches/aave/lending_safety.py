@@ -3,7 +3,7 @@ Aave Lending Safety Patches
 ============================
 Issues:
 1. No health factor warning before borrow
-2. No liquidation threshold education in error messages  
+2. No liquidation threshold education in error messages
 3. Missing "are you sure?" for risky operations
 """
 

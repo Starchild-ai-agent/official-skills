@@ -4,7 +4,8 @@ import sys, os, re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "patches"))
 
-REPO = os.path.join(os.path.dirname(__file__), "..", "repo", "polymarket")
+_base = os.path.join(os.path.dirname(__file__), "..")
+REPO = os.path.join(_base, "repo", "polymarket") if os.path.isdir(os.path.join(_base, "repo")) else os.path.join(_base, "polymarket")
 
 def test_polymarket_has_tools():
     tools_py = os.path.join(REPO, "tools.py")

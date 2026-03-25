@@ -3,7 +3,9 @@
 import sys, os, re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-REPO = os.path.join(os.path.dirname(__file__), "..", "repo")
+# Auto-detect: "repo" subdir (audit workspace) or root (fork)
+_base = os.path.join(os.path.dirname(__file__), "..")
+REPO = os.path.join(_base, "repo") if os.path.isdir(os.path.join(_base, "repo")) else _base
 SKILLS_WITH_TOOLS = [s for s in os.listdir(REPO) 
     if os.path.isdir(os.path.join(REPO, s)) 
     and os.path.exists(os.path.join(REPO, s, "tools.py"))]

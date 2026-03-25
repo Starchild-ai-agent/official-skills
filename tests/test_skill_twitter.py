@@ -3,7 +3,8 @@
 import sys, os, re
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-REPO = os.path.join(os.path.dirname(__file__), "..", "repo", "twitter")
+_base = os.path.join(os.path.dirname(__file__), "..")
+REPO = os.path.join(_base, "repo", "twitter") if os.path.isdir(os.path.join(_base, "repo")) else os.path.join(_base, "twitter")
 
 def test_twitter_has_tools():
     tools_py = os.path.join(REPO, "tools.py")

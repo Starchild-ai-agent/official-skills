@@ -162,6 +162,12 @@
       "path": "wallet-policy/SKILL.md",
       "version": "1.0.0",
       "description": "Generate Privy wallet policy rules from natural language. Use when the user wants to set up, modify, or review wallet security policies — transfer limits, address allowlists, method restrictions, time windows, etc."
+    },
+    {
+      "name": "woofi-bot",
+      "path": "woofi-bot/SKILL.md",
+      "version": "5.0.0",
+      "description": "Complete WOOFi bot — DEX analytics, swap quotes, swap execution — DEX analytics, swap quotes, swap execution with tx generation, pool states, protocol revenue across 16 chains. Updated from woonetwork/woofi-skills v1.1."
     }
   ]
 }

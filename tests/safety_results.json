@@ -20,7 +20,7 @@
     {
       "test": "hl_price_staleness",
       "status": "PASS",
-      "detail": "Price @t1=71153.5 @t2=71153.5 changed=False. Skills should check freshness for time-sensitive operations."
+      "detail": "Price @t1=71786.5 @t2=71773.5 changed=True. Skills should check freshness for time-sensitive operations."
     },
     {
       "test": "hl_spot_meta",
@@ -50,7 +50,7 @@
     {
       "test": "zero_address_balance",
       "status": "PASS",
-      "detail": "Zero addr has 14135.6329 ETH. Skills should reject 0x0 as destination."
+      "detail": "Zero addr has 14135.6332 ETH. Skills should reject 0x0 as destination."
     }
   ]
 }

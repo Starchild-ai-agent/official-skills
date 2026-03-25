@@ -9,7 +9,6 @@ Tests validate:
 """
 import ast
 import os
-import sys
 
 import pytest
 

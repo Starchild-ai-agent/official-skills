@@ -3,13 +3,12 @@ import json
 import sys
 import os
 
-import pytest
 
 # Add patches to import path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "patches", "live"))
 
 
-from fix_error_format import normalize_error, _is_error, _classify, _build_error
+from fix_error_format import normalize_error, _is_error, _classify, _build_error  # noqa: E402
 
 
 class TestNormalizeError:

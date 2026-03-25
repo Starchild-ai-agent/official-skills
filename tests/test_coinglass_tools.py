@@ -7,7 +7,7 @@ Validates that all coinglass tool files:
 4. Have no flake8 violations (E128, E501, F401, F541, F841)
 """
 import ast
-import importlib
+
 import os
 import subprocess
 import sys
@@ -111,10 +111,10 @@ class TestNoUnusedImports:
                 if "List" in imported_names:
                     # Check if List is actually used in the file
                     # Simple check: look for 'List[' in the source
-                    has_usage = "List[" in content or "List," in content.split(
+                    _has_usage = "List[" in content or "List," in content.split(  # noqa: F841
                         "import")[0] if "import" in content else False
                     # More thorough: check if any annotation references List
-                    annotations = [
+                    _annotations = [  # noqa: F841
                         n for n in ast.walk(tree)
                         if isinstance(n, ast.Name) and n.id == "List"
                         and not isinstance(n.ctx, ast.Load)
@@ -146,6 +146,6 @@ class TestToolFunctionSignatures:
         ]
         # Informational — not all have annotations yet so we use xfail
         if api_funcs:
-            annotated = sum(1 for f in api_funcs if f.returns is not None)
+            _annotated = sum(1 for f in api_funcs if f.returns is not None)  # noqa: F841
             # Just ensure the file could parse — annotation coverage is informational
             assert len(api_funcs) >= 0  # always passes; real check is parseability

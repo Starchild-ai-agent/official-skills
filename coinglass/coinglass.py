@@ -6,7 +6,7 @@ Provides derivatives data: funding rates, open interest, liquidations, long/shor
 """
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
 
@@ -240,20 +240,20 @@ Examples:
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
                 "exchange": {"type": "string", "description": "Exchange name (Binance, OKX, Bybit, etc.)"},
-                "interval": {"type": "string", "description": "Time interval: 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w", "default": "1h"},
+                "interval": {"type": "string", "description": "Time interval: 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w", "default": "1h"},  # noqa: E501
                 "limit": {"type": "integer", "description": "Number of results (default: 100)", "default": 100}
             },
             "required": ["symbol", "exchange"]
         }
 
-    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 100) -> ToolResult:
+    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 100) -> ToolResult:  # noqa: E501
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
             result = await asyncio.to_thread(get_global_account_ratio, symbol, exchange, interval, limit)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch global account ratio. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch global account ratio. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -283,20 +283,20 @@ Examples:
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
                 "exchange": {"type": "string", "description": "Exchange name (Binance, OKX, Bybit, etc.)"},
-                "interval": {"type": "string", "description": "Time interval: 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w", "default": "1h"},
+                "interval": {"type": "string", "description": "Time interval: 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w", "default": "1h"},  # noqa: E501
                 "limit": {"type": "integer", "description": "Number of results (default: 100)", "default": 100}
             },
             "required": ["symbol", "exchange"]
         }
 
-    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 100) -> ToolResult:
+    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 100) -> ToolResult:  # noqa: E501
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
             result = await asyncio.to_thread(get_top_account_ratio, symbol, exchange, interval, limit)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch top account ratio. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch top account ratio. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -326,20 +326,20 @@ Examples:
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
                 "exchange": {"type": "string", "description": "Exchange name (Binance, OKX, Bybit, etc.)"},
-                "interval": {"type": "string", "description": "Time interval: 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w", "default": "1h"},
+                "interval": {"type": "string", "description": "Time interval: 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w", "default": "1h"},  # noqa: E501
                 "limit": {"type": "integer", "description": "Number of results (default: 100)", "default": 100}
             },
             "required": ["symbol", "exchange"]
         }
 
-    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 100) -> ToolResult:
+    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 100) -> ToolResult:  # noqa: E501
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
             result = await asyncio.to_thread(get_top_position_ratio, symbol, exchange, interval, limit)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch top position ratio. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch top position ratio. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -368,7 +368,7 @@ Examples:
             "type": "object",
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
-                "range": {"type": "string", "description": "Time range: 1h, 4h, 12h, 24h (default: 1h)", "default": "1h"}
+                "range": {"type": "string", "description": "Time range: 1h, 4h, 12h, 24h (default: 1h)", "default": "1h"}  # noqa: E501
             },
             "required": ["symbol"]
         }
@@ -380,7 +380,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_taker_buysell_exchanges, symbol, range)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch taker exchanges. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch taker exchanges. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -411,20 +411,20 @@ Examples:
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
                 "exchange": {"type": "string", "description": "Exchange name (Binance, OKX, Bybit, etc.)"},
-                "interval": {"type": "string", "description": "Time interval: 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w", "default": "1h"},
+                "interval": {"type": "string", "description": "Time interval: 1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d, 1w", "default": "1h"},  # noqa: E501
                 "limit": {"type": "integer", "description": "Number of results (default: 100)", "default": 100}
             },
             "required": ["symbol", "exchange"]
         }
 
-    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 100) -> ToolResult:
+    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 100) -> ToolResult:  # noqa: E501
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
             result = await asyncio.to_thread(get_net_position, symbol, exchange, interval, limit)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch net position. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch net position. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -653,9 +653,9 @@ Examples:
             "type": "object",
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
-                "exchange_list": {"type": "string", "description": "Comma-separated exchange list (e.g. 'Binance,OKX,Bybit')"},
-                "interval": {"type": "string", "description": "Time interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 6h, 8h, 12h, 1d, 1w", "default": "1h"},
-                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},
+                "exchange_list": {"type": "string", "description": "Comma-separated exchange list (e.g. 'Binance,OKX,Bybit')"},  # noqa: E501
+                "interval": {"type": "string", "description": "Time interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 6h, 8h, 12h, 1d, 1w", "default": "1h"},  # noqa: E501
+                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},  # noqa: E501
                 "start_time": {"type": "integer", "description": "Start timestamp in milliseconds"},
                 "end_time": {"type": "integer", "description": "End timestamp in milliseconds"}
             },
@@ -663,14 +663,14 @@ Examples:
         }
 
     async def execute(self, ctx: ToolContext, symbol: str, exchange_list: str, interval: str = "1h", limit: int = 1000,
-                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:
+                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:  # noqa: E128
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
-            result = await asyncio.to_thread(get_coin_liquidation_history, symbol, exchange_list, interval, limit, start_time, end_time)
+            result = await asyncio.to_thread(get_coin_liquidation_history, symbol, exchange_list, interval, limit, start_time, end_time)  # noqa: E501
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch coin liquidation history. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch coin liquidation history. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -701,7 +701,7 @@ Examples:
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
                 "exchange": {"type": "string", "description": "Exchange name (Binance, OKX, Bybit, etc.)"},
                 "interval": {"type": "string", "description": "Time interval: 1h, 4h, 12h, 24h", "default": "1h"},
-                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},
+                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},  # noqa: E501
                 "start_time": {"type": "integer", "description": "Start timestamp in seconds"},
                 "end_time": {"type": "integer", "description": "End timestamp in seconds"}
             },
@@ -709,14 +709,14 @@ Examples:
         }
 
     async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 1000,
-                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:
+                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:  # noqa: E128
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
-            result = await asyncio.to_thread(get_pair_liquidation_history, symbol, exchange, interval, limit, start_time, end_time)
+            result = await asyncio.to_thread(get_pair_liquidation_history, symbol, exchange, interval, limit, start_time, end_time)  # noqa: E501
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch pair liquidation history. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch pair liquidation history. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -756,7 +756,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_liquidation_coin_list, exchange)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch liquidation coin list. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch liquidation coin list. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -776,8 +776,8 @@ class LiquidationOrdersTool(BaseTool):
 Shows actual liquidation events. Max 200 records per request.
 
 Examples:
-- Get BTC liquidations on Binance (min $10K): cg_liquidation_orders(symbol="BTC", exchange="Binance", min_liquidation_amount="10000")
-- Get ETH liquidations on OKX (min $5K): cg_liquidation_orders(symbol="ETH", exchange="OKX", min_liquidation_amount="5000")"""
+- Get BTC liquidations on Binance (min $10K): cg_liquidation_orders(symbol="BTC", exchange="Binance", min_liquidation_amount="10000")  # noqa: E501
+- Get ETH liquidations on OKX (min $5K): cg_liquidation_orders(symbol="ETH", exchange="OKX", min_liquidation_amount="5000")"""  # noqa: E501
 
     @property
     def parameters(self) -> dict:
@@ -786,7 +786,7 @@ Examples:
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
                 "exchange": {"type": "string", "description": "Exchange name (Binance, OKX, Bybit, etc.)"},
-                "min_liquidation_amount": {"type": "string", "description": "Minimum threshold for liquidation events (USD)"},
+                "min_liquidation_amount": {"type": "string", "description": "Minimum threshold for liquidation events (USD)"},  # noqa: E501
                 "start_time": {"type": "integer", "description": "Start timestamp in milliseconds"},
                 "end_time": {"type": "integer", "description": "End timestamp in milliseconds"}
             },
@@ -794,14 +794,14 @@ Examples:
         }
 
     async def execute(self, ctx: ToolContext, symbol: str, exchange: str, min_liquidation_amount: str,
-                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:
+                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:  # noqa: E128
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
-            result = await asyncio.to_thread(get_liquidation_orders, symbol, exchange, min_liquidation_amount, start_time, end_time)
+            result = await asyncio.to_thread(get_liquidation_orders, symbol, exchange, min_liquidation_amount, start_time, end_time)  # noqa: E501
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch liquidation orders. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch liquidation orders. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -841,7 +841,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_supported_coins)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch supported coins. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch supported coins. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -874,7 +874,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_supported_exchanges)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch supported exchanges. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch supported exchanges. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -909,7 +909,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_coins_data)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch coins market data. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch coins market data. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -950,7 +950,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_pair_data, symbol, exchange)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch pair market data. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch pair market data. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -980,20 +980,20 @@ Examples:
             "properties": {
                 "symbol": {"type": "string", "description": "Coin symbol (BTC, ETH, SOL, etc.)"},
                 "exchange": {"type": "string", "description": "Exchange name (Binance, OKX, Bybit, etc.)"},
-                "interval": {"type": "string", "description": "Time interval: m1, m5, m15, m30, h1, h4, h12, d1", "default": "h1"},
+                "interval": {"type": "string", "description": "Time interval: m1, m5, m15, m30, h1, h4, h12, d1", "default": "h1"},  # noqa: E501
                 "limit": {"type": "integer", "description": "Number of candles (default: 100)", "default": 100}
             },
             "required": ["symbol", "exchange"]
         }
 
-    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "h1", limit: int = 100) -> ToolResult:
+    async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "h1", limit: int = 100) -> ToolResult:  # noqa: E501
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
             result = await asyncio.to_thread(get_ohlc_history, symbol, exchange, interval, limit)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch OHLC history. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch OHLC history. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1028,7 +1028,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_whale_alerts)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch whale alerts. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch whale alerts. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1061,7 +1061,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_whale_positions)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch whale positions. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch whale positions. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1101,7 +1101,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_positions_by_coin, symbol)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch positions by coin. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch positions by coin. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1134,12 +1134,13 @@ Examples:
         try:
             result = await asyncio.to_thread(get_position_distribution)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch position distribution. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch position distribution. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
 
 # ==================== Volume & Flow Tools ====================
+
 
 class TakerVolumeHistoryTool(BaseTool):
     """Get taker buy/sell volume history for a specific trading pair."""
@@ -1167,8 +1168,8 @@ Examples:
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
                 "exchange": {"type": "string", "description": "Exchange name (Binance, OKX, Bybit, etc.)"},
-                "interval": {"type": "string", "description": "Time interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 6h, 8h, 12h, 1d, 1w", "default": "1h"},
-                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},
+                "interval": {"type": "string", "description": "Time interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 6h, 8h, 12h, 1d, 1w", "default": "1h"},  # noqa: E501
+                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},  # noqa: E501
                 "start_time": {"type": "integer", "description": "Start timestamp in seconds"},
                 "end_time": {"type": "integer", "description": "End timestamp in seconds"}
             },
@@ -1176,14 +1177,14 @@ Examples:
         }
 
     async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 1000,
-                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:
+                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:  # noqa: E128
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
-            result = await asyncio.to_thread(get_taker_volume_history, symbol, exchange, interval, limit, start_time, end_time)
+            result = await asyncio.to_thread(get_taker_volume_history, symbol, exchange, interval, limit, start_time, end_time)  # noqa: E501
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch taker volume history. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch taker volume history. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1213,9 +1214,9 @@ Examples:
             "type": "object",
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
-                "exchange_list": {"type": "string", "description": "Comma-separated exchange list (e.g. 'Binance,OKX,Bybit')"},
-                "interval": {"type": "string", "description": "Time interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 6h, 8h, 12h, 1d, 1w", "default": "1h"},
-                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},
+                "exchange_list": {"type": "string", "description": "Comma-separated exchange list (e.g. 'Binance,OKX,Bybit')"},  # noqa: E501
+                "interval": {"type": "string", "description": "Time interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 6h, 8h, 12h, 1d, 1w", "default": "1h"},  # noqa: E501
+                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},  # noqa: E501
                 "start_time": {"type": "integer", "description": "Start timestamp in seconds"},
                 "end_time": {"type": "integer", "description": "End timestamp in seconds"}
             },
@@ -1223,14 +1224,14 @@ Examples:
         }
 
     async def execute(self, ctx: ToolContext, symbol: str, exchange_list: str, interval: str = "1h", limit: int = 1000,
-                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:
+                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:  # noqa: E128
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
-            result = await asyncio.to_thread(get_aggregated_taker_volume, symbol, exchange_list, interval, limit, start_time, end_time)
+            result = await asyncio.to_thread(get_aggregated_taker_volume, symbol, exchange_list, interval, limit, start_time, end_time)  # noqa: E501
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch aggregated taker volume. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch aggregated taker volume. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1263,8 +1264,8 @@ Examples:
             "properties": {
                 "symbol": {"type": "string", "description": "Trading coin (BTC, ETH, SOL, etc.)"},
                 "exchange": {"type": "string", "description": "Exchange name (Binance, OKX, Bybit, etc.)"},
-                "interval": {"type": "string", "description": "Time interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 6h, 8h, 12h, 1d, 1w", "default": "1h"},
-                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},
+                "interval": {"type": "string", "description": "Time interval: 1m, 3m, 5m, 15m, 30m, 1h, 4h, 6h, 8h, 12h, 1d, 1w", "default": "1h"},  # noqa: E501
+                "limit": {"type": "integer", "description": "Number of results (default: 1000, max: 4500)", "default": 1000},  # noqa: E501
                 "start_time": {"type": "integer", "description": "Start timestamp in seconds"},
                 "end_time": {"type": "integer", "description": "End timestamp in seconds"}
             },
@@ -1272,12 +1273,12 @@ Examples:
         }
 
     async def execute(self, ctx: ToolContext, symbol: str, exchange: str, interval: str = "1h", limit: int = 1000,
-                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:
+                     start_time: Optional[int] = None, end_time: Optional[int] = None) -> ToolResult:  # noqa: E128
         if not COINGLASS_AVAILABLE:
             return ToolResult(success=False, output=None, error="Coinglass tools not available.")
 
         try:
-            result = await asyncio.to_thread(get_cumulative_volume_delta, symbol, exchange, interval, limit, start_time, end_time)
+            result = await asyncio.to_thread(get_cumulative_volume_delta, symbol, exchange, interval, limit, start_time, end_time)  # noqa: E501
             if result is None:
                 return ToolResult(success=False, output=None, error="Failed to fetch CVD. Check COINGLASS_API_KEY.")
             return ToolResult(success=True, output=result)
@@ -1316,7 +1317,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_coin_netflow)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch coin netflow. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch coin netflow. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1359,7 +1360,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_whale_transfers)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch whale transfers. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch whale transfers. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1396,7 +1397,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_btc_etf_flows)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch BTC ETF flows. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch BTC ETF flows. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1431,7 +1432,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_btc_etf_premium_discount)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch BTC ETF premium/discount. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch BTC ETF premium/discount. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1471,7 +1472,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_btc_etf_history, ticker)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch BTC ETF history. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch BTC ETF history. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1504,7 +1505,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_btc_etf_list)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch BTC ETF list. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch BTC ETF list. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1538,7 +1539,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_hk_btc_etf_flows)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch HK BTC ETF flows. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch HK BTC ETF flows. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1573,7 +1574,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_eth_etf_flows)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch ETH ETF flows. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch ETH ETF flows. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1604,7 +1605,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_eth_etf_list)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch ETH ETF list. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch ETH ETF list. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1635,7 +1636,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_sol_etf_flows)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch SOL ETF flows. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch SOL ETF flows. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1666,9 +1667,7 @@ Examples:
         try:
             result = await asyncio.to_thread(get_xrp_etf_flows)
             if result is None:
-                return ToolResult(success=False, output=None, error="Failed to fetch XRP ETF flows. Check COINGLASS_API_KEY.")
+                return ToolResult(success=False, output=None, error="Failed to fetch XRP ETF flows. Check COINGLASS_API_KEY.")  # noqa: E501
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
-
-

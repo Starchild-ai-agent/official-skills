@@ -23,10 +23,11 @@ class ModelTier(Enum):
 
 # Pre-tuned weight profiles per model tier
 # Format: (w_task, w_efficiency, w_cost, w_density)
+# Aaron spec v2: ω₄=5 for small models, ω₂=3 for small (instruction drift)
 MODEL_WEIGHT_PROFILES = {
     ModelTier.LARGE: (10.0, 2.0, 1.0, 1.0),
-    ModelTier.MEDIUM: (10.0, 2.5, 1.0, 2.5),
-    ModelTier.SMALL: (10.0, 3.0, 1.0, 4.0),
+    ModelTier.MEDIUM: (10.0, 2.5, 1.0, 3.0),
+    ModelTier.SMALL: (10.0, 3.0, 1.0, 5.0),
 }
 
 

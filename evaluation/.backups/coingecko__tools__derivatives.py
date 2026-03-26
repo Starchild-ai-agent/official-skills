@@ -188,46 +188,43 @@ def get_derivatives_exchanges(
 
 
 def get_categories(order: str = "market_cap_desc") -> Dict[str, Any]:
-    try:
-        """
-        Get coin categories with market data.
+    """
+    Get coin categories with market data.
 
-        Args:
-            order: Sort order (market_cap_desc, market_cap_change_24h_desc, etc.)
+    Args:
+        order: Sort order (market_cap_desc, market_cap_change_24h_desc, etc.)
 
-        Returns:
-            Dictionary with coin categories
-        """
-        api_key = get_api_key()
+    Returns:
+        Dictionary with coin categories
+    """
+    api_key = get_api_key()
 
-        url = "https://pro-api.coingecko.com/api/v3/coins/categories"
-        headers = {"x-cg-pro-api-key": api_key}
-        params = {"order": order}
+    url = "https://pro-api.coingecko.com/api/v3/coins/categories"
+    headers = {"x-cg-pro-api-key": api_key}
+    params = {"order": order}
 
-        response = proxied_get(url, headers=headers, params=params, timeout=15)
-        response.raise_for_status()
-        data = response.json()
+    response = proxied_get(url, headers=headers, params=params, timeout=15)
+    response.raise_for_status()
+    data = response.json()
 
-        categories = []
-        for item in data:
-            categories.append({
-                "id": item.get("id", ""),
-                "name": item.get("name", ""),
-                "market_cap": item.get("market_cap"),
-                "market_cap_change_24h": item.get("market_cap_change_24h"),
-                "content": item.get("content"),
-                "top_3_coins": item.get("top_3_coins", []),
-                "volume_24h": item.get("volume_24h"),
-                "updated_at": item.get("updated_at")
-            })
+    categories = []
+    for item in data:
+        categories.append({
+            "id": item.get("id", ""),
+            "name": item.get("name", ""),
+            "market_cap": item.get("market_cap"),
+            "market_cap_change_24h": item.get("market_cap_change_24h"),
+            "content": item.get("content"),
+            "top_3_coins": item.get("top_3_coins", []),
+            "volume_24h": item.get("volume_24h"),
+            "updated_at": item.get("updated_at")
+        })
 
-        return {
-            "categories": categories,
-            "count": len(categories),
-            "order": order
-        }
-    except Exception as e:
-        return {"error": str(e), "skill": "coingecko", "function": "get_categories"}
+    return {
+        "categories": categories,
+        "count": len(categories),
+        "order": order
+    }
 
 
 def main():

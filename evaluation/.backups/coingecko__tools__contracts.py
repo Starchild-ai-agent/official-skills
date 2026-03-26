@@ -86,94 +86,91 @@ def get_coin_by_contract(
     platform: str,
     contract_address: str
 ) -> Dict[str, Any]:
-    try:
-        """
-        Get coin data by contract address.
+    """
+    Get coin data by contract address.
 
-        Args:
-            platform: Asset platform id (ethereum, solana, polygon-pos, etc.)
-            contract_address: Token contract address
+    Args:
+        platform: Asset platform id (ethereum, solana, polygon-pos, etc.)
+        contract_address: Token contract address
 
-        Returns:
-            Dictionary with coin data
-        """
-        api_key = get_api_key()
+    Returns:
+        Dictionary with coin data
+    """
+    api_key = get_api_key()
 
-        url = f"https://pro-api.coingecko.com/api/v3/coins/{platform}/contract/{contract_address}"
-        headers = {"x-cg-pro-api-key": api_key}
+    url = f"https://pro-api.coingecko.com/api/v3/coins/{platform}/contract/{contract_address}"
+    headers = {"x-cg-pro-api-key": api_key}
 
-        response = proxied_get(url, headers=headers, timeout=30)
-        response.raise_for_status()
-        data = response.json()
+    response = proxied_get(url, headers=headers, timeout=30)
+    response.raise_for_status()
+    data = response.json()
 
-        result = {
-            "id": data.get("id", ""),
-            "symbol": data.get("symbol", "").upper(),
-            "name": data.get("name", ""),
-            "asset_platform_id": data.get("asset_platform_id"),
-            "platforms": data.get("platforms", {}),
-            "block_time_in_minutes": data.get("block_time_in_minutes"),
-            "hashing_algorithm": data.get("hashing_algorithm"),
-            "categories": data.get("categories", []),
-            "description": data.get("description", {}).get("en", ""),
-            "links": {
-                "homepage": data.get("links", {}).get("homepage", []),
-                "blockchain_site": data.get("links", {}).get("blockchain_site", []),
-                "twitter_screen_name": data.get("links", {}).get("twitter_screen_name"),
-                "telegram_channel_identifier": data.get("links", {}).get("telegram_channel_identifier"),
-                "subreddit_url": data.get("links", {}).get("subreddit_url")
-            },
-            "image": data.get("image", {}),
-            "country_origin": data.get("country_origin"),
-            "genesis_date": data.get("genesis_date"),
-            "contract_address": data.get("contract_address"),
-            "sentiment_votes_up_percentage": data.get("sentiment_votes_up_percentage"),
-            "sentiment_votes_down_percentage": data.get("sentiment_votes_down_percentage"),
-            "market_cap_rank": data.get("market_cap_rank"),
-            "coingecko_rank": data.get("coingecko_rank"),
-            "coingecko_score": data.get("coingecko_score"),
-            "developer_score": data.get("developer_score"),
-            "community_score": data.get("community_score"),
-            "liquidity_score": data.get("liquidity_score"),
-            "public_interest_score": data.get("public_interest_score"),
-            "last_updated": data.get("last_updated")
+    result = {
+        "id": data.get("id", ""),
+        "symbol": data.get("symbol", "").upper(),
+        "name": data.get("name", ""),
+        "asset_platform_id": data.get("asset_platform_id"),
+        "platforms": data.get("platforms", {}),
+        "block_time_in_minutes": data.get("block_time_in_minutes"),
+        "hashing_algorithm": data.get("hashing_algorithm"),
+        "categories": data.get("categories", []),
+        "description": data.get("description", {}).get("en", ""),
+        "links": {
+            "homepage": data.get("links", {}).get("homepage", []),
+            "blockchain_site": data.get("links", {}).get("blockchain_site", []),
+            "twitter_screen_name": data.get("links", {}).get("twitter_screen_name"),
+            "telegram_channel_identifier": data.get("links", {}).get("telegram_channel_identifier"),
+            "subreddit_url": data.get("links", {}).get("subreddit_url")
+        },
+        "image": data.get("image", {}),
+        "country_origin": data.get("country_origin"),
+        "genesis_date": data.get("genesis_date"),
+        "contract_address": data.get("contract_address"),
+        "sentiment_votes_up_percentage": data.get("sentiment_votes_up_percentage"),
+        "sentiment_votes_down_percentage": data.get("sentiment_votes_down_percentage"),
+        "market_cap_rank": data.get("market_cap_rank"),
+        "coingecko_rank": data.get("coingecko_rank"),
+        "coingecko_score": data.get("coingecko_score"),
+        "developer_score": data.get("developer_score"),
+        "community_score": data.get("community_score"),
+        "liquidity_score": data.get("liquidity_score"),
+        "public_interest_score": data.get("public_interest_score"),
+        "last_updated": data.get("last_updated")
+    }
+
+    # Include market data if available
+    if "market_data" in data:
+        md = data["market_data"]
+        result["market_data"] = {
+            "current_price": md.get("current_price", {}),
+            "ath": md.get("ath", {}),
+            "ath_change_percentage": md.get("ath_change_percentage", {}),
+            "ath_date": md.get("ath_date", {}),
+            "atl": md.get("atl", {}),
+            "atl_change_percentage": md.get("atl_change_percentage", {}),
+            "atl_date": md.get("atl_date", {}),
+            "market_cap": md.get("market_cap", {}),
+            "market_cap_rank": md.get("market_cap_rank"),
+            "fully_diluted_valuation": md.get("fully_diluted_valuation", {}),
+            "total_volume": md.get("total_volume", {}),
+            "high_24h": md.get("high_24h", {}),
+            "low_24h": md.get("low_24h", {}),
+            "price_change_24h": md.get("price_change_24h"),
+            "price_change_percentage_24h": md.get("price_change_percentage_24h"),
+            "price_change_percentage_7d": md.get("price_change_percentage_7d"),
+            "price_change_percentage_14d": md.get("price_change_percentage_14d"),
+            "price_change_percentage_30d": md.get("price_change_percentage_30d"),
+            "price_change_percentage_60d": md.get("price_change_percentage_60d"),
+            "price_change_percentage_200d": md.get("price_change_percentage_200d"),
+            "price_change_percentage_1y": md.get("price_change_percentage_1y"),
+            "market_cap_change_24h": md.get("market_cap_change_24h"),
+            "market_cap_change_percentage_24h": md.get("market_cap_change_percentage_24h"),
+            "total_supply": md.get("total_supply"),
+            "max_supply": md.get("max_supply"),
+            "circulating_supply": md.get("circulating_supply")
         }
 
-        # Include market data if available
-        if "market_data" in data:
-            md = data["market_data"]
-            result["market_data"] = {
-                "current_price": md.get("current_price", {}),
-                "ath": md.get("ath", {}),
-                "ath_change_percentage": md.get("ath_change_percentage", {}),
-                "ath_date": md.get("ath_date", {}),
-                "atl": md.get("atl", {}),
-                "atl_change_percentage": md.get("atl_change_percentage", {}),
-                "atl_date": md.get("atl_date", {}),
-                "market_cap": md.get("market_cap", {}),
-                "market_cap_rank": md.get("market_cap_rank"),
-                "fully_diluted_valuation": md.get("fully_diluted_valuation", {}),
-                "total_volume": md.get("total_volume", {}),
-                "high_24h": md.get("high_24h", {}),
-                "low_24h": md.get("low_24h", {}),
-                "price_change_24h": md.get("price_change_24h"),
-                "price_change_percentage_24h": md.get("price_change_percentage_24h"),
-                "price_change_percentage_7d": md.get("price_change_percentage_7d"),
-                "price_change_percentage_14d": md.get("price_change_percentage_14d"),
-                "price_change_percentage_30d": md.get("price_change_percentage_30d"),
-                "price_change_percentage_60d": md.get("price_change_percentage_60d"),
-                "price_change_percentage_200d": md.get("price_change_percentage_200d"),
-                "price_change_percentage_1y": md.get("price_change_percentage_1y"),
-                "market_cap_change_24h": md.get("market_cap_change_24h"),
-                "market_cap_change_percentage_24h": md.get("market_cap_change_percentage_24h"),
-                "total_supply": md.get("total_supply"),
-                "max_supply": md.get("max_supply"),
-                "circulating_supply": md.get("circulating_supply")
-            }
-
-        return result
-    except Exception as e:
-        return {"error": str(e), "skill": "coingecko", "function": "get_coin_by_contract"}
+    return result
 
 
 def main():

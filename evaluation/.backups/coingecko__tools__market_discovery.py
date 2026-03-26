@@ -204,37 +204,34 @@ def get_top_gainers_losers(
 
 
 def get_new_coins() -> Dict[str, Any]:
-    try:
-        """
-        Get recently added coins to CoinGecko.
+    """
+    Get recently added coins to CoinGecko.
 
-        Returns:
-            Dictionary with list of newly added coins
-        """
-        api_key = get_api_key()
+    Returns:
+        Dictionary with list of newly added coins
+    """
+    api_key = get_api_key()
 
-        url = "https://pro-api.coingecko.com/api/v3/coins/list/new"
-        headers = {"x-cg-pro-api-key": api_key}
+    url = "https://pro-api.coingecko.com/api/v3/coins/list/new"
+    headers = {"x-cg-pro-api-key": api_key}
 
-        response = proxied_get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-        data = response.json()
+    response = proxied_get(url, headers=headers, timeout=15)
+    response.raise_for_status()
+    data = response.json()
 
-        coins = []
-        for coin in data:
-            coins.append({
-                "id": coin.get("id", ""),
-                "symbol": coin.get("symbol", "").upper(),
-                "name": coin.get("name", ""),
-                "activated_at": coin.get("activated_at")
-            })
+    coins = []
+    for coin in data:
+        coins.append({
+            "id": coin.get("id", ""),
+            "symbol": coin.get("symbol", "").upper(),
+            "name": coin.get("name", ""),
+            "activated_at": coin.get("activated_at")
+        })
 
-        return {
-            "new_coins": coins,
-            "count": len(coins)
-        }
-    except Exception as e:
-        return {"error": str(e), "skill": "coingecko", "function": "get_new_coins"}
+    return {
+        "new_coins": coins,
+        "count": len(coins)
+    }
 
 
 def main():

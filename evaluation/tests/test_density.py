@@ -133,7 +133,7 @@ class TestModelProfiles:
     def test_apply_model_profile(self):
         cfg = _make_config()
         cfg.apply_model_profile(ModelTier.SMALL)
-        assert cfg.w_density == 4.0
+        assert cfg.w_density == 5.0
         assert cfg.w_efficiency == 3.0
         assert cfg.density.t_safe == 6000
         assert cfg.density.t_limit == 32000
@@ -141,7 +141,7 @@ class TestModelProfiles:
     def test_apply_model_profile_medium(self):
         cfg = _make_config()
         cfg.apply_model_profile(ModelTier.MEDIUM)
-        assert cfg.w_density == 2.5
+        assert cfg.w_density == 3.0
         assert cfg.w_efficiency == 2.5
 
     def test_density_config_for_tier(self):
@@ -284,7 +284,7 @@ class TestDensityConfigSerialization:
 
         loaded = EvalConfig.load(path)
         assert loaded.model_tier == ModelTier.SMALL
-        assert loaded.w_density == 4.0
+        assert loaded.w_density == 5.0
         assert loaded.density.t_safe == 6000
         assert loaded.density.t_limit == 32000
 

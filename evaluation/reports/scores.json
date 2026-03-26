@@ -1,0 +1,194 @@
+[
+  {
+    "name": "coingecko",
+    "grade": "F",
+    "total_loss": 12.1997,
+    "breakdown": {
+      "l_task": 0.7826,
+      "l_efficiency": 0.5294,
+      "l_cost": 0.5485,
+      "l_density": 0.4474
+    },
+    "dominant": "task",
+    "findings_count": 59,
+    "file_count": 16,
+    "total_lines": 5985,
+    "skill_md_tokens": 912
+  },
+  {
+    "name": "twitter",
+    "grade": "D",
+    "total_loss": 3.0663,
+    "breakdown": {
+      "l_task": 0.1667,
+      "l_efficiency": 0.25,
+      "l_cost": 0.0133,
+      "l_density": 0.1273
+    },
+    "dominant": "task",
+    "findings_count": 2,
+    "file_count": 3,
+    "total_lines": 633,
+    "skill_md_tokens": 1283
+  },
+  {
+    "name": "coinglass",
+    "grade": "C",
+    "total_loss": 2.7966,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.5271,
+      "l_density": 0.4539
+    },
+    "dominant": "density",
+    "findings_count": 41,
+    "file_count": 15,
+    "total_lines": 5771,
+    "skill_md_tokens": 3600
+  },
+  {
+    "name": "hyperliquid",
+    "grade": "C",
+    "total_loss": 2.574,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.274,
+      "l_density": 0.46
+    },
+    "dominant": "density",
+    "findings_count": 8,
+    "file_count": 4,
+    "total_lines": 3240,
+    "skill_md_tokens": 4606
+  },
+  {
+    "name": "taapi",
+    "grade": "C",
+    "total_loss": 1.7375,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.0478,
+      "l_density": 0.3379
+    },
+    "dominant": "density",
+    "findings_count": 6,
+    "file_count": 5,
+    "total_lines": 978,
+    "skill_md_tokens": 957
+  },
+  {
+    "name": "birdeye",
+    "grade": "C",
+    "total_loss": 1.6562,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.0312,
+      "l_density": 0.325
+    },
+    "dominant": "density",
+    "findings_count": 11,
+    "file_count": 10,
+    "total_lines": 812,
+    "skill_md_tokens": 1879
+  },
+  {
+    "name": "debank",
+    "grade": "B",
+    "total_loss": 0.853,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.2166,
+      "l_density": 0.1273
+    },
+    "dominant": "density",
+    "findings_count": 3,
+    "file_count": 9,
+    "total_lines": 2666,
+    "skill_md_tokens": 1165
+  },
+  {
+    "name": "twelvedata",
+    "grade": "B",
+    "total_loss": 0.7048,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.0684,
+      "l_density": 0.1273
+    },
+    "dominant": "density",
+    "findings_count": 2,
+    "file_count": 6,
+    "total_lines": 1184,
+    "skill_md_tokens": 1155
+  },
+  {
+    "name": "1inch",
+    "grade": "B",
+    "total_loss": 0.5171,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.1053,
+      "l_density": 0.0824
+    },
+    "dominant": "density",
+    "findings_count": 1,
+    "file_count": 5,
+    "total_lines": 1553,
+    "skill_md_tokens": 1872
+  },
+  {
+    "name": "lunarcrush",
+    "grade": "A",
+    "total_loss": 0.4089,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.1397,
+      "l_density": 0.0538
+    },
+    "dominant": "density",
+    "findings_count": 1,
+    "file_count": 8,
+    "total_lines": 1897,
+    "skill_md_tokens": 1026
+  },
+  {
+    "name": "polymarket",
+    "grade": "A",
+    "total_loss": 0.1336,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.1336,
+      "l_density": 0.0
+    },
+    "dominant": "cost",
+    "findings_count": 0,
+    "file_count": 3,
+    "total_lines": 1836,
+    "skill_md_tokens": 3959
+  },
+  {
+    "name": "aave",
+    "grade": "A",
+    "total_loss": 0.0226,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.0226,
+      "l_density": 0.0
+    },
+    "dominant": "cost",
+    "findings_count": 0,
+    "file_count": 3,
+    "total_lines": 726,
+    "skill_md_tokens": 1130
+  }
+]

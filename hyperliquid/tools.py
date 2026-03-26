@@ -509,6 +509,7 @@ Returns: array of candles with t (time), o, h, l, c (prices), v (volume)"""
         coin: str = "",
         interval: str = "1h",
         lookback: int = 24,
+        max_results: int = 500,
         **kwargs,
     ) -> ToolResult:
         if not coin:

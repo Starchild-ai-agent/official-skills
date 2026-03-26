@@ -1,101 +1,5 @@
 [
   {
-    "name": "coingecko",
-    "grade": "F",
-    "total_loss": 12.1997,
-    "breakdown": {
-      "l_task": 0.7826,
-      "l_efficiency": 0.5294,
-      "l_cost": 0.5485,
-      "l_density": 0.4474
-    },
-    "dominant": "task",
-    "findings_count": 59,
-    "file_count": 16,
-    "total_lines": 5985,
-    "skill_md_tokens": 912
-  },
-  {
-    "name": "twitter",
-    "grade": "D",
-    "total_loss": 3.0663,
-    "breakdown": {
-      "l_task": 0.1667,
-      "l_efficiency": 0.25,
-      "l_cost": 0.0133,
-      "l_density": 0.1273
-    },
-    "dominant": "task",
-    "findings_count": 2,
-    "file_count": 3,
-    "total_lines": 633,
-    "skill_md_tokens": 1283
-  },
-  {
-    "name": "coinglass",
-    "grade": "C",
-    "total_loss": 2.7966,
-    "breakdown": {
-      "l_task": 0.0,
-      "l_efficiency": 0.0,
-      "l_cost": 0.5271,
-      "l_density": 0.4539
-    },
-    "dominant": "density",
-    "findings_count": 41,
-    "file_count": 15,
-    "total_lines": 5771,
-    "skill_md_tokens": 3600
-  },
-  {
-    "name": "hyperliquid",
-    "grade": "C",
-    "total_loss": 2.574,
-    "breakdown": {
-      "l_task": 0.0,
-      "l_efficiency": 0.0,
-      "l_cost": 0.274,
-      "l_density": 0.46
-    },
-    "dominant": "density",
-    "findings_count": 8,
-    "file_count": 4,
-    "total_lines": 3240,
-    "skill_md_tokens": 4606
-  },
-  {
-    "name": "taapi",
-    "grade": "C",
-    "total_loss": 1.7375,
-    "breakdown": {
-      "l_task": 0.0,
-      "l_efficiency": 0.0,
-      "l_cost": 0.0478,
-      "l_density": 0.3379
-    },
-    "dominant": "density",
-    "findings_count": 6,
-    "file_count": 5,
-    "total_lines": 978,
-    "skill_md_tokens": 957
-  },
-  {
-    "name": "birdeye",
-    "grade": "C",
-    "total_loss": 1.6562,
-    "breakdown": {
-      "l_task": 0.0,
-      "l_efficiency": 0.0,
-      "l_cost": 0.0312,
-      "l_density": 0.325
-    },
-    "dominant": "density",
-    "findings_count": 11,
-    "file_count": 10,
-    "total_lines": 812,
-    "skill_md_tokens": 1879
-  },
-  {
     "name": "debank",
     "grade": "B",
     "total_loss": 0.853,
@@ -112,6 +16,22 @@
     "skill_md_tokens": 1165
   },
   {
+    "name": "hyperliquid",
+    "grade": "B",
+    "total_loss": 0.7741,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.2741,
+      "l_density": 0.1
+    },
+    "dominant": "density",
+    "findings_count": 1,
+    "file_count": 4,
+    "total_lines": 3241,
+    "skill_md_tokens": 4606
+  },
+  {
     "name": "twelvedata",
     "grade": "B",
     "total_loss": 0.7048,
@@ -126,6 +46,54 @@
     "file_count": 6,
     "total_lines": 1184,
     "skill_md_tokens": 1155
+  },
+  {
+    "name": "birdeye",
+    "grade": "B",
+    "total_loss": 0.6149,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.0316,
+      "l_density": 0.1167
+    },
+    "dominant": "density",
+    "findings_count": 2,
+    "file_count": 10,
+    "total_lines": 816,
+    "skill_md_tokens": 1879
+  },
+  {
+    "name": "coingecko",
+    "grade": "B",
+    "total_loss": 0.5565,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.5565,
+      "l_density": 0.0
+    },
+    "dominant": "cost",
+    "findings_count": 0,
+    "file_count": 16,
+    "total_lines": 6065,
+    "skill_md_tokens": 912
+  },
+  {
+    "name": "coinglass",
+    "grade": "B",
+    "total_loss": 0.5251,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.5251,
+      "l_density": 0.0
+    },
+    "dominant": "cost",
+    "findings_count": 0,
+    "file_count": 15,
+    "total_lines": 5751,
+    "skill_md_tokens": 3600
   },
   {
     "name": "1inch",
@@ -176,6 +144,22 @@
     "skill_md_tokens": 3959
   },
   {
+    "name": "taapi",
+    "grade": "A",
+    "total_loss": 0.0478,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.0478,
+      "l_density": 0.0
+    },
+    "dominant": "cost",
+    "findings_count": 0,
+    "file_count": 5,
+    "total_lines": 978,
+    "skill_md_tokens": 957
+  },
+  {
     "name": "aave",
     "grade": "A",
     "total_loss": 0.0226,
@@ -190,5 +174,21 @@
     "file_count": 3,
     "total_lines": 726,
     "skill_md_tokens": 1130
+  },
+  {
+    "name": "twitter",
+    "grade": "A",
+    "total_loss": 0.0137,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.0137,
+      "l_density": 0.0
+    },
+    "dominant": "cost",
+    "findings_count": 0,
+    "file_count": 3,
+    "total_lines": 637,
+    "skill_md_tokens": 1283
   }
 ]

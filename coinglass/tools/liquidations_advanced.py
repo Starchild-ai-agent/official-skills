@@ -54,8 +54,7 @@ def get_coin_liquidation_history(
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get aggregated liquidation history for a coin across specified exchanges.
 
@@ -116,8 +115,7 @@ def get_pair_liquidation_history(
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get liquidation history for a specific trading pair on an exchange.
 
@@ -174,7 +172,7 @@ def get_pair_liquidation_history(
         return None
 
 
-def get_liquidation_coin_list(exchange: str) -> Optional[Dict[str, Any]]:
+def get_liquidation_coin_list(exchange: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get liquidation data for all coins on a specific exchange.
 
@@ -223,8 +221,7 @@ def get_liquidation_orders(
     exchange: str,
     min_liquidation_amount: str,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get individual liquidation orders (past 7 days only).
 
@@ -286,8 +283,7 @@ def get_liquidation_orders(
 def get_liquidation_heatmap(
     symbol: str,
     exchange: str,
-    range: str = "0.1"
-) -> Optional[Dict[str, Any]]:
+    range: str = "0.1", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get liquidation heatmap data for a trading pair (Model 1).
 

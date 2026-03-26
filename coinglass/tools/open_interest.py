@@ -58,7 +58,7 @@ def _get_api_key() -> Optional[str]:
     return os.getenv("COINGLASS_API_KEY")
 
 
-def get_open_interest(symbol: str) -> Optional[Dict[str, Any]]:
+def get_open_interest(symbol: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get aggregate open interest for a symbol across all exchanges.
 
@@ -148,8 +148,7 @@ def get_open_interest(symbol: str) -> Optional[Dict[str, Any]]:
 
 def get_open_interest_history(
     symbol: str,
-    interval: str = "h24"
-) -> Optional[Dict[str, Any]]:
+    interval: str = "h24", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get historical open interest data for a symbol.
 

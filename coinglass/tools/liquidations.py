@@ -84,8 +84,7 @@ def _get_api_key() -> Optional[str]:
 
 def get_liquidations(
     symbol: str,
-    time_type: str = "h24"
-) -> Optional[Dict[str, Any]]:
+    time_type: str = "h24", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get recent liquidation data for a symbol.
 
@@ -200,8 +199,7 @@ def get_liquidations(
 
 def get_liquidation_aggregated(
     symbol: str,
-    time_type: str = "h24"
-) -> Optional[Dict[str, Any]]:
+    time_type: str = "h24", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get aggregated liquidation data including historical context.
 

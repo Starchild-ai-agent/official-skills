@@ -7,9 +7,9 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from evaluation.config import EvalConfig, GoalAnchor, ModelTier, DensityConfig
+from evaluation.config import EvalConfig, GoalAnchor, ModelTier
 from evaluation.tracker import ExecutionTracker
-from evaluation.evaluator import SkillEvaluator, LossResult
+from evaluation.evaluator import SkillEvaluator
 from evaluation.autoresearch import (
     Patch, AutoResearchState, AutoResearchLoop, save_autoresearch_report,
 )
@@ -106,7 +106,7 @@ class TestAutoResearchState:
 
         # 3 rounds with tiny deltas → converged
         for i in range(3):
-            p = Patch(round_num=i+1, description="x",
+            p = Patch(round_num=i + 1, description="x",
                       target_dimension="cost", change_type="limit")
             p.loss_before = 2.0
             p.loss_after = 2.0 + 0.001 * i  # < threshold
@@ -125,7 +125,7 @@ class TestAutoResearchState:
 
         # 2 stable rounds
         for i in range(2):
-            p = Patch(round_num=i+1, description="x",
+            p = Patch(round_num=i + 1, description="x",
                       target_dimension="cost", change_type="limit")
             p.loss_before = 5.0
             p.loss_after = 5.001
@@ -295,7 +295,7 @@ class TestAutoResearchLoop:
         loop = AutoResearchLoop(
             cfg, evaluator, run_fn, patch_fn=mutating_patch
         )
-        state = loop.run(max_rounds=5)
+        loop.run(max_rounds=5)  # result unused; testing side-effects
         # Config should still be intact after loop
         assert loop.config.token_budget == original_budget
 

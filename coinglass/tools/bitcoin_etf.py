@@ -49,7 +49,7 @@ def _get_api_key() -> Optional[str]:
     return os.getenv("COINGLASS_API_KEY")
 
 
-def get_btc_etf_flows() -> Optional[Dict[str, Any]]:
+def get_btc_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Bitcoin ETF flow history including daily net inflows/outflows.
 
@@ -86,7 +86,7 @@ def get_btc_etf_flows() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_btc_etf_net_assets() -> Optional[Dict[str, Any]]:
+def get_btc_etf_net_assets(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Bitcoin ETF net assets history.
 
@@ -123,7 +123,7 @@ def get_btc_etf_net_assets() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_btc_etf_premium_discount() -> Optional[Dict[str, Any]]:
+def get_btc_etf_premium_discount(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Bitcoin ETF premium/discount rates.
 
@@ -160,7 +160,7 @@ def get_btc_etf_premium_discount() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_btc_etf_history(ticker: str) -> Optional[Dict[str, Any]]:
+def get_btc_etf_history(ticker: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get comprehensive Bitcoin ETF history for a specific ticker.
 
@@ -190,7 +190,7 @@ def get_btc_etf_history(ticker: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_btc_etf_list() -> Optional[Dict[str, Any]]:
+def get_btc_etf_list(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of Bitcoin ETFs with key status information.
 
@@ -214,7 +214,7 @@ def get_btc_etf_list() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_hk_btc_etf_flows() -> Optional[Dict[str, Any]]:
+def get_hk_btc_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Hong Kong Bitcoin ETF flow history.
 

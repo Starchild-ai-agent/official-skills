@@ -54,8 +54,7 @@ def get_taker_volume_history(
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get historical taker buy/sell volume data for a specific trading pair.
 
@@ -118,8 +117,7 @@ def get_aggregated_taker_volume(
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get aggregated taker buy/sell volume across specified exchanges for a coin.
 
@@ -180,8 +178,7 @@ def get_cumulative_volume_delta(
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Cumulative Volume Delta (CVD) history for a trading pair.
 
@@ -241,7 +238,7 @@ def get_cumulative_volume_delta(
         return None
 
 
-def get_coin_netflow() -> Optional[Dict[str, Any]]:
+def get_coin_netflow(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get coin netflow data for all futures coins.
 
@@ -284,8 +281,7 @@ def get_volume_ohlc_history(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get trading volume OHLC (Open, High, Low, Close) history.
 

@@ -98,7 +98,7 @@ MCP_TOOL_SCHEMA = {
     }
 }
 
-def get_coin_ohlc_range_by_id(coin_id, from_timestamp=None, to_timestamp=None, interval=None):
+def get_coin_ohlc_range_by_id(coin_id, from_timestamp=None, to_timestamp=None, interval=None, max_results: int = 100):
     """
     Fetch OHLC chart data for a specific coin within a time range from CoinGecko Pro API.
     Handles automatic data splitting for large time ranges. Currency fixed to USD.
@@ -157,7 +157,7 @@ def get_coin_ohlc_range_by_id(coin_id, from_timestamp=None, to_timestamp=None, i
     return _fetch_single_ohlc_range(actual_coin_id, vs_currency, from_ts, to_ts, interval)
 
 
-def _fetch_ohlc_with_splitting(coin_id, vs_currency, from_ts, to_ts, interval, max_days):
+def _fetch_ohlc_with_splitting(coin_id, vs_currency, from_ts, to_ts, interval, max_days, max_results: int = None):
     """Fetch OHLC data with automatic splitting for large ranges."""
     time_chunks = split_time_range(from_ts, to_ts, max_days=max_days)
     data_chunks = []
@@ -172,7 +172,7 @@ def _fetch_ohlc_with_splitting(coin_id, vs_currency, from_ts, to_ts, interval, m
     return merge_ohlc_data(data_chunks)
 
 
-def _fetch_single_ohlc_range(coin_id, vs_currency, from_timestamp, to_timestamp, interval):
+def _fetch_single_ohlc_range(coin_id, vs_currency, from_timestamp, to_timestamp, interval, max_results: int = None):
     """Fetch OHLC data for a single time range."""
     url = f"https://pro-api.coingecko.com/api/v3/coins/{coin_id}/ohlc/range"
     params = {
@@ -206,7 +206,7 @@ def get_coin_ohlc_range(coin_id, vs_currency='usd', from_timestamp=None, to_time
     return get_coin_ohlc_range_by_id(coin_id, from_timestamp, to_timestamp, interval)
 
 
-def main():
+def main(max_results: int = None):
     """Command-line interface for the coin OHLC range tool."""
     
     # Handle MCP schema queries first (single argument only)

@@ -86,17 +86,17 @@ def get_api_key() -> str:
     return api_key
 
 
-def get_derivatives(include_tickers: str = "unexpired") -> Dict[str, Any]:
+def get_derivatives(include_tickers: str = "unexpired", max_results: int = 100) -> Dict[str, Any]:
+    """
+    Get all derivatives tickers.
+
+    Args:
+        include_tickers: Filter - all or unexpired
+
+    Returns:
+        Dictionary with derivatives tickers
+    """
     try:
-        """
-        Get all derivatives tickers.
-
-        Args:
-            include_tickers: Filter - all or unexpired
-
-        Returns:
-            Dictionary with derivatives tickers
-        """
         api_key = get_api_key()
 
         url = "https://pro-api.coingecko.com/api/v3/derivatives"
@@ -132,24 +132,26 @@ def get_derivatives(include_tickers: str = "unexpired") -> Dict[str, Any]:
             "filter": include_tickers
         }
     except Exception as e:
-        return {"error": str(e), "skill": "coingecko", "function": "get_derivatives"}
+        return {"error": str(e), "tickers": [], "count": 0}
 
 
 def get_derivatives_exchanges(
     order: str = "open_interest_btc_desc",
     per_page: int = 50
+,
+    max_results: int = 100
 ) -> Dict[str, Any]:
+    """
+    Get list of derivatives exchanges with ranking.
+
+    Args:
+        order: Sort order
+        per_page: Results per page (max 100)
+
+    Returns:
+        Dictionary with derivatives exchanges
+    """
     try:
-        """
-        Get list of derivatives exchanges with ranking.
-
-        Args:
-            order: Sort order
-            per_page: Results per page (max 100)
-
-        Returns:
-            Dictionary with derivatives exchanges
-        """
         api_key = get_api_key()
 
         url = "https://pro-api.coingecko.com/api/v3/derivatives/exchanges"
@@ -184,20 +186,20 @@ def get_derivatives_exchanges(
             "order": order
         }
     except Exception as e:
-        return {"error": str(e), "skill": "coingecko", "function": "get_derivatives_exchanges"}
+        return {"error": str(e), "exchanges": [], "count": 0}
 
 
-def get_categories(order: str = "market_cap_desc") -> Dict[str, Any]:
+def get_categories(order: str = "market_cap_desc", max_results: int = 100) -> Dict[str, Any]:
+    """
+    Get coin categories with market data.
+
+    Args:
+        order: Sort order (market_cap_desc, market_cap_change_24h_desc, etc.)
+
+    Returns:
+        Dictionary with coin categories
+    """
     try:
-        """
-        Get coin categories with market data.
-
-        Args:
-            order: Sort order (market_cap_desc, market_cap_change_24h_desc, etc.)
-
-        Returns:
-            Dictionary with coin categories
-        """
         api_key = get_api_key()
 
         url = "https://pro-api.coingecko.com/api/v3/coins/categories"
@@ -227,7 +229,7 @@ def get_categories(order: str = "market_cap_desc") -> Dict[str, Any]:
             "order": order
         }
     except Exception as e:
-        return {"error": str(e), "skill": "coingecko", "function": "get_categories"}
+        return {"error": str(e), "categories": [], "count": 0}
 
 
 def main():

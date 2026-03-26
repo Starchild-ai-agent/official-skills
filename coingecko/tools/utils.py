@@ -359,7 +359,7 @@ def merge_market_chart_data(data_chunks: List[dict]) -> dict:
     return merged
 
 
-def search_coin_by_name(query: str) -> Optional[Dict[str, str]]:
+def search_coin_by_name(query: str, max_results: int = 100) -> Optional[Dict[str, str]]:
     """
     Search for a cryptocurrency by name or symbol with intelligent input detection.
     

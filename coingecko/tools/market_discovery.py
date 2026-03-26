@@ -77,7 +77,7 @@ def get_api_key() -> str:
     return api_key
 
 
-def get_trending() -> Dict[str, Any]:
+def get_trending(max_results: int = 100) -> Dict[str, Any]:
     try:
         """
         Get trending coins in the last 24 hours.
@@ -144,6 +144,8 @@ def get_trending() -> Dict[str, Any]:
 def get_top_gainers_losers(
     vs_currency: str = "usd",
     duration: str = "24h"
+,
+    max_results: int = 100
 ) -> Dict[str, Any]:
     try:
         """
@@ -203,7 +205,7 @@ def get_top_gainers_losers(
         return {"error": str(e), "skill": "coingecko", "function": "get_top_gainers_losers"}
 
 
-def get_new_coins() -> Dict[str, Any]:
+def get_new_coins(max_results: int = 100) -> Dict[str, Any]:
     try:
         """
         Get recently added coins to CoinGecko.

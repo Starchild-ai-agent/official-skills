@@ -52,7 +52,7 @@ def _get_api_key() -> Optional[str]:
     return os.getenv("COINGLASS_API_KEY")
 
 
-def get_supported_coins() -> Optional[Dict[str, Any]]:
+def get_supported_coins(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of supported coins for futures trading.
 
@@ -81,7 +81,7 @@ def get_supported_coins() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_supported_exchanges() -> Optional[Dict[str, Any]]:
+def get_supported_exchanges(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of supported exchanges for futures trading.
 
@@ -110,7 +110,7 @@ def get_supported_exchanges() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_supported_pairs(symbol: Optional[str] = None, exchange: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def get_supported_pairs(symbol: Optional[str] = None, exchange: Optional[str] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of supported trading pairs.
 
@@ -144,7 +144,7 @@ def get_supported_pairs(symbol: Optional[str] = None, exchange: Optional[str] = 
         return None
 
 
-def get_coins_data() -> Optional[Dict[str, Any]]:
+def get_coins_data(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get market data for all coins.
 
@@ -169,7 +169,7 @@ def get_coins_data() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_pair_data(symbol: str, exchange: str) -> Optional[Dict[str, Any]]:
+def get_pair_data(symbol: str, exchange: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get market data for a specific trading pair.
 
@@ -203,8 +203,7 @@ def get_ohlc_history(
     symbol: str,
     exchange: str,
     interval: str = "h1",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get OHLC price history for a trading pair.
 

@@ -24,10 +24,10 @@ PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from evaluation.optimizer import (
-    SkillAnalyzer, SkillScore, OptimizerState,
+    SkillAnalyzer, OptimizerState,
     REPORTS_DIR, TARGET_SKILLS, SKILLS_DIR,
 )
-from evaluation.patches import PatchGenerator, PatchApplier, AtomicPatch
+from evaluation.patches import PatchGenerator, PatchApplier
 from evaluation.config import ModelTier
 
 
@@ -40,7 +40,7 @@ def generate_report(
     """Generate markdown optimization report."""
     now = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     report = []
-    report.append(f"# 🔬 Skill Optimization Report")
+    report.append("# 🔬 Skill Optimization Report")
     report.append(f"**Generated:** {now}")
     report.append(f"**Model Tier:** {model_tier.value}")
     report.append(f"**Run #:** {state.run_count}")
@@ -125,9 +125,9 @@ def generate_report(
                 f"density loss={s.l_density:.3f}")
             if s.skill_md_tokens > 3000:
                 report.append(
-                    f"  - ⚠️ SKILL.md exceeds 3000 token budget. "
-                    f"Consider: split into core/advanced sections, "
-                    f"lazy-load advanced tools.")
+                    "  - ⚠️ SKILL.md exceeds 3000 token budget. "
+                    "Consider: split into core/advanced sections, "
+                    "lazy-load advanced tools.")
     else:
         report.append("All skills within context budget. ✅")
     report.append("")

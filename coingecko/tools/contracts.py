@@ -33,6 +33,8 @@ def get_token_price(
     include_24hr_vol: bool = False,
     include_24hr_change: bool = False,
     include_last_updated_at: bool = False
+,
+    max_results: int = 100
 ) -> Dict[str, Any]:
     try:
         """
@@ -85,6 +87,8 @@ def get_token_price(
 def get_coin_by_contract(
     platform: str,
     contract_address: str
+,
+    max_results: int = 100
 ) -> Dict[str, Any]:
     try:
         """
@@ -171,7 +175,7 @@ def get_coin_by_contract(
                 "circulating_supply": md.get("circulating_supply")
             }
 
-        return result
+        return {"data": result}
     except Exception as e:
         return {"error": str(e), "skill": "coingecko", "function": "get_coin_by_contract"}
 

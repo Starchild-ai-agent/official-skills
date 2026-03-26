@@ -294,7 +294,7 @@ class TestDensityConfigSerialization:
         legacy = {
             "skill_name": "old_skill",
             "goals": [{"id": "g1", "description": "t",
-                        "weight": 1.0}],
+                       "weight": 1.0}],
             "weights": {"task": 10, "efficiency": 2, "cost": 1},
         }
         path = str(tmp_path / "legacy.json")

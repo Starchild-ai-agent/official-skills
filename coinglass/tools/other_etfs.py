@@ -47,7 +47,7 @@ def _get_api_key() -> Optional[str]:
 
 # ==================== Ethereum ETF Endpoints ====================
 
-def get_eth_etf_flows() -> Optional[Dict[str, Any]]:
+def get_eth_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """Get Ethereum ETF flow history including daily net inflows/outflows."""
     api_key = _get_api_key()
     if not api_key:
@@ -66,7 +66,7 @@ def get_eth_etf_flows() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_eth_etf_list() -> Optional[Dict[str, Any]]:
+def get_eth_etf_list(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """Get list of Ethereum ETFs with key status information."""
     api_key = _get_api_key()
     if not api_key:
@@ -87,7 +87,7 @@ def get_eth_etf_list() -> Optional[Dict[str, Any]]:
 
 # ==================== Solana ETF Endpoints ====================
 
-def get_sol_etf_flows() -> Optional[Dict[str, Any]]:
+def get_sol_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """Get Solana ETF flow history including daily net inflows/outflows."""
     api_key = _get_api_key()
     if not api_key:
@@ -108,7 +108,7 @@ def get_sol_etf_flows() -> Optional[Dict[str, Any]]:
 
 # ==================== XRP ETF Endpoints ====================
 
-def get_xrp_etf_flows() -> Optional[Dict[str, Any]]:
+def get_xrp_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """Get XRP ETF flow history including daily net inflows/outflows."""
     api_key = _get_api_key()
     if not api_key:

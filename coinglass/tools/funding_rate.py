@@ -66,7 +66,7 @@ def _get_api_key() -> Optional[str]:
     return os.getenv("COINGLASS_API_KEY")
 
 
-def get_funding_rates(symbol: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def get_funding_rates(symbol: Optional[str] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Fetch funding rates across all exchanges.
 
@@ -121,7 +121,7 @@ def get_funding_rates(symbol: Optional[str] = None) -> Optional[Dict[str, Any]]:
             filtered = [d for d in data.get("data", []) if d.get("symbol", "").upper() == symbol.upper()]
             return {"code": "0", "msg": "success", "data": filtered}
 
-        return data
+        return dict(**data)  # structured API response
 
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}", file=sys.stderr)
@@ -133,8 +133,7 @@ def get_funding_rates(symbol: Optional[str] = None) -> Optional[Dict[str, Any]]:
 
 def get_symbol_funding_rate(
     symbol: str,
-    exchange: Optional[str] = None
-) -> Optional[Dict[str, Any]]:
+    exchange: Optional[str] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get funding rate for a specific symbol and optionally a specific exchange.
 
@@ -221,7 +220,7 @@ def get_symbol_funding_rate(
         }
 
 
-def get_funding_rate_by_exchange(exchange: str) -> Optional[List[Dict[str, Any]]]:
+def get_funding_rate_by_exchange(exchange: str, max_results: int = 100) -> Optional[List[Dict[str, Any]]]:
     """
     Get funding rates for all symbols on a specific exchange.
 
@@ -258,7 +257,7 @@ def get_funding_rate_by_exchange(exchange: str) -> Optional[List[Dict[str, Any]]
     return sorted(results, key=lambda x: abs(x.get("rate", 0)), reverse=True) if results else None
 
 
-def analyze_funding_opportunity(symbol: str, threshold: float = 0.01) -> Optional[Dict[str, Any]]:
+def analyze_funding_opportunity(symbol: str, threshold: float = 0.01, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Analyze funding rate arbitrage opportunities across exchanges.
 

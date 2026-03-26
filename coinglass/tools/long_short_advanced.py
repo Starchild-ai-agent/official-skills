@@ -84,8 +84,7 @@ def get_global_account_ratio(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get global long/short account ratio history for a trading pair on an exchange.
 
@@ -138,8 +137,7 @@ def get_top_account_ratio(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get long/short account ratio history for top traders.
 
@@ -181,8 +179,7 @@ def get_top_position_ratio(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get long/short position ratio history for top traders.
 
@@ -220,7 +217,7 @@ def get_top_position_ratio(
         return None
 
 
-def get_taker_buysell_exchanges(symbol: str, range: str = "1h") -> Optional[Dict[str, Any]]:
+def get_taker_buysell_exchanges(symbol: str, range: str = "1h", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of exchanges with taker buy/sell volume data for a specific symbol.
 
@@ -253,8 +250,7 @@ def get_net_position(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get historical net position data (net long/short changes).
 
@@ -296,8 +292,7 @@ def get_net_position_v2(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get enhanced historical net position data (v2 endpoint).
 

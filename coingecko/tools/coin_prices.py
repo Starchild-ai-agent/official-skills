@@ -204,7 +204,9 @@ MCP_TOOL_SCHEMA = {
 def get_coin_prices_at_timestamps(coin_ids: Union[str, List[str]], 
                                 timestamps: List[str] = None, 
                                 vs_currency: str = 'usd',
-                                rate_limit_delay: float = 1.0) -> List[Dict[str, Any]]:
+                                rate_limit_delay: float = 1.0,
+    max_results: int = 100
+) -> List[Dict[str, Any]]:
     """
     Get multiple coin prices at multiple specific timestamps.
     
@@ -344,7 +346,7 @@ def _get_single_price(coin_id: str, timestamp: str, vs_currency: str) -> Dict[st
         raise ValueError(f"Invalid timestamp format '{timestamp}': {e}")
 
 
-def _get_current_price(coin_id: str, vs_currency: str, original_timestamp: str) -> Dict[str, Any]:
+def _get_current_price(coin_id: str, vs_currency: str, original_timestamp: str, max_results: int = None) -> Dict[str, Any]:
     """Get current price using simple/price endpoint."""
     url = "https://pro-api.coingecko.com/api/v3/simple/price"
     params = {
@@ -390,7 +392,7 @@ def _get_current_price(coin_id: str, vs_currency: str, original_timestamp: str) 
             time.sleep(1)
 
 
-def _get_historical_price(coin_id: str, timestamp: int, vs_currency: str, original_timestamp: str) -> Dict[str, Any]:
+def _get_historical_price(coin_id: str, timestamp: int, vs_currency: str, original_timestamp: str, max_results: int = None) -> Dict[str, Any]:
     """Get historical price using history endpoint."""
     # Format date for CoinGecko API (dd-mm-yyyy)
     date_str = format_dd_mm_yyyy_date(timestamp)

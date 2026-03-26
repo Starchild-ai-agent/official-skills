@@ -48,7 +48,7 @@ def _get_api_key() -> Optional[str]:
     return os.getenv("COINGLASS_API_KEY")
 
 
-def get_whale_alerts() -> Optional[Dict[str, Any]]:
+def get_whale_alerts(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get recent whale alerts on Hyperliquid (positions > $1M).
 
@@ -90,7 +90,7 @@ def get_whale_alerts() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_whale_positions() -> Optional[Dict[str, Any]]:
+def get_whale_positions(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get current whale positions on Hyperliquid.
 
@@ -138,7 +138,7 @@ def get_whale_positions() -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_positions_by_coin(symbol: str) -> Optional[Dict[str, Any]]:
+def get_positions_by_coin(symbol: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get real-time wallet positions for a specific coin on Hyperliquid.
 
@@ -188,7 +188,7 @@ def get_positions_by_coin(symbol: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_user_positions(user_address: str) -> Optional[Dict[str, Any]]:
+def get_user_positions(user_address: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get positions for a specific user address on Hyperliquid.
 
@@ -218,7 +218,7 @@ def get_user_positions(user_address: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def get_position_distribution() -> Optional[Dict[str, Any]]:
+def get_position_distribution(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get wallet position distribution on Hyperliquid.
 

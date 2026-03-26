@@ -46,7 +46,7 @@ def _get_api_key() -> Optional[str]:
     return os.getenv("COINGLASS_API_KEY")
 
 
-def get_whale_transfers() -> Optional[Dict[str, Any]]:
+def get_whale_transfers(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get large on-chain transfers (minimum $10M) across major blockchains.
 

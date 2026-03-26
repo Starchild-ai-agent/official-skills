@@ -30,7 +30,7 @@ def _get_api_key() -> Optional[str]:
     return os.getenv("BIRDEYE_API_KEY")
 
 
-def get_token_overview(address: str, chain: str = "solana") -> Optional[Dict[str, Any]]:
+def get_token_overview(address: str, chain: str = "solana", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """Get comprehensive token overview with price, volume, market data."""
     api_key = _get_api_key()
     if not api_key:
@@ -52,7 +52,7 @@ def get_token_overview(address: str, chain: str = "solana") -> Optional[Dict[str
         if not data.get("success"):
             print(f"API Error: {data.get('message', 'Unknown error')}", file=sys.stderr)
             return None
-        return data
+        return data.get("data", data)
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}", file=sys.stderr)
         return None

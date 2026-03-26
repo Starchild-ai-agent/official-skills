@@ -143,7 +143,7 @@ MCP_TOOL_SCHEMA = {
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
 load_dotenv(os.path.join(project_root, '.env'))
 
-def get_coin_historical_chart_range_by_id(coin_id, vs_currency='usd', from_timestamp=None, to_timestamp=None):
+def get_coin_historical_chart_range_by_id(coin_id, vs_currency='usd', from_timestamp=None, to_timestamp=None, max_results: int = 100):
     """
     Fetch historical chart data for a specific coin by its id or symbol within a time range from CoinGecko.
     Automatically handles data splitting for large time ranges based on interval limits and flexible time input parsing.
@@ -208,7 +208,7 @@ def get_coin_historical_chart_range_by_id(coin_id, vs_currency='usd', from_times
         return _fetch_with_splitting(actual_coin_id, vs_currency, from_ts, to_ts, max_days=90)
 
 
-def _fetch_single_range(coin_id, vs_currency, from_timestamp, to_timestamp):
+def _fetch_single_range(coin_id, vs_currency, from_timestamp, to_timestamp, max_results: int = None):
     """Fetch historical chart data for a single time range."""
     url = f"https://pro-api.coingecko.com/api/v3/coins/{coin_id}/market_chart/range"
     params = {
@@ -233,7 +233,7 @@ def _fetch_single_range(coin_id, vs_currency, from_timestamp, to_timestamp):
             time.sleep(1)
 
 
-def _fetch_with_splitting(coin_id, vs_currency, from_ts, to_ts, max_days):
+def _fetch_with_splitting(coin_id, vs_currency, from_ts, to_ts, max_days, max_results: int = None):
     """Fetch historical chart data with automatic splitting for large ranges."""
     time_chunks = split_time_range(from_ts, to_ts, max_days=max_days)
     data_chunks = []
@@ -247,7 +247,7 @@ def _fetch_with_splitting(coin_id, vs_currency, from_ts, to_ts, max_days):
     # Merge all chunks
     return merge_market_chart_data(data_chunks)
 
-def main():
+def main(max_results: int = None):
     """Main CLI function."""
     parser = argparse.ArgumentParser(
         description="Fetch historical chart data within a time range for a specific coin from CoinGecko API.",

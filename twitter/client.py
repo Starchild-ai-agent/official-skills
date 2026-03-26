@@ -29,20 +29,24 @@ class TwitterApiClient:
 
     def _get(self, path: str, params: dict = None) -> Any:
         """GET a twitterapi.io endpoint."""
-        url = f"{self.base_url}{path}"
+        try:
+            url = f"{self.base_url}{path}"
 
-        headers = {}
-        if self.api_key:
-            headers["X-API-Key"] = self.api_key
+            headers = {}
+            if self.api_key:
+                headers["X-API-Key"] = self.api_key
 
-        response = proxied_get(url, headers=headers, params=params, timeout=15)
-        if response.status_code >= 400:
-            raise Exception(f"twitterapi.io {response.status_code}: {response.text}")
-        return response.json()
+            response = proxied_get(url, headers=headers, params=params, timeout=15)
+            if response.status_code >= 400:
+                raise Exception(f"twitterapi.io {response.status_code}: {response.text}")
+            return response.json()
+        except Exception as e:
+            logger.error("Twitter API error on %s: %s", path, e)
+            return {"error": str(e)}
 
     # ── Tweet Endpoints ──────────────────────────────────────────────────
 
-    def search_tweets(self, query: str, cursor: str = None) -> dict:
+    def search_tweets(self, query: str, cursor: str = None, max_results: int = 20) -> dict:
         """Advanced tweet search."""
         params = {"query": query}
         if cursor:

@@ -21,23 +21,17 @@ Scheduling:
 
 import ast
 import json
-import os
 import re
 import sys
-import time
-import hashlib
-import subprocess
-import traceback
 from dataclasses import dataclass, field
-from datetime import datetime
+
 from pathlib import Path
-from typing import Optional
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from evaluation.config import EvalConfig, ModelTier, DensityConfig, GoalAnchor
+from evaluation.config import ModelTier
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -344,9 +338,9 @@ class SkillAnalyzer:
                                          pattern_id, pattern_def))
             elif check == "no_try_except_around":
                 findings.extend(
-                    self._check_no_error_handling(skill, filepath, content,
-                                                 lines, pattern_id,
-                                                 pattern_def))
+                    self._check_no_error_handling(
+                        skill, filepath, content,
+                        lines, pattern_id, pattern_def))
             elif regex:
                 for i, line in enumerate(lines, 1):
                     if re.search(regex, line):
@@ -371,6 +365,10 @@ class SkillAnalyzer:
             tree = ast.parse(content)
             for node in ast.walk(tree):
                 if isinstance(node, ast.FunctionDef):
+                    # Skip non-API functions (CLI, helpers, private)
+                    if node.name in ("main", "format_output") or \
+                       node.name.startswith("_"):
+                        continue
                     args = [a.arg for a in node.args.args]
                     has_limit = any(
                         kw in args for kw in
@@ -430,7 +428,7 @@ class SkillAnalyzer:
 
     def _compute_density_loss(self, findings, score) -> float:
         """L_density based on code patterns + SKILL.md size.
-        
+
         Uses diminishing returns so each fix is measurable.
         """
         density_findings = [
@@ -450,7 +448,7 @@ class SkillAnalyzer:
 
     def _compute_efficiency_loss(self, findings, score) -> float:
         """L_efficiency based on error handling + tool call patterns.
-        
+
         Diminishing returns: each fix matters.
         """
         eff_findings = [
@@ -474,7 +472,7 @@ class SkillAnalyzer:
 
     def _compute_task_loss(self, findings, score) -> float:
         """L_task — check functional correctness signals.
-        
+
         Uses diminishing returns: each fix matters more when fewer
         issues remain. Formula: count / (count + k) where k=5.
         This means: 0 findings=0.0, 5=0.5, 10=0.67, 25=0.83.

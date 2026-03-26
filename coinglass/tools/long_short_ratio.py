@@ -70,8 +70,7 @@ def _get_api_key() -> Optional[str]:
 
 def get_long_short_ratio(
     symbol: str,
-    time_type: str = "h1"
-) -> Optional[Dict[str, Any]]:
+    time_type: str = "h1", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Fetch long/short account ratio for a symbol across all exchanges.
 
@@ -159,8 +158,7 @@ def get_long_short_ratio(
 def get_exchange_ratio(
     symbol: str,
     exchange: str,
-    time_type: str = "h1"
-) -> Optional[Dict[str, Any]]:
+    time_type: str = "h1", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get long/short ratio for a specific exchange.
 
@@ -213,7 +211,7 @@ def get_exchange_ratio(
     return None
 
 
-def get_sentiment(symbol: str, time_type: str = "h1") -> Optional[Dict[str, Any]]:
+def get_sentiment(symbol: str, time_type: str = "h1", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Analyze market sentiment based on long/short ratio.
 
@@ -282,7 +280,7 @@ def get_sentiment(symbol: str, time_type: str = "h1") -> Optional[Dict[str, Any]
     }
 
 
-def compare_exchanges(symbol: str, time_type: str = "h1") -> Optional[List[Dict[str, Any]]]:
+def compare_exchanges(symbol: str, time_type: str = "h1", max_results: int = 100) -> Optional[List[Dict[str, Any]]]:
     """
     Compare long/short ratios across exchanges for a symbol.
 

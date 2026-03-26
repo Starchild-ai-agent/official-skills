@@ -12,7 +12,6 @@ Patch types (by dimension):
   task:       fix error paths, add fallbacks
 """
 
-import os
 import re
 import ast
 import shutil

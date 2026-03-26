@@ -144,14 +144,18 @@ def save_report(results: list, output_dir: str = None):
         "",
         "## Summary",
         "",
-        "| Skill | Run | Grade | Total Loss | L_task | L_eff | L_cost |",
-        "|-------|-----|-------|------------|--------|-------|--------|",
+        "| Skill | Run | Tier | Grade | Loss | L_task | L_eff "
+        "| L_cost | L_density |",
+        "|-------|-----|------|-------|------|--------|------"
+        "|--------|-----------|",
     ]
     for r in results:
         lines.append(
-            f"| {r.skill_name} | {r.run_id} | **{r.grade}** | "
+            f"| {r.skill_name} | {r.run_id} | {r.model_tier} | "
+            f"**{r.grade}** | "
             f"{r.total_loss:.3f} | {r.l_task:.3f} | "
-            f"{r.l_efficiency:.3f} | {r.l_cost:.3f} |"
+            f"{r.l_efficiency:.3f} | {r.l_cost:.3f} | "
+            f"{r.l_density:.3f} |"
         )
 
     lines.append("")

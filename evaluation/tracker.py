@@ -68,6 +68,8 @@ class ExecutionTracker:
         self._start_time: float = 0.0
         self._end_time: float = 0.0
         self._running = False
+        # v2: track per-step response sizes for density calculation
+        self.response_token_sizes: list = []  # per-step output sizes
 
     def start(self):
         self._start_time = time.time()
@@ -75,6 +77,7 @@ class ExecutionTracker:
         self.steps = []
         self.goals_achieved = set()
         self.goals_failed = {}
+        self.response_token_sizes = []
 
     def stop(self):
         self._end_time = time.time()
@@ -103,6 +106,8 @@ class ExecutionTracker:
             timestamp=t_start,
         )
         self.steps.append(step)
+        # Track response size for density analysis
+        self.response_token_sizes.append(tokens_out)
         return step
 
     def mark_goal(self, goal_id: str):
@@ -133,6 +138,22 @@ class ExecutionTracker:
         return (end - self._start_time) * 1000
 
     @property
+    def peak_response_tokens(self) -> int:
+        """Largest single-step output — the density bottleneck."""
+        if not self.response_token_sizes:
+            return 0
+        return max(self.response_token_sizes)
+
+    @property
+    def avg_response_tokens(self) -> float:
+        """Average response size across all steps."""
+        if not self.response_token_sizes:
+            return 0.0
+        return sum(self.response_token_sizes) / len(
+            self.response_token_sizes
+        )
+
+    @property
     def failed_steps(self) -> list:
         return [s for s in self.steps if not s.success]
 
@@ -143,6 +164,8 @@ class ExecutionTracker:
             "total_tokens": self.total_tokens,
             "tokens_in": self.total_tokens_in,
             "tokens_out": self.total_tokens_out,
+            "peak_response_tokens": self.peak_response_tokens,
+            "avg_response_tokens": round(self.avg_response_tokens, 1),
             "wall_time_ms": round(self.wall_time_ms, 1),
             "goals_achieved": sorted(self.goals_achieved),
             "goals_failed": dict(self.goals_failed),

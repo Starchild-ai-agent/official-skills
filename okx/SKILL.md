@@ -1,11 +1,11 @@
 ---
-name: okx-onchainos
+name: okx
 version: 1.0.0
 description: OKX OnChainOS - Complete on-chain operations suite with 11 specialized skills for trading, analytics, security, and wallet management across 20+ blockchains
 metadata:
   starchild:
     emoji: "⛓️"
-    skillKey: okx
+    skillKey: okx-onchainos
     requires:
       bins:
         - npx

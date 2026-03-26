@@ -10,7 +10,6 @@ Usage:
 """
 
 import json
-import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -213,7 +212,7 @@ def main():
 
     if results:
         json_p, md_p = save_report(results, args.output)
-        print(f"\n📊 Reports saved:")
+        print("\n📊 Reports saved:")
         print(f"  JSON: {json_p}")
         print(f"  MD:   {md_p}")
 

@@ -3,12 +3,11 @@
 import sys
 import os
 import time
-import pytest
 
 # Add parent to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from evaluation.tracker import ExecutionTracker, StepRecord
+from evaluation.tracker import ExecutionTracker, StepRecord  # noqa: E402
 
 
 class TestStepRecord:

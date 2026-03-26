@@ -9,9 +9,7 @@ Each skill gets a benchmark config with:
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
 import json
-import os
 
 
 @dataclass

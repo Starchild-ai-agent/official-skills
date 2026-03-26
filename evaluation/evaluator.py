@@ -8,8 +8,7 @@ Lower is better. 0 = perfect. High = needs optimization.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
-from evaluation.config import EvalConfig, GoalAnchor
+from evaluation.config import EvalConfig
 from evaluation.tracker import ExecutionTracker
 
 

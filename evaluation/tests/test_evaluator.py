@@ -6,9 +6,9 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from evaluation.config import EvalConfig, GoalAnchor
-from evaluation.tracker import ExecutionTracker
-from evaluation.evaluator import SkillEvaluator, LossResult
+from evaluation.config import EvalConfig, GoalAnchor  # noqa: E402
+from evaluation.tracker import ExecutionTracker  # noqa: E402
+from evaluation.evaluator import SkillEvaluator, LossResult  # noqa: E402
 
 
 def make_config(**overrides) -> EvalConfig:

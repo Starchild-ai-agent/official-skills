@@ -166,7 +166,7 @@
     {
       "name": "wallet-policy",
       "path": "wallet-policy/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Generate Privy wallet policy rules from natural language. Use when the user wants to set up, modify, or review wallet security policies — transfer limits, address allowlists, method restrictions, time windows, etc."
     },
     {

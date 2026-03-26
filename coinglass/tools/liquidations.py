@@ -11,7 +11,7 @@ import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 try:
     from dotenv import load_dotenv
@@ -139,8 +139,10 @@ def get_liquidations(
             return None
 
         # Parse v4 exchange-list response
-        total_long = 0
-        total_short = 0
+        agg_long = 0
+        agg_short = 0
+        sum_long = 0
+        sum_short = 0
         exchanges = []
 
         for item in raw_data:
@@ -149,18 +151,29 @@ def get_liquidations(
             short_liq = item.get("short_liquidation_usd", 0) or 0
             total_liq = item.get("liquidation_usd", 0) or 0
 
-            # "All" row contains the aggregate — use it for totals, skip from exchange list
+            # "All" row contains the API's aggregate
             if exchange_name == "All":
-                total_long = long_liq
-                total_short = short_liq
+                agg_long = long_liq
+                agg_short = short_liq
                 continue
 
+            sum_long += long_liq
+            sum_short += short_liq
             exchanges.append({
                 "exchange": exchange_name,
                 "long_liquidations_usd": long_liq,
                 "short_liquidations_usd": short_liq,
                 "total_liquidations_usd": total_liq,
             })
+
+        # FIX: If "All" row returns zeros but exchanges have data,
+        # fall back to self-computed sum (Coinglass aggregation bug)
+        if (agg_long + agg_short) == 0 and (sum_long + sum_short) > 0:
+            total_long = sum_long
+            total_short = sum_short
+        else:
+            total_long = agg_long
+            total_short = agg_short
 
         total = total_long + total_short
         exchanges.sort(key=lambda x: x["total_liquidations_usd"], reverse=True)
@@ -213,21 +226,30 @@ def get_liquidation_aggregated(
     long_pct = current["long_percent"]
     short_pct = current["short_percent"]
 
-    # Determine market sentiment based on liquidations
-    if long_pct > 70:
+    # FIX: Guard against zero-data producing misleading "Balanced" label
+    total_liq = current.get("total_liquidations_usd", 0)
+    if total_liq == 0:
+        sentiment = "No liquidation data available"
+        dominant = "none"
+    elif long_pct > 70:
         sentiment = "Heavily bearish pressure (longs being liquidated)"
+        dominant = "longs"
     elif long_pct > 55:
         sentiment = "Moderately bearish pressure"
+        dominant = "longs"
     elif short_pct > 70:
         sentiment = "Heavily bullish pressure (shorts being liquidated)"
+        dominant = "shorts"
     elif short_pct > 55:
         sentiment = "Moderately bullish pressure"
+        dominant = "shorts"
     else:
         sentiment = "Balanced liquidations"
+        dominant = "longs" if long_pct > short_pct else "shorts"
 
     current["analysis"] = {
         "sentiment": sentiment,
-        "dominant_side": "longs" if long_pct > short_pct else "shorts",
+        "dominant_side": dominant,
         "imbalance": abs(long_pct - short_pct)
     }
 
@@ -237,12 +259,13 @@ def get_liquidation_aggregated(
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Fetch Coinglass liquidation data")
-    parser.add_argument("--symbol", "-s", required=True, help="Symbol (BTC, ETH, etc.)")
+    parser.add_argument("--symbol", "-s", required=True,
+                        help="Symbol (BTC, ETH, etc.)")
     parser.add_argument("--time", "-t", default="h24",
-                       choices=["h1", "h4", "h12", "h24"],
-                       help="Time window")
+                        choices=["h1", "h4", "h12", "h24"],
+                        help="Time window")
     parser.add_argument("--analyze", "-a", action="store_true",
-                       help="Include sentiment analysis")
+                        help="Include sentiment analysis")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
     parser.add_argument("--schema", action="store_true", help="Output MCP schema")
 
@@ -269,13 +292,17 @@ def main():
                 print(f"\n{result['symbol']} Liquidations ({result['time_window']})")
                 print("=" * 50)
                 print(f"Total Liquidations: ${result['total_liquidations_usd']:,.0f}")
-                print(f"  Long Liquidations:  ${result['long_liquidations_usd']:,.0f} ({result['long_percent']:.1f}%)")
-                print(f"  Short Liquidations: ${result['short_liquidations_usd']:,.0f} ({result['short_percent']:.1f}%)")
+                long_usd = result['long_liquidations_usd']
+                short_usd = result['short_liquidations_usd']
+                long_pct = result['long_percent']
+                short_pct = result['short_percent']
+                print(f"  Long Liquidations:  ${long_usd:,.0f} ({long_pct:.1f}%)")
+                print(f"  Short Liquidations: ${short_usd:,.0f} ({short_pct:.1f}%)")
 
                 if args.analyze and result.get("analysis"):
                     print(f"\nAnalysis: {result['analysis']['sentiment']}")
 
-                print(f"\nTop exchanges:")
+                print("\nTop exchanges:")
                 for ex in result['exchanges'][:5]:
                     print(f"  {ex['exchange']:15s} ${ex['total_liquidations_usd']:>12,.0f}")
             return 0

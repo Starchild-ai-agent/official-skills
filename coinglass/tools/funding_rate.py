@@ -173,30 +173,51 @@ def get_symbol_funding_rate(
         for rate_info in symbol_data.get("uMarginList", []):
             if rate_info.get("exchangeName", "").lower() == exchange.lower():
                 rate = rate_info.get("rate", 0)
+                interval_h = rate_info.get("fundingIntervalHours", 8)
+                # FIX: Normalize rate to 8h-equivalent for cross-exchange comparison
+                rate_8h_eq = rate * (8 / interval_h) if interval_h else rate
                 return {
                     "symbol": symbol.upper(),
                     "exchange": rate_info.get("exchangeName"),
                     "rate": rate,
                     "rate_percent": rate * 100,
+                    "rate_8h_equivalent": rate_8h_eq,
+                    "rate_8h_equivalent_percent": rate_8h_eq * 100,
+                    "annualized_percent": rate_8h_eq * 3 * 365 * 100,
                     "next_funding_time": rate_info.get("nextFundingTime"),
-                    "funding_interval_hours": rate_info.get("fundingIntervalHours"),
+                    "funding_interval_hours": interval_h,
                     "predicted_rate": rate_info.get("predictedRate"),
-                    "predicted_rate_percent": rate_info.get("predictedRate", 0) * 100 if rate_info.get("predictedRate") else None
+                    "predicted_rate_percent": (
+                        rate_info.get("predictedRate", 0) * 100
+                        if rate_info.get("predictedRate") else None
+                    ),
                 }
         return None
     else:
         # Return average across all exchanges
-        rates = [r.get("rate", 0) for r in symbol_data.get("uMarginList", []) if r.get("rate") is not None]
-        if not rates:
+        # FIX: Normalize all rates to 8h-equivalent before averaging
+        margin_list = symbol_data.get("uMarginList", [])
+        normalized_rates = []
+        for r in margin_list:
+            rate = r.get("rate")
+            if rate is None:
+                continue
+            interval_h = r.get("fundingIntervalHours", 8)
+            rate_8h = rate * (8 / interval_h) if interval_h else rate
+            normalized_rates.append(rate_8h)
+
+        if not normalized_rates:
             return None
-        avg_rate = sum(rates) / len(rates)
+        avg_rate_8h = sum(normalized_rates) / len(normalized_rates)
         return {
             "symbol": symbol.upper(),
             "exchange": "average",
-            "rate": avg_rate,
-            "rate_percent": avg_rate * 100,
-            "num_exchanges": len(rates),
-            "exchanges_data": symbol_data.get("uMarginList", [])
+            "rate_8h_equivalent": avg_rate_8h,
+            "rate_8h_equivalent_percent": avg_rate_8h * 100,
+            "annualized_percent": avg_rate_8h * 3 * 365 * 100,
+            "num_exchanges": len(normalized_rates),
+            "note": "Rates normalized to 8h-equivalent for comparison",
+            "exchanges_data": margin_list,
         }
 
 

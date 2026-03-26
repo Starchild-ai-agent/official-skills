@@ -12,23 +12,23 @@ Usage:
 Designed to run via cron every 30 minutes.
 """
 
-import argparse
-import json
-import random
-import sys
-from datetime import datetime
-from pathlib import Path
+import argparse  # noqa: E402
+import json  # noqa: E402
+import random  # noqa: E402
+import sys  # noqa: E402
+from datetime import datetime  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from evaluation.optimizer import (
+from evaluation.optimizer import (  # noqa: E402
     SkillAnalyzer, OptimizerState,
     REPORTS_DIR, TARGET_SKILLS, SKILLS_DIR,
 )
-from evaluation.patches import PatchGenerator, PatchApplier
-from evaluation.config import ModelTier
+from evaluation.patches import PatchGenerator, PatchApplier  # noqa: E402
+from evaluation.config import ModelTier  # noqa: E402
 
 
 def generate_report(

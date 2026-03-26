@@ -1,35 +1,35 @@
 [
   {
-    "name": "debank",
-    "grade": "B",
-    "total_loss": 0.853,
-    "breakdown": {
-      "l_task": 0.0,
-      "l_efficiency": 0.0,
-      "l_cost": 0.2166,
-      "l_density": 0.1273
-    },
-    "dominant": "density",
-    "findings_count": 3,
-    "file_count": 9,
-    "total_lines": 2666,
-    "skill_md_tokens": 1165
-  },
-  {
     "name": "hyperliquid",
     "grade": "B",
-    "total_loss": 0.7741,
+    "total_loss": 0.7748,
     "breakdown": {
       "l_task": 0.0,
       "l_efficiency": 0.0,
-      "l_cost": 0.2741,
+      "l_cost": 0.2748,
       "l_density": 0.1
     },
     "dominant": "density",
     "findings_count": 1,
     "file_count": 4,
-    "total_lines": 3241,
+    "total_lines": 3248,
     "skill_md_tokens": 4606
+  },
+  {
+    "name": "debank",
+    "grade": "B",
+    "total_loss": 0.765,
+    "breakdown": {
+      "l_task": 0.0,
+      "l_efficiency": 0.0,
+      "l_cost": 0.2181,
+      "l_density": 0.1094
+    },
+    "dominant": "density",
+    "findings_count": 2,
+    "file_count": 9,
+    "total_lines": 2681,
+    "skill_md_tokens": 1165
   },
   {
     "name": "twelvedata",

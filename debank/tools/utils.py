@@ -50,7 +50,8 @@ def debank_api_request(
     params: Optional[Dict[str, Any]] = None,
     method: str = "GET",
     max_retries: int = 3,
-    retry_delay: float = 1.0
+    retry_delay: float = 1.0,
+    max_results: int = 100
 ) -> Dict[str, Any]:
     """
     Make a request to DeBank API with retry logic.
@@ -81,7 +82,11 @@ def debank_api_request(
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            # Truncate large list responses
+            if isinstance(data, list) and len(data) > max_results:
+                data = data[:max_results]
+            return data
 
         except requests.exceptions.Timeout:
             if attempt == max_retries - 1:

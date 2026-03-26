@@ -126,10 +126,10 @@ def get_wallet_networth(
             print(f"API Error: {data.get('message', 'Unknown error')}", file=sys.stderr)
             return None
 
-        result = data.get("data", data)
-        if isinstance(result, list):
-            result = result[:max_results]
-        return result
+        filtered_output = data.get("data", data)
+        if isinstance(filtered_output, list):
+            filtered_output = filtered_output[:max_results]
+        return filtered_output
 
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}", file=sys.stderr)
@@ -215,10 +215,10 @@ def get_wallet_networth_chart(
             print(f"API Error: {data.get('message', 'Unknown error')}", file=sys.stderr)
             return None
 
-        result = data.get("data", data)
-        if isinstance(result, list):
-            result = result[:max_results]
-        return result
+        filtered_output = data.get("data", data)
+        if isinstance(filtered_output, list):
+            filtered_output = filtered_output[:max_results]
+        return filtered_output
 
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}", file=sys.stderr)

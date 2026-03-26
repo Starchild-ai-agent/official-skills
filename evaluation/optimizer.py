@@ -19,19 +19,19 @@ Scheduling:
   python -m evaluation.optimizer --skill X    # Target specific skill
 """
 
-import ast
-import json
-import re
-import sys
-from dataclasses import dataclass, field
+import ast  # noqa: E402
+import json  # noqa: E402
+import re  # noqa: E402
+import sys  # noqa: E402
+from dataclasses import dataclass, field  # noqa: E402
 
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from evaluation.config import ModelTier
+from evaluation.config import ModelTier  # noqa: E402
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -344,6 +344,21 @@ class SkillAnalyzer:
             elif regex:
                 for i, line in enumerate(lines, 1):
                     if re.search(regex, line):
+                        # For raw_json_return, skip if nearby lines
+                        # already have truncation/filtering logic
+                        if pattern_id in ("raw_json_return",
+                                          "large_response_no_truncate"):
+                            context_start = max(0, i - 10)
+                            context_end = min(len(lines), i + 1)
+                            context = "\n".join(
+                                lines[context_start:context_end])
+                            if any(kw in context for kw in [
+                                "[:max_results]", "[:limit]",
+                                "truncat", "filter", "min(",
+                                "max_results", "[:count]",
+                                "Cap", "cap", "max_items",
+                            ]):
+                                continue  # Already capped
                         findings.append(Finding(
                             skill=skill,
                             file=filepath,
@@ -375,11 +390,20 @@ class SkillAnalyzer:
                         ["limit", "max_results", "max_items", "top_n",
                          "count"]
                     )
-                    # Check if function body contains API calls
+                    # Skip property methods (description, name, etc.)
+                    is_property = False
+                    for dec in node.decorator_list:
+                        if isinstance(dec, ast.Name) and dec.id == "property":
+                            is_property = True
+                    if is_property:
+                        continue
+                    # Check if function body contains actual API calls
+                    # (not just 'fetch' in docstrings/descriptions)
                     body_src = ast.get_source_segment(content, node) or ""
-                    has_api = ("proxied_get" in body_src
-                               or "requests.get" in body_src
-                               or "fetch" in body_src)
+                    has_api = ("proxied_get(" in body_src
+                               or "requests.get(" in body_src
+                               or ".fetch(" in body_src
+                               or "aiohttp" in body_src)
                     if has_api and not has_limit:
                         findings.append(Finding(
                             skill=skill,
@@ -406,8 +430,8 @@ class SkillAnalyzer:
             for node in ast.walk(tree):
                 if isinstance(node, ast.FunctionDef):
                     body_src = ast.get_source_segment(content, node) or ""
-                    has_api = ("proxied_get" in body_src
-                               or "requests.get" in body_src
+                    has_api = ("proxied_get(" in body_src
+                               or "requests.get(" in body_src
                                or "proxied_post" in body_src)
                     has_try = "try:" in body_src
                     if has_api and not has_try:

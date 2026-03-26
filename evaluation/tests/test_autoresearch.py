@@ -2,15 +2,15 @@
 Tests for AutoResearch — the iterative self-improvement loop.
 """
 
-import os
-import sys
+import os  # noqa: E402
+import sys  # noqa: E402
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-from evaluation.config import EvalConfig, GoalAnchor, ModelTier
-from evaluation.tracker import ExecutionTracker
-from evaluation.evaluator import SkillEvaluator
-from evaluation.autoresearch import (
+from evaluation.config import EvalConfig, GoalAnchor, ModelTier  # noqa: E402
+from evaluation.tracker import ExecutionTracker  # noqa: E402
+from evaluation.evaluator import SkillEvaluator  # noqa: E402
+from evaluation.autoresearch import (  # noqa: E402
     Patch, AutoResearchState, AutoResearchLoop, save_autoresearch_report,
 )
 

@@ -80,6 +80,22 @@ Returns: Array of matching symbols with name, exchange, type, and currency info"
                     error=f"API Error: {data.get('message', 'Unknown error')}",
                 )
 
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 20:
+                    data["data"] = items[:20]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 20:
+                data = data[:20]
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 50:
+                    data["data"] = items[:50]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 50:
+                data = data[:50]
             return ToolResult(success=True, output=data)
         except Exception as e:
             error_msg = str(e)
@@ -152,6 +168,14 @@ Returns: Array of stocks with symbol, name, currency, exchange, and type"""
                     error=f"API Error: {data.get('message', 'Unknown error')}",
                 )
 
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 50:
+                    data["data"] = items[:50]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 50:
+                data = data[:50]
             return ToolResult(success=True, output=data)
         except Exception as e:
             error_msg = str(e)
@@ -211,6 +235,14 @@ Returns: Array of forex pairs with symbol, currency base, currency quote"""
                     error=f"API Error: {data.get('message', 'Unknown error')}",
                 )
 
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 50:
+                    data["data"] = items[:50]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 50:
+                data = data[:50]
             return ToolResult(success=True, output=data)
         except Exception as e:
             error_msg = str(e)
@@ -267,6 +299,14 @@ Returns: Array of exchanges with name, code, country, and timezone"""
                     error=f"API Error: {data.get('message', 'Unknown error')}",
                 )
 
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 50:
+                    data["data"] = items[:50]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 50:
+                data = data[:50]
             return ToolResult(success=True, output=data)
         except Exception as e:
             error_msg = str(e)

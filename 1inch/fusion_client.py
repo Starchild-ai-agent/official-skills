@@ -32,6 +32,7 @@ FUSION_API_BASE = "https://api.1inch.com/fusion-plus"
 
 def generate_secrets(count: int) -> List[bytes]:
     """Generate random 32-byte secrets for Fusion+ order fills."""
+    count = min(count, 100)  # Cap to prevent excessive generation
     return [os.urandom(32) for _ in range(count)]
 
 

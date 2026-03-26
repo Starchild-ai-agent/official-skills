@@ -1,7 +1,7 @@
 ---
 name: "polymarket"
-version: 2.3.0
-description: Place real bets on Polymarket prediction markets using the agent wallet. Buy/sell outcome tokens, check balances, manage orders. Requires USDC on Polygon and wallet policy allowing EIP-712 signing. 🚀 Optimized workflow + auto VPN detection!
+version: 2.4.0
+description: Place real bets on Polymarket prediction markets using the agent wallet. Buy/sell outcome tokens, check balances, manage orders. Requires USDC.e (bridged USDC) on Polygon and wallet policy allowing EIP-712 signing. 🚀 Optimized workflow + auto VPN detection!
 author: starchild
 tags: [polymarket, trading, prediction-markets, polygon, defi]
 tools:
@@ -57,10 +57,26 @@ Just say **"I want to trade on Polymarket"** and the agent will:
 
 1. ✅ Check if you have credentials (auto-detects from `.env`)
 2. ✅ If not, walk you through creating them (one signature, saves automatically)
-3. ✅ Check your USDC balance on Polygon
+3. ✅ Check your USDC.e balance on Polygon (swap from native USDC if needed)
 4. ✅ You're ready to trade!
 
 **That's it!** No manual config needed. The agent handles everything.
+
+**Note:** If you have native USDC, the agent will help you swap to USDC.e first.
+
+---
+
+## ⚠️ CRITICAL: USDC.e Required (Not Native USDC)
+
+**Polymarket ONLY accepts USDC.e (bridged USDC) on Polygon.**
+
+| Token | Address | Works with Polymarket? |
+|-------|---------|------------------------|
+| **USDC.e (bridged)** | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` | ✅ YES |
+
+**If you have native USDC:** You must swap it to USDC.e first using 1inch or another DEX.
+
+**Why?** Polymarket's contracts predate Circle's native USDC deployment on Polygon. The USDC.e address is hardcoded into their exchange contracts and cannot be changed.
 
 ---
 
@@ -129,7 +145,9 @@ Message: `{ address: WALLET, timestamp: NOW, nonce: "0", message: "This message 
 
 ### 2. Fund Your Wallet (If Needed)
 Send to the agent wallet address on Polygon:
-- **USDC** (native Polygon USDC `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`) — betting bankroll
+- **USDC.e (bridged USDC)** `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` — betting bankroll
+  - ⚠️ **NOT native USDC** (`0x3c499c...`)! Polymarket only accepts USDC.e
+  - If you have native USDC, swap it first using the 1inch skill
 - **POL** (~1 POL / ~$0.20) — gas for approval txs
 
 ### 4. Approve USDC (One-Time, needs POL)
@@ -139,13 +157,13 @@ Approve both CTF Exchange contracts to spend USDC (max allowance):
 from eth_abi import encode
 from eth_utils import function_signature_to_4byte_selector
 sel = function_signature_to_4byte_selector("approve(address,uint256)")
-USDC = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
+USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"  # USDC.e (bridged), NOT native USDC!
 # Approval 1: CTF Exchange
 data1 = sel + encode(['address','uint256'], ['0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E', 2**256-1])
-# wallet_transfer(to=USDC, amount="0", chain_id=137, data="0x"+data1.hex())
+# wallet_transfer(to=USDC_E, amount="0", chain_id=137, data="0x"+data1.hex())
 # Approval 2: CTF Exchange Neg-Risk
 data2 = sel + encode(['address','uint256'], ['0xC5d563A36AE78145C45a50134d48A1215220f80a', 2**256-1])
-# wallet_transfer(to=USDC, amount="0", chain_id=137, data="0x"+data2.hex())
+# wallet_transfer(to=USDC_E, amount="0", chain_id=137, data="0x"+data2.hex())
 ```
 
 ### 4. Verify Setup
@@ -223,11 +241,11 @@ We use **EOA mode (signature_type=0)** which means:
 
 ## Contracts (Polygon)
 
-| Contract | Address |
-|---|---|
-| CTF Exchange | `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E` |
-| CTF Exchange (neg-risk) | `0xC5d563A36AE78145C45a50134d48A1215220f80a` |
-| USDC | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` |
+| Contract | Address | Notes |
+|---|---|---|
+| CTF Exchange | `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E` | Main exchange |
+| CTF Exchange (neg-risk) | `0xC5d563A36AE78145C45a50134d48A1215220f80a` | For neg-risk markets |
+| **USDC.e (bridged)** | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` | ✅ Supported |
 
 ## ⚠️ MANDATORY: User Confirmation Before Betting
 
@@ -325,11 +343,85 @@ polymarket_post_order(token_id="123456", signature="0x...", meta={...})
 polymarket_get_orders()
 ```
 
+---
+
+## Troubleshooting
+
+### ❌ "I have native USDC, not USDC.e"
+
+**Symptom:** `polymarket_get_balance()` shows $0 even though you have USDC in wallet.
+
+**Cause:** You have Circle's native USDC (`0x3c499c...`) instead of bridged USDC.e (`0x2791...`).
+
+**Fix:** Swap using 1inch skill:
+1. Check wallet balance to confirm you have native USDC
+2. Use `1inch` skill to swap native USDC → USDC.e
+3. Verify USDC.e balance before trading
+
+### ❌ "Not enough balance" error after approvals
+
+**Symptom:** Order post fails with balance error even after approval transactions succeeded.
+
+**Cause:** 10-15 second sync delay between on-chain approval and CLOB API recognition.
+
+**Fix:**
+1. Wait 15-30 seconds after approval transactions complete
+2. Run `polymarket_get_balance()` to verify balance shows correctly
+3. If still failing, wait another 30 seconds and retry order post
+
+### ❌ Order post fails with signature error
+
+**Symptom:** `polymarket_post_order` fails with "invalid signature" or similar error.
+
+**Cause:** Order expired (timestamp too old) or wrong format.
+
+**Fix:**
+1. Always use `polymarket_quick_prepare` or `polymarket_prepare_order` - never manually construct
+2. Sign and post immediately - orders expire after a few minutes
+3. Verify `signature_type=0` for EOA mode
+
+### ❌ Can't find market or token_id
+
+**Symptom:** Search returns no results or wrong market.
+
+**Fix:**
+1. Use full Polymarket URL: `polymarket_lookup("https://polymarket.com/event/...")`
+2. Try multiple search terms: `polymarket_search("2026 FIFA World Cup winner")`
+3. Check Polymarket website for exact market name
+
+### ❌ Approval transaction fails
+
+**Symptom:** Approval transaction reverts or fails.
+
+**Cause:** Insufficient POL for gas.
+
+**Fix:**
+1. Check POL balance: `wallet_get_balance(chain_id=137)`
+2. Need ~0.5-1 POL for approvals (~$0.10-$0.20)
+3. Bridge POL from another chain if needed
+
+### ⚠️ polymarket_get_balance shows $0
+
+**In EOA mode, this can be NORMAL.**
+
+**Why:** USDC.e stays in your wallet until orders fill. Polymarket's balance endpoint shows their internal ledger, which updates after trades execute.
+
+**What to verify:**
+1. ✅ You have USDC.e in wallet: Check with `wallet_get_balance(chain_id=137, token_address="0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174")`
+2. ✅ Approvals are set: Check allowances for both CTF Exchange contracts
+3. ✅ Ready to trade: USDC.e gets pulled automatically when orders fill
+
+**When it's a problem:** If you've already filled orders and balance still shows $0, then there's a sync issue - wait 30s and check again.
+
+---
+
 ## Notes
+- **USDC.e ONLY**: Polymarket accepts `0x2791Bca1...` (USDC.e), NOT native USDC `0x3c499c...`
 - Prices = probabilities: $0.55 = 55% implied, costs $0.55/token, pays $1 if correct
 - tick_size: 0.01 or 0.001 (from market data — always check)
-- neg_risk markets use CTF_EXCHANGE_NEG
-- Orders are GTC by default
+- neg_risk markets use CTF_EXCHANGE_NEG (`0xC5d563A36AE78145C45a50134d48A1215220f80a`)
+- Orders are GTC (Good-Til-Canceled) by default
 - **Fee rate auto-queries from market** (typically 1000 bps = 10% maker fee)
 - Min order ~5 tokens (varies by market)
-- EOA = 0
+- EOA = signature_type 0
+- **Balance sync**: Wait 15-30s after approvals before posting orders

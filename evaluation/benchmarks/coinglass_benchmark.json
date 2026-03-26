@@ -1,0 +1,47 @@
+{
+  "skill_name": "coinglass",
+  "version": "1.0",
+  "goals": [
+    {
+      "id": "fetch_funding_rate",
+      "description": "Retrieve funding rate for a given symbol",
+      "weight": 0.4,
+      "critical": true,
+      "validator": "result_contains_numeric('fundingRate')"
+    },
+    {
+      "id": "validate_data",
+      "description": "Detect and warn on zero/null data instead of passing through",
+      "weight": 0.3,
+      "critical": false,
+      "validator": "no_zero_passthrough"
+    },
+    {
+      "id": "parse_error_correctly",
+      "description": "Distinguish auth errors from invalid symbol errors",
+      "weight": 0.2,
+      "critical": false,
+      "validator": "error_classified_correctly"
+    },
+    {
+      "id": "truncate_response",
+      "description": "Response body under 50K characters",
+      "weight": 0.1,
+      "critical": false,
+      "validator": "response_length_under(50000)"
+    }
+  ],
+  "target_steps": 3,
+  "max_steps": 8,
+  "token_budget": 12000,
+  "weights": {
+    "task": 10.0,
+    "efficiency": 2.0,
+    "cost": 1.0
+  },
+  "optimization": {
+    "loss_threshold": 0.5,
+    "rollback_on_regression": true,
+    "regression_tolerance": 0.1
+  }
+}

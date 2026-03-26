@@ -1,0 +1,161 @@
+[
+  {
+    "skill": "hyperliquid",
+    "run_id": "baseline",
+    "grade": "A",
+    "total_loss": 0.16,
+    "breakdown": {
+      "L_task": 0.0,
+      "L_efficiency": 0.0,
+      "L_cost": 0.16,
+      "weighted": {
+        "W_task": 0.0,
+        "W_efficiency": 0.0,
+        "W_cost": 0.16
+      }
+    },
+    "metadata": {
+      "task_score": 1.0,
+      "steps": "4/4",
+      "tokens": "3200/20000",
+      "goals_met": [
+        "fetch_account_state",
+        "manage_risk",
+        "place_order",
+        "verify_fill"
+      ],
+      "goals_missed": [],
+      "critical_failure": false
+    },
+    "diagnosis": {
+      "dominant_loss": "cost",
+      "needs_refactor": false,
+      "recommendations": [
+        "\u2705 All metrics within target. No action needed."
+      ]
+    }
+  },
+  {
+    "skill": "hyperliquid",
+    "run_id": "worst_case",
+    "grade": "F",
+    "total_loss": 12.333,
+    "breakdown": {
+      "L_task": 1.0,
+      "L_efficiency": 0.667,
+      "L_cost": 1.0,
+      "weighted": {
+        "W_task": 10.0,
+        "W_efficiency": 1.333,
+        "W_cost": 1.0
+      }
+    },
+    "metadata": {
+      "task_score": 0.0,
+      "steps": "12/4",
+      "tokens": "48000/20000",
+      "goals_met": [
+        "manage_risk",
+        "verify_fill"
+      ],
+      "goals_missed": [
+        "fetch_account_state",
+        "place_order"
+      ],
+      "critical_failure": true
+    },
+    "diagnosis": {
+      "dominant_loss": "task",
+      "needs_refactor": true,
+      "recommendations": [
+        "\ud83d\udd34 CRITICAL: A critical goal failed. Fix the core workflow before optimizing.",
+        "Goal 'fetch_account_state' missed: simulated failure",
+        "Goal 'place_order' missed: simulated failure",
+        "\ud83d\udfe1 3 failed steps caused retries. Fix error handling to reduce step count.",
+        "\ud83d\udfe1 Near max step limit. Consider merging multiple queries into batch calls.",
+        "Target: 4 steps, used: 12. Analyze which steps can be eliminated or merged.",
+        "\ud83d\udfe1 Token usage at >80% of budget. Consider adding field filters or response truncation.",
+        "Most expensive step: 'step_1' (4000 tokens). Optimize this first."
+      ]
+    }
+  },
+  {
+    "skill": "coinglass",
+    "run_id": "baseline",
+    "grade": "A",
+    "total_loss": 0.2,
+    "breakdown": {
+      "L_task": 0.0,
+      "L_efficiency": 0.0,
+      "L_cost": 0.2,
+      "weighted": {
+        "W_task": 0.0,
+        "W_efficiency": 0.0,
+        "W_cost": 0.2
+      }
+    },
+    "metadata": {
+      "task_score": 1.0,
+      "steps": "3/3",
+      "tokens": "2400/12000",
+      "goals_met": [
+        "fetch_funding_rate",
+        "parse_error_correctly",
+        "truncate_response",
+        "validate_data"
+      ],
+      "goals_missed": [],
+      "critical_failure": false
+    },
+    "diagnosis": {
+      "dominant_loss": "cost",
+      "needs_refactor": false,
+      "recommendations": [
+        "\u2705 All metrics within target. No action needed."
+      ]
+    }
+  },
+  {
+    "skill": "coinglass",
+    "run_id": "worst_case",
+    "grade": "F",
+    "total_loss": 12.25,
+    "breakdown": {
+      "L_task": 1.0,
+      "L_efficiency": 0.625,
+      "L_cost": 1.0,
+      "weighted": {
+        "W_task": 10.0,
+        "W_efficiency": 1.25,
+        "W_cost": 1.0
+      }
+    },
+    "metadata": {
+      "task_score": 0.0,
+      "steps": "8/3",
+      "tokens": "32000/12000",
+      "goals_met": [
+        "parse_error_correctly",
+        "truncate_response",
+        "validate_data"
+      ],
+      "goals_missed": [
+        "fetch_funding_rate"
+      ],
+      "critical_failure": true
+    },
+    "diagnosis": {
+      "dominant_loss": "task",
+      "needs_refactor": true,
+      "recommendations": [
+        "\ud83d\udd34 CRITICAL: A critical goal failed. Fix the core workflow before optimizing.",
+        "Goal 'fetch_funding_rate' missed: simulated failure",
+        "\ud83d\udfe1 3 failed steps caused retries. Fix error handling to reduce step count.",
+        "\ud83d\udfe1 Near max step limit. Consider merging multiple queries into batch calls.",
+        "Target: 3 steps, used: 8. Analyze which steps can be eliminated or merged.",
+        "\ud83d\udfe1 Token usage at >80% of budget. Consider adding field filters or response truncation.",
+        "Most expensive step: 'step_1' (4000 tokens). Optimize this first."
+      ]
+    }
+  }
+]

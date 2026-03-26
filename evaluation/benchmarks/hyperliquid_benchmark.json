@@ -1,0 +1,47 @@
+{
+  "skill_name": "hyperliquid",
+  "version": "1.0",
+  "goals": [
+    {
+      "id": "fetch_account_state",
+      "description": "Retrieve account positions and margin info",
+      "weight": 0.3,
+      "critical": true,
+      "validator": "result_contains('marginSummary')"
+    },
+    {
+      "id": "place_order",
+      "description": "Successfully place a limit order with correct params",
+      "weight": 0.3,
+      "critical": true,
+      "validator": "order_acknowledged"
+    },
+    {
+      "id": "verify_fill",
+      "description": "Verify order fill state after placement",
+      "weight": 0.2,
+      "critical": false,
+      "validator": "fill_verified"
+    },
+    {
+      "id": "manage_risk",
+      "description": "Set leverage and/or TP/SL correctly",
+      "weight": 0.2,
+      "critical": false,
+      "validator": "risk_params_set"
+    }
+  ],
+  "target_steps": 4,
+  "max_steps": 12,
+  "token_budget": 20000,
+  "weights": {
+    "task": 10.0,
+    "efficiency": 2.0,
+    "cost": 1.0
+  },
+  "optimization": {
+    "loss_threshold": 0.5,
+    "rollback_on_regression": true,
+    "regression_tolerance": 0.1
+  }
+}

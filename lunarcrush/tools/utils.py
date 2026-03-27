@@ -36,7 +36,8 @@ def get_api_key() -> str:
 def make_request(
     endpoint: str,
     params: Optional[Dict[str, Any]] = None,
-    timeout: int = 30
+    timeout: int = 30,
+    max_results: int = 100,
 ) -> Dict[str, Any]:
     """
     Make authenticated request to LunarCrush API.
@@ -69,7 +70,15 @@ def make_request(
             timeout=timeout
         )
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        # Truncate large list responses
+        if isinstance(data, dict) and "data" in data:
+            items = data["data"]
+            if isinstance(items, list) and len(items) > max_results:
+                data["data"] = items[:max_results]
+        elif isinstance(data, list) and len(data) > max_results:
+            data = data[:max_results]
+        return data
     except requests.exceptions.Timeout:
         raise requests.RequestException("Request timeout - LunarCrush API may be slow")
     except requests.exceptions.ConnectionError:

@@ -5,24 +5,12 @@ Provides tools for fetching current market data including price, volume, and 52-
 """
 
 import logging
-from typing import Optional, List
+from typing import List
 
 from core.tool import BaseTool, ToolContext, ToolResult
-from .client import TwelveDataClient
+from .utils import get_client
 
 logger = logging.getLogger(__name__)
-
-# Singleton client instance
-_client: Optional[TwelveDataClient] = None
-
-
-def _get_client() -> TwelveDataClient:
-    """Get or create singleton client instance."""
-    global _client
-    if _client is None:
-        _client = TwelveDataClient()
-    return _client
-
 
 class TwelveDataQuoteTool(BaseTool):
     """Get real-time quote for a stock or forex pair."""
@@ -72,7 +60,7 @@ Returns: Real-time quote with all current market metrics"""
             return ToolResult(success=False, error="'symbol' is required")
 
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.get_quote(symbol=symbol)
 
             # Check for API errors
@@ -96,7 +84,6 @@ Returns: Real-time quote with all current market metrics"""
                     error="Rate limit exceeded. Wait a moment and try again.",
                 )
             return ToolResult(success=False, error=error_msg)
-
 
 class TwelveDataQuoteBatchTool(BaseTool):
     """Get real-time quotes for multiple stocks or forex pairs at once."""
@@ -142,7 +129,7 @@ Returns: Quotes for all requested symbols"""
             return ToolResult(success=False, error="'symbols' array is required and must not be empty")
 
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.get_quote_batch(symbols=symbols)
 
             # Check for API errors
@@ -166,7 +153,6 @@ Returns: Quotes for all requested symbols"""
                     error="Rate limit exceeded. Wait a moment and try again.",
                 )
             return ToolResult(success=False, error=error_msg)
-
 
 class TwelveDataPriceBatchTool(BaseTool):
     """Get latest prices for multiple stocks or forex pairs at once."""
@@ -212,7 +198,7 @@ Returns: Current prices for all requested symbols"""
             return ToolResult(success=False, error="'symbols' array is required and must not be empty")
 
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.get_price_batch(symbols=symbols)
 
             # Check for API errors

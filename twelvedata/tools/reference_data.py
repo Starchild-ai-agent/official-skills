@@ -5,24 +5,11 @@ Provides tools for searching symbols, listing available stocks, forex pairs, and
 """
 
 import logging
-from typing import Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
-from .client import TwelveDataClient
+from .utils import get_client
 
 logger = logging.getLogger(__name__)
-
-# Singleton client instance
-_client: Optional[TwelveDataClient] = None
-
-
-def _get_client() -> TwelveDataClient:
-    """Get or create singleton client instance."""
-    global _client
-    if _client is None:
-        _client = TwelveDataClient()
-    return _client
-
 
 class TwelveDataSearchTool(BaseTool):
     """Search for stocks or forex pairs by name or symbol."""
@@ -70,7 +57,7 @@ Returns: Array of matching symbols with name, exchange, type, and currency info"
             return ToolResult(success=False, error="'query' is required")
 
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.search_symbol(query=query)
 
             # Check for API errors
@@ -80,6 +67,22 @@ Returns: Array of matching symbols with name, exchange, type, and currency info"
                     error=f"API Error: {data.get('message', 'Unknown error')}",
                 )
 
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 20:
+                    data["data"] = items[:20]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 20:
+                data = data[:20]
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 50:
+                    data["data"] = items[:50]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 50:
+                data = data[:50]
             return ToolResult(success=True, output=data)
         except Exception as e:
             error_msg = str(e)
@@ -94,7 +97,6 @@ Returns: Array of matching symbols with name, exchange, type, and currency info"
                     error="Rate limit exceeded. Wait a moment and try again.",
                 )
             return ToolResult(success=False, error=error_msg)
-
 
 class TwelveDataStocksTool(BaseTool):
     """Get list of available stocks, optionally filtered by exchange or country."""
@@ -139,7 +141,7 @@ Returns: Array of stocks with symbol, name, currency, exchange, and type"""
         **kwargs,
     ) -> ToolResult:
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.get_stocks(
                 exchange=exchange if exchange else None,
                 country=country if country else None,
@@ -152,6 +154,14 @@ Returns: Array of stocks with symbol, name, currency, exchange, and type"""
                     error=f"API Error: {data.get('message', 'Unknown error')}",
                 )
 
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 50:
+                    data["data"] = items[:50]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 50:
+                data = data[:50]
             return ToolResult(success=True, output=data)
         except Exception as e:
             error_msg = str(e)
@@ -166,7 +176,6 @@ Returns: Array of stocks with symbol, name, currency, exchange, and type"""
                     error="Rate limit exceeded. Wait a moment and try again.",
                 )
             return ToolResult(success=False, error=error_msg)
-
 
 class TwelveDataForexPairsTool(BaseTool):
     """Get list of available forex pairs."""
@@ -201,7 +210,7 @@ Returns: Array of forex pairs with symbol, currency base, currency quote"""
         **kwargs,
     ) -> ToolResult:
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.get_forex_pairs()
 
             # Check for API errors
@@ -211,6 +220,14 @@ Returns: Array of forex pairs with symbol, currency base, currency quote"""
                     error=f"API Error: {data.get('message', 'Unknown error')}",
                 )
 
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 50:
+                    data["data"] = items[:50]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 50:
+                data = data[:50]
             return ToolResult(success=True, output=data)
         except Exception as e:
             error_msg = str(e)
@@ -225,7 +242,6 @@ Returns: Array of forex pairs with symbol, currency base, currency quote"""
                     error="Rate limit exceeded. Wait a moment and try again.",
                 )
             return ToolResult(success=False, error=error_msg)
-
 
 class TwelveDataExchangesTool(BaseTool):
     """Get list of supported stock exchanges."""
@@ -257,7 +273,7 @@ Returns: Array of exchanges with name, code, country, and timezone"""
         **kwargs,
     ) -> ToolResult:
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.get_exchanges()
 
             # Check for API errors
@@ -267,6 +283,14 @@ Returns: Array of exchanges with name, code, country, and timezone"""
                     error=f"API Error: {data.get('message', 'Unknown error')}",
                 )
 
+            # Truncate large result sets
+            if isinstance(data, dict) and "data" in data:
+                items = data["data"]
+                if isinstance(items, list) and len(items) > 50:
+                    data["data"] = items[:50]
+                    data["_truncated"] = True
+            elif isinstance(data, list) and len(data) > 50:
+                data = data[:50]
             return ToolResult(success=True, output=data)
         except Exception as e:
             error_msg = str(e)

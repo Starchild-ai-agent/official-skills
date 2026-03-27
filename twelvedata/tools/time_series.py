@@ -5,24 +5,11 @@ Provides tools for fetching historical price data with various intervals.
 """
 
 import logging
-from typing import Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
-from .client import TwelveDataClient, INTERVALS
+from .utils import get_client, INTERVALS
 
 logger = logging.getLogger(__name__)
-
-# Singleton client instance
-_client: Optional[TwelveDataClient] = None
-
-
-def _get_client() -> TwelveDataClient:
-    """Get or create singleton client instance."""
-    global _client
-    if _client is None:
-        _client = TwelveDataClient()
-    return _client
-
 
 class TwelveDataTimeSeriesTools(BaseTool):
     """Get historical OHLCV time series data for stocks and forex."""
@@ -92,7 +79,7 @@ Returns: Historical OHLCV data with metadata including symbol, exchange, currenc
             return ToolResult(success=False, error="'symbol' is required")
 
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.get_time_series(
                 symbol=symbol,
                 interval=interval,
@@ -122,7 +109,6 @@ Returns: Historical OHLCV data with metadata including symbol, exchange, currenc
                     error="Rate limit exceeded. Wait a moment and try again.",
                 )
             return ToolResult(success=False, error=error_msg)
-
 
 class TwelveDataPriceTool(BaseTool):
     """Get latest trading price for a stock or forex pair."""
@@ -165,7 +151,7 @@ Returns: Current price value"""
             return ToolResult(success=False, error="'symbol' is required")
 
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.get_price(symbol=symbol)
 
             if "status" in data and data["status"] == "error":
@@ -188,7 +174,6 @@ Returns: Current price value"""
                     error="Rate limit exceeded. Wait a moment and try again.",
                 )
             return ToolResult(success=False, error=error_msg)
-
 
 class TwelveDataEODTool(BaseTool):
     """Get end-of-day price for a stock or forex pair."""
@@ -237,7 +222,7 @@ Returns: EOD price data with close, high, low, open, volume"""
             return ToolResult(success=False, error="'symbol' is required")
 
         try:
-            client = _get_client()
+            client = get_client()
             data = await client.get_eod(
                 symbol=symbol,
                 date=date if date else None,

@@ -59,8 +59,7 @@ def _get_api_key() -> Optional[str]:
 
 def get_wallet_networth(
     wallet: str,
-    chain: str = "solana"
-) -> Optional[Dict[str, Any]]:
+    chain: str = "solana", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get current net worth and portfolio snapshot for a wallet.
 
@@ -127,7 +126,10 @@ def get_wallet_networth(
             print(f"API Error: {data.get('message', 'Unknown error')}", file=sys.stderr)
             return None
 
-        return data
+        filtered_output = data.get("data", data)
+        if isinstance(filtered_output, list):
+            filtered_output = filtered_output[:max_results]
+        return filtered_output
 
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}", file=sys.stderr)
@@ -142,8 +144,7 @@ def get_wallet_networth_chart(
     chain: str = "solana",
     interval: str = "1d",
     time_from: Optional[int] = None,
-    time_to: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    time_to: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get net worth chart data over time.
 
@@ -214,7 +215,10 @@ def get_wallet_networth_chart(
             print(f"API Error: {data.get('message', 'Unknown error')}", file=sys.stderr)
             return None
 
-        return data
+        filtered_output = data.get("data", data)
+        if isinstance(filtered_output, list):
+            filtered_output = filtered_output[:max_results]
+        return filtered_output
 
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}", file=sys.stderr)

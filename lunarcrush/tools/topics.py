@@ -8,7 +8,7 @@ Provides social sentiment analysis for crypto-related topics.
 
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 
 try:
     from .utils import make_request

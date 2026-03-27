@@ -7,7 +7,7 @@ exchanges, NFTs, infrastructure, search, and contract lookups.
 """
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
 

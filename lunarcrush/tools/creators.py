@@ -7,7 +7,7 @@ Tools for fetching crypto influencer data including rankings, metrics, and posts
 
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 
 try:
     from .utils import make_request

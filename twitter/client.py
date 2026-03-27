@@ -7,7 +7,7 @@ Auth: X-API-Key header from TWITTER_API_KEY env var.
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, List
 
 from core.http_client import proxied_get
 

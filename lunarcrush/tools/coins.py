@@ -8,7 +8,7 @@ Provides Galaxy Score, AltRank, and social sentiment data.
 
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 
 try:
     from .utils import make_request, normalize_symbol, parse_time_series_bucket

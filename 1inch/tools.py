@@ -11,7 +11,7 @@ import logging
 from typing import Dict
 
 from core.tool import BaseTool, ToolContext, ToolResult
-from .client import OneInchClient, NATIVE_TOKEN, SUPPORTED_CHAINS, resolve_chain
+from .client import OneInchClient, NATIVE_TOKEN, resolve_chain
 
 logger = logging.getLogger(__name__)
 

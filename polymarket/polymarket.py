@@ -6,7 +6,6 @@ Provides market discovery, research, and trading capabilities.
 """
 import asyncio
 import logging
-import json
 from typing import Any, Dict, Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
@@ -32,7 +31,6 @@ try:
         build_order_payload,
         post_signed_order,
     )
-    from .tools.utils import BASE
     POLYMARKET_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Polymarket tools not available: {e}")

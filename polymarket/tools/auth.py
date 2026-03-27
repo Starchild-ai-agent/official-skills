@@ -2,7 +2,7 @@
 Polymarket Authentication Helpers
 Handles L1 EIP-712 auth and credential derivation
 """
-from .utils import CHAIN_ID, clob_post
+from .utils import CHAIN_ID
 
 
 def build_clob_auth_message(address, timestamp, nonce=0):

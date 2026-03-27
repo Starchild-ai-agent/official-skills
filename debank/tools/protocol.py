@@ -5,13 +5,12 @@ DeBank Protocol API Tools
 Get DeFi protocol and pool information.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 try:
     from .utils import debank_api_request, validate_chain_id
 except ImportError:
     from utils import debank_api_request, validate_chain_id
-
 
 def get_protocol(protocol_id: str) -> Dict[str, Any]:
     """
@@ -29,7 +28,6 @@ def get_protocol(protocol_id: str) -> Dict[str, Any]:
     """
     params = {"id": protocol_id}
     return debank_api_request("/v1/protocol", params=params)
-
 
 def get_protocol_list(chain_id: str) -> Dict[str, Any]:
     """
@@ -49,7 +47,6 @@ def get_protocol_list(chain_id: str) -> Dict[str, Any]:
     params = {"chain_id": chain_id}
     return debank_api_request("/v1/protocol/list", params=params)
 
-
 def get_protocol_all_list() -> Dict[str, Any]:
     """
     Get all protocols of supported chains.
@@ -62,7 +59,6 @@ def get_protocol_all_list() -> Dict[str, Any]:
     """
     return debank_api_request("/v1/protocol/all_list")
 
-
 def get_app_protocol_list() -> Dict[str, Any]:
     """
     Get all app-protocols.
@@ -74,7 +70,6 @@ def get_app_protocol_list() -> Dict[str, Any]:
         >>> app_protocols = get_app_protocol_list()
     """
     return debank_api_request("/v1/app_protocol/list")
-
 
 def get_pool(
     protocol_id: str,

@@ -11,16 +11,13 @@ This module provides utility functions for DeBank API tools including:
 import os
 import time
 from typing import Dict, Any, Optional
-from dotenv import load_dotenv
 import requests
 from core.http_client import proxied_get, proxied_post
 
 # Load environment variables
-load_dotenv()
 
 # DeBank API base URL
 DEBANK_API_BASE = "https://pro-openapi.debank.com"
-
 
 def get_debank_headers() -> Dict[str, str]:
     """
@@ -44,13 +41,13 @@ def get_debank_headers() -> Dict[str, str]:
         "accept": "application/json"
     }
 
-
 def debank_api_request(
     endpoint: str,
     params: Optional[Dict[str, Any]] = None,
     method: str = "GET",
     max_retries: int = 3,
-    retry_delay: float = 1.0
+    retry_delay: float = 1.0,
+    max_results: int = 100
 ) -> Dict[str, Any]:
     """
     Make a request to DeBank API with retry logic.
@@ -81,7 +78,11 @@ def debank_api_request(
                 raise ValueError(f"Unsupported HTTP method: {method}")
 
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            # Truncate large list responses
+            if isinstance(data, list) and len(data) > max_results:
+                data = data[:max_results]
+            return data
 
         except requests.exceptions.Timeout:
             if attempt == max_retries - 1:
@@ -111,7 +112,6 @@ def debank_api_request(
             time.sleep(retry_delay)
 
     raise requests.RequestException("Max retries exceeded")
-
 
 def validate_address(address: str) -> str:
     """
@@ -145,7 +145,6 @@ def validate_address(address: str) -> str:
 
     return address
 
-
 def validate_chain_id(chain_id: str) -> str:
     """
     Validate and normalize chain ID.
@@ -164,7 +163,6 @@ def validate_chain_id(chain_id: str) -> str:
 
     return chain_id.strip().lower()
 
-
 def format_token_amount(amount: float, decimals: int) -> str:
     """
     Format token amount with decimals.
@@ -181,7 +179,6 @@ def format_token_amount(amount: float, decimals: int) -> str:
 
     formatted = amount / (10 ** decimals)
     return f"{formatted:.{min(decimals, 8)}f}"
-
 
 def safe_get(data: Dict[str, Any], *keys, default=None) -> Any:
     """

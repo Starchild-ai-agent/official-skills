@@ -5,13 +5,12 @@ DeBank Chain API Tools
 Get information about supported blockchains.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 try:
     from .utils import debank_api_request, validate_chain_id
 except ImportError:
     from utils import debank_api_request, validate_chain_id
-
 
 def get_chain_list() -> Dict[str, Any]:
     """
@@ -25,7 +24,6 @@ def get_chain_list() -> Dict[str, Any]:
         >>> print(chains)
     """
     return debank_api_request("/v1/chain/list")
-
 
 def get_chain(chain_id: str) -> Dict[str, Any]:
     """
@@ -45,7 +43,6 @@ def get_chain(chain_id: str) -> Dict[str, Any]:
 
     params = {"id": chain_id}
     return debank_api_request("/v1/chain", params=params)
-
 
 def get_gas_market(chain_id: str) -> Dict[str, Any]:
     """

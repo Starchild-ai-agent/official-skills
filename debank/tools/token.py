@@ -72,13 +72,15 @@ def get_token_history_price(
     return debank_api_request("/v1/token/history_price", params=params)
 
 
-def get_token_list_by_ids(chain_id: str, token_ids: List[str]) -> Dict[str, Any]:
+def get_token_list_by_ids(chain_id: str, token_ids: List[str],
+                         max_results: int = 50) -> Dict[str, Any]:
     """
     Batch fetch multiple tokens on a chain.
 
     Args:
         chain_id: Chain identifier
         token_ids: List of token contract addresses
+        max_results: Maximum number of tokens to return (default 50)
 
     Returns:
         Dict with token data for each requested token
@@ -87,6 +89,7 @@ def get_token_list_by_ids(chain_id: str, token_ids: List[str]) -> Dict[str, Any]
         >>> tokens = get_token_list_by_ids("eth", ["0x...", "0x..."])
     """
     chain_id = validate_chain_id(chain_id)
+    token_ids = token_ids[:max_results]
 
     params = {
         "chain_id": chain_id,

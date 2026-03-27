@@ -250,7 +250,7 @@ class DebankTokenListByIdsTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return "Batch fetch multiple tokens on a chain by their addresses."
+        return "Batch fetch multiple tokens on a chain by their addresses. Use max_results to limit output."
 
     @property
     def parameters(self) -> dict:
@@ -262,17 +262,24 @@ class DebankTokenListByIdsTool(BaseTool):
                     "type": "array",
                     "items": {"type": "string"},
                     "description": "List of token contract addresses"
+                },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Maximum number of tokens to return",
+                    "default": 50
                 }
             },
             "required": ["chain_id", "token_ids"]
         }
 
-    async def execute(self, ctx: ToolContext, chain_id: str, token_ids: List[str]) -> ToolResult:
+    async def execute(self, ctx: ToolContext, chain_id: str, token_ids: List[str], max_results: int = 50, **kwargs) -> ToolResult:
         if not DEBANK_AVAILABLE:
             return ToolResult(success=False, output=None, error="DeBank tools not available")
 
         try:
             result = await asyncio.to_thread(get_token_list_by_ids, chain_id, token_ids)
+            if isinstance(result, list):
+                result = result[:max_results]
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))

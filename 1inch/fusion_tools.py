@@ -133,7 +133,7 @@ Returns: estimated output amount, presets (slow/medium/fast), fees"""
                 wallet_address=wallet_address,
             )
             return ToolResult(success=True, output=data)
-        except RuntimeError as e:
+        except RuntimeError:
             # Wallet unavailable — try with zero address for read-only quote
             try:
                 client = _get_fusion_client()

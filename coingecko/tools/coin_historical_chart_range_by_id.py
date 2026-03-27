@@ -26,7 +26,6 @@ from dotenv import load_dotenv
 import time
 import argparse
 import json
-from typing import Union
 
 from core.http_client import proxied_get
 try:

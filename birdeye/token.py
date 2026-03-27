@@ -5,7 +5,6 @@ BaseTool wrappers for token security and overview analysis.
 """
 import asyncio
 import logging
-from typing import Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
 

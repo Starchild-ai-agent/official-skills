@@ -12,7 +12,6 @@ import time
 import argparse
 import json
 import sys
-from typing import Union
 try:
     from .utils import parse_flexible_time, split_time_range, merge_ohlc_data, get_days_difference, search_coin_by_name
 except ImportError:

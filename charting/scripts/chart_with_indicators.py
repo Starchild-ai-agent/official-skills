@@ -9,7 +9,6 @@ import os
 import sys
 import requests
 import pandas as pd
-import numpy as np
 import mplfinance as mpf
 import time
 

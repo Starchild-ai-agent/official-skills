@@ -11,7 +11,7 @@ import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 try:
     from dotenv import load_dotenv
@@ -275,7 +275,7 @@ def main():
                 if args.analyze and result.get("analysis"):
                     print(f"\nAnalysis: {result['analysis']['sentiment']}")
 
-                print(f"\nTop exchanges:")
+                print("\nTop exchanges:")
                 for ex in result['exchanges'][:5]:
                     print(f"  {ex['exchange']:15s} ${ex['total_liquidations_usd']:>12,.0f}")
             return 0

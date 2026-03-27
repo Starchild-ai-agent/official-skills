@@ -9,14 +9,14 @@ import os
 from dotenv import load_dotenv
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 
 from core.http_client import proxied_get
 
 try:
     from .utils import search_coin_by_name
 except ImportError:
-    from utils import search_coin_by_name
+    pass
 
 # Load environment variables
 load_dotenv()

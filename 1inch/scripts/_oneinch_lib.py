@@ -7,7 +7,7 @@ import json
 import os
 import subprocess
 from decimal import Decimal, ROUND_DOWN
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 import requests
 

@@ -160,7 +160,7 @@ def format_output(data: Dict[str, Any], output_format: str = "json") -> str:
     elif output_format == "text":
         lines = []
         lines.append("=" * 60)
-        lines.append(f"SUPPORT & RESISTANCE LEVELS")
+        lines.append("SUPPORT & RESISTANCE LEVELS")
         lines.append(f"Type: {data.get('type', 'Unknown').upper()}")
         lines.append(f"Symbol: {data['symbol']} | Exchange: {data['exchange']}")
         lines.append(f"Interval: {data['interval']}")

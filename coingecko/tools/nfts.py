@@ -9,7 +9,7 @@ import os
 from dotenv import load_dotenv
 import json
 import argparse
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from core.http_client import proxied_get
 

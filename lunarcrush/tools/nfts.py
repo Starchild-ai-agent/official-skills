@@ -7,7 +7,7 @@ Tools for fetching NFT collections with social metrics.
 
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 
 try:
     from .utils import make_request

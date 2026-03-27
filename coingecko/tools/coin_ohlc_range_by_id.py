@@ -7,12 +7,10 @@ Returns: Array of [timestamp_ms, open, high, low, close] in USD
 """
 
 import os
-from dotenv import load_dotenv
 import time
 import argparse
 import json
 import sys
-from typing import Union
 try:
     from .utils import parse_flexible_time, split_time_range, merge_ohlc_data, get_days_difference, search_coin_by_name
 except ImportError:
@@ -22,7 +20,6 @@ from core.http_client import proxied_get
 
 # Load environment variables from project root directory
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
-load_dotenv(os.path.join(project_root, '.env'))
 
 # MCP Tool Schema
 MCP_TOOL_SCHEMA = {
@@ -98,7 +95,7 @@ MCP_TOOL_SCHEMA = {
     }
 }
 
-def get_coin_ohlc_range_by_id(coin_id, from_timestamp=None, to_timestamp=None, interval=None):
+def get_coin_ohlc_range_by_id(coin_id, from_timestamp=None, to_timestamp=None, interval=None, max_results: int = 100):
     """
     Fetch OHLC chart data for a specific coin within a time range from CoinGecko Pro API.
     Handles automatic data splitting for large time ranges. Currency fixed to USD.
@@ -156,8 +153,7 @@ def get_coin_ohlc_range_by_id(coin_id, from_timestamp=None, to_timestamp=None, i
     # Single request
     return _fetch_single_ohlc_range(actual_coin_id, vs_currency, from_ts, to_ts, interval)
 
-
-def _fetch_ohlc_with_splitting(coin_id, vs_currency, from_ts, to_ts, interval, max_days):
+def _fetch_ohlc_with_splitting(coin_id, vs_currency, from_ts, to_ts, interval, max_days, max_results: int = None):
     """Fetch OHLC data with automatic splitting for large ranges."""
     time_chunks = split_time_range(from_ts, to_ts, max_days=max_days)
     data_chunks = []
@@ -171,8 +167,7 @@ def _fetch_ohlc_with_splitting(coin_id, vs_currency, from_ts, to_ts, interval, m
     # Merge all chunks
     return merge_ohlc_data(data_chunks)
 
-
-def _fetch_single_ohlc_range(coin_id, vs_currency, from_timestamp, to_timestamp, interval):
+def _fetch_single_ohlc_range(coin_id, vs_currency, from_timestamp, to_timestamp, interval, max_results: int = None):
     """Fetch OHLC data for a single time range."""
     url = f"https://pro-api.coingecko.com/api/v3/coins/{coin_id}/ohlc/range"
     params = {
@@ -199,14 +194,12 @@ def _fetch_single_ohlc_range(coin_id, vs_currency, from_timestamp, to_timestamp,
                 raise ConnectionError(f"API request failed after retries: {e}")
             time.sleep(1)
 
-
 # Backward compatibility
 def get_coin_ohlc_range(coin_id, vs_currency='usd', from_timestamp=None, to_timestamp=None, interval=None):
     """Backward compatibility wrapper for get_coin_ohlc_range_by_id. vs_currency is ignored (always USD)."""
     return get_coin_ohlc_range_by_id(coin_id, from_timestamp, to_timestamp, interval)
 
-
-def main():
+def main(max_results: int = None):
     """Command-line interface for the coin OHLC range tool."""
     
     # Handle MCP schema queries first (single argument only)
@@ -307,7 +300,6 @@ EXAMPLE:
         return 1
         
     return 0
-
 
 if __name__ == "__main__":
     exit(main()) 

@@ -11,16 +11,20 @@ This module provides utility functions for CoinGecko API tools including:
 
 import re
 from datetime import datetime, timedelta
-from typing import Union, List, Tuple, Optional, Dict, Any
+from typing import Union, List, Tuple, Optional, Dict
 import os
-from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+
+def get_api_key() -> str:
+    """Get CoinGecko API key from environment."""
+    api_key = os.getenv("COINGECKO_API_KEY")
+    if not api_key:
+        raise ValueError("COINGECKO_API_KEY environment variable is required")
+    return api_key
 
 import requests
 from core.http_client import proxied_get
-
 
 def normalize_timestamp_to_seconds(timestamp: Union[int, float]) -> int:
     """
@@ -48,7 +52,6 @@ def normalize_timestamp_to_seconds(timestamp: Union[int, float]) -> int:
     else:  # Likely seconds (10 digits or less)
         return timestamp
 
-
 def normalize_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:
     """
     Automatically detect and convert timestamp format (seconds or milliseconds) to milliseconds.
@@ -71,7 +74,6 @@ def normalize_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:
         return timestamp
     else:  # Convert from seconds to milliseconds
         return timestamp * 1000
-
 
 def parse_flexible_time(time_input: Union[str, int, float]) -> int:
     """
@@ -126,7 +128,6 @@ def parse_flexible_time(time_input: Union[str, int, float]) -> int:
     # Parse natural language
     return _parse_natural_language(time_str)
 
-
 def _parse_date_string(date_str: str) -> int:
     """Parse various date string formats to Unix timestamp."""
     formats = [
@@ -145,7 +146,6 @@ def _parse_date_string(date_str: str) -> int:
             continue
     
     raise ValueError(f"Unable to parse date string: {date_str}")
-
 
 def _parse_natural_language(text: str) -> int:
     """Parse natural language time expressions to Unix timestamp."""
@@ -204,7 +204,6 @@ def _parse_natural_language(text: str) -> int:
     
     raise ValueError(f"Unable to parse natural language time: {text}")
 
-
 def split_time_range(from_timestamp: int, to_timestamp: int, max_days: int = 180) -> List[Tuple[int, int]]:
     """
     Split a time range into chunks that don't exceed the maximum days limit.
@@ -241,7 +240,6 @@ def split_time_range(from_timestamp: int, to_timestamp: int, max_days: int = 180
     
     return chunks
 
-
 def validate_coin_input(coin_input: str) -> str:
     """
     Validate and normalize coin input (ID or symbol).
@@ -260,7 +258,6 @@ def validate_coin_input(coin_input: str) -> str:
     
     return coin_input.strip().lower()
 
-
 def format_dd_mm_yyyy_date(timestamp: int) -> str:
     """
     Convert Unix timestamp to dd-mm-yyyy format for CoinGecko historical API.
@@ -274,7 +271,6 @@ def format_dd_mm_yyyy_date(timestamp: int) -> str:
     dt = datetime.utcfromtimestamp(timestamp)
     return dt.strftime('%d-%m-%Y')
 
-
 def get_days_difference(from_timestamp: int, to_timestamp: int) -> int:
     """
     Calculate the number of days between two timestamps.
@@ -287,7 +283,6 @@ def get_days_difference(from_timestamp: int, to_timestamp: int) -> int:
         int: Number of days
     """
     return int((to_timestamp - from_timestamp) / (24 * 60 * 60))
-
 
 def merge_ohlc_data(data_chunks: List[List]) -> List:
     """
@@ -316,7 +311,6 @@ def merge_ohlc_data(data_chunks: List[List]) -> List:
             unique_data.append(item)
     
     return unique_data
-
 
 def merge_market_chart_data(data_chunks: List[dict]) -> dict:
     """
@@ -358,8 +352,7 @@ def merge_market_chart_data(data_chunks: List[dict]) -> dict:
     
     return merged
 
-
-def search_coin_by_name(query: str) -> Optional[Dict[str, str]]:
+def search_coin_by_name(query: str, max_results: int = 100) -> Optional[Dict[str, str]]:
     """
     Search for a cryptocurrency by name or symbol with intelligent input detection.
     
@@ -498,5 +491,4 @@ def search_coin_by_name(query: str) -> Optional[Dict[str, str]]:
         raise requests.RequestException(f"API request failed: {e}")
     
     return None
-
 

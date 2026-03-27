@@ -5,27 +5,16 @@ CoinGecko Infrastructure Tools
 Tools for fetching reference data: asset platforms, exchange rates, supported currencies, and categories list.
 """
 
-import os
-from dotenv import load_dotenv
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Load environment variables
-load_dotenv()
 
-
-def get_api_key() -> str:
-    """Get CoinGecko API key from environment."""
-    api_key = os.getenv("COINGECKO_API_KEY")
-    if not api_key:
-        raise ValueError("COINGECKO_API_KEY environment variable is required")
-    return api_key
-
-
-def get_asset_platforms(filter: Optional[str] = None) -> Dict[str, Any]:
+def get_asset_platforms(filter: Optional[str] = None, max_results: int = 100) -> Dict[str, Any]:
     """
     Get all blockchain networks/asset platforms.
 
@@ -35,119 +24,127 @@ def get_asset_platforms(filter: Optional[str] = None) -> Dict[str, Any]:
     Returns:
         Dictionary with list of asset platforms
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/asset_platforms"
-    headers = {"x-cg-pro-api-key": api_key}
-    params = {}
-    if filter:
-        params["filter"] = filter
+        url = "https://pro-api.coingecko.com/api/v3/asset_platforms"
+        headers = {"x-cg-pro-api-key": api_key}
+        params = {}
+        if filter:
+            params["filter"] = filter
 
-    response = proxied_get(url, headers=headers, params=params, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
 
-    platforms = []
-    for platform in data:
-        platforms.append({
-            "id": platform.get("id", ""),
-            "chain_identifier": platform.get("chain_identifier"),
-            "name": platform.get("name", ""),
-            "shortname": platform.get("shortname"),
-            "native_coin_id": platform.get("native_coin_id"),
-            "image": platform.get("image", {})
-        })
+        platforms = []
+        for platform in data:
+            platforms.append({
+                "id": platform.get("id", ""),
+                "chain_identifier": platform.get("chain_identifier"),
+                "name": platform.get("name", ""),
+                "shortname": platform.get("shortname"),
+                "native_coin_id": platform.get("native_coin_id"),
+                "image": platform.get("image", {})
+            })
 
-    return {
-        "platforms": platforms,
-        "count": len(platforms),
-        "filter": filter
-    }
+        return {
+            "platforms": platforms,
+            "count": len(platforms),
+            "filter": filter
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
-
-def get_exchange_rates() -> Dict[str, Any]:
+def get_exchange_rates(max_results: int = 100) -> Dict[str, Any]:
     """
     Get BTC exchange rates to all fiat currencies.
 
     Returns:
         Dictionary with BTC exchange rates
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/exchange_rates"
-    headers = {"x-cg-pro-api-key": api_key}
+        url = "https://pro-api.coingecko.com/api/v3/exchange_rates"
+        headers = {"x-cg-pro-api-key": api_key}
 
-    response = proxied_get(url, headers=headers, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
 
-    rates = data.get("rates", {})
-    formatted_rates = {}
-    for currency, info in rates.items():
-        formatted_rates[currency] = {
-            "name": info.get("name", ""),
-            "unit": info.get("unit", ""),
-            "value": info.get("value"),
-            "type": info.get("type", "")
+        rates = data.get("rates", {})
+        formatted_rates = {}
+        for currency, info in rates.items():
+            formatted_rates[currency] = {
+                "name": info.get("name", ""),
+                "unit": info.get("unit", ""),
+                "value": info.get("value"),
+                "type": info.get("type", "")
+            }
+
+        return {
+            "base": "btc",
+            "rates": formatted_rates,
+            "count": len(formatted_rates)
         }
+    except Exception as e:
+        return {"error": str(e)}
 
-    return {
-        "base": "btc",
-        "rates": formatted_rates,
-        "count": len(formatted_rates)
-    }
-
-
-def get_vs_currencies() -> Dict[str, Any]:
+def get_vs_currencies(max_results: int = 100) -> Dict[str, Any]:
     """
     Get list of supported quote currencies (vs_currencies).
 
     Returns:
         Dictionary with list of supported currencies
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/simple/supported_vs_currencies"
-    headers = {"x-cg-pro-api-key": api_key}
+        url = "https://pro-api.coingecko.com/api/v3/simple/supported_vs_currencies"
+        headers = {"x-cg-pro-api-key": api_key}
 
-    response = proxied_get(url, headers=headers, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
 
-    return {
-        "currencies": data,
-        "count": len(data)
-    }
+        return {
+            "currencies": data,
+            "count": len(data)
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
-
-def get_categories_list() -> Dict[str, Any]:
+def get_categories_list(max_results: int = 100) -> Dict[str, Any]:
     """
     Get lightweight list of category names and IDs (no market data).
 
     Returns:
         Dictionary with list of categories
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/coins/categories/list"
-    headers = {"x-cg-pro-api-key": api_key}
+        url = "https://pro-api.coingecko.com/api/v3/coins/categories/list"
+        headers = {"x-cg-pro-api-key": api_key}
 
-    response = proxied_get(url, headers=headers, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
 
-    categories = []
-    for category in data:
-        categories.append({
-            "category_id": category.get("category_id", ""),
-            "name": category.get("name", "")
-        })
+        categories = []
+        for category in data:
+            categories.append({
+                "category_id": category.get("category_id", ""),
+                "name": category.get("name", "")
+            })
 
-    return {
-        "categories": categories,
-        "count": len(categories)
-    }
-
+        return {
+            "categories": categories,
+            "count": len(categories)
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 def main():
     """CLI interface for infrastructure tools."""
@@ -192,7 +189,6 @@ def main():
     except Exception as e:
         print(json.dumps({"error": str(e)}, indent=2))
         return 1
-
 
 if __name__ == "__main__":
     exit(main())

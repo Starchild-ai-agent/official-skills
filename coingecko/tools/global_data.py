@@ -5,17 +5,14 @@ CoinGecko Global Data Tools
 Tools for fetching global crypto market statistics and DeFi data.
 """
 
-import os
-from dotenv import load_dotenv
 import json
 import argparse
 from typing import Dict, Any
 
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Load environment variables
-load_dotenv()
-
 
 # MCP Tool Schemas
 MCP_GLOBAL_SCHEMA = {
@@ -40,71 +37,66 @@ MCP_GLOBAL_DEFI_SCHEMA = {
     }
 }
 
-
-def get_api_key() -> str:
-    """Get CoinGecko API key from environment."""
-    api_key = os.getenv("COINGECKO_API_KEY")
-    if not api_key:
-        raise ValueError("COINGECKO_API_KEY environment variable is required")
-    return api_key
-
-
-def get_global() -> Dict[str, Any]:
+def get_global(max_results: int = 100) -> Dict[str, Any]:
     """
     Get global cryptocurrency market statistics.
 
     Returns:
         Dictionary with market cap, volume, BTC dominance, etc.
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/global"
-    headers = {"x-cg-pro-api-key": api_key}
+        url = "https://pro-api.coingecko.com/api/v3/global"
+        headers = {"x-cg-pro-api-key": api_key}
 
-    response = proxied_get(url, headers=headers, timeout=15)
-    response.raise_for_status()
-    data = response.json().get("data", {})
+        response = proxied_get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        data = response.json().get("data", {})
 
-    return {
-        "active_cryptocurrencies": data.get("active_cryptocurrencies"),
-        "upcoming_icos": data.get("upcoming_icos"),
-        "ongoing_icos": data.get("ongoing_icos"),
-        "ended_icos": data.get("ended_icos"),
-        "markets": data.get("markets"),
-        "total_market_cap": data.get("total_market_cap", {}),
-        "total_volume": data.get("total_volume", {}),
-        "market_cap_percentage": data.get("market_cap_percentage", {}),
-        "market_cap_change_percentage_24h_usd": data.get("market_cap_change_percentage_24h_usd"),
-        "updated_at": data.get("updated_at")
-    }
+        return {
+            "active_cryptocurrencies": data.get("active_cryptocurrencies"),
+            "upcoming_icos": data.get("upcoming_icos"),
+            "ongoing_icos": data.get("ongoing_icos"),
+            "ended_icos": data.get("ended_icos"),
+            "markets": data.get("markets"),
+            "total_market_cap": data.get("total_market_cap", {}),
+            "total_volume": data.get("total_volume", {}),
+            "market_cap_percentage": data.get("market_cap_percentage", {}),
+            "market_cap_change_percentage_24h_usd": data.get("market_cap_change_percentage_24h_usd"),
+            "updated_at": data.get("updated_at")
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
-
-def get_global_defi() -> Dict[str, Any]:
+def get_global_defi(max_results: int = 100) -> Dict[str, Any]:
     """
     Get global DeFi market statistics.
 
     Returns:
         Dictionary with DeFi market cap, TVL, dominance
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/global/decentralized_finance_defi"
-    headers = {"x-cg-pro-api-key": api_key}
+        url = "https://pro-api.coingecko.com/api/v3/global/decentralized_finance_defi"
+        headers = {"x-cg-pro-api-key": api_key}
 
-    response = proxied_get(url, headers=headers, timeout=15)
-    response.raise_for_status()
-    data = response.json().get("data", {})
+        response = proxied_get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        data = response.json().get("data", {})
 
-    return {
-        "defi_market_cap": data.get("defi_market_cap"),
-        "eth_market_cap": data.get("eth_market_cap"),
-        "defi_to_eth_ratio": data.get("defi_to_eth_ratio"),
-        "trading_volume_24h": data.get("trading_volume_24h"),
-        "defi_dominance": data.get("defi_dominance"),
-        "top_coin_name": data.get("top_coin_name"),
-        "top_coin_defi_dominance": data.get("top_coin_defi_dominance")
-    }
-
+        return {
+            "defi_market_cap": data.get("defi_market_cap"),
+            "eth_market_cap": data.get("eth_market_cap"),
+            "defi_to_eth_ratio": data.get("defi_to_eth_ratio"),
+            "trading_volume_24h": data.get("trading_volume_24h"),
+            "defi_dominance": data.get("defi_dominance"),
+            "top_coin_name": data.get("top_coin_name"),
+            "top_coin_defi_dominance": data.get("top_coin_defi_dominance")
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 def main():
     """CLI interface for global data tools."""
@@ -148,7 +140,6 @@ def main():
     except Exception as e:
         print(json.dumps({"error": str(e)}, indent=2))
         return 1
-
 
 if __name__ == "__main__":
     exit(main())

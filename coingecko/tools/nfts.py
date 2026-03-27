@@ -5,30 +5,21 @@ CoinGecko NFT Tools
 Tools for fetching NFT collection data including lists, details, and contract lookups.
 """
 
-import os
-from dotenv import load_dotenv
 import json
 import argparse
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Load environment variables
-load_dotenv()
-
-
-def get_api_key() -> str:
-    """Get CoinGecko API key from environment."""
-    api_key = os.getenv("COINGECKO_API_KEY")
-    if not api_key:
-        raise ValueError("COINGECKO_API_KEY environment variable is required")
-    return api_key
-
 
 def get_nfts_list(
     order: str = "market_cap_usd_desc",
     per_page: int = 100,
     page: int = 1
+,
+    max_results: int = 100
 ) -> Dict[str, Any]:
     """
     Get all NFT collections with IDs and contract addresses.
@@ -41,40 +32,42 @@ def get_nfts_list(
     Returns:
         Dictionary with list of NFT collections
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/nfts/list"
-    headers = {"x-cg-pro-api-key": api_key}
-    params = {
-        "order": order,
-        "per_page": min(per_page, 250),
-        "page": page
-    }
+        url = "https://pro-api.coingecko.com/api/v3/nfts/list"
+        headers = {"x-cg-pro-api-key": api_key}
+        params = {
+            "order": order,
+            "per_page": min(per_page, 250),
+            "page": page
+        }
 
-    response = proxied_get(url, headers=headers, params=params, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
 
-    nfts = []
-    for nft in data:
-        nfts.append({
-            "id": nft.get("id", ""),
-            "contract_address": nft.get("contract_address", ""),
-            "name": nft.get("name", ""),
-            "asset_platform_id": nft.get("asset_platform_id"),
-            "symbol": nft.get("symbol", "")
-        })
+        nfts = []
+        for nft in data:
+            nfts.append({
+                "id": nft.get("id", ""),
+                "contract_address": nft.get("contract_address", ""),
+                "name": nft.get("name", ""),
+                "asset_platform_id": nft.get("asset_platform_id"),
+                "symbol": nft.get("symbol", "")
+            })
 
-    return {
-        "nfts": nfts,
-        "count": len(nfts),
-        "page": page,
-        "per_page": per_page,
-        "order": order
-    }
+        return {
+            "nfts": nfts,
+            "count": len(nfts),
+            "page": page,
+            "per_page": per_page,
+            "order": order
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
-
-def get_nft(nft_id: str) -> Dict[str, Any]:
+def get_nft(nft_id: str, max_results: int = 100) -> Dict[str, Any]:
     """
     Get NFT collection data including floor price, volume, and market cap.
 
@@ -84,53 +77,57 @@ def get_nft(nft_id: str) -> Dict[str, Any]:
     Returns:
         Dictionary with NFT collection data
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = f"https://pro-api.coingecko.com/api/v3/nfts/{nft_id}"
-    headers = {"x-cg-pro-api-key": api_key}
+        url = f"https://pro-api.coingecko.com/api/v3/nfts/{nft_id}"
+        headers = {"x-cg-pro-api-key": api_key}
 
-    response = proxied_get(url, headers=headers, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
 
-    return {
-        "id": data.get("id", ""),
-        "contract_address": data.get("contract_address", ""),
-        "asset_platform_id": data.get("asset_platform_id"),
-        "name": data.get("name", ""),
-        "symbol": data.get("symbol", ""),
-        "image": data.get("image", {}),
-        "description": data.get("description"),
-        "native_currency": data.get("native_currency"),
-        "native_currency_symbol": data.get("native_currency_symbol"),
-        "floor_price": data.get("floor_price", {}),
-        "market_cap": data.get("market_cap", {}),
-        "volume_24h": data.get("volume_24h", {}),
-        "floor_price_in_usd_24h_percentage_change": data.get("floor_price_in_usd_24h_percentage_change"),
-        "floor_price_24h_percentage_change": data.get("floor_price_24h_percentage_change", {}),
-        "market_cap_24h_percentage_change": data.get("market_cap_24h_percentage_change", {}),
-        "volume_24h_percentage_change": data.get("volume_24h_percentage_change", {}),
-        "number_of_unique_addresses": data.get("number_of_unique_addresses"),
-        "number_of_unique_addresses_24h_percentage_change": data.get("number_of_unique_addresses_24h_percentage_change"),
-        "volume_in_usd_24h_percentage_change": data.get("volume_in_usd_24h_percentage_change"),
-        "total_supply": data.get("total_supply"),
-        "one_day_sales": data.get("one_day_sales"),
-        "one_day_sales_24h_percentage_change": data.get("one_day_sales_24h_percentage_change"),
-        "one_day_average_sale_price": data.get("one_day_average_sale_price"),
-        "one_day_average_sale_price_24h_percentage_change": data.get("one_day_average_sale_price_24h_percentage_change"),
-        "links": data.get("links", {}),
-        "floor_price_7d_percentage_change": data.get("floor_price_7d_percentage_change", {}),
-        "floor_price_14d_percentage_change": data.get("floor_price_14d_percentage_change", {}),
-        "floor_price_30d_percentage_change": data.get("floor_price_30d_percentage_change", {}),
-        "floor_price_60d_percentage_change": data.get("floor_price_60d_percentage_change", {}),
-        "floor_price_1y_percentage_change": data.get("floor_price_1y_percentage_change", {}),
-        "explorers": data.get("explorers", [])
-    }
-
+        return {
+            "id": data.get("id", ""),
+            "contract_address": data.get("contract_address", ""),
+            "asset_platform_id": data.get("asset_platform_id"),
+            "name": data.get("name", ""),
+            "symbol": data.get("symbol", ""),
+            "image": data.get("image", {}),
+            "description": data.get("description"),
+            "native_currency": data.get("native_currency"),
+            "native_currency_symbol": data.get("native_currency_symbol"),
+            "floor_price": data.get("floor_price", {}),
+            "market_cap": data.get("market_cap", {}),
+            "volume_24h": data.get("volume_24h", {}),
+            "floor_price_in_usd_24h_percentage_change": data.get("floor_price_in_usd_24h_percentage_change"),
+            "floor_price_24h_percentage_change": data.get("floor_price_24h_percentage_change", {}),
+            "market_cap_24h_percentage_change": data.get("market_cap_24h_percentage_change", {}),
+            "volume_24h_percentage_change": data.get("volume_24h_percentage_change", {}),
+            "number_of_unique_addresses": data.get("number_of_unique_addresses"),
+            "number_of_unique_addresses_24h_percentage_change": data.get("number_of_unique_addresses_24h_percentage_change"),
+            "volume_in_usd_24h_percentage_change": data.get("volume_in_usd_24h_percentage_change"),
+            "total_supply": data.get("total_supply"),
+            "one_day_sales": data.get("one_day_sales"),
+            "one_day_sales_24h_percentage_change": data.get("one_day_sales_24h_percentage_change"),
+            "one_day_average_sale_price": data.get("one_day_average_sale_price"),
+            "one_day_average_sale_price_24h_percentage_change": data.get("one_day_average_sale_price_24h_percentage_change"),
+            "links": data.get("links", {}),
+            "floor_price_7d_percentage_change": data.get("floor_price_7d_percentage_change", {}),
+            "floor_price_14d_percentage_change": data.get("floor_price_14d_percentage_change", {}),
+            "floor_price_30d_percentage_change": data.get("floor_price_30d_percentage_change", {}),
+            "floor_price_60d_percentage_change": data.get("floor_price_60d_percentage_change", {}),
+            "floor_price_1y_percentage_change": data.get("floor_price_1y_percentage_change", {}),
+            "explorers": data.get("explorers", [])
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 def get_nft_by_contract(
     asset_platform: str,
     contract_address: str
+,
+    max_results: int = 100
 ) -> Dict[str, Any]:
     """
     Get NFT collection data by contract address.
@@ -142,49 +139,51 @@ def get_nft_by_contract(
     Returns:
         Dictionary with NFT collection data
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = f"https://pro-api.coingecko.com/api/v3/nfts/{asset_platform}/contract/{contract_address}"
-    headers = {"x-cg-pro-api-key": api_key}
+        url = f"https://pro-api.coingecko.com/api/v3/nfts/{asset_platform}/contract/{contract_address}"
+        headers = {"x-cg-pro-api-key": api_key}
 
-    response = proxied_get(url, headers=headers, timeout=30)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+        data = response.json()
 
-    return {
-        "id": data.get("id", ""),
-        "contract_address": data.get("contract_address", ""),
-        "asset_platform_id": data.get("asset_platform_id"),
-        "name": data.get("name", ""),
-        "symbol": data.get("symbol", ""),
-        "image": data.get("image", {}),
-        "description": data.get("description"),
-        "native_currency": data.get("native_currency"),
-        "native_currency_symbol": data.get("native_currency_symbol"),
-        "floor_price": data.get("floor_price", {}),
-        "market_cap": data.get("market_cap", {}),
-        "volume_24h": data.get("volume_24h", {}),
-        "floor_price_in_usd_24h_percentage_change": data.get("floor_price_in_usd_24h_percentage_change"),
-        "floor_price_24h_percentage_change": data.get("floor_price_24h_percentage_change", {}),
-        "market_cap_24h_percentage_change": data.get("market_cap_24h_percentage_change", {}),
-        "volume_24h_percentage_change": data.get("volume_24h_percentage_change", {}),
-        "number_of_unique_addresses": data.get("number_of_unique_addresses"),
-        "number_of_unique_addresses_24h_percentage_change": data.get("number_of_unique_addresses_24h_percentage_change"),
-        "volume_in_usd_24h_percentage_change": data.get("volume_in_usd_24h_percentage_change"),
-        "total_supply": data.get("total_supply"),
-        "one_day_sales": data.get("one_day_sales"),
-        "one_day_sales_24h_percentage_change": data.get("one_day_sales_24h_percentage_change"),
-        "one_day_average_sale_price": data.get("one_day_average_sale_price"),
-        "one_day_average_sale_price_24h_percentage_change": data.get("one_day_average_sale_price_24h_percentage_change"),
-        "links": data.get("links", {}),
-        "floor_price_7d_percentage_change": data.get("floor_price_7d_percentage_change", {}),
-        "floor_price_14d_percentage_change": data.get("floor_price_14d_percentage_change", {}),
-        "floor_price_30d_percentage_change": data.get("floor_price_30d_percentage_change", {}),
-        "floor_price_60d_percentage_change": data.get("floor_price_60d_percentage_change", {}),
-        "floor_price_1y_percentage_change": data.get("floor_price_1y_percentage_change", {}),
-        "explorers": data.get("explorers", [])
-    }
-
+        return {
+            "id": data.get("id", ""),
+            "contract_address": data.get("contract_address", ""),
+            "asset_platform_id": data.get("asset_platform_id"),
+            "name": data.get("name", ""),
+            "symbol": data.get("symbol", ""),
+            "image": data.get("image", {}),
+            "description": data.get("description"),
+            "native_currency": data.get("native_currency"),
+            "native_currency_symbol": data.get("native_currency_symbol"),
+            "floor_price": data.get("floor_price", {}),
+            "market_cap": data.get("market_cap", {}),
+            "volume_24h": data.get("volume_24h", {}),
+            "floor_price_in_usd_24h_percentage_change": data.get("floor_price_in_usd_24h_percentage_change"),
+            "floor_price_24h_percentage_change": data.get("floor_price_24h_percentage_change", {}),
+            "market_cap_24h_percentage_change": data.get("market_cap_24h_percentage_change", {}),
+            "volume_24h_percentage_change": data.get("volume_24h_percentage_change", {}),
+            "number_of_unique_addresses": data.get("number_of_unique_addresses"),
+            "number_of_unique_addresses_24h_percentage_change": data.get("number_of_unique_addresses_24h_percentage_change"),
+            "volume_in_usd_24h_percentage_change": data.get("volume_in_usd_24h_percentage_change"),
+            "total_supply": data.get("total_supply"),
+            "one_day_sales": data.get("one_day_sales"),
+            "one_day_sales_24h_percentage_change": data.get("one_day_sales_24h_percentage_change"),
+            "one_day_average_sale_price": data.get("one_day_average_sale_price"),
+            "one_day_average_sale_price_24h_percentage_change": data.get("one_day_average_sale_price_24h_percentage_change"),
+            "links": data.get("links", {}),
+            "floor_price_7d_percentage_change": data.get("floor_price_7d_percentage_change", {}),
+            "floor_price_14d_percentage_change": data.get("floor_price_14d_percentage_change", {}),
+            "floor_price_30d_percentage_change": data.get("floor_price_30d_percentage_change", {}),
+            "floor_price_60d_percentage_change": data.get("floor_price_60d_percentage_change", {}),
+            "floor_price_1y_percentage_change": data.get("floor_price_1y_percentage_change", {}),
+            "explorers": data.get("explorers", [])
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 def main():
     """CLI interface for NFT tools."""
@@ -229,7 +228,6 @@ def main():
     except Exception as e:
         print(json.dumps({"error": str(e)}, indent=2))
         return 1
-
 
 if __name__ == "__main__":
     exit(main())

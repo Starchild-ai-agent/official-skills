@@ -24,7 +24,6 @@ API Limitations:
 """
 
 import os
-from dotenv import load_dotenv
 import time
 import argparse
 import json
@@ -41,7 +40,6 @@ from core.http_client import proxied_get
 # Load environment variables from agent_framework root directory
 # Path: extensions/trading/tools/coingecko/ -> go up 4 levels to agent_framework/
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
-load_dotenv(os.path.join(project_root, '.env'))
 
 # MCP Tool Schema
 MCP_TOOL_SCHEMA = {
@@ -200,11 +198,12 @@ MCP_TOOL_SCHEMA = {
     }
 }
 
-
 def get_coin_prices_at_timestamps(coin_ids: Union[str, List[str]], 
                                 timestamps: List[str] = None, 
                                 vs_currency: str = 'usd',
-                                rate_limit_delay: float = 1.0) -> List[Dict[str, Any]]:
+                                rate_limit_delay: float = 1.0,
+    max_results: int = 100
+) -> List[Dict[str, Any]]:
     """
     Get multiple coin prices at multiple specific timestamps.
     
@@ -327,7 +326,6 @@ def get_coin_prices_at_timestamps(coin_ids: Union[str, List[str]],
     
     return results
 
-
 def _get_single_price(coin_id: str, timestamp: str, vs_currency: str) -> Dict[str, Any]:
     """Get price for a single timestamp."""
     timestamp_str = str(timestamp).strip().lower()
@@ -343,8 +341,7 @@ def _get_single_price(coin_id: str, timestamp: str, vs_currency: str) -> Dict[st
     except Exception as e:
         raise ValueError(f"Invalid timestamp format '{timestamp}': {e}")
 
-
-def _get_current_price(coin_id: str, vs_currency: str, original_timestamp: str) -> Dict[str, Any]:
+def _get_current_price(coin_id: str, vs_currency: str, original_timestamp: str, max_results: int = None) -> Dict[str, Any]:
     """Get current price using simple/price endpoint."""
     url = "https://pro-api.coingecko.com/api/v3/simple/price"
     params = {
@@ -389,8 +386,7 @@ def _get_current_price(coin_id: str, vs_currency: str, original_timestamp: str) 
                 raise ConnectionError(f"Failed to fetch current price: {e}")
             time.sleep(1)
 
-
-def _get_historical_price(coin_id: str, timestamp: int, vs_currency: str, original_timestamp: str) -> Dict[str, Any]:
+def _get_historical_price(coin_id: str, timestamp: int, vs_currency: str, original_timestamp: str, max_results: int = None) -> Dict[str, Any]:
     """Get historical price using history endpoint."""
     # Format date for CoinGecko API (dd-mm-yyyy)
     date_str = format_dd_mm_yyyy_date(timestamp)
@@ -436,7 +432,6 @@ def _get_historical_price(coin_id: str, timestamp: int, vs_currency: str, origin
             if attempt == 2:  # Last attempt
                 raise ConnectionError(f"Failed to fetch historical price for {date_str}: {e}")
             time.sleep(1)
-
 
 def main():
     """Command-line interface for the coin prices at timestamps tool with MCP Schema support."""
@@ -516,7 +511,6 @@ EXAMPLE:
         return 1
         
     return 0
-
 
 if __name__ == "__main__":
     exit(main())

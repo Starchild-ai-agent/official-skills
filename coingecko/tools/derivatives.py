@@ -5,17 +5,14 @@ CoinGecko Derivatives Tools
 Tools for fetching derivatives market data including tickers and exchanges.
 """
 
-import os
-from dotenv import load_dotenv
 import json
 import argparse
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Load environment variables
-load_dotenv()
-
 
 # MCP Tool Schemas
 MCP_DERIVATIVES_SCHEMA = {
@@ -77,16 +74,7 @@ MCP_CATEGORIES_SCHEMA = {
     }
 }
 
-
-def get_api_key() -> str:
-    """Get CoinGecko API key from environment."""
-    api_key = os.getenv("COINGECKO_API_KEY")
-    if not api_key:
-        raise ValueError("COINGECKO_API_KEY environment variable is required")
-    return api_key
-
-
-def get_derivatives(include_tickers: str = "unexpired") -> Dict[str, Any]:
+def get_derivatives(include_tickers: str = "unexpired", max_results: int = 100) -> Dict[str, Any]:
     """
     Get all derivatives tickers.
 
@@ -96,45 +84,49 @@ def get_derivatives(include_tickers: str = "unexpired") -> Dict[str, Any]:
     Returns:
         Dictionary with derivatives tickers
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/derivatives"
-    headers = {"x-cg-pro-api-key": api_key}
-    params = {"include_tickers": include_tickers}
+        url = "https://pro-api.coingecko.com/api/v3/derivatives"
+        headers = {"x-cg-pro-api-key": api_key}
+        params = {"include_tickers": include_tickers}
 
-    response = proxied_get(url, headers=headers, params=params, timeout=15)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, params=params, timeout=15)
+        response.raise_for_status()
+        data = response.json()
 
-    tickers = []
-    for item in data:
-        tickers.append({
-            "market": item.get("market", ""),
-            "symbol": item.get("symbol", ""),
-            "index_id": item.get("index_id"),
-            "price": item.get("price"),
-            "price_percentage_change_24h": item.get("price_percentage_change_24h"),
-            "contract_type": item.get("contract_type"),
-            "index": item.get("index"),
-            "basis": item.get("basis"),
-            "spread": item.get("spread"),
-            "funding_rate": item.get("funding_rate"),
-            "open_interest": item.get("open_interest"),
-            "volume_24h": item.get("volume_24h"),
-            "last_traded_at": item.get("last_traded_at"),
-            "expired_at": item.get("expired_at")
-        })
+        tickers = []
+        for item in data:
+            tickers.append({
+                "market": item.get("market", ""),
+                "symbol": item.get("symbol", ""),
+                "index_id": item.get("index_id"),
+                "price": item.get("price"),
+                "price_percentage_change_24h": item.get("price_percentage_change_24h"),
+                "contract_type": item.get("contract_type"),
+                "index": item.get("index"),
+                "basis": item.get("basis"),
+                "spread": item.get("spread"),
+                "funding_rate": item.get("funding_rate"),
+                "open_interest": item.get("open_interest"),
+                "volume_24h": item.get("volume_24h"),
+                "last_traded_at": item.get("last_traded_at"),
+                "expired_at": item.get("expired_at")
+            })
 
-    return {
-        "tickers": tickers,
-        "count": len(tickers),
-        "filter": include_tickers
-    }
-
+        return {
+            "tickers": tickers,
+            "count": len(tickers),
+            "filter": include_tickers
+        }
+    except Exception as e:
+        return {"error": str(e), "tickers": [], "count": 0}
 
 def get_derivatives_exchanges(
     order: str = "open_interest_btc_desc",
     per_page: int = 50
+,
+    max_results: int = 100
 ) -> Dict[str, Any]:
     """
     Get list of derivatives exchanges with ranking.
@@ -146,42 +138,44 @@ def get_derivatives_exchanges(
     Returns:
         Dictionary with derivatives exchanges
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/derivatives/exchanges"
-    headers = {"x-cg-pro-api-key": api_key}
-    params = {
-        "order": order,
-        "per_page": min(per_page, 100)
-    }
+        url = "https://pro-api.coingecko.com/api/v3/derivatives/exchanges"
+        headers = {"x-cg-pro-api-key": api_key}
+        params = {
+            "order": order,
+            "per_page": min(per_page, 100)
+        }
 
-    response = proxied_get(url, headers=headers, params=params, timeout=15)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, params=params, timeout=15)
+        response.raise_for_status()
+        data = response.json()
 
-    exchanges = []
-    for item in data:
-        exchanges.append({
-            "id": item.get("id", ""),
-            "name": item.get("name", ""),
-            "open_interest_btc": item.get("open_interest_btc"),
-            "trade_volume_24h_btc": item.get("trade_volume_24h_btc"),
-            "number_of_perpetual_pairs": item.get("number_of_perpetual_pairs"),
-            "number_of_futures_pairs": item.get("number_of_futures_pairs"),
-            "image": item.get("image"),
-            "year_established": item.get("year_established"),
-            "country": item.get("country"),
-            "url": item.get("url")
-        })
+        exchanges = []
+        for item in data:
+            exchanges.append({
+                "id": item.get("id", ""),
+                "name": item.get("name", ""),
+                "open_interest_btc": item.get("open_interest_btc"),
+                "trade_volume_24h_btc": item.get("trade_volume_24h_btc"),
+                "number_of_perpetual_pairs": item.get("number_of_perpetual_pairs"),
+                "number_of_futures_pairs": item.get("number_of_futures_pairs"),
+                "image": item.get("image"),
+                "year_established": item.get("year_established"),
+                "country": item.get("country"),
+                "url": item.get("url")
+            })
 
-    return {
-        "exchanges": exchanges,
-        "count": len(exchanges),
-        "order": order
-    }
+        return {
+            "exchanges": exchanges,
+            "count": len(exchanges),
+            "order": order
+        }
+    except Exception as e:
+        return {"error": str(e), "exchanges": [], "count": 0}
 
-
-def get_categories(order: str = "market_cap_desc") -> Dict[str, Any]:
+def get_categories(order: str = "market_cap_desc", max_results: int = 100) -> Dict[str, Any]:
     """
     Get coin categories with market data.
 
@@ -191,35 +185,37 @@ def get_categories(order: str = "market_cap_desc") -> Dict[str, Any]:
     Returns:
         Dictionary with coin categories
     """
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/coins/categories"
-    headers = {"x-cg-pro-api-key": api_key}
-    params = {"order": order}
+        url = "https://pro-api.coingecko.com/api/v3/coins/categories"
+        headers = {"x-cg-pro-api-key": api_key}
+        params = {"order": order}
 
-    response = proxied_get(url, headers=headers, params=params, timeout=15)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, params=params, timeout=15)
+        response.raise_for_status()
+        data = response.json()
 
-    categories = []
-    for item in data:
-        categories.append({
-            "id": item.get("id", ""),
-            "name": item.get("name", ""),
-            "market_cap": item.get("market_cap"),
-            "market_cap_change_24h": item.get("market_cap_change_24h"),
-            "content": item.get("content"),
-            "top_3_coins": item.get("top_3_coins", []),
-            "volume_24h": item.get("volume_24h"),
-            "updated_at": item.get("updated_at")
-        })
+        categories = []
+        for item in data:
+            categories.append({
+                "id": item.get("id", ""),
+                "name": item.get("name", ""),
+                "market_cap": item.get("market_cap"),
+                "market_cap_change_24h": item.get("market_cap_change_24h"),
+                "content": item.get("content"),
+                "top_3_coins": item.get("top_3_coins", []),
+                "volume_24h": item.get("volume_24h"),
+                "updated_at": item.get("updated_at")
+            })
 
-    return {
-        "categories": categories,
-        "count": len(categories),
-        "order": order
-    }
-
+        return {
+            "categories": categories,
+            "count": len(categories),
+            "order": order
+        }
+    except Exception as e:
+        return {"error": str(e), "categories": [], "count": 0}
 
 def main():
     """CLI interface for derivatives tools."""
@@ -273,7 +269,6 @@ def main():
     except Exception as e:
         print(json.dumps({"error": str(e)}, indent=2))
         return 1
-
 
 if __name__ == "__main__":
     exit(main())

@@ -5,22 +5,14 @@ CoinGecko Market Discovery Tools
 Tools for discovering trending coins, top movers, and newly listed coins.
 """
 
-import os
-from dotenv import load_dotenv
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 
 from core.http_client import proxied_get
-
-try:
-    from .utils import search_coin_by_name
-except ImportError:
-    from utils import search_coin_by_name
+from .utils import get_api_key
 
 # Load environment variables
-load_dotenv()
-
 
 # MCP Tool Schemas
 MCP_TRENDING_SCHEMA = {
@@ -68,165 +60,164 @@ MCP_NEW_COINS_SCHEMA = {
     }
 }
 
+def get_trending(max_results: int = 100) -> Dict[str, Any]:
+    try:
+        """
+        Get trending coins in the last 24 hours.
 
-def get_api_key() -> str:
-    """Get CoinGecko API key from environment."""
-    api_key = os.getenv("COINGECKO_API_KEY")
-    if not api_key:
-        raise ValueError("COINGECKO_API_KEY environment variable is required")
-    return api_key
+        Based on user search data on CoinGecko.
 
+        Returns:
+            Dictionary with trending coins, nfts, and categories
+        """
+        api_key = get_api_key()
 
-def get_trending() -> Dict[str, Any]:
-    """
-    Get trending coins in the last 24 hours.
+        url = "https://pro-api.coingecko.com/api/v3/search/trending"
+        headers = {"x-cg-pro-api-key": api_key}
 
-    Based on user search data on CoinGecko.
+        response = proxied_get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        data = response.json()
 
-    Returns:
-        Dictionary with trending coins, nfts, and categories
-    """
-    api_key = get_api_key()
+        # Format coins
+        trending_coins = []
+        for item in data.get("coins", []):
+            coin = item.get("item", {})
+            trending_coins.append({
+                "rank": coin.get("score", 0) + 1,
+                "id": coin.get("id", ""),
+                "symbol": coin.get("symbol", "").upper(),
+                "name": coin.get("name", ""),
+                "market_cap_rank": coin.get("market_cap_rank"),
+                "price_btc": coin.get("price_btc"),
+                "price_change_24h": coin.get("data", {}).get("price_change_percentage_24h", {}).get("usd"),
+                "market_cap": coin.get("data", {}).get("market_cap"),
+                "total_volume": coin.get("data", {}).get("total_volume"),
+                "sparkline": coin.get("data", {}).get("sparkline")
+            })
 
-    url = "https://pro-api.coingecko.com/api/v3/search/trending"
-    headers = {"x-cg-pro-api-key": api_key}
+        # Format NFTs
+        trending_nfts = []
+        for nft in data.get("nfts", []):
+            trending_nfts.append({
+                "id": nft.get("id", ""),
+                "name": nft.get("name", ""),
+                "symbol": nft.get("symbol", ""),
+                "floor_price_24h_change": nft.get("floor_price_24h_percentage_change")
+            })
 
-    response = proxied_get(url, headers=headers, timeout=15)
-    response.raise_for_status()
-    data = response.json()
+        # Format categories
+        trending_categories = []
+        for cat in data.get("categories", []):
+            trending_categories.append({
+                "id": cat.get("id"),
+                "name": cat.get("name", ""),
+                "market_cap_change_24h": cat.get("market_cap_1h_change")
+            })
 
-    # Format coins
-    trending_coins = []
-    for item in data.get("coins", []):
-        coin = item.get("item", {})
-        trending_coins.append({
-            "rank": coin.get("score", 0) + 1,
-            "id": coin.get("id", ""),
-            "symbol": coin.get("symbol", "").upper(),
-            "name": coin.get("name", ""),
-            "market_cap_rank": coin.get("market_cap_rank"),
-            "price_btc": coin.get("price_btc"),
-            "price_change_24h": coin.get("data", {}).get("price_change_percentage_24h", {}).get("usd"),
-            "market_cap": coin.get("data", {}).get("market_cap"),
-            "total_volume": coin.get("data", {}).get("total_volume"),
-            "sparkline": coin.get("data", {}).get("sparkline")
-        })
-
-    # Format NFTs
-    trending_nfts = []
-    for nft in data.get("nfts", []):
-        trending_nfts.append({
-            "id": nft.get("id", ""),
-            "name": nft.get("name", ""),
-            "symbol": nft.get("symbol", ""),
-            "floor_price_24h_change": nft.get("floor_price_24h_percentage_change")
-        })
-
-    # Format categories
-    trending_categories = []
-    for cat in data.get("categories", []):
-        trending_categories.append({
-            "id": cat.get("id"),
-            "name": cat.get("name", ""),
-            "market_cap_change_24h": cat.get("market_cap_1h_change")
-        })
-
-    return {
-        "coins": trending_coins,
-        "nfts": trending_nfts,
-        "categories": trending_categories
-    }
-
+        return {
+            "coins": trending_coins,
+            "nfts": trending_nfts,
+            "categories": trending_categories
+        }
+    except Exception as e:
+        return {"error": str(e), "skill": "coingecko", "function": "get_trending"}
 
 def get_top_gainers_losers(
     vs_currency: str = "usd",
     duration: str = "24h"
+,
+    max_results: int = 100
 ) -> Dict[str, Any]:
-    """
-    Get top 30 gainers and losers by price change percentage.
+    try:
+        """
+        Get top 30 gainers and losers by price change percentage.
 
-    Args:
-        vs_currency: Target currency (usd, eur, btc)
-        duration: Time duration (1h, 24h, 7d, 14d, 30d, 60d, 1y)
+        Args:
+            vs_currency: Target currency (usd, eur, btc)
+            duration: Time duration (1h, 24h, 7d, 14d, 30d, 60d, 1y)
 
-    Returns:
-        Dictionary with top_gainers and top_losers lists
-    """
-    api_key = get_api_key()
+        Returns:
+            Dictionary with top_gainers and top_losers lists
+        """
+        api_key = get_api_key()
 
-    url = "https://pro-api.coingecko.com/api/v3/coins/top_gainers_losers"
-    headers = {"x-cg-pro-api-key": api_key}
-    params = {
-        "vs_currency": vs_currency,
-        "duration": duration
-    }
+        url = "https://pro-api.coingecko.com/api/v3/coins/top_gainers_losers"
+        headers = {"x-cg-pro-api-key": api_key}
+        params = {
+            "vs_currency": vs_currency,
+            "duration": duration
+        }
 
-    response = proxied_get(url, headers=headers, params=params, timeout=15)
-    response.raise_for_status()
-    data = response.json()
+        response = proxied_get(url, headers=headers, params=params, timeout=15)
+        response.raise_for_status()
+        data = response.json()
 
-    # Format gainers
-    gainers = []
-    for coin in data.get("top_gainers", []):
-        gainers.append({
-            "id": coin.get("id", ""),
-            "symbol": coin.get("symbol", "").upper(),
-            "name": coin.get("name", ""),
-            "image": coin.get("image", ""),
-            "price": coin.get(vs_currency),
-            "price_change_percentage": coin.get(f"{vs_currency}_24h_change")
-        })
+        # Format gainers
+        gainers = []
+        for coin in data.get("top_gainers", []):
+            gainers.append({
+                "id": coin.get("id", ""),
+                "symbol": coin.get("symbol", "").upper(),
+                "name": coin.get("name", ""),
+                "image": coin.get("image", ""),
+                "price": coin.get(vs_currency),
+                "price_change_percentage": coin.get(f"{vs_currency}_24h_change")
+            })
 
-    # Format losers
-    losers = []
-    for coin in data.get("top_losers", []):
-        losers.append({
-            "id": coin.get("id", ""),
-            "symbol": coin.get("symbol", "").upper(),
-            "name": coin.get("name", ""),
-            "image": coin.get("image", ""),
-            "price": coin.get(vs_currency),
-            "price_change_percentage": coin.get(f"{vs_currency}_24h_change")
-        })
+        # Format losers
+        losers = []
+        for coin in data.get("top_losers", []):
+            losers.append({
+                "id": coin.get("id", ""),
+                "symbol": coin.get("symbol", "").upper(),
+                "name": coin.get("name", ""),
+                "image": coin.get("image", ""),
+                "price": coin.get(vs_currency),
+                "price_change_percentage": coin.get(f"{vs_currency}_24h_change")
+            })
 
-    return {
-        "vs_currency": vs_currency,
-        "duration": duration,
-        "top_gainers": gainers,
-        "top_losers": losers
-    }
+        return {
+            "vs_currency": vs_currency,
+            "duration": duration,
+            "top_gainers": gainers,
+            "top_losers": losers
+        }
+    except Exception as e:
+        return {"error": str(e), "skill": "coingecko", "function": "get_top_gainers_losers"}
 
+def get_new_coins(max_results: int = 100) -> Dict[str, Any]:
+    try:
+        """
+        Get recently added coins to CoinGecko.
 
-def get_new_coins() -> Dict[str, Any]:
-    """
-    Get recently added coins to CoinGecko.
+        Returns:
+            Dictionary with list of newly added coins
+        """
+        api_key = get_api_key()
 
-    Returns:
-        Dictionary with list of newly added coins
-    """
-    api_key = get_api_key()
+        url = "https://pro-api.coingecko.com/api/v3/coins/list/new"
+        headers = {"x-cg-pro-api-key": api_key}
 
-    url = "https://pro-api.coingecko.com/api/v3/coins/list/new"
-    headers = {"x-cg-pro-api-key": api_key}
+        response = proxied_get(url, headers=headers, timeout=15)
+        response.raise_for_status()
+        data = response.json()
 
-    response = proxied_get(url, headers=headers, timeout=15)
-    response.raise_for_status()
-    data = response.json()
+        coins = []
+        for coin in data:
+            coins.append({
+                "id": coin.get("id", ""),
+                "symbol": coin.get("symbol", "").upper(),
+                "name": coin.get("name", ""),
+                "activated_at": coin.get("activated_at")
+            })
 
-    coins = []
-    for coin in data:
-        coins.append({
-            "id": coin.get("id", ""),
-            "symbol": coin.get("symbol", "").upper(),
-            "name": coin.get("name", ""),
-            "activated_at": coin.get("activated_at")
-        })
-
-    return {
-        "new_coins": coins,
-        "count": len(coins)
-    }
-
+        return {
+            "new_coins": coins,
+            "count": len(coins)
+        }
+    except Exception as e:
+        return {"error": str(e), "skill": "coingecko", "function": "get_new_coins"}
 
 def main():
     """CLI interface for market discovery tools."""
@@ -279,7 +270,6 @@ def main():
     except Exception as e:
         print(json.dumps({"error": str(e)}, indent=2))
         return 1
-
 
 if __name__ == "__main__":
     exit(main())

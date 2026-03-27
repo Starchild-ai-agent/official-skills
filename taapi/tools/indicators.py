@@ -64,8 +64,8 @@ def get_indicator(
     symbol: str,
     interval: str,
     backtrack: int = 0,
-    backtracks: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    backtracks: Optional[int] = None,
+    max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Fetch pre-calculated indicator from TaAPI.
 
@@ -120,7 +120,7 @@ def get_indicator(
             'values': data
         }
 
-        return result
+        return dict(**result)  # structured response
 
     except Exception as e:
         # Handle HTTP errors
@@ -141,8 +141,8 @@ def get_multiple_indicators(
     indicators: List[str],
     exchange: str,
     symbol: str,
-    interval: str
-) -> Dict[str, Any]:
+    interval: str,
+    max_results: int = 100) -> Dict[str, Any]:
     """
     Fetch multiple indicators at once (sequential - use bulk_indicators for faster).
 
@@ -169,8 +169,8 @@ def bulk_indicators(
     indicators: List[Dict[str, Any]],
     exchange: str,
     symbol: str,
-    interval: str
-) -> Dict[str, Any]:
+    interval: str,
+    max_results: int = 100) -> Dict[str, Any]:
     """
     Fetch up to 20 indicators in ONE API request using TaAPI bulk endpoint.
 

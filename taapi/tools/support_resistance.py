@@ -45,8 +45,8 @@ def get_pivot_points(
     exchange: str,
     symbol: str,
     interval: str = "1d",
-    pivot_type: str = "standard"
-) -> Optional[Dict[str, Any]]:
+    pivot_type: str = "standard",
+    max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get pivot points (support/resistance levels).
 
@@ -88,7 +88,7 @@ def get_pivot_points(
             'levels': data
         }
 
-        return result
+        return dict(**result)  # structured response
 
     except Exception as e:
         if hasattr(e, 'response') and e.response is not None:
@@ -102,8 +102,8 @@ def get_support_resistance(
     exchange: str,
     symbol: str,
     interval: str,
-    indicator: str = "pivots"
-) -> Optional[Dict[str, Any]]:
+    indicator: str = "pivots",
+    max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get support and resistance levels using various methods.
 

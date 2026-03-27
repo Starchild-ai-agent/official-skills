@@ -1,16 +1,9 @@
 ---
 name: 1inch
-version: 1.0.0
-description: Swap tokens via 1inch DEX aggregator
-tools:
-  - oneinch_quote
-  - oneinch_tokens
-  - oneinch_check_allowance
-  - oneinch_approve
-  - oneinch_swap
-  - oneinch_cross_chain_quote
-  - oneinch_cross_chain_swap
-  - oneinch_cross_chain_status
+version: 2.0.0
+description: Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service.
+author: starchild
+tags: [1inch, dex, swap, evm, script-first]
 metadata:
   starchild:
     emoji: "🦄"
@@ -21,168 +14,176 @@ user-invocable: true
 disable-model-invocation: false
 ---
 
-# 1inch DEX Aggregator
+# 1inch (Script-First, Install-and-Use)
 
-Swap tokens on EVM networks using the 1inch DEX aggregator. 1inch finds the best swap route across DEXes (Uniswap, SushiSwap, Curve, Balancer, etc.) to get the best price. This is **Classic Swap** mode where the user pays gas directly.
+This skill is designed for your architecture: **do not rely on platform-injected tools**.
 
-**Supported Networks:** Ethereum, Arbitrum, Base, Optimism, Polygon, BSC, Avalanche, Gnosis.
+- ✅ Uses only skill-local scripts under `skills/1inch/scripts/`
+- ✅ Agent executes scripts via `bash` (`python3 ...`)
+- ✅ No `oneinch_*` tool calls required
 
-**IMPORTANT:** All tools require a `chain` parameter. Always ask the user which network they want to use before proceeding. Do not assume a default chain.
+---
 
-**Default for spot token swaps.** Use 1inch for buying/selling/swapping tokens. 1inch aggregates liquidity across all major DEXes to get the best price. Hyperliquid spot is only for tokens listed on Hyperliquid's own orderbook — for general spot trading across chains.
+## Why this version fixes “tool not found”
 
-## Prerequisites — Wallet Policy
+Old design depended on runtime tool registration (`oneinch_quote`, `oneinch_swap`, ...).
+If tool injection fails, agent is blocked.
 
-Before executing any swap, the wallet policy must be active. Load the **wallet-policy** skill and propose the standard wildcard policy (deny key export + allow `*`). This covers all 1inch operations — swap transactions, token approvals, and signing — across all chains.
+New design uses deterministic local scripts:
 
-## Available Tools (8)
+1. call 1inch HTTP API directly
+2. call wallet service directly (OIDC via `/.fly/api`)
+3. print JSON result
 
-### Same-Chain Read-Only Tools
+So after install, the agent always has a runnable path.
 
-| Tool | Description |
-|------|-------------|
-| `oneinch_quote` | Get swap price quote (estimated output, gas, route). Requires `chain`. |
-| `oneinch_tokens` | Search supported tokens on a network (address, symbol, decimals). Requires `chain`. |
-| `oneinch_check_allowance` | Check if a token needs approval before swapping. Requires `chain`. |
+---
 
-### Same-Chain Write Tools (require wallet)
+## Files
 
-| Tool | Description |
-|------|-------------|
-| `oneinch_approve` | Approve ERC-20 token for 1inch router spending. Requires `chain`. |
-| `oneinch_swap` | Execute a token swap via 1inch. Requires `chain`. |
+- `scripts/_oneinch_lib.py` — shared client + wallet/OIDC helpers
+- `scripts/tokens.py` — token search/list
+- `scripts/quote.py` — quote only
+- `scripts/check_allowance.py` — allowance check
+- `scripts/approve.py` — approve tx broadcast
+- `scripts/swap.py` — swap execution (optional auto-approve)
+- `scripts/run_swap_flow.py` — one-command flow (quote + optional approve + swap + post-trade balance verification)
 
-### Cross-Chain Tools (Fusion+)
+---
 
-Fusion+ enables gasless cross-chain swaps using intent-based atomic swaps. Resolvers handle gas on both chains.
+## Environment
 
-| Tool | Description |
-|------|-------------|
-| `oneinch_cross_chain_quote` | Get a cross-chain swap quote. Requires `src_chain`, `dst_chain`, `src_token`, `dst_token`, `amount`. |
-| `oneinch_cross_chain_swap` | Execute a cross-chain swap (long-running). Requires `src_chain`, `dst_chain`, `src_token`, `dst_token`, `amount`. Optional `preset` (fast/medium/slow). **Recommend running via `sessions_spawn` as it can take up to 10 minutes.** |
-| `oneinch_cross_chain_status` | Check status of a cross-chain swap order. Requires `order_hash`. |
+Required:
+- `ONEINCH_API_KEY`
+- `WALLET_SERVICE_URL` (default fallback exists)
+- **sc-proxy connectivity** for 1inch API (**mandatory**)
 
-## Tool Usage Examples
+Assumptions:
+- Running on Fly Machine with `/.fly/api` unix socket for OIDC token minting.
 
-### Get a quote (price check only)
+### sc-proxy requirement (critical)
 
-```
-oneinch_quote(
-  chain="arbitrum",
-  src="0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",  # ETH
-  dst="<USDC_ADDRESS>",                                  # use oneinch_tokens to find
-  amount="1000000000000000000"                            # 1 ETH in wei
-)
-```
+This skill enforces 1inch calls through sc-proxy.
 
-### Search for a token
+- It reads proxy from `HTTP_PROXY/HTTPS_PROXY` first, else falls back to `PROXY_HOST` + `PROXY_PORT`.
+- If no proxy env is found, scripts fail fast with a clear error instead of silently direct-connecting.
 
-```
-oneinch_tokens(chain="ethereum", search="USDC")
-```
+---
 
-### Check if approval is needed
+## Supported chains
 
-```
-oneinch_check_allowance(chain="arbitrum", token_address="<TOKEN_ADDRESS>")
-```
+`ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis`
 
-### Approve a token
+---
 
-```
-oneinch_approve(chain="arbitrum", token_address="<TOKEN_ADDRESS>")
-```
+## Agent execution rules (IMPORTANT)
 
-### Execute a swap
+When user asks for 1inch actions, follow this exact pattern:
 
-```
-oneinch_swap(
-  chain="arbitrum",
-  src="0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",  # ETH
-  dst="<USDC_ADDRESS>",                                  # use oneinch_tokens to find
-  amount="1000000000000000000",                           # 1 ETH
-  slippage=1.0                                            # 1% slippage
-)
-```
+1. **Never call `oneinch_*` tools**
+2. Run local scripts with `bash` + `python3 skills/1inch/scripts/<script>.py ...`
+3. Parse JSON output and respond with concise summary
+4. For write actions, always do post-check using wallet balance tools (if available) or rerun script-based checks
 
-### Cross-Chain: Get a quote
+### Canonical mapping
 
-```
-oneinch_cross_chain_quote(
-  src_chain="ethereum",
-  dst_chain="arbitrum",
-  src_token="0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",  # ETH on Ethereum
-  dst_token="<USDC_ADDRESS>",                                  # USDC on Arbitrum
-  amount="1000000000000000000"                                  # 1 ETH in wei
-)
+- “查 token 地址 / 列 token” → `tokens.py`
+- “先报价 / 看能换多少” → `quote.py`
+- “检查授权” → `check_allowance.py`
+- “授权” → `approve.py`
+- “执行兑换” → `swap.py`
+
+---
+
+## Command examples
+
+### 1) Search token
+
+```bash
+python3 skills/1inch/scripts/tokens.py --chain polygon --search POL --limit 10
 ```
 
-### Cross-Chain: Execute a swap (recommend background task)
+### 2) Quote: 1 USDC -> POL
 
-```
-sessions_spawn(
-  message="Execute cross-chain swap: oneinch_cross_chain_swap(src_chain='ethereum', dst_chain='arbitrum', src_token='0xEeee...EEeE', dst_token='<USDC_ADDR>', amount='1000000000000000000', preset='medium')"
-)
+```bash
+python3 skills/1inch/scripts/quote.py --chain polygon --from USDC --to POL --amount 1
 ```
 
-### Cross-Chain: Check order status
+### 3) Check allowance (USDC)
 
+```bash
+python3 skills/1inch/scripts/check_allowance.py --chain polygon --token USDC
 ```
-oneinch_cross_chain_status(order_hash="<ORDER_HASH>")
+
+### 4) Approve USDC (unlimited)
+
+```bash
+python3 skills/1inch/scripts/approve.py --chain polygon --token USDC
 ```
 
-## Common Workflows
+### 5) Swap: 1 USDC -> POL (auto-approve if needed)
 
-**Step 0 for all workflows:** If the wallet policy is not yet active, load the wallet-policy skill and propose the standard wildcard policy before proceeding.
+```bash
+python3 skills/1inch/scripts/swap.py --chain polygon --from USDC --to POL --amount 1 --slippage 1.0 --auto-approve
+```
 
-### Swap native ETH for USDC (no approval needed)
+### 6) One-command full flow (recommended)
 
-1. **Find token address:** `oneinch_tokens(chain="arbitrum", search="USDC")` — get the USDC address on Arbitrum
-2. **Quote:** `oneinch_quote(chain="arbitrum", src="0xEeee...EEeE", dst="<USDC_ADDR>", amount="1000000000000000000")`
-3. **Swap:** `oneinch_swap(chain="arbitrum", src="0xEeee...EEeE", dst="<USDC_ADDR>", amount="1000000000000000000")`
+```bash
+python3 skills/1inch/scripts/run_swap_flow.py --chain polygon --from USDC --to POL --amount 1 --slippage 1.0 --auto-approve
+```
 
-Native ETH does not require token approval.
+Tune retries when needed:
 
-### Swap USDC for WETH (approval required)
+```bash
+python3 skills/1inch/scripts/run_swap_flow.py --chain polygon --from USDC --to POL --amount 1 --slippage 1.0 --auto-approve --swap-retries 3 --swap-retry-backoff 2
+```
 
-1. **Find token addresses:** `oneinch_tokens(chain="arbitrum", search="USDC")` and `oneinch_tokens(chain="arbitrum", search="WETH")`
-2. **Check allowance:** `oneinch_check_allowance(chain="arbitrum", token_address="<USDC_ADDR>")`
-3. **If needs_approval:** `oneinch_approve(chain="arbitrum", token_address="<USDC_ADDR>")`
-4. **Swap:** `oneinch_swap(chain="arbitrum", src="<USDC_ADDR>", dst="<WETH_ADDR>", amount="1000000", slippage=1.0)`
+---
 
-### Price check only (no execution)
+## Default workflow for “买 X USDC 的 POL”
 
-Use `oneinch_quote` to compare prices without executing. This does not require a wallet.
+Preferred deterministic sequence:
 
-## Token Addresses
+1. `run_swap_flow.py --auto-approve`
+2. Read JSON result and report quote, tx submission result, and verification deltas
 
-Token addresses differ between networks. Always use `oneinch_tokens(chain="<network>", search="<symbol>")` to discover the correct address for a token on a specific chain.
+Fallback manual sequence (if user asks step-by-step):
+1. `quote.py` (confirm expected output)
+2. `swap.py --auto-approve`
+3. Verify with fresh balances (before/after)
 
-The native gas token address is the same on all EVM chains: `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`
+If swap returns wallet policy rejection:
+- load `wallet-policy` skill
+- propose wildcard baseline (`DENY exportPrivateKey`, `ALLOW *`)
+- after user confirms, rerun swap command
 
-## Amount Formatting (Wei Conversion)
+---
 
-All amounts must be in wei (the smallest unit of the token):
+## Error handling
 
-| Token | 1 Token in Wei | Formula |
-|-------|---------------|---------|
-| ETH (18 decimals) | `1000000000000000000` | amount × 10^18 |
-| USDC (6 decimals) | `1000000` | amount × 10^6 |
-| USDT (6 decimals) | `1000000` | amount × 10^6 |
+- `Unknown chain` → ask user to choose supported chain
+- `1inch API 4xx/5xx` → show raw error; `run_swap_flow.py` automatically retries transient `/swap` 5xx (default: 2 retries with exponential backoff)
+- `Not enough <token> balance` from 1inch → likely symbol mapped to a different token variant (e.g. USDC.e vs USDC); rerun with explicit token address from `tokens.py`
+- `Wallet API 4xx/5xx` → show raw error, do not fabricate tx hash
+- `insufficient allowance` (without auto-approve) → rerun with `--auto-approve` or run `approve.py`
+- `policy` rejection → propose policy update then retry
 
-Always check token decimals with `oneinch_tokens` before calculating amounts.
+---
 
-## Error Handling
+## Notes
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `Unknown chain` | Invalid chain name | Use one of: ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis |
-| `insufficient allowance` | Token not approved for 1inch router | Use `oneinch_approve` first |
-| `insufficient balance` | Not enough tokens in wallet | Check balance with `wallet_balance` |
-| `cannot estimate` | Route not found or amount too small | Try a different amount or token pair |
-| `Policy violation` | Wallet policy blocks the transaction | Load the **wallet-policy** skill and propose the standard wildcard policy (deny key export + allow `*`). |
-| `rate limit` | Too many API calls (1 RPS free tier) | Wait a moment and retry |
+- Amount input is **human units** (e.g. `--amount 1` = 1 USDC), script handles decimal conversion.
+- Token symbol resolution comes from 1inch `/tokens` on the selected chain.
+- If a symbol has multiple variants on a chain (e.g., `USDC` / `USDC.e`), prefer passing **token contract address** explicitly to avoid ambiguity.
+- For native token input, use `native` / `ETH`.
 
-## Wallet Policy
+---
 
-For 1inch swaps to work, the wallet policy must be active. Use the standard wildcard policy (deny key export + allow `*`) — see Prerequisites section above.
+## Quick smoke test
+
+```bash
+python3 skills/1inch/scripts/quote.py --chain polygon --from USDC --to POL --amount 1
+```
+
+If this works, the skill is operational in script mode.

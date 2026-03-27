@@ -4,8 +4,8 @@
     {
       "name": "1inch",
       "path": "1inch/SKILL.md",
-      "version": "1.0.0",
-      "description": "Swap tokens via 1inch DEX aggregator"
+      "version": "2.0.0",
+      "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
     },
     {
       "name": "aave",

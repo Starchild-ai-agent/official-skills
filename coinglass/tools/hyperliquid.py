@@ -23,32 +23,19 @@ Usage Example:
     data = get_whale_alerts()
 """
 
-import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
-
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
+from typing import Dict, Any, Optional
 
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass API V4 Configuration
 BASE_URL = "https://open-api-v4.coinglass.com"
 HEADER_KEY = "CG-API-KEY"
 
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
-
-def get_whale_alerts() -> Optional[Dict[str, Any]]:
+def get_whale_alerts(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get recent whale alerts on Hyperliquid (positions > $1M).
 
@@ -73,7 +60,7 @@ def get_whale_alerts() -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -89,8 +76,7 @@ def get_whale_alerts() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_whale_positions() -> Optional[Dict[str, Any]]:
+def get_whale_positions(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get current whale positions on Hyperliquid.
 
@@ -121,7 +107,7 @@ def get_whale_positions() -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -137,8 +123,7 @@ def get_whale_positions() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_positions_by_coin(symbol: str) -> Optional[Dict[str, Any]]:
+def get_positions_by_coin(symbol: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get real-time wallet positions for a specific coin on Hyperliquid.
 
@@ -170,7 +155,7 @@ def get_positions_by_coin(symbol: str) -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -187,8 +172,7 @@ def get_positions_by_coin(symbol: str) -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_user_positions(user_address: str) -> Optional[Dict[str, Any]]:
+def get_user_positions(user_address: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get positions for a specific user address on Hyperliquid.
 
@@ -200,7 +184,7 @@ def get_user_positions(user_address: str) -> Optional[Dict[str, Any]]:
     Returns:
         Dictionary with user position data including margin and open positions
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -217,8 +201,7 @@ def get_user_positions(user_address: str) -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_position_distribution() -> Optional[Dict[str, Any]]:
+def get_position_distribution(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get wallet position distribution on Hyperliquid.
 
@@ -231,7 +214,7 @@ def get_position_distribution() -> Optional[Dict[str, Any]]:
     Returns:
         Dictionary with position distribution analysis grouped by size tiers
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -247,7 +230,6 @@ def get_position_distribution() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -255,9 +237,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["whale-alerts", "whale-positions", "positions-by-coin", "user-positions", "position-distribution"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["whale-alerts",
+                     "whale-positions",
+                     "positions-by-coin",
+                     "user-positions",
+                     "position-distribution"],
+            help="Function to call"
+    )
     parser.add_argument("--user", "-u", help="User address (for user-positions)")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
@@ -281,7 +271,6 @@ def main():
     else:
         print("Failed to fetch data", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

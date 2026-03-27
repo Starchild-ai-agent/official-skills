@@ -23,30 +23,17 @@ Usage Example:
     data = get_coin_liquidation_history(symbol="BTC", interval="1h", limit=100)
 """
 
-import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
-
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
+from typing import Dict, Any, Optional
 
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass API V4 Configuration
 BASE_URL = "https://open-api-v4.coinglass.com"
 HEADER_KEY = "CG-API-KEY"
-
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
 
 def get_coin_liquidation_history(
     symbol: str,
@@ -54,8 +41,7 @@ def get_coin_liquidation_history(
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get aggregated liquidation history for a coin across specified exchanges.
 
@@ -82,7 +68,7 @@ def get_coin_liquidation_history(
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -109,15 +95,13 @@ def get_coin_liquidation_history(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_pair_liquidation_history(
     symbol: str,
     exchange: str,
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get liquidation history for a specific trading pair on an exchange.
 
@@ -144,7 +128,7 @@ def get_pair_liquidation_history(
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -173,8 +157,7 @@ def get_pair_liquidation_history(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_liquidation_coin_list(exchange: str) -> Optional[Dict[str, Any]]:
+def get_liquidation_coin_list(exchange: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get liquidation data for all coins on a specific exchange.
 
@@ -200,7 +183,7 @@ def get_liquidation_coin_list(exchange: str) -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -217,14 +200,12 @@ def get_liquidation_coin_list(exchange: str) -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_liquidation_orders(
     symbol: str,
     exchange: str,
     min_liquidation_amount: str,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get individual liquidation orders (past 7 days only).
 
@@ -256,7 +237,7 @@ def get_liquidation_orders(
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -282,12 +263,10 @@ def get_liquidation_orders(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_liquidation_heatmap(
     symbol: str,
     exchange: str,
-    range: str = "0.1"
-) -> Optional[Dict[str, Any]]:
+    range: str = "0.1", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get liquidation heatmap data for a trading pair (Model 1).
 
@@ -303,7 +282,7 @@ def get_liquidation_heatmap(
     Returns:
         Dictionary with heatmap data for visualization
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -324,7 +303,6 @@ def get_liquidation_heatmap(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -332,9 +310,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["coin-history", "pair-history", "coin-list", "orders", "heatmap"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["coin-history",
+                     "pair-history",
+                     "coin-list",
+                     "orders",
+                     "heatmap"],
+            help="Function to call"
+    )
     parser.add_argument("--symbol", "-s", help="Symbol (BTC, ETH, etc.)")
     parser.add_argument("--exchange", "-e", help="Exchange name (Binance, OKX, etc.)")
     parser.add_argument("--interval", "-i", default="1h", help="Time interval")
@@ -380,7 +366,6 @@ def main():
     else:
         print("Failed to fetch data", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

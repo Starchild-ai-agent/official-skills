@@ -31,21 +31,14 @@ CLI Usage:
     python funding_rate.py --all
 """
 
-import os
 import sys
 import json
 import argparse
 from typing import Dict, Any, Optional, List
 
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
-
 import requests
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass Configuration
 BASE_URL = "https://open-api.coinglass.com/public/v2"
@@ -60,13 +53,7 @@ EXCHANGES = [
 # Common symbols
 SYMBOLS = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "AVAX", "LINK", "MATIC"]
 
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
-
-def get_funding_rates(symbol: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def get_funding_rates(symbol: Optional[str] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Fetch funding rates across all exchanges.
 
@@ -96,7 +83,7 @@ def get_funding_rates(symbol: Optional[str] = None) -> Optional[Dict[str, Any]]:
                 for rate_info in exchange["uMarginList"]:
                     print(f"{rate_info['exchangeName']}: {rate_info['rate'] * 100:.4f}%")
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found in environment", file=sys.stderr)
         return None
@@ -121,7 +108,7 @@ def get_funding_rates(symbol: Optional[str] = None) -> Optional[Dict[str, Any]]:
             filtered = [d for d in data.get("data", []) if d.get("symbol", "").upper() == symbol.upper()]
             return {"code": "0", "msg": "success", "data": filtered}
 
-        return data
+        return dict(**data)  # structured API response
 
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}", file=sys.stderr)
@@ -130,11 +117,9 @@ def get_funding_rates(symbol: Optional[str] = None) -> Optional[Dict[str, Any]]:
         print(f"Failed to parse response: {e}", file=sys.stderr)
         return None
 
-
 def get_symbol_funding_rate(
     symbol: str,
-    exchange: Optional[str] = None
-) -> Optional[Dict[str, Any]]:
+    exchange: Optional[str] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get funding rate for a specific symbol and optionally a specific exchange.
 
@@ -173,34 +158,54 @@ def get_symbol_funding_rate(
         for rate_info in symbol_data.get("uMarginList", []):
             if rate_info.get("exchangeName", "").lower() == exchange.lower():
                 rate = rate_info.get("rate", 0)
+                interval_h = rate_info.get("fundingIntervalHours", 8)
+                # FIX: Normalize rate to 8h-equivalent for cross-exchange comparison
+                rate_8h_eq = rate * (8 / interval_h) if interval_h else rate
                 return {
                     "symbol": symbol.upper(),
                     "exchange": rate_info.get("exchangeName"),
                     "rate": rate,
                     "rate_percent": rate * 100,
+                    "rate_8h_equivalent": rate_8h_eq,
+                    "rate_8h_equivalent_percent": rate_8h_eq * 100,
+                    "annualized_percent": rate_8h_eq * 3 * 365 * 100,
                     "next_funding_time": rate_info.get("nextFundingTime"),
-                    "funding_interval_hours": rate_info.get("fundingIntervalHours"),
+                    "funding_interval_hours": interval_h,
                     "predicted_rate": rate_info.get("predictedRate"),
-                    "predicted_rate_percent": rate_info.get("predictedRate", 0) * 100 if rate_info.get("predictedRate") else None
+                    "predicted_rate_percent": (
+                        rate_info.get("predictedRate", 0) * 100
+                        if rate_info.get("predictedRate") else None
+                    ),
                 }
         return None
     else:
         # Return average across all exchanges
-        rates = [r.get("rate", 0) for r in symbol_data.get("uMarginList", []) if r.get("rate") is not None]
-        if not rates:
+        # FIX: Normalize all rates to 8h-equivalent before averaging
+        margin_list = symbol_data.get("uMarginList", [])
+        normalized_rates = []
+        for r in margin_list:
+            rate = r.get("rate")
+            if rate is None:
+                continue
+            interval_h = r.get("fundingIntervalHours", 8)
+            rate_8h = rate * (8 / interval_h) if interval_h else rate
+            normalized_rates.append(rate_8h)
+
+        if not normalized_rates:
             return None
-        avg_rate = sum(rates) / len(rates)
+        avg_rate_8h = sum(normalized_rates) / len(normalized_rates)
         return {
             "symbol": symbol.upper(),
             "exchange": "average",
-            "rate": avg_rate,
-            "rate_percent": avg_rate * 100,
-            "num_exchanges": len(rates),
-            "exchanges_data": symbol_data.get("uMarginList", [])
+            "rate_8h_equivalent": avg_rate_8h,
+            "rate_8h_equivalent_percent": avg_rate_8h * 100,
+            "annualized_percent": avg_rate_8h * 3 * 365 * 100,
+            "num_exchanges": len(normalized_rates),
+            "note": "Rates normalized to 8h-equivalent for comparison",
+            "exchanges_data": margin_list,
         }
 
-
-def get_funding_rate_by_exchange(exchange: str) -> Optional[List[Dict[str, Any]]]:
+def get_funding_rate_by_exchange(exchange: str, max_results: int = 100) -> Optional[List[Dict[str, Any]]]:
     """
     Get funding rates for all symbols on a specific exchange.
 
@@ -236,8 +241,7 @@ def get_funding_rate_by_exchange(exchange: str) -> Optional[List[Dict[str, Any]]
 
     return sorted(results, key=lambda x: abs(x.get("rate", 0)), reverse=True) if results else None
 
-
-def analyze_funding_opportunity(symbol: str, threshold: float = 0.01) -> Optional[Dict[str, Any]]:
+def analyze_funding_opportunity(symbol: str, threshold: float = 0.01, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Analyze funding rate arbitrage opportunities across exchanges.
 
@@ -295,7 +299,6 @@ def analyze_funding_opportunity(symbol: str, threshold: float = 0.01) -> Optiona
         "opportunity": spread >= threshold,
         "all_rates": sorted_rates
     }
-
 
 def main():
     """CLI entry point."""
@@ -379,7 +382,6 @@ def main():
 
     # Default: show help
     parser.print_help()
-
 
 if __name__ == "__main__":
     main()

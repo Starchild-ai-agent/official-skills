@@ -21,32 +21,19 @@ Usage Example:
     data = get_whale_transfers()
 """
 
-import os
 import sys
 import json
 import argparse
 from typing import Dict, Any, Optional
 
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
-
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass API V4 Configuration
 BASE_URL = "https://open-api-v4.coinglass.com"
 HEADER_KEY = "CG-API-KEY"
 
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
-
-def get_whale_transfers() -> Optional[Dict[str, Any]]:
+def get_whale_transfers(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get large on-chain transfers (minimum $10M) across major blockchains.
 
@@ -73,7 +60,7 @@ def get_whale_transfers() -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -89,7 +76,6 @@ def get_whale_transfers() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -99,7 +85,7 @@ def main():
 
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
-    args = parser.parse_args()
+    _ = parser.parse_args()  # noqa: F841 — parsed for --help
 
     result = get_whale_transfers()
 
@@ -108,7 +94,6 @@ def main():
     else:
         print("Failed to fetch data", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

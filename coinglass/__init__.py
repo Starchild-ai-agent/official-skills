@@ -195,7 +195,7 @@ def register(api) -> List[str]:
 EXTENSION_INFO = {
     "name": "coinglass",
     "version": "3.0.0",
-    "description": "Coinglass crypto derivatives data tools - V4 API with advanced long/short ratios, liquidations, Hyperliquid whale tracking, volume & flow analysis, on-chain whale transfers, comprehensive ETF data (Bitcoin, Ethereum, Solana, XRP, Hong Kong), and futures market data (37 tools)",
+    "description": "Coinglass crypto derivatives - V4 API: funding, liquidations, OI, whales, ETF, futures (37 tools)",
     "tools": [
         "funding_rate",
         "long_short_ratio",

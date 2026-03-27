@@ -20,36 +20,23 @@ Usage Example:
     data = get_eth_etf_flows()
 """
 
-import os
 import sys
 import json
 import argparse
 from typing import Dict, Any, Optional
 
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
-
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass API V4 Configuration
 BASE_URL = "https://open-api-v4.coinglass.com"
 HEADER_KEY = "CG-API-KEY"
 
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
-
 # ==================== Ethereum ETF Endpoints ====================
 
-def get_eth_etf_flows() -> Optional[Dict[str, Any]]:
+def get_eth_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """Get Ethereum ETF flow history including daily net inflows/outflows."""
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -65,10 +52,9 @@ def get_eth_etf_flows() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_eth_etf_list() -> Optional[Dict[str, Any]]:
+def get_eth_etf_list(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """Get list of Ethereum ETFs with key status information."""
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -84,12 +70,11 @@ def get_eth_etf_list() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 # ==================== Solana ETF Endpoints ====================
 
-def get_sol_etf_flows() -> Optional[Dict[str, Any]]:
+def get_sol_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """Get Solana ETF flow history including daily net inflows/outflows."""
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -105,12 +90,11 @@ def get_sol_etf_flows() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 # ==================== XRP ETF Endpoints ====================
 
-def get_xrp_etf_flows() -> Optional[Dict[str, Any]]:
+def get_xrp_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """Get XRP ETF flow history including daily net inflows/outflows."""
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -126,7 +110,6 @@ def get_xrp_etf_flows() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -134,9 +117,16 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["eth-flows", "eth-list", "sol-flows", "xrp-flows"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["eth-flows",
+                     "eth-list",
+                     "sol-flows",
+                     "xrp-flows"],
+            help="Function to call"
+    )
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
     args = parser.parse_args()
@@ -157,7 +147,6 @@ def main():
     else:
         print("Failed to fetch data", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

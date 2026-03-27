@@ -31,21 +31,14 @@ CLI Usage:
     python long_short_ratio.py --symbol BTC --time-type h4
 """
 
-import os
 import sys
 import json
 import argparse
 from typing import Dict, Any, Optional, List
 
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
-
 import requests
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass Configuration
 BASE_URL = "https://open-api.coinglass.com/public/v2"
@@ -62,16 +55,9 @@ TIME_TYPES = ["m5", "m15", "m30", "h1", "h4", "h12", "h24"]
 # Common symbols
 SYMBOLS = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "AVAX", "LINK", "MATIC"]
 
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
-
 def get_long_short_ratio(
     symbol: str,
-    time_type: str = "h1"
-) -> Optional[Dict[str, Any]]:
+    time_type: str = "h1", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Fetch long/short account ratio for a symbol across all exchanges.
 
@@ -105,7 +91,7 @@ def get_long_short_ratio(
         ratio = get_long_short_ratio("BTC", "h1")
         print(f"BTC Long: {ratio['longRate']:.2f}% | Short: {ratio['shortRate']:.2f}%")
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found in environment", file=sys.stderr)
         return None
@@ -155,12 +141,10 @@ def get_long_short_ratio(
         print(f"Failed to parse response: {e}", file=sys.stderr)
         return None
 
-
 def get_exchange_ratio(
     symbol: str,
     exchange: str,
-    time_type: str = "h1"
-) -> Optional[Dict[str, Any]]:
+    time_type: str = "h1", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get long/short ratio for a specific exchange.
 
@@ -212,8 +196,7 @@ def get_exchange_ratio(
 
     return None
 
-
-def get_sentiment(symbol: str, time_type: str = "h1") -> Optional[Dict[str, Any]]:
+def get_sentiment(symbol: str, time_type: str = "h1", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Analyze market sentiment based on long/short ratio.
 
@@ -281,8 +264,7 @@ def get_sentiment(symbol: str, time_type: str = "h1") -> Optional[Dict[str, Any]
         "totalVolUsd": data.get("totalVolUsd", 0)
     }
 
-
-def compare_exchanges(symbol: str, time_type: str = "h1") -> Optional[List[Dict[str, Any]]]:
+def compare_exchanges(symbol: str, time_type: str = "h1", max_results: int = 100) -> Optional[List[Dict[str, Any]]]:
     """
     Compare long/short ratios across exchanges for a symbol.
 
@@ -316,14 +298,12 @@ def compare_exchanges(symbol: str, time_type: str = "h1") -> Optional[List[Dict[
 
     return sorted(results, key=lambda x: x["longRate"], reverse=True)
 
-
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Fetch Coinglass long/short ratios")
     parser.add_argument("--symbol", "-s", required=True, help="Symbol to query (BTC, ETH, etc.)")
     parser.add_argument("--exchange", "-e", help="Specific exchange (Binance, OKX, etc.)")
-    parser.add_argument("--time-type", "-t", default="h1",
-                       choices=TIME_TYPES, help="Time interval (default: h1)")
+    parser.add_argument("--time-type", "-t", default="h1", choices=TIME_TYPES, help="Time interval (default: h1)")
     parser.add_argument("--sentiment", action="store_true", help="Show sentiment analysis")
     parser.add_argument("--compare", action="store_true", help="Compare across exchanges")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
@@ -395,7 +375,6 @@ def main():
             print(f"\nExchanges: {len(result.get('exchanges', []))}")
     else:
         print(f"No data found for {args.symbol}")
-
 
 if __name__ == "__main__":
     main()

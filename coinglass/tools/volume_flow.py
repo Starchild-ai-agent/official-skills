@@ -23,30 +23,17 @@ Usage Example:
     data = get_taker_volume_history(symbol="BTC", exchange="Binance", interval="1h", limit=100)
 """
 
-import os
 import sys
 import json
 import argparse
 from typing import Dict, Any, Optional
 
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
-
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass API V4 Configuration
 BASE_URL = "https://open-api-v4.coinglass.com"
 HEADER_KEY = "CG-API-KEY"
-
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
 
 def get_taker_volume_history(
     symbol: str,
@@ -54,8 +41,7 @@ def get_taker_volume_history(
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get historical taker buy/sell volume data for a specific trading pair.
 
@@ -82,7 +68,7 @@ def get_taker_volume_history(
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -111,15 +97,13 @@ def get_taker_volume_history(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_aggregated_taker_volume(
     symbol: str,
     exchange_list: str,
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get aggregated taker buy/sell volume across specified exchanges for a coin.
 
@@ -146,7 +130,7 @@ def get_aggregated_taker_volume(
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -173,15 +157,13 @@ def get_aggregated_taker_volume(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_cumulative_volume_delta(
     symbol: str,
     exchange: str,
     interval: str = "1h",
     limit: int = 1000,
     start_time: Optional[int] = None,
-    end_time: Optional[int] = None
-) -> Optional[Dict[str, Any]]:
+    end_time: Optional[int] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Cumulative Volume Delta (CVD) history for a trading pair.
 
@@ -211,7 +193,7 @@ def get_cumulative_volume_delta(
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -240,8 +222,7 @@ def get_cumulative_volume_delta(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_coin_netflow() -> Optional[Dict[str, Any]]:
+def get_coin_netflow(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get coin netflow data for all futures coins.
 
@@ -263,7 +244,7 @@ def get_coin_netflow() -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -279,13 +260,11 @@ def get_coin_netflow() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_volume_ohlc_history(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get trading volume OHLC (Open, High, Low, Close) history.
 
@@ -312,7 +291,7 @@ def get_volume_ohlc_history(
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -336,7 +315,6 @@ def get_volume_ohlc_history(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -344,9 +322,17 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["taker-volume", "aggregated-taker", "cvd", "netflow", "volume-ohlc"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["taker-volume",
+                     "aggregated-taker",
+                     "cvd",
+                     "netflow",
+                     "volume-ohlc"],
+            help="Function to call"
+    )
     parser.add_argument("--symbol", "-s", help="Symbol (BTC, ETH, etc.)")
     parser.add_argument("--exchange", "-e", help="Exchange name (Binance, OKX, etc.)")
     parser.add_argument("--interval", "-i", default="1h", help="Time interval (default: 1h)")
@@ -391,7 +377,6 @@ def main():
     else:
         print("Failed to fetch data", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

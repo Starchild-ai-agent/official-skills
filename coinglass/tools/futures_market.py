@@ -27,32 +27,19 @@ CLI Usage:
     python futures_market.py --pair-data --symbol BTC --exchange Binance
 """
 
-import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
-
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
+from typing import Dict, Any, Optional
 
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass API V4 Configuration
 BASE_URL = "https://open-api-v4.coinglass.com"
 HEADER_KEY = "CG-API-KEY"
 
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
-
-def get_supported_coins() -> Optional[Dict[str, Any]]:
+def get_supported_coins(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of supported coins for futures trading.
 
@@ -64,7 +51,7 @@ def get_supported_coins() -> Optional[Dict[str, Any]]:
             "data": ["BTC", "ETH", "SOL", ...]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -80,8 +67,7 @@ def get_supported_coins() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_supported_exchanges() -> Optional[Dict[str, Any]]:
+def get_supported_exchanges(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of supported exchanges for futures trading.
 
@@ -93,7 +79,7 @@ def get_supported_exchanges() -> Optional[Dict[str, Any]]:
             "data": ["Binance", "OKX", "Bybit", ...]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -109,8 +95,7 @@ def get_supported_exchanges() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_supported_pairs(symbol: Optional[str] = None, exchange: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def get_supported_pairs(symbol: Optional[str] = None, exchange: Optional[str] = None, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of supported trading pairs.
 
@@ -121,7 +106,7 @@ def get_supported_pairs(symbol: Optional[str] = None, exchange: Optional[str] = 
     Returns:
         Dictionary with supported pairs data
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -143,8 +128,7 @@ def get_supported_pairs(symbol: Optional[str] = None, exchange: Optional[str] = 
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_coins_data() -> Optional[Dict[str, Any]]:
+def get_coins_data(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get market data for all coins.
 
@@ -152,7 +136,7 @@ def get_coins_data() -> Optional[Dict[str, Any]]:
         Dictionary with market data for all supported coins including
         price, volume, open interest, funding rate, etc.
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -168,8 +152,7 @@ def get_coins_data() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_pair_data(symbol: str, exchange: str) -> Optional[Dict[str, Any]]:
+def get_pair_data(symbol: str, exchange: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get market data for a specific trading pair.
 
@@ -181,7 +164,7 @@ def get_pair_data(symbol: str, exchange: str) -> Optional[Dict[str, Any]]:
         Dictionary with pair market data including price, volume,
         open interest, funding rate, long/short ratio, etc.
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -198,13 +181,11 @@ def get_pair_data(symbol: str, exchange: str) -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_ohlc_history(
     symbol: str,
     exchange: str,
     interval: str = "h1",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get OHLC price history for a trading pair.
 
@@ -230,7 +211,7 @@ def get_ohlc_history(
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -257,7 +238,6 @@ def get_ohlc_history(
     except Exception as e:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
-
 
 def main():
     """CLI entry point."""
@@ -329,7 +309,6 @@ Examples:
     else:
         print("Failed to fetch data", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

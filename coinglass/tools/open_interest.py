@@ -6,27 +6,19 @@ Fetch aggregate open interest data across major cryptocurrency exchanges.
 Open interest represents the total number of outstanding derivative contracts.
 """
 
-import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
-
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
+from typing import Dict, Any, Optional
 
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass Configuration
 BASE_URL_V2 = "https://open-api.coinglass.com/public/v2"
 BASE_URL_V4 = "https://open-api-v4.coinglass.com"
 HEADER_KEY_V2 = "coinglassSecret"
 HEADER_KEY_V4 = "CG-API-KEY"
-
 
 # MCP Tool Schema
 MCP_OPEN_INTEREST_SCHEMA = {
@@ -52,13 +44,7 @@ MCP_OPEN_INTEREST_SCHEMA = {
     }
 }
 
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
-
-def get_open_interest(symbol: str) -> Optional[Dict[str, Any]]:
+def get_open_interest(symbol: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get aggregate open interest for a symbol across all exchanges.
 
@@ -82,7 +68,7 @@ def get_open_interest(symbol: str) -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found in environment", file=sys.stderr)
         return None
@@ -145,11 +131,9 @@ def get_open_interest(symbol: str) -> Optional[Dict[str, Any]]:
         print(f"Failed to parse response: {e}", file=sys.stderr)
         return None
 
-
 def get_open_interest_history(
     symbol: str,
-    interval: str = "h24"
-) -> Optional[Dict[str, Any]]:
+    interval: str = "h24", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get historical open interest data for a symbol.
 
@@ -160,7 +144,7 @@ def get_open_interest_history(
     Returns:
         Dictionary with historical OI data
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found in environment", file=sys.stderr)
         return None
@@ -224,15 +208,22 @@ def get_open_interest_history(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Fetch Coinglass open interest data")
     parser.add_argument("--symbol", "-s", required=True, help="Symbol (BTC, ETH, etc.)")
     parser.add_argument("--history", action="store_true", help="Get historical data")
-    parser.add_argument("--interval", "-i", default="h24",
-                       choices=["0", "h1", "h4", "h12", "h24"],
-                       help="History interval")
+    parser.add_argument(
+            "--interval",
+            "-i",
+            default="h24",
+            choices=["0",
+                     "h1",
+                     "h4",
+                     "h12",
+                     "h24"],
+            help="History interval"
+    )
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
     parser.add_argument("--schema", action="store_true", help="Output MCP schema")
 
@@ -261,9 +252,11 @@ def main():
                 else:
                     print(f"Total OI (USD): ${result['total_open_interest_usd']:,.0f}")
                     print(f"Total OI (Coin): {result['total_open_interest_coin']:,.2f}")
-                    print(f"\nTop exchanges:")
+                    print("\nTop exchanges:")
                     for ex in result['exchanges'][:5]:
-                        print(f"  {ex['exchange']:15s} ${ex['open_interest_usd']:>15,.0f} ({ex.get('change_24h', 0):+.2f}% 24h)")
+                        oi_usd = ex['open_interest_usd']
+                        chg = ex.get('change_24h', 0)
+                        print(f"  {ex['exchange']:15s} ${oi_usd:>15,.0f} ({chg:+.2f}% 24h)")
             return 0
         else:
             print(f"No data found for {args.symbol}", file=sys.stderr)
@@ -272,7 +265,6 @@ def main():
     except Exception as e:
         print(json.dumps({"error": str(e)}, indent=2))
         return 1
-
 
 if __name__ == "__main__":
     exit(main())

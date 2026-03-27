@@ -23,30 +23,17 @@ Usage Example:
     data = get_global_account_ratio(symbol="BTC", exchange="Binance", interval="1h")
 """
 
-import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
-
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
+from typing import Dict, Any, Optional
 
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass API V4 Configuration
 BASE_URL = "https://open-api-v4.coinglass.com"
 HEADER_KEY = "CG-API-KEY"
-
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
 
 def _normalize_exchange_name(exchange: str) -> str:
     """
@@ -79,13 +66,11 @@ def _normalize_exchange_name(exchange: str) -> str:
     exchange_lower = exchange.lower()
     return exchange_map.get(exchange_lower, exchange.capitalize())
 
-
 def get_global_account_ratio(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get global long/short account ratio history for a trading pair on an exchange.
 
@@ -109,7 +94,7 @@ def get_global_account_ratio(
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -133,13 +118,11 @@ def get_global_account_ratio(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_top_account_ratio(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get long/short account ratio history for top traders.
 
@@ -152,7 +135,7 @@ def get_top_account_ratio(
     Returns:
         Dictionary with top trader account ratio data
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -176,13 +159,11 @@ def get_top_account_ratio(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_top_position_ratio(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get long/short position ratio history for top traders.
 
@@ -195,7 +176,7 @@ def get_top_position_ratio(
     Returns:
         Dictionary with top trader position ratio data
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -219,8 +200,7 @@ def get_top_position_ratio(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_taker_buysell_exchanges(symbol: str, range: str = "1h") -> Optional[Dict[str, Any]]:
+def get_taker_buysell_exchanges(symbol: str, range: str = "1h", max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of exchanges with taker buy/sell volume data for a specific symbol.
 
@@ -231,7 +211,7 @@ def get_taker_buysell_exchanges(symbol: str, range: str = "1h") -> Optional[Dict
     Returns:
         Dictionary with exchange list and volume ratios for the specified coin
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -248,13 +228,11 @@ def get_taker_buysell_exchanges(symbol: str, range: str = "1h") -> Optional[Dict
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_net_position(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get historical net position data (net long/short changes).
 
@@ -267,7 +245,7 @@ def get_net_position(
     Returns:
         Dictionary with net position history including net_long_change and net_short_change
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -291,13 +269,11 @@ def get_net_position(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def get_net_position_v2(
     symbol: str,
     exchange: str,
     interval: str = "1h",
-    limit: int = 100
-) -> Optional[Dict[str, Any]]:
+    limit: int = 100, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get enhanced historical net position data (v2 endpoint).
 
@@ -310,7 +286,7 @@ def get_net_position_v2(
     Returns:
         Dictionary with enhanced net position history
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -332,7 +308,6 @@ def get_net_position_v2(
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -340,9 +315,18 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["global-account", "top-account", "top-position", "taker-exchanges", "net-position", "net-position-v2"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["global-account",
+                     "top-account",
+                     "top-position",
+                     "taker-exchanges",
+                     "net-position",
+                     "net-position-v2"],
+            help="Function to call"
+    )
     parser.add_argument("--symbol", "-s", help="Symbol (BTC, ETH, etc.)")
     parser.add_argument("--exchange", "-e", help="Exchange name (Binance, OKX, etc.)")
     parser.add_argument("--interval", "-i", default="1h", help="Time interval (default: 1h)")
@@ -381,7 +365,6 @@ def main():
     else:
         print("Failed to fetch data", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

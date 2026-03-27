@@ -24,32 +24,19 @@ Usage Example:
     data = get_btc_etf_flows()
 """
 
-import os
 import sys
 import json
 import argparse
 from typing import Dict, Any, Optional
 
-try:
-    from dotenv import load_dotenv
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../..'))
-    load_dotenv(os.path.join(project_root, '.env'))
-except ImportError:
-    pass
-
 from core.http_client import proxied_get
+from .utils import get_api_key
 
 # Coinglass API V4 Configuration
 BASE_URL = "https://open-api-v4.coinglass.com"
 HEADER_KEY = "CG-API-KEY"
 
-
-def _get_api_key() -> Optional[str]:
-    """Get Coinglass API key from environment."""
-    return os.getenv("COINGLASS_API_KEY")
-
-
-def get_btc_etf_flows() -> Optional[Dict[str, Any]]:
+def get_btc_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Bitcoin ETF flow history including daily net inflows/outflows.
 
@@ -69,7 +56,7 @@ def get_btc_etf_flows() -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -85,8 +72,7 @@ def get_btc_etf_flows() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_btc_etf_net_assets() -> Optional[Dict[str, Any]]:
+def get_btc_etf_net_assets(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Bitcoin ETF net assets history.
 
@@ -106,7 +92,7 @@ def get_btc_etf_net_assets() -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -122,8 +108,7 @@ def get_btc_etf_net_assets() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_btc_etf_premium_discount() -> Optional[Dict[str, Any]]:
+def get_btc_etf_premium_discount(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Bitcoin ETF premium/discount rates.
 
@@ -143,7 +128,7 @@ def get_btc_etf_premium_discount() -> Optional[Dict[str, Any]]:
             ]
         }
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -159,8 +144,7 @@ def get_btc_etf_premium_discount() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_btc_etf_history(ticker: str) -> Optional[Dict[str, Any]]:
+def get_btc_etf_history(ticker: str, max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get comprehensive Bitcoin ETF history for a specific ticker.
 
@@ -172,7 +156,7 @@ def get_btc_etf_history(ticker: str) -> Optional[Dict[str, Any]]:
     Returns:
         Dictionary with comprehensive ETF history for the specified ticker
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -189,15 +173,14 @@ def get_btc_etf_history(ticker: str) -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_btc_etf_list() -> Optional[Dict[str, Any]]:
+def get_btc_etf_list(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get list of Bitcoin ETFs with key status information.
 
     Returns:
         Dictionary with ETF list including ticker, name, inception date, etc.
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -213,15 +196,14 @@ def get_btc_etf_list() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
-def get_hk_btc_etf_flows() -> Optional[Dict[str, Any]]:
+def get_hk_btc_etf_flows(max_results: int = 100) -> Optional[Dict[str, Any]]:
     """
     Get Hong Kong Bitcoin ETF flow history.
 
     Returns:
         Dictionary with HK ETF flows similar to US ETF flows structure
     """
-    api_key = _get_api_key()
+    api_key = get_api_key()
     if not api_key:
         print("Error: COINGLASS_API_KEY not found", file=sys.stderr)
         return None
@@ -237,7 +219,6 @@ def get_hk_btc_etf_flows() -> Optional[Dict[str, Any]]:
         print(f"Request failed: {e}", file=sys.stderr)
         return None
 
-
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(
@@ -245,9 +226,18 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
 
-    parser.add_argument("--function", "-f", required=True,
-                       choices=["flows", "net-assets", "premium-discount", "history", "list", "hk-flows"],
-                       help="Function to call")
+    parser.add_argument(
+            "--function",
+            "-f",
+            required=True,
+            choices=["flows",
+                     "net-assets",
+                     "premium-discount",
+                     "history",
+                     "list",
+                     "hk-flows"],
+            help="Function to call"
+    )
     parser.add_argument("--ticker", "-t", help="ETF ticker (e.g. IBIT, FBTC, GBTC)")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
@@ -275,7 +265,6 @@ def main():
     else:
         print("Failed to fetch data", file=sys.stderr)
         sys.exit(1)
-
 
 if __name__ == "__main__":
     main()

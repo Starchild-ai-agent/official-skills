@@ -1,7 +1,7 @@
 ---
 name: debank
 version: 1.0.0
-description: DeBank blockchain data API - user portfolios, token balances, transaction history, and DeFi protocol positions
+description: DeBank blockchain data API - user portfolios, token balances, transaction history, DeFi protocol positions, NFTs, and tx simulation
 tools:
   - db_chain_list
   - db_chain
@@ -43,8 +43,7 @@ metadata:
     emoji: "🏦"
     skillKey: debank
     requires:
-      env:
-        - DEBANK_API_KEY
+      env: [DEBANK_API_KEY]
 
 user-invocable: false
 disable-model-invocation: false
@@ -52,99 +51,62 @@ disable-model-invocation: false
 
 # DeBank
 
-DeBank provides comprehensive blockchain data including wallet portfolios, token balances, transaction history, DeFi protocol positions, NFTs, and transaction simulation.
+33 tools for wallet portfolios, token data, DeFi positions, NFTs, tx simulation across all EVM chains.
 
-## When to Use DeBank
+## Tool Categories
 
-Use DeBank for:
-- **User Portfolio** - Total balance, token holdings, NFTs across all chains
-- **Transaction History** - Historical transactions on single or all chains
-- **DeFi Positions** - Protocol balances and complex portfolio positions
-- **Token Data** - Token details, prices, and top holders
-- **Transaction Simulation** - Pre-execute and explain transactions before submission
-- **Authorization Tracking** - View token and NFT approvals
-- **Analytics** - 24-hour net worth curves and portfolio tracking
+### User Portfolio
+| Tool | Purpose |
+|------|---------|
+| `db_user_total_balance(user_addr)` | Total balance across all chains |
+| `db_user_all_token_list(user_addr)` | All token holdings |
+| `db_user_token_list(user_addr, chain_id)` | Tokens on specific chain |
+| `db_user_all_nft_list(user_addr)` | All NFTs |
+| `db_user_chain_balance(user_addr, chain_id)` | Balance on one chain |
+| `db_user_used_chain_list(user_addr)` | Which chains has this wallet used |
 
-## Common Workflows
+### Transaction History
+| Tool | Purpose |
+|------|---------|
+| `db_user_history_list(user_addr, chain_id)` | Tx history on one chain |
+| `db_user_all_history_list(user_addr)` | Tx history across all chains |
 
-### Get User Portfolio
-```
-db_user_total_balance(user_addr="0x...")  # Total balance across all chains
-db_user_all_token_list(user_addr="0x...")  # All token holdings
-db_user_all_nft_list(user_addr="0x...")  # All NFT collections
-```
+### DeFi Positions
+| Tool | Purpose |
+|------|---------|
+| `db_user_simple_protocol_list(user_addr, chain_id)` | Simple protocol balances |
+| `db_user_complex_protocol_list(user_addr, chain_id)` | Detailed DeFi positions |
+| `db_user_all_simple_protocol_list(user_addr)` | All chains simple |
+| `db_user_all_complex_protocol_list(user_addr)` | All chains detailed |
 
-### Check Token Balances on Specific Chain
-```
-db_user_token_list(user_addr="0x...", chain_id="eth")  # Ethereum tokens
-db_user_token_list(user_addr="0x...", chain_id="bsc")  # BSC tokens
-```
+### Token & Protocol Data
+| Tool | Purpose |
+|------|---------|
+| `db_token(chain_id, token_id)` | Token details |
+| `db_token_history_price(chain_id, token_id, start_time, end_time)` | Historical price |
+| `db_token_top_holders(chain_id, token_id)` | Top 100 holders |
+| `db_protocol(protocol_id)` | Protocol details |
+| `db_protocol_list(chain_id)` | Protocols on a chain |
 
-### Get Transaction History
-```
-db_user_history_list(user_addr="0x...", chain_id="eth")  # Eth transactions
-db_user_all_history_list(user_addr="0x...")  # All chain transactions
-```
+### Tx Simulation
+| Tool | Purpose |
+|------|---------|
+| `db_pre_exec_tx(user_addr, chain_id, tx)` | Pre-execute transaction |
+| `db_explain_tx(user_addr, chain_id, tx)` | Explain transaction |
 
-### Check DeFi Protocol Positions
-```
-db_user_simple_protocol_list(user_addr="0x...", chain_id="eth")  # Simple balances
-db_user_complex_protocol_list(user_addr="0x...", chain_id="eth")  # Detailed positions
-db_user_all_complex_protocol_list(user_addr="0x...")  # All chains
-```
+### Chain & Gas
+`db_chain_list()` | `db_chain(chain_id)` | `db_gas_market(chain_id)`
 
-### Token Information
-```
-db_token(chain_id="eth", token_id="0x...")  # Token details
-db_token_history_price(chain_id="eth", token_id="0x...", start_time=1234567890, end_time=1234567990)
-db_token_top_holders(chain_id="eth", token_id="0x...")  # Top 100 holders
-```
+### Authorizations
+`db_user_token_authorized_list(user_addr, chain_id)` | `db_user_nft_authorized_list(user_addr, chain_id)`
 
-### Transaction Simulation
-```
-db_pre_exec_tx(user_addr="0x...", chain_id="eth", tx={...})  # Enhanced pre-execution
-db_explain_tx(user_addr="0x...", chain_id="eth", tx={...})  # Explain transaction
-```
+### Analytics
+`db_user_chain_net_curve(user_addr, chain_id)` | `db_user_total_net_curve(user_addr)`
 
-### Protocol Data
-```
-db_protocol(protocol_id="uniswap")  # Protocol details
-db_protocol_list(chain_id="eth")  # All protocols on chain
-db_protocol_all_list()  # All protocols across chains
-```
+## Chain IDs
+`eth` Ethereum | `bsc` BSC | `polygon` Polygon | `arbitrum` Arbitrum | `optimism` Optimism | `avax` Avalanche | `base` Base | `ftm` Fantom — use `db_chain_list()` for full list.
 
-### Chain Information
-```
-db_chain_list()  # All supported chains
-db_chain(chain_id="eth")  # Specific chain details
-db_gas_market(chain_id="eth")  # Gas prices
-```
-
-## Important Notes
-
-- **API Key**: Requires DEBANK_API_KEY environment variable (DeBank Cloud API)
-- **User Address**: Most endpoints require a valid blockchain address (0x... format)
-- **Chain IDs**: Use DeBank chain identifiers (eth, bsc, polygon, arbitrum, optimism, etc.)
-- **Rate Limits**: Be mindful of API rate limits and unit costs
-- **Unit Costs**: Different endpoints have different unit costs (see API documentation)
-
-## Chain ID Reference
-
-Common chain identifiers:
-- eth → Ethereum Mainnet
-- bsc → BNB Smart Chain
-- polygon → Polygon
-- arbitrum → Arbitrum One
-- optimism → Optimism
-- avax → Avalanche C-Chain
-- ftm → Fantom
-- op → Optimism
-- base → Base
-
-**Important:** Use `db_chain_list()` to get the complete list of supported chains and their identifiers.
-
-## Address Format
-
-All user addresses should be in Ethereum format (0x followed by 40 hexadecimal characters):
-- Valid: 0x1234567890abcdef1234567890abcdef12345678
-- Invalid: 1234567890abcdef1234567890abcdef12345678 (missing 0x prefix)
+## Notes
+- Addresses: `0x...` format (40 hex chars with prefix)
+- Different endpoints have different unit costs
+- `_all_` variants scan all chains (more expensive but comprehensive)

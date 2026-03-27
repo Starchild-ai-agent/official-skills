@@ -13,129 +13,73 @@ user-invocable: true
 
 # Skill Creator
 
-Create new skills to permanently extend your capabilities.
+Create new skills to permanently extend agent capabilities.
 
 ## Core Principles
 
-**Concise is key.** The context window is a shared resource between the system prompt, skills, conversation history, and your reasoning. Every line in a SKILL.md competes with everything else. Only add what you don't already know — don't document tool parameters visible in the system prompt, don't prescribe step-by-step workflows for things you can figure out. Focus on domain knowledge, interpretation guides, decision frameworks, and gotchas.
+**Concise is key.** Context window is shared — every SKILL.md line competes with system prompt, history, and reasoning. Only add what the agent doesn't already know. Don't document tool params visible in system prompt.
 
-**Progressive disclosure.** Skills load in three levels:
-1. **Always in context** — name, emoji, and description appear in `<available_skills>` in every conversation. This is how you decide which skill to activate. The description must be a strong trigger.
-2. **On activation** — the full SKILL.md body is loaded via `read_file` when you decide the skill is relevant. This is where workflow, guidelines, and decision trees live.
-3. **On demand** — scripts/, references/, and assets/ are only loaded when explicitly needed. Heavy content goes here, not in the body.
+**Progressive disclosure:**
+1. **Always in context** — name + description in `<available_skills>` (trigger for activation)
+2. **On activation** — full SKILL.md body loaded via `read_file`
+3. **On demand** — `scripts/`, `references/`, `assets/` loaded only when needed
 
-This means: keep the SKILL.md body lean (< 500 lines). Put detailed API docs in `references/`. Put automation in `scripts/`. The body should be what you need to *start working*, not an encyclopedia.
+Keep SKILL.md body < 500 lines. Put detailed API docs in `references/`, automation in `scripts/`.
 
-**Degrees of freedom.** Match instruction specificity to task fragility:
+**Freedom levels:**
+- **High** (text guidance) — multiple valid approaches, explain WHAT and WHY
+- **Medium** (pseudocode + params) — preferred pattern exists, describe approach with key params
+- **Low** (scripts/) — fragile operations, exact syntax, executed not loaded
 
-- **High freedom** (text guidance) — When multiple approaches are valid. Write natural language explaining WHAT and WHY, not step-by-step HOW. Example: "Check funding rates and social sentiment to gauge market mood."
-- **Medium freedom** (pseudocode + params) — When a preferred pattern exists but details can vary. Describe the approach with key parameters. Example: "Use RSI with period 14, buy below 30, sell above 70."
-- **Low freedom** (scripts in `scripts/`) — When operations are fragile, require exact syntax, or are repetitive boilerplate. Put the code in standalone scripts that get executed, not loaded into context. Example: Chart rendering with exact color codes and API calls.
-
-Default assumption: you are already smart. Only add context you don't already have.
-
-## Anatomy of a Skill
+## Skill Structure
 
 ```
 my-skill/
-├── SKILL.md          # Required: Frontmatter + instructions
-├── scripts/          # Optional: Executable code (low freedom)
-│   └── render.py     #   Run via bash, not loaded into context
-├── references/       # Optional: Docs loaded on demand (medium freedom)
-│   └── api-guide.md  #   Loaded via read_file when needed
-└── assets/           # Optional: Templates, images, data files
-    └── template.json #   NOT loaded into context, used in output
+├── SKILL.md          # Required: frontmatter + instructions
+├── scripts/          # Optional: executable code (run via bash)
+├── references/       # Optional: docs loaded on demand
+└── assets/           # Optional: templates, images, data files
 ```
-
-**When to use each:**
-
-| Directory | Loaded into context? | Use for |
-|-----------|---------------------|---------|
-| SKILL.md body | On activation | Core workflow, decision trees, gotchas |
-| `scripts/` | Never (executed) | Fragile operations, exact syntax, boilerplate |
-| `references/` | On demand | Detailed API docs, long guides, lookup tables |
-| `assets/` | Never | Templates, images, data files used in output |
 
 ## Creating a Skill
 
-### Step 1: Understand the Request
+### 1. Understand the Request
+- What capability? (API integration, workflow, knowledge domain)
+- What triggers it? → becomes the description
+- What freedom level? → determines scripts vs text guidance
+- What dependencies? → env vars, binaries, packages
 
-Before scaffolding, understand what you're building:
-
-- **What capability?** API integration, workflow automation, knowledge domain?
-- **What triggers it?** When should the agent activate this skill? (This becomes the description.)
-- **What freedom level?** Can the agent improvise, or does it need exact scripts?
-- **What dependencies?** API keys, binaries, Python packages?
-
-Examples:
-- "I want to generate charts" → charting skill with scripts (low freedom rendering)
-- "Help me think about trading strategies" → knowledge skill (high freedom, conversational)
-- "Integrate with Binance API" → API skill with env requirements and reference docs
-
-### Step 2: Scaffold
-
-Use the init script:
+### 2. Scaffold
 
 ```bash
-python skills/skill-creator/scripts/init_skill.py my-new-skill --path ./workspace/skills
-```
-
-With resource directories:
-```bash
-python skills/skill-creator/scripts/init_skill.py api-helper --path ./workspace/skills --resources scripts,references
-```
-
-With example files:
-```bash
+python skills/skill-creator/scripts/init_skill.py my-skill --path ./workspace/skills
+# With resources:
+python skills/skill-creator/scripts/init_skill.py my-skill --path ./workspace/skills --resources scripts,references
+# With examples:
 python skills/skill-creator/scripts/init_skill.py my-skill --path ./workspace/skills --resources scripts --examples
 ```
 
-### Step 3: Plan Reusable Contents
+### 3. Write SKILL.md
 
-Before writing, decide what goes where:
+Body design patterns:
+- **Workflow-based** — step-by-step process (fetch → configure → render → serve)
+- **Task-based** — organized by user asks ("analyze a coin" / "compare strategies")
+- **Reference/guidelines** — rules, frameworks, decision trees
+- **Capabilities-based** — organized by what the skill can do
 
-- **SKILL.md body**: Core instructions the agent needs every time this skill activates. Decision trees, interpretation guides, "when to do X vs Y" logic.
-- **scripts/**: Any code that must run exactly as written — API calls with specific auth, rendering with exact formats, data processing pipelines.
-- **references/**: Detailed docs the agent might need occasionally — full API endpoint lists, schema definitions, troubleshooting guides.
-- **assets/**: Output templates, images, config files that the agent copies/modifies for output.
-
-### Step 4: Write the SKILL.md
-
-Use `read_file` and `write_file` to complete the generated SKILL.md:
-
-1. **Frontmatter** — Update description (CRITICAL trigger), add requirements, set emoji
-2. **Body** — Write for the agent, not the user. Short paragraphs over bullet walls. Opinions over hedging.
-
-Design patterns for the body:
-
-- **Workflow-based** — Step-by-step process (charting: fetch data → configure chart → render → serve)
-- **Task-based** — Organized by what the user might ask (trading: "analyze a coin" / "compare strategies" / "check sentiment")
-- **Reference/guidelines** — Rules and frameworks (strategy: core truths, conversation style, when to pull data)
-- **Capabilities-based** — Organized by what the skill can do (market-data: price tools / derivatives tools / social tools)
-
-### Step 5: Validate
+### 4. Validate & Refresh
 
 ```bash
-python skills/skill-creator/scripts/validate_skill.py ./workspace/skills/my-new-skill
+python skills/skill-creator/scripts/validate_skill.py ./workspace/skills/my-skill
 ```
-
-### Step 6: Refresh
-
-Call the `skill_refresh` tool to make the skill available:
-
-```
-skill_refresh()
-```
+Then call `skill_refresh()` to make it available.
 
 ## Frontmatter Format
-
-The frontmatter uses `metadata.starchild` for Star Child-specific fields:
 
 ```yaml
 ---
 name: skill-name
-description: "What this skill does. Use when [specific trigger scenarios]."
-
+description: "What this does. Use when [trigger scenarios]."
 metadata:
   starchild:
     emoji: "🔧"
@@ -143,67 +87,34 @@ metadata:
     requires:
       env: [API_KEY_NAME]
       bins: [python]
-      anyBins: [curl, wget]
     install:
       - kind: pip
         package: pandas
-      - kind: apt
-        package: curl
-        bins: [curl]
-
 user-invocable: true
 disable-model-invocation: false
 ---
 ```
 
-**Field reference:**
+Key fields: `name` (required), `description` (required, trigger text), `requires.env` (env vars), `requires.bins` (ALL must exist), `requires.anyBins` (ANY one), `install` (pip/apt/npm deps).
 
-| Field | Location | Required | Purpose |
-|-------|----------|----------|---------|
-| `name` | top-level | Yes | Skill identifier (lowercase hyphen-case) |
-| `description` | top-level | Yes | Trigger text — when should the agent use this? |
-| `emoji` | `metadata.starchild` | No | Display emoji |
-| `skillKey` | `metadata.starchild` | No | Dedup key |
-| `requires.env` | `metadata.starchild` | No | Required env vars |
-| `requires.bins` | `metadata.starchild` | No | Required binaries (ALL must exist) |
-| `requires.anyBins` | `metadata.starchild` | No | Required binaries (ANY one) |
-| `install` | `metadata.starchild` | No | How to install deps (pip, apt, npm, etc.) |
-| `user-invocable` | top-level | No | Can user trigger via /command (default: true) |
-| `disable-model-invocation` | top-level | No | Hide from `<available_skills>` (default: false) |
+## On-Chain Skills — Wallet Policy
 
-## On-Chain Skills — Wallet Policy Prerequisite
+If the skill involves on-chain operations (transactions, approvals, swaps), add a Prerequisites section near the top:
 
-If the skill involves **any on-chain operations** (sending transactions, token approvals, swaps, bridging, signing, deposits, withdrawals, smart contract interactions), add a Prerequisites section near the top of the SKILL.md:
-
-```markdown
-## Prerequisites — Wallet Policy
-
-Before executing any [operation], the wallet policy must be active.
-Load the **wallet-policy** skill and propose the standard wildcard
-policy (deny key export + allow `*`). This covers all [skill-name]
-operations across all chains.
-```
-
-This ensures the agent proposes a wallet policy **before** attempting any transaction. Without it, the first transaction will fail with a policy violation.
+> Before executing, load **wallet-policy** skill and propose standard wildcard policy (deny key export + allow `*`).
 
 ## What NOT to Include
 
-- **README.md** — The SKILL.md IS the readme. Don't duplicate.
-- **CHANGELOG.md** — Skills aren't versioned packages.
-- **Docs the agent already has** — Don't repeat tool descriptions from the system prompt.
-- **Step-by-step for simple tasks** — The agent can figure out "read a file then process it."
-- **Generic programming advice** — "Use error handling" is noise. Specific gotchas are signal.
+- README.md (SKILL.md IS the readme)
+- Tool descriptions already in system prompt
+- Step-by-step for simple tasks the agent can figure out
+- Generic programming advice ("use error handling")
 
 ## Best Practices
 
-1. **Description is the trigger.** This is how the agent decides to activate your skill. Include "Use when..." with specific scenarios. Bad: "Trading utilities." Good: "Test trading strategies against real historical data. Use when a strategy needs validation or before committing to a trade approach."
-
-2. **Write for the agent, not the user.** The skill is instructions for the AI. Use direct language: "You generate charts" not "This skill can be used to generate charts."
-
-3. **Scripts execute without loading.** Good for large automation. The agent reads the script only when it needs to customize, keeping context clean.
-
-4. **Don't duplicate the system prompt.** The agent already sees tool names and descriptions. Focus on knowledge it doesn't have: interpretation guides, decision trees, domain-specific gotchas.
-
-5. **Request credentials last.** Design the skill first, then ask the user for API keys.
-
-6. **Always validate** before refreshing — run `validate_skill.py` to catch issues early.
+1. **Description is the trigger** — include "Use when..." with specific scenarios
+2. **Write for the agent** — direct language: "You generate charts" not "This skill can be used to..."
+3. **Scripts execute without loading** — keeps context clean
+4. **Don't duplicate system prompt** — focus on domain knowledge, gotchas, decision trees
+5. **Request credentials last** — design skill first, then ask for API keys
+6. **Always validate** before refreshing

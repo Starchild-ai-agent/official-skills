@@ -15,8 +15,7 @@ metadata:
     emoji: "🌙"
     skillKey: lunarcrush
     requires:
-      env:
-        - LUNARCRUSH_API_KEY
+      env: [LUNARCRUSH_API_KEY]
 
 user-invocable: false
 disable-model-invocation: false
@@ -24,110 +23,44 @@ disable-model-invocation: false
 
 # LunarCrush
 
-LunarCrush provides social intelligence and sentiment data including Galaxy Score, AltRank, social volume, influencer activity, and trending topics. This is the crowd-mood layer.
+Social intelligence: Galaxy Score, AltRank, social volume, influencer tracking, trending topics.
 
-## When to Use LunarCrush
+## Tools
 
-Use LunarCrush for:
-- **Social sentiment** - What is the crowd saying?
-- **Galaxy Score** - Overall social momentum (0-100)
-- **AltRank** - Social ranking (lower is better)
-- **Social volume** - Number of social mentions
-- **Influencer activity** - What are key voices saying?
-- **Trending topics** - What's gaining attention?
-
-## Common Workflows
-
-### Coin Social Data
-```
-lunar_coin(symbol="BTC")  # Current social metrics
-lunar_coin(symbol="ETH")  # Ethereum social data
-lunar_coin_time_series(symbol="SOL", interval="1d", bucket="day")  # Historical
-lunar_coin_meta(symbol="BTC")  # Metadata and links
-```
-
-### Topic Analysis
-```
-lunar_topic(topic="defi")  # DeFi topic metrics
-lunar_topic_posts(topic="nft")  # Recent posts about NFTs
-```
-
-### Creator/Influencer
-```
-lunar_creator(creator_id="123456")  # Specific influencer data
-```
+| Tool | Purpose |
+|------|---------|
+| `lunar_coin(symbol)` | Current social metrics for a coin |
+| `lunar_coin_time_series(symbol, interval, bucket)` | Historical social data (1h/1d/1w) |
+| `lunar_coin_meta(symbol)` | Metadata and links |
+| `lunar_topic(topic)` | Topic metrics (e.g. "defi", "nft") |
+| `lunar_topic_posts(topic)` | Recent posts about a topic |
+| `lunar_creator(creator_id)` | Influencer data |
 
 ## Key Metrics
 
-### Galaxy Score (0-100)
+**Galaxy Score (0-100):** Overall social momentum
+- 80-100: Exceptional — watch for tops
+- 60-79: Strong interest
+- 40-59: Normal
+- 0-39: Declining/dead
 
-| Score | Read |
-|-------|------|
-| 80–100 | Exceptional social momentum — watch for tops |
-| 60–79 | Strong sustained interest |
-| 40–59 | Normal activity |
-| 20–39 | Declining interest |
-| 0–19 | Dead or bottoming |
+**AltRank:** Social ranking (lower = better). #1-50 = top tier.
 
-**Divergence signal**: High Galaxy Score + negative price = potential reversal.
+**Social Volume:** Total mentions across Twitter, Reddit, YouTube etc. Rising volume often precedes price moves.
 
-### AltRank
+## Signals
 
-Lower is better. #1–50 is top tier social presence. Useful for finding altcoins gaining attention before price moves.
+| Pattern | Meaning |
+|---------|---------|
+| Rising Galaxy Score + flat price | Potential breakout setup |
+| High Galaxy Score + falling price | Bearish divergence |
+| Low Galaxy Score + rising price | Weak rally |
+| All three metrics aligned | Strong confirmation signal |
 
-- **Rank 1-10**: Highest social attention
-- **Rank 11-50**: Strong social presence
-- **Rank 51-100**: Moderate attention
-- **Rank 100+**: Low social attention
+## Workflows
 
-### Social Volume
+**Find rising coins:** `lunar_coin` → look for rising AltRank + Galaxy Score >60 + flat/rising price.
 
-Number of social mentions across platforms (Twitter, Reddit, etc.). Rising social volume often precedes price moves.
+**Sentiment check:** `lunar_coin` → `lunar_coin_time_series` → compare current vs historical.
 
-### Social Dominance
-
-Percentage of total crypto social volume. High dominance means the coin is dominating crypto conversations.
-
-## Analysis Patterns
-
-**Social alpha**: Rising Galaxy Score + flat price = potential breakout setup. Social attention building before price moves.
-
-**Divergence signals**:
-- High Galaxy Score + falling price = bearish divergence
-- Low Galaxy Score + rising price = weak rally
-
-**Sentiment confirmation**: Combine Galaxy Score + social volume + AltRank. All three moving in same direction = strong signal.
-
-**Influencer tracking**: Monitor what key voices are saying via creator tools. Influencer attention can drive retail interest.
-
-## Time Intervals
-
-- `1h` - Hourly
-- `1d` - Daily
-- `1w` - Weekly
-
-## Important Notes
-
-- **API Key**: Requires LUNARCRUSH_API_KEY environment variable
-- **Symbols**: Use standard symbols (BTC, ETH, SOL, etc.)
-- **Social platforms**: Data aggregated from Twitter, Reddit, Medium, YouTube, and more
-- **Real-time**: Social metrics update in near real-time
-- **Leading indicator**: Social data often leads price - attention builds before price moves
-
-## Workflow Examples
-
-### Find Rising Coins
-1. Use `lunar_coin` to check AltRank and Galaxy Score
-2. Look for coins with rising AltRank (lower number = better) and Galaxy Score > 60
-3. Check if price is flat or rising - social attention building is a leading signal
-
-### Sentiment Check
-1. Get current Galaxy Score and social volume
-2. Compare to historical data via `lunar_coin_time_series`
-3. High score + rising volume = strong momentum
-4. Low score + falling volume = weak interest
-
-### Topic Trends
-1. Use `lunar_topic` to find trending topics (DeFi, NFT, Gaming, etc.)
-2. Use `lunar_topic_posts` to see what people are saying
-3. Cross-reference with price action for early trend signals
+**Topic trends:** `lunar_topic` → `lunar_topic_posts` → cross-reference with price action.

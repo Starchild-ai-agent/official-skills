@@ -1,153 +1,105 @@
 ---
-name: "Polymarket"
-version: 5.0.0
-description: "Trade Polymarket prediction markets via Privy wallet. Script-first: most flows are 1 bash + 1 sign. Search, analyze, place/cancel orders, manage positions."
+name: "polymarket"
+version: 2.4.0
+description: "Trade on Polymarket prediction markets. Buy/sell outcome tokens via CLOB. Requires USDC.e on Polygon + wallet policy for EIP-712 signing."
 author: starchild
 tags: [polymarket, trading, prediction-markets, polygon, defi]
 tools:
+  - polymarket_lookup
+  - polymarket_search
+  - polymarket_quick_prepare
+  - polymarket_get_positions
+  - polymarket_get_balance
+  - polymarket_get_orders
+  - polymarket_get_trades
+  - polymarket_post_order
+  - polymarket_orderbook
+  - polymarket_rr_analysis
+  - polymarket_cancel_order
+  - polymarket_cancel_all
+  - polymarket_prepare_order
+  - polymarket_auth
   - wallet_sign_typed_data
+  - wallet_transfer
+  - web_search
+  - web_fetch
 metadata:
   starchild:
     emoji: "🎲"
     skillKey: polymarket-trade
     requires:
-      env:
-        - POLY_API_KEY
-        - POLY_SECRET
-        - POLY_PASSPHRASE
-        - POLY_WALLET
+      env: [POLY_API_KEY, POLY_SECRET, POLY_PASSPHRASE, POLY_WALLET]
 ---
 
-# Polymarket Trading Skill v5.0.0
+# Polymarket Trading
 
-Trade on Polymarket CLOB via **Privy wallet** (EOA, signature_type=0). No private key needed.
+Trade on Polymarket CLOB in **EOA mode** (signature_type=0). Agent wallet = signer AND maker directly — no proxy wallet.
 
-**Script-first architecture**: complex flows are wrapped in `scripts/`. Agent calls bash + one sign.
+## ⚠️ USDC.e Required (NOT Native USDC)
 
----
+Polymarket **only** accepts USDC.e (bridged): `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`
+Native USDC (`0x3c499c...`) does NOT work. Swap via 1inch if needed.
 
-## Scripts (Primary Interface)
+## First-Time Setup
 
-All scripts are in `skills/polymarket/scripts/`. Each is self-contained with VPN, auth, error handling.
+Say **"I want to trade on Polymarket"** — agent auto-handles:
 
-### 🔍 Search
-```bash
-bash("cd skills/polymarket && python3 scripts/search.py 'US Iran ceasefire'")
-```
-**Output**: JSON with events, markets, outcomes (name + price + token_id). Ready for ordering.
-**Calls**: 0 tool calls. Everything in one bash.
+1. **Credentials** — `polymarket_auth` signs EIP-712 ClobAuth, saves keys to `.env` (instant, no restart)
+2. **Fund wallet** — Send USDC.e + ~1 POL (gas) to agent wallet on Polygon
+3. **Approve** — One-time USDC.e approval to both CTF Exchange contracts:
+   - CTF Exchange: `0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E`
+   - CTF Neg-Risk: `0xC5d563A36AE78145C45a50134d48A1215220f80a`
+4. **Verify** — `polymarket_get_balance()` confirms readiness
 
-### 💰 Status (balance + positions + orders)
-```bash
-bash("cd skills/polymarket && python3 scripts/status.py")
-```
-**Output**: Balance, open positions, open orders, recent trades — all in one shot.
-**Calls**: 0 tool calls.
+**Wallet policy needed**: `eth_signTypedData_v4` + `eth_sendTransaction` on chain 137.
 
-### 🔐 Auth (first-time or refresh)
-```bash
-# Step 1: Check if credentials exist and work
-bash("cd skills/polymarket && python3 scripts/auth.py --check")
+## VPN Auto-Detection
 
-# If missing/stale → Step 2: Prepare signing payload
-bash("cd skills/polymarket && python3 scripts/auth.py --prepare 0xWALLET")
+Zero config. On 403 geo-block, auto-tests regions (br/ar/mx/my/th/au/za), caches fastest. Override: `POLY_VPN_REGION=br` or `POLY_DISABLE_VPN=true`.
 
-# Step 3: Sign (ONLY tool call that can't be scripted)
-wallet_sign_typed_data(domain, types, primaryType, message)  # from /tmp/poly_auth.json
+## APIs
 
-# Step 4: Save derived credentials
-bash("cd skills/polymarket && python3 scripts/auth.py --save 0xSIG 0xWALLET TIMESTAMP")
-```
-**Calls**: 1-2 tool calls (check may suffice; full re-derive = 1 sign + 2 bash).
+| API | Base URL | Auth | Purpose |
+|-----|----------|------|---------|
+| CLOB | `clob.polymarket.com` | HMAC L2 | Orders, balance, orderbook |
+| Data | `data-api.polymarket.com` | Public | Positions, trades (historical) |
+| Gamma | `gamma-api.polymarket.com` | Public | Markets, events, search |
 
-### 📈 Place Order (BUY or SELL)
-```bash
-# Step 1: Prepare (fetches market info + orderbook + builds EIP-712)
-bash("cd skills/polymarket && python3 scripts/prepare_order.py TOKEN_ID BUY 0.76 13")
+## ⚠️ MANDATORY: Confirm Before Betting
 
-# Step 2: Sign (read /tmp/poly_order.json for domain/types/message)
-wallet_sign_typed_data(domain, types, primaryType="Order", message)
+**NEVER place a bet without explicit user confirmation.** Always: research → present R/R → wait for approval → execute.
 
-# Step 3: Submit + verify
-bash("cd skills/polymarket && python3 scripts/post_order.py 0xSIGNATURE")
-```
-**Calls**: 1 tool call (sign) + 2 bash. Down from 8 tool calls.
+## 🚀 Fast Workflow (Recommended)
 
-### ❌ Cancel Orders
-```bash
-bash("cd skills/polymarket && python3 scripts/cancel.py --all")
-# or
-bash("cd skills/polymarket && python3 scripts/cancel.py --id 0xORDER_ID")
-```
-**Calls**: 0 tool calls.
+4 tool calls total:
+1. `polymarket_lookup(url)` — get market info + token_ids
+2. `polymarket_quick_prepare(token_id, side, size_usd)` — balance + orderbook + R/R + order prep in ONE call
+3. `wallet_sign_typed_data(eip712)` — sign the order
+4. `polymarket_post_order(token_id, signature, meta)` — submit
 
-### 🔄 Close Positions
-```bash
-# Step 1: Build SELL orders for all positions
-bash("cd skills/polymarket && python3 scripts/close_positions.py")
+## Manual Workflow
 
-# Step 2: For each /tmp/poly_close_N.json:
-wallet_sign_typed_data(...)  # sign each
-bash("cd skills/polymarket && python3 scripts/post_order.py 0xSIG --order /tmp/poly_close_N.json")
-```
-**Calls**: N signs + N bash (one per position).
+1. `polymarket_lookup(url_or_slug)` / `polymarket_search(query)`
+2. `polymarket_orderbook(token_id)` + `polymarket_rr_analysis(token_id, side, size_usd)`
+3. Present bet summary, wait for confirmation
+4. `polymarket_get_balance()` → `polymarket_prepare_order(token_id, side, price, size)` → sign → `polymarket_post_order()`
+5. `polymarket_get_orders()` to verify
 
----
+## Troubleshooting
 
-## Token ID & Orderbook Cheat Sheet
-
-### YES/NO Are Complements
-Each market has TWO tokens. Their prices sum to ~$1.00.
-- YES at 0.25 ↔ NO at 0.75
-- Buying NO at 0.75 = betting AGAINST the event
-
-### Which token_id?
-| Bet | Action | Token | Price |
-|---|---|---|---|
-| Event happens | BUY YES | `outcomes[0].token_id` | YES price |
-| Event doesn't happen | BUY NO | `outcomes[1].token_id` | NO price |
-
-### Orderbook Rule
-Always check the book for the token you intend to BUY.
-- **BUY**: your entry price ≈ `best_ask`
-- **SELL**: your exit price ≈ `best_bid`
-- If book shows 0.01/0.99 → you're looking at the wrong token
-
----
-
-## Architecture
-
-| Mode | sig_type | How it works | Gas? |
-|---|---|---|---|
-| **EOA (we use this)** | `0` | Agent wallet = signer AND maker | Yes for one-time approvals |
-
-**Collateral**: USDC.e on Polygon. NOT native USDC.
-
----
-
-## VPN
-
-CLOB API is geo-blocked from US. Scripts handle this transparently:
-1. Direct → if 403 → parallel-test VPN regions → cache fastest
-2. Endpoint: `http://{region}:x@sc-vpn.internal:8080` (HTTP proxy)
-3. Regions: `ar, br, mx, my, th, au, za` (also: `au, ch, de, jp`)
-4. Override: `POLY_VPN_REGION=ar` or `POLY_DISABLE_VPN=true`
-
----
-
-## Common Errors
-
-| Error | Cause | Fix |
+| Issue | Cause | Fix |
 |-------|-------|-----|
-| 401 / Invalid API key | Stale creds | `scripts/auth.py --check`, re-derive if needed |
-| 403 geo-block | US IP | VPN auto-handles; if sc-vpn down → restart infra |
-| 400 Invalid order | Wrong tick/amount | `prepare_order.py` auto-normalizes |
-| L2_BALANCE_TOO_LOW | No USDC.e | Fund wallet on Polygon |
-| Orderbook 0.01/0.99 | Wrong token's book | Check the token you BUY, not complement |
+| Balance shows $0 | Have native USDC, not USDC.e | Swap via 1inch to USDC.e (`0x2791...`) |
+| Balance $0 in EOA mode | Normal — USDC.e stays in wallet until fills | Check wallet balance directly, not CLOB balance |
+| "Not enough balance" after approval | 10-15s sync delay | Wait 30s, recheck `polymarket_get_balance()` |
+| Signature error | Order expired or wrong format | Use `quick_prepare`, sign + post immediately |
+| Approval tx fails | Insufficient POL | Need ~0.5-1 POL for gas |
 
----
+## Key Facts
 
-## Changelog
-- **v5.0.0**: Script-first architecture. 6 scripts wrap all flows. BUY order: 8 calls → 3 (2 bash + 1 sign). Status/search/cancel: 0 tool calls. Credential auto-check + auto-derive.
-- **v4.3.0**: Fixed HMAC signature, removed POLY_NONCE, mandatory lookup after search.
-- **v4.0.0**: Merged official v2.4 + local v3.9. Modular tools/, Privy-only, 13 tools.
+- Prices = probabilities: $0.55 = 55% implied, pays $1 if correct
+- tick_size: 0.01 or 0.001 (check market data)
+- neg_risk markets use CTF Exchange Neg-Risk contract
+- Orders are GTC by default
+- Min order ~5 tokens
+- EOA = signature_type 0

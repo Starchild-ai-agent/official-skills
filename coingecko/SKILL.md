@@ -47,84 +47,52 @@ disable-model-invocation: false
 
 # CoinGecko
 
-CoinGecko provides comprehensive crypto market data including spot prices, OHLC candles, market cap, trending coins, sector performance, and global stats.
+Crypto spot prices, OHLC, market cap, trending coins, sectors, exchanges, NFTs, global stats.
 
-## When to Use CoinGecko
+## Tools
 
-Use CoinGecko for:
-- **Price queries** - Current prices, historical prices, OHLC data
-- **Market overview** - Market cap, volume, trending coins, top gainers/losers
-- **Coin information** - Detailed coin data, tickers, trading pairs
-- **Exchange data** - Exchange listings, volumes, trading pairs
-- **NFT data** - NFT collections, floor prices, market stats
-- **Global metrics** - Total market cap, dominance, DeFi stats
-- **Categories** - Sector performance (DeFi, Gaming, Layer 1, etc.)
+### Prices & Charts
+- `coin_price(coin_id, vs_currencies?)` — Current price. Supports symbols (BTC, ETH, SOL)
+- `coin_ohlc(coin_id, vs_currency, days)` — OHLC candles
+- `coin_chart(coin_id, vs_currency, days)` — Price chart data
+- `cg_token_price(contract_addresses=[], vs_currencies)` — By contract address
 
-## Common Workflows
+### Discovery
+- `cg_trending()` — Trending coins (24h)
+- `cg_top_gainers_losers()` — Top movers
+- `cg_new_coins()` — Recently listed
+- `cg_coins_markets(vs_currency, order?, per_page?)` — Market rankings
+- `cg_search(query)` — Search coins by name
 
-### Get Coin Price
-```
-coin_price(coin_id="bitcoin")  # Supports symbols like BTC, ETH, SOL
-coin_price(coin_id="ethereum", vs_currencies="usd,eur")
-```
+### Coin Details
+- `cg_coin_data(id)` — Full coin info
+- `cg_coin_tickers(id)` — All trading pairs
+- `cg_coin_by_contract(contract_address, platform)` — Lookup by contract
 
-### Historical Data
-```
-coin_ohlc(coin_id="bitcoin", vs_currency="usd", days=7)  # OHLC candles
-coin_chart(coin_id="ethereum", vs_currency="usd", days=30)  # Price chart data
-```
+### Exchanges
+- `cg_exchanges()` — All exchanges
+- `cg_exchange(id)` — Specific exchange
+- `cg_exchange_tickers(id)` — Exchange pairs
+- `cg_exchange_volume_chart(id, days)` — Volume history
 
-### Market Discovery
-```
-cg_trending()  # Trending coins in the last 24h
-cg_top_gainers_losers()  # Top movers
-cg_new_coins()  # Recently listed coins
-cg_coins_markets(vs_currency="usd", order="market_cap_desc", per_page=100)
-```
+### Global & Sectors
+- `cg_global()` — Total market stats
+- `cg_global_defi()` — DeFi stats
+- `cg_categories()` — Sector performance
+- `cg_derivatives()` / `cg_derivatives_exchanges()` — Derivatives data
 
-### Coin Information
-```
-cg_coin_data(id="bitcoin")  # Detailed coin data
-cg_coin_tickers(id="ethereum")  # All trading pairs
-cg_search(query="solana")  # Search for coins
-```
+### NFTs
+- `cg_nfts_list()` — Collections
+- `cg_nft(id)` / `cg_nft_by_contract(contract)` — NFT details
 
-### Exchange Data
-```
-cg_exchanges()  # All exchanges
-cg_exchange(id="binance")  # Specific exchange
-cg_exchange_tickers(id="binance")  # Exchange trading pairs
-cg_exchange_volume_chart(id="binance", days=7)
-```
+### Reference
+- `cg_coins_list()` — All coin IDs
+- `cg_asset_platforms()` — Blockchain platforms
+- `cg_vs_currencies()` — Supported quote currencies
+- `cg_exchange_rates()` — BTC-denominated rates
 
-### Global Metrics
-```
-cg_global()  # Total market stats
-cg_global_defi()  # DeFi specific stats
-cg_categories()  # Sector performance
-```
+## Notes
 
-### Contract Address Queries
-```
-cg_token_price(contract_addresses=["0x..."], vs_currencies="usd")
-cg_coin_by_contract(contract_address="0x...", platform="ethereum")
-```
-
-## Important Notes
-
-- **Coin IDs**: CoinGecko uses slug IDs (e.g., "bitcoin", "ethereum", "solana"). The tools auto-resolve common symbols like BTC, ETH, SOL.
-- **API Key**: Requires COINGECKO_API_KEY environment variable (Pro API)
-- **Rate Limits**: Be mindful of API rate limits. Use batch endpoints when querying multiple coins.
-- **vs_currencies**: Most endpoints support multiple currencies (usd, eur, btc, eth, etc.). Use `cg_vs_currencies()` to see all supported currencies.
-
-## Symbol Resolution
-
-Common symbols are automatically resolved:
-- BTC → bitcoin
-- ETH → ethereum
-- SOL → solana
-- USDT → tether
-- USDC → usd-coin
-- BNB → binancecoin
-
-**Important:** If unsure about a coin ID, always use `cg_search(query="coin name")` first to find the exact CoinGecko ID before calling price tools.
+- **Coin IDs**: Slugs (bitcoin, ethereum, solana). Common symbols auto-resolve: BTC→bitcoin, ETH→ethereum, SOL→solana
+- **If unsure**: `cg_search(query="coin name")` first
+- Use batch endpoints for multiple coins. `cg_coins_markets` returns up to 250 per page.

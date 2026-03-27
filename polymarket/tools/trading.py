@@ -1,48 +1,87 @@
 """
-Polymarket Trading Helpers
-Order building, posting, cancellation, balance/position queries
+Polymarket Trading — order building, posting, cancellation, balance/position queries.
+Privy-only: orders built as EIP-712 payloads → signed via wallet_sign_typed_data → posted to CLOB.
 """
 import json
 import time
 import random
 import requests as _requests
 from .utils import (
-    BASE,
-    DATA_API,
-    CTF_EXCHANGE,
-    CTF_EXCHANGE_NEG,
-    CHAIN_ID,
-    EOA,
-    WALLET as get_wallet,
-    API_KEY as get_api_key,
-    l2_headers,
-    clob_get,
-    clob_post,
-    clob_delete,
+    BASE, DATA_API, GAMMA,
+    CTF_EXCHANGE, CTF_EXCHANGE_NEG, CHAIN_ID, EOA,
+    WALLET as get_wallet, API_KEY as get_api_key,
+    l2_headers, clob_get, clob_post, clob_delete,
 )
 
 
 def get_market_info(token_id):
     """
-    Get market metadata including fee rate
-    Returns dict with fee_bps, neg_risk, tick_size
+    Get market metadata (tick size, fee, neg-risk) for a token.
+    1) Gamma lookup by clob_token_ids → get conditionId
+    2) CLOB lookup by conditionId → get market-level metadata
     """
-    r = clob_get(f"{BASE}/markets", params={"token_id": token_id})
-    if r.status_code == 200:
-        markets = r.json()
-        if markets:
-            market = markets[0] if isinstance(markets, list) else markets
-            return {
-                "fee_bps": market.get("maker_base_fee_rate", 1000),  # Default 10%
-                "neg_risk": market.get("neg_risk", False),
-                "tick_size": market.get("minimum_tick_size", "0.01"),
-            }
-    # Fallback defaults
-    return {"fee_bps": 1000, "neg_risk": False, "tick_size": "0.01"}
+    out = {
+        "fee_bps": 0,
+        "neg_risk": False,
+        "tick_size": "0.01",
+        "minimum_order_size": 5,
+        "condition_id": None,
+    }
 
+    condition_id = None
+
+    # Step 1: map token → condition via Gamma
+    try:
+        rg = _requests.get(
+            f"{GAMMA}/markets",
+            params={"clob_token_ids": str(token_id)},
+            timeout=20,
+        )
+        if rg.status_code == 200:
+            arr = rg.json()
+            if isinstance(arr, list) and arr:
+                m0 = arr[0]
+                condition_id = m0.get("conditionId") or m0.get("condition_id")
+                if m0.get("orderMinSize") is not None:
+                    try:
+                        out["minimum_order_size"] = float(m0["orderMinSize"])
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+    out["condition_id"] = condition_id
+
+    # Step 2: fetch authoritative metadata from CLOB
+    if condition_id:
+        try:
+            rc = clob_get(f"{BASE}/markets/{condition_id}")
+            if rc.status_code == 200:
+                mk = rc.json()
+                if isinstance(mk, dict):
+                    if mk.get("minimum_tick_size") is not None:
+                        out["tick_size"] = str(mk["minimum_tick_size"])
+                    if mk.get("taker_base_fee") is not None:
+                        out["fee_bps"] = int(mk["taker_base_fee"])
+                    elif mk.get("maker_base_fee") is not None:
+                        out["fee_bps"] = int(mk["maker_base_fee"])
+                    if mk.get("neg_risk") is not None:
+                        out["neg_risk"] = bool(mk["neg_risk"])
+                    if mk.get("minimum_order_size") is not None:
+                        try:
+                            out["minimum_order_size"] = float(mk["minimum_order_size"])
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+    return out
+
+
+# ── Read endpoints ──
 
 def get_balance():
-    """Get USDC balance and allowance"""
+    """Get USDC.e balance and allowance."""
     r = clob_get(
         f"{BASE}/balance-allowance",
         headers=l2_headers("GET", "/balance-allowance"),
@@ -53,14 +92,14 @@ def get_balance():
 
 
 def get_open_orders():
-    """Get all open orders"""
+    """Get all open orders."""
     r = clob_get(f"{BASE}/data/orders", headers=l2_headers("GET", "/data/orders"))
     r.raise_for_status()
     return r.json()
 
 
 def get_trades(limit=20):
-    """Get recent trades (from public Data API)"""
+    """Get recent trades."""
     wallet = get_wallet()
     r = _requests.get(
         f"{DATA_API}/trades",
@@ -72,7 +111,7 @@ def get_trades(limit=20):
 
 
 def get_positions():
-    """Get current positions (from public Data API)"""
+    """Get current positions."""
     wallet = get_wallet()
     r = _requests.get(
         f"{DATA_API}/positions",
@@ -83,39 +122,22 @@ def get_positions():
     return r.json()
 
 
-def cancel_order(order_id):
-    """Cancel a specific order"""
-    body = json.dumps({"orderID": order_id})
-    r = clob_delete(f"{BASE}/order", headers=l2_headers("DELETE", "/order", body), data=body)
-    return r.status_code, r.json()
-
-
-def cancel_all_orders():
-    """Cancel all open orders"""
-    r = clob_delete(f"{BASE}/cancel-all", headers=l2_headers("DELETE", "/cancel-all"))
-    return r.status_code, r.json()
-
+# ── Order building ──
 
 def build_order_payload(token_id, side, price, size, neg_risk=False, tick_size="0.01", fee_bps=None):
     """
-    Build EIP-712 order payload for signing
+    Build EIP-712 order payload for signing.
     Returns: (domain, types, message, meta)
 
-    Args:
-        token_id: CLOB token ID
-        side: "BUY" or "SELL"
-        price: Order price (0.01-0.99)
-        size: Order size in tokens
-        neg_risk: Use neg-risk exchange contract
-        tick_size: Price tick size (0.01 or 0.001)
-        fee_bps: Fee rate in basis points (auto-queries from market if None)
+    Auto-queries market info for fee_bps if not provided.
     """
     wallet = get_wallet()
 
-    # Query market info for fee rate if not provided
     if fee_bps is None:
         market_info = get_market_info(token_id)
         fee_bps = market_info["fee_bps"]
+        neg_risk = market_info["neg_risk"]
+        tick_size = market_info["tick_size"]
 
     exchange = CTF_EXCHANGE_NEG if neg_risk else CTF_EXCHANGE
     tick = float(tick_size)
@@ -191,17 +213,12 @@ def build_order_payload(token_id, side, price, size, neg_risk=False, tick_size="
     return domain, types, message, meta
 
 
+# ── Order posting ──
+
 def post_signed_order(token_id, signature, meta):
     """
-    Post a signed order to CLOB
-
-    Args:
-        token_id: CLOB token ID
-        signature: EIP-712 signature from wallet
-        meta: Metadata from build_order_payload
-
-    Returns:
-        (status_code, response_json)
+    Post a signed order to CLOB.
+    Returns: (status_code, response_json)
     """
     wallet = get_wallet()
     api_key = get_api_key()
@@ -218,7 +235,7 @@ def post_signed_order(token_id, signature, meta):
             "takerAmount": str(meta["taker_amount"]),
             "expiration": "0",
             "nonce": "0",
-            "feeRateBps": str(meta.get("fee_bps", 1000)),  # Use fee from meta or default
+            "feeRateBps": str(meta.get("fee_bps", 0)),
             "side": side_str,
             "signatureType": EOA,
             "signature": signature,
@@ -230,4 +247,19 @@ def post_signed_order(token_id, signature, meta):
     body_str = json.dumps(order_body, separators=(",", ":"))
     headers = l2_headers("POST", "/order", body_str)
     r = clob_post(f"{BASE}/order", headers=headers, data=body_str)
+    return r.status_code, r.json()
+
+
+# ── Cancellation ──
+
+def cancel_order(order_id):
+    """Cancel a specific order."""
+    body = json.dumps({"orderID": order_id})
+    r = clob_delete(f"{BASE}/order", headers=l2_headers("DELETE", "/order", body), data=body)
+    return r.status_code, r.json()
+
+
+def cancel_all_orders():
+    """Cancel all open orders."""
+    r = clob_delete(f"{BASE}/cancel-all", headers=l2_headers("DELETE", "/cancel-all"))
     return r.status_code, r.json()

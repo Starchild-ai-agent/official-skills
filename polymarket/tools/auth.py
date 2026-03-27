@@ -1,14 +1,14 @@
 """
-Polymarket Authentication Helpers
-Handles L1 EIP-712 auth and credential derivation
+Polymarket Authentication — EIP-712 ClobAuth + credential derivation.
+Privy-only: no private key needed, uses wallet_sign_typed_data.
 """
-from .utils import CHAIN_ID, clob_post
+from .utils import CHAIN_ID, BASE, clob_get, clob_post
 
 
 def build_clob_auth_message(address, timestamp, nonce=0):
     """
-    Build EIP-712 message for ClobAuth
-    This is used for one-time authentication to get API credentials
+    Build EIP-712 message for ClobAuth.
+    Returns dict ready for wallet_sign_typed_data.
     """
     return {
         "domain": {
@@ -36,11 +36,9 @@ def build_clob_auth_message(address, timestamp, nonce=0):
 
 def derive_api_credentials(signature, address, timestamp, nonce=0):
     """
-    Derive or create API credentials from signed ClobAuth message
+    Derive or create API credentials from signed ClobAuth message.
     Returns: {apiKey, secret, passphrase}
     """
-    from .utils import BASE, clob_get, clob_post
-
     headers = {
         "POLY_ADDRESS": address,
         "POLY_SIGNATURE": signature,
@@ -49,12 +47,12 @@ def derive_api_credentials(signature, address, timestamp, nonce=0):
         "Content-Type": "application/json",
     }
 
-    # Try derive first (GET request)
+    # Try derive first (existing key)
     resp = clob_get(f"{BASE}/auth/derive-api-key", headers=headers)
     if resp.status_code == 200:
         return resp.json()
 
-    # If not found, create new (POST request)
+    # If not found, create new
     resp = clob_post(f"{BASE}/auth/api-key", headers=headers)
     resp.raise_for_status()
     return resp.json()

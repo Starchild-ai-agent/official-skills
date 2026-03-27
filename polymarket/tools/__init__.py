@@ -1,1 +1,1 @@
-# Polymarket tools module
+# Polymarket tools package

@@ -1,54 +1,114 @@
 """
-Polymarket Market Data Helpers
-Market discovery, lookup, orderbook analysis, R/R calculations
+Polymarket Market Data — search, lookup, orderbook, R/R analysis.
+Primary search uses Gamma search-v2 with /markets fallback.
 """
 import json
+import requests as _requests
 from .utils import (
-    GAMMA,
-    gamma_get,
-    parse_polymarket_url,
-    enrich_market,
-    get_orderbook,
-    get_midpoint,
+    GAMMA, BASE, DATA_API,
+    gamma_get, clob_get,
+    parse_polymarket_url, enrich_market,
+    get_orderbook, get_midpoint, get_price,
 )
 
 
+# ── Search (primary: search-v2, fallback: /markets) ──
+
+def search_v2(query, limit=10):
+    """
+    Primary discovery via Gamma search-v2.
+    Higher recall for thematic/event searches.
+    Returns list of events with nested markets.
+    """
+    q = (query or "").strip()
+    if not q:
+        return []
+    lim = max(1, min(50, int(limit or 10)))
+    r = gamma_get(
+        f"{GAMMA}/search-v2",
+        params={
+            "q": q,
+            "optimized": "true",
+            "limit_per_type": lim,
+            "type": "events",
+            "search_tags": "true",
+            "search_profiles": "true",
+            "cache": "true",
+        },
+    )
+    if r.status_code >= 400:
+        return []
+    data = r.json() if r.text.strip() else {}
+    events = data.get("events", []) if isinstance(data, dict) else []
+    return events if isinstance(events, list) else []
+
+
+def search_markets_legacy(query, limit=5):
+    """Fallback search via /markets endpoint."""
+    q = (query or "").strip()
+    if not q:
+        return []
+    lim = max(1, min(50, int(limit or 5)))
+    r = gamma_get(
+        f"{GAMMA}/markets",
+        params={"q": q, "limit": lim, "active": "true", "closed": "false"},
+    )
+    if r.status_code >= 400:
+        return []
+    data = r.json() if r.text.strip() else []
+    return data if isinstance(data, list) else []
+
+
+def search(query, limit=10):
+    """
+    Unified search: search-v2 first, fallback to /markets if no results.
+    Returns dict with events and/or markets.
+    """
+    events = search_v2(query, limit)
+
+    # Extract flat market rows from events
+    markets = []
+    for ev in events:
+        for m in ev.get("markets", []):
+            markets.append(m)
+
+    if events:
+        return {"source": "search-v2", "events": events, "markets": markets}
+
+    # Fallback
+    legacy = search_markets_legacy(query, limit)
+    return {"source": "markets-fallback", "events": [], "markets": legacy}
+
+
+# ── Lookup ──
+
 def lookup_event(slug):
-    """Look up event by slug"""
+    """Look up event by slug."""
     r = gamma_get(f"{GAMMA}/events", params={"slug": slug, "limit": 1})
-    r.raise_for_status()
-    data = r.json()
-    return data[0] if data else None
+    if r.status_code >= 400:
+        return None
+    data = r.json() if r.text.strip() else []
+    return data[0] if isinstance(data, list) and data else None
 
 
 def lookup_market_by_slug(slug):
-    """Look up single market by slug"""
+    """Look up single market by slug."""
     r = gamma_get(f"{GAMMA}/markets", params={"slug": slug, "limit": 1})
-    r.raise_for_status()
-    data = r.json()
-    return data[0] if data else None
-
-
-def search_markets(query, limit=5):
-    """Search for markets"""
-    r = gamma_get(
-        f"{GAMMA}/markets",
-        params={"q": query, "limit": limit, "active": "true", "closed": "false"},
-    )
-    r.raise_for_status()
-    return r.json()
+    if r.status_code >= 400:
+        return None
+    data = r.json() if r.text.strip() else []
+    return data[0] if isinstance(data, list) and data else None
 
 
 def full_lookup(url_or_slug):
     """
-    Full market lookup from URL or slug
-    Returns enriched event/market data with live prices
+    Full market lookup from URL or slug.
+    Returns enriched event/market data with live prices.
     """
     event_slug, market_slug = parse_polymarket_url(url_or_slug)
     event = lookup_event(event_slug)
 
     if not event:
-        # Try as direct market slug
         market = lookup_market_by_slug(event_slug)
         if market:
             return {"type": "single_market", "market": enrich_market(market)}
@@ -58,7 +118,7 @@ def full_lookup(url_or_slug):
         "type": "event",
         "title": event.get("title"),
         "slug": event.get("slug"),
-        "description": event.get("description", "")[:500],
+        "description": (event.get("description") or "")[:500],
         "end_date": event.get("endDate"),
         "volume": event.get("volume"),
         "neg_risk": event.get("negRisk", False),
@@ -75,11 +135,10 @@ def full_lookup(url_or_slug):
     return result
 
 
+# ── Orderbook Analysis ──
+
 def analyze_orderbook(token_id):
-    """
-    Analyze orderbook depth and spread
-    Returns bid/ask levels, depth metrics, top levels
-    """
+    """Analyze orderbook depth and spread."""
     book = get_orderbook(token_id)
     mid = get_midpoint(token_id)
     bids = sorted(book.get("bids", []), key=lambda x: float(x["price"]), reverse=True)
@@ -88,7 +147,8 @@ def analyze_orderbook(token_id):
     best_bid = float(bids[0]["price"]) if bids else 0
     best_ask = float(asks[0]["price"]) if asks else 1
     spread = best_ask - best_bid
-    spread_pct = (spread / mid * 100) if mid else 0
+    mp = mid or ((best_bid + best_ask) / 2)
+    spread_pct = (spread / mp * 100) if mp else 0
 
     def depth_within(levels, mp, band, side):
         total = 0
@@ -99,8 +159,6 @@ def analyze_orderbook(token_id):
             elif side == "ask" and p <= mp + band:
                 total += p * s
         return total
-
-    mp = mid or (best_bid + best_ask) / 2
 
     return {
         "token_id": token_id,
@@ -120,11 +178,10 @@ def analyze_orderbook(token_id):
     }
 
 
+# ── Risk/Reward Analysis ──
+
 def rr_analysis(token_id, side, size_usd):
-    """
-    Risk/reward analysis for a potential trade
-    Returns entry price, token amount, profit/loss, R/R ratio
-    """
+    """Risk/reward analysis for a potential trade."""
     ob = analyze_orderbook(token_id)
 
     if side.upper() == "YES":

@@ -100,8 +100,8 @@
     {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
-      "version": "2.4.0",
-      "description": "Place real bets on Polymarket prediction markets using the agent wallet. Buy/sell outcome tokens, check balances, manage orders. Requires USDC.e (bridged USDC) on Polygon and wallet policy allowing EIP-712 signing. 🚀 Optimized workflow + auto VPN detection!"
+      "version": "5.0.0",
+      "description": "Trade Polymarket prediction markets via Privy wallet. Script-first: most flows are 1 bash + 1 sign. Search, analyze, place/cancel orders, manage positions."
     },
     {
       "name": "preview-dev",

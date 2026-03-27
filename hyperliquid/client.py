@@ -87,7 +87,7 @@ class HyperliquidClient:
                 # Hyperliquid returns HTTP 200 with {"status": "err", "response": "..."} for API-level errors
                 if isinstance(data, dict) and data.get("status") == "err":
                     raise Exception(f"Hyperliquid error: {data.get('response', data)}")
-                return data
+                return {'status': 'ok', 'payload': data}
 
     async def _info(self, req_type: str, **kwargs) -> Any:
         """Query the /info endpoint."""
@@ -727,7 +727,7 @@ class HyperliquidClient:
 
         result = await self._exchange(action)
         logger.info(f"place_order result: {result}")
-        return result
+        return {'status': 'ok', 'payload': result}
 
     async def cancel_order(self, coin: str, oid: int) -> dict:
         """Cancel an order by oid."""
@@ -880,7 +880,7 @@ class HyperliquidClient:
             result = await self._exchange(action, vault_address=None)
             logger.info(f"DEX abstraction: agentSetAbstraction result = {result}")
             self._dex_abstraction_enabled = True
-            return result
+            return {'status': 'ok', 'payload': result}
         except Exception as e:
             err_str = str(e).lower()
             logger.warning(f"DEX abstraction: agentSetAbstraction failed: {e}")
@@ -900,7 +900,7 @@ class HyperliquidClient:
             result = await self._exchange(action, vault_address=None)
             logger.info(f"DEX abstraction: agentEnableDexAbstraction result = {result}")
             self._dex_abstraction_enabled = True
-            return result
+            return {'status': 'ok', 'payload': result}
         except Exception as e:
             err_str = str(e).lower()
             logger.warning(f"DEX abstraction: agentEnableDexAbstraction failed: {e}")
@@ -932,7 +932,7 @@ class HyperliquidClient:
                 if new_state == "unifiedAccount":
                     logger.info("DEX abstraction: successfully enabled (verified)")
                     self._dex_abstraction_enabled = True
-                    return result
+                    return {'status': 'ok', 'payload': result}
                 else:
                     logger.warning(
                         f"DEX abstraction: userSetAbstraction returned success but state is still '{new_state}', not 'unifiedAccount'. "
@@ -942,7 +942,7 @@ class HyperliquidClient:
                 logger.warning(f"DEX abstraction: failed to verify state after userSetAbstraction: {verify_err}")
 
             self._dex_abstraction_enabled = True
-            return result
+            return {'status': 'ok', 'payload': result}
         except Exception as e:
             err_str = str(e).lower()
             logger.error(f"DEX abstraction: userSetAbstraction failed: {e}")
@@ -1157,7 +1157,7 @@ class HyperliquidClient:
         except Exception as e:
             logger.warning(f"transfer_usd: failed to query balances after transfer: {e}")
 
-        return result
+        return {'status': 'ok', 'payload': result}
 
     async def withdraw_from_bridge(
         self, amount: float, destination: Optional[str] = None

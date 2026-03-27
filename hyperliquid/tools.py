@@ -479,6 +479,7 @@ Parameters:
 - coin: Asset name (required, e.g. "BTC")
 - interval: Candle interval (default: "1h"). Options: 1m, 5m, 15m, 1h, 4h, 1d
 - lookback: Hours of history to fetch (default: 24)
+- max_results: Maximum candles to return (default: 500)
 
 Returns: array of candles with t (time), o, h, l, c (prices), v (volume)"""
 
@@ -499,6 +500,10 @@ Returns: array of candles with t (time), o, h, l, c (prices), v (volume)"""
                     "type": "integer",
                     "description": "Hours of history (default: 24)",
                 },
+                "max_results": {
+                    "type": "integer",
+                    "description": "Maximum number of candles to return (default: 500)",
+                },
             },
             "required": ["coin"],
         }
@@ -509,6 +514,7 @@ Returns: array of candles with t (time), o, h, l, c (prices), v (volume)"""
         coin: str = "",
         interval: str = "1h",
         lookback: int = 24,
+        max_results: int = 500,
         **kwargs,
     ) -> ToolResult:
         if not coin:
@@ -518,6 +524,8 @@ Returns: array of candles with t (time), o, h, l, c (prices), v (volume)"""
             end = int(time.time() * 1000)
             start = end - (lookback * 3600 * 1000)
             data = await client.get_candles(coin, interval, start, end)
+            if isinstance(data, list) and len(data) > max_results:
+                data = data[-max_results:]  # Keep most recent
             return ToolResult(success=True, output=data)
         except Exception as e:
             return ToolResult(success=False, error=str(e))

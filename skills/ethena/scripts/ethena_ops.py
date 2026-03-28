@@ -11,7 +11,7 @@ Actions:
 import sys
 import json
 import re
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 # Contract addresses
 USDE = "0x4c9EDD5852cd905f086C759E8383e09bff1E68B3"
@@ -21,18 +21,25 @@ USDE_SILO = "0x7FC7c91D556B400AFa565013E3F32055a0713425"
 # USDe has 18 decimals
 DECIMALS = 18
 
+_ADDR_RE = re.compile(r'^0x[0-9a-fA-F]{40}$')
+
 
 def to_wei(amount_str: str) -> int:
     """Convert human-readable amount to wei (18 decimals).
     Uses Decimal to avoid float precision loss on large values."""
-    return int(Decimal(amount_str) * Decimal(10 ** DECIMALS))
+    try:
+        d = Decimal(amount_str)
+    except InvalidOperation:
+        raise ValueError(f"Invalid amount: {amount_str!r}")
+    if d < 0:
+        raise ValueError(f"Amount must be non-negative, got {amount_str}")
+    return int(d * Decimal(10 ** DECIMALS))
 
 
 def validate_address(addr: str) -> str:
-    """Validate EVM address format. Returns address or raises."""
-    if not re.match(r'^0x[0-9a-fA-F]{40}$', addr):
-        print(f"Error: invalid EVM address: {addr}", file=sys.stderr)
-        sys.exit(1)
+    """Validate EVM address format. Returns address or raises ValueError."""
+    if not _ADDR_RE.match(addr):
+        raise ValueError(f"Invalid EVM address: {addr!r}")
     return addr
 
 
@@ -46,6 +53,8 @@ def encode_address(addr: str) -> str:
 
 def approve_calldata(amount_wei: int) -> dict:
     """ERC20 approve(spender, amount) — approve sUSDe to spend USDe."""
+    if amount_wei < 0:
+        raise ValueError(f"Amount must be non-negative, got {amount_wei}")
     # approve(address,uint256) = 0x095ea7b3
     selector = "095ea7b3"
     data = "0x" + selector + encode_address(SUSDE) + encode_uint256(amount_wei)
@@ -60,6 +69,9 @@ def approve_calldata(amount_wei: int) -> dict:
 
 def deposit_calldata(amount_wei: int, receiver: str) -> dict:
     """ERC4626 deposit(uint256 assets, address receiver)."""
+    if amount_wei <= 0:
+        raise ValueError(f"Deposit amount must be positive, got {amount_wei}")
+    validate_address(receiver)
     # deposit(uint256,address) = 0x6e553f65
     selector = "6e553f65"
     data = "0x" + selector + encode_uint256(amount_wei) + encode_address(receiver)
@@ -74,6 +86,8 @@ def deposit_calldata(amount_wei: int, receiver: str) -> dict:
 
 def cooldown_calldata(amount_wei: int) -> dict:
     """cooldownAssets(uint256 assets) — start 7-day cooldown."""
+    if amount_wei <= 0:
+        raise ValueError(f"Cooldown amount must be positive, got {amount_wei}")
     # keccak256("cooldownAssets(uint256)")[:4] = 0xcdac52ed
     selector = "cdac52ed"
     data = "0x" + selector + encode_uint256(amount_wei)
@@ -88,6 +102,7 @@ def cooldown_calldata(amount_wei: int) -> dict:
 
 def unstake_calldata(receiver: str) -> dict:
     """unstake(address receiver) — claim USDe after cooldown."""
+    validate_address(receiver)
     # keccak256("unstake(address)")[:4] = 0xf2888dbb
     selector = "f2888dbb"
     data = "0x" + selector + encode_address(receiver)
@@ -107,48 +122,54 @@ def main():
 
     action = sys.argv[1]
 
-    if action == "approve":
-        amount = sys.argv[2] if len(sys.argv) > 2 else "1000"
-        wei = to_wei(amount)
-        result = approve_calldata(wei)
-        print(json.dumps(result, indent=2))
+    try:
+        if action == "approve":
+            amount = sys.argv[2] if len(sys.argv) > 2 else "1000"
+            wei = to_wei(amount)
+            result = approve_calldata(wei)
+            print(json.dumps(result, indent=2))
 
-    elif action == "deposit":
-        if len(sys.argv) < 4:
-            print("Usage: deposit <amount_usde> <receiver_address>",
-                  file=sys.stderr)
+        elif action == "deposit":
+            if len(sys.argv) < 4:
+                print("Usage: deposit <amount_usde> <receiver_address>",
+                      file=sys.stderr)
+                sys.exit(1)
+            amount = sys.argv[2]
+            receiver = sys.argv[3]
+            wei = to_wei(amount)
+            result = deposit_calldata(wei, receiver)
+            print(json.dumps(result, indent=2))
+
+        elif action == "cooldown":
+            amount = sys.argv[2] if len(sys.argv) > 2 else "1000"
+            wei = to_wei(amount)
+            result = cooldown_calldata(wei)
+            print(json.dumps(result, indent=2))
+
+        elif action == "unstake":
+            if len(sys.argv) < 3:
+                print("Usage: unstake <receiver_address>",
+                      file=sys.stderr)
+                sys.exit(1)
+            receiver = sys.argv[2]
+            result = unstake_calldata(receiver)
+            print(json.dumps(result, indent=2))
+
+        elif action == "rate":
+            print("To check sUSDe rate, query the sUSDe contract:")
+            print(f"  totalAssets() and totalSupply() on {SUSDE}")
+            print("  rate = totalAssets / totalSupply")
+            print(
+                f"  Use: web_fetch('https://api.etherscan.io/api"
+                f"?module=proxy&action=eth_call&to={SUSDE}&data=0x01e1d114')")
+
+        else:
+            print(f"Unknown action: {action}")
+            print(__doc__)
             sys.exit(1)
-        amount = sys.argv[2]
-        receiver = validate_address(sys.argv[3])
-        wei = to_wei(amount)
-        result = deposit_calldata(wei, receiver)
-        print(json.dumps(result, indent=2))
 
-    elif action == "cooldown":
-        amount = sys.argv[2] if len(sys.argv) > 2 else "1000"
-        wei = to_wei(amount)
-        result = cooldown_calldata(wei)
-        print(json.dumps(result, indent=2))
-
-    elif action == "unstake":
-        if len(sys.argv) < 3:
-            print("Usage: unstake <receiver_address>",
-                  file=sys.stderr)
-            sys.exit(1)
-        receiver = validate_address(sys.argv[2])
-        result = unstake_calldata(receiver)
-        print(json.dumps(result, indent=2))
-
-    elif action == "rate":
-        print("To check sUSDe rate, query the sUSDe contract:")
-        print(f"  totalAssets() and totalSupply() on {SUSDE}")
-        print("  rate = totalAssets / totalSupply")
-        print(
-            f"  Use: web_fetch('https://api.etherscan.io/api?module=proxy&action=eth_call&to={SUSDE}&data=0x01e1d114')")
-
-    else:
-        print(f"Unknown action: {action}")
-        print(__doc__)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

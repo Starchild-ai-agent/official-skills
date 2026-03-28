@@ -6,23 +6,35 @@ Actions:
   markets [chain_id]               — List top markets
   position <user_address> [chain]  — Get user vault positions
   approve <asset> <spender> <amt>  — Generate ERC20 approve calldata
-  deposit <vault> <amount> <recv>  — Generate ERC4626 deposit calldata
-  withdraw <vault> <amount> <recv> — Generate ERC4626 withdraw calldata
+  deposit <vault> <amount> <recv> [chain_id]  — Generate ERC4626 deposit calldata
+  withdraw <vault> <amount> <recv> [chain_id] — Generate ERC4626 withdraw calldata
 """
 import sys
 import json
+import re
 import requests
 
 GRAPHQL_URL = "https://api.morpho.org/graphql"
+_ADDR_RE = re.compile(r'^0x[0-9a-fA-F]{40}$')
+
+
+def validate_address(addr: str) -> str:
+    """Validate EVM address format."""
+    if not _ADDR_RE.match(addr):
+        raise ValueError(f"Invalid EVM address: {addr!r}")
+    return addr
 
 
 def gql_query(query: str, variables: dict = None) -> dict:
     payload = {"query": query}
     if variables:
         payload["variables"] = variables
-    resp = requests.post(GRAPHQL_URL, json=payload, timeout=15)
-    resp.raise_for_status()
-    return resp.json()
+    try:
+        resp = requests.post(GRAPHQL_URL, json=payload, timeout=15)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.RequestException as e:
+        raise RuntimeError(f"Morpho API error: {e}") from e
 
 
 def list_vaults(chain_id: int = 1, limit: int = 10):
@@ -53,8 +65,8 @@ def list_vaults(chain_id: int = 1, limit: int = 10):
         meta = v.get("metadata") or {}
         curators = meta.get("curators") or []
         curator_name = curators[0]["name"] if curators else "Unknown"
-        tvl = float(state.get("totalAssetsUsd", 0))
-        apy = float(state.get("netApy", 0)) * 100
+        tvl = float(state.get("totalAssetsUsd") or 0)
+        apy = float(state.get("netApy") or 0) * 100
         print(f"  {v['name']} ({v['symbol']})")
         print(f"    Address: {v['address']}")
         print(f"    Asset: {asset.get('symbol', '?')}")
@@ -90,12 +102,12 @@ def list_markets(chain_id: int = 1, limit: int = 10):
         state = m.get("state") or {}
         loan = m.get("loanAsset") or {}
         collateral = m.get("collateralAsset") or {}
-        supply_usd = float(state.get("supplyAssetsUsd", 0))
-        borrow_usd = float(state.get("borrowAssetsUsd", 0))
-        util = float(state.get("utilization", 0)) * 100
-        supply_apy = float(state.get("supplyApy", 0)) * 100
-        borrow_apy = float(state.get("borrowApy", 0)) * 100
-        lltv = float(m.get("lltv", 0)) / 1e18 * 100
+        supply_usd = float(state.get("supplyAssetsUsd") or 0)
+        borrow_usd = float(state.get("borrowAssetsUsd") or 0)
+        util = float(state.get("utilization") or 0) * 100
+        supply_apy = float(state.get("supplyApy") or 0) * 100
+        borrow_apy = float(state.get("borrowApy") or 0) * 100
+        lltv = float(m.get("lltv") or 0) / 1e18 * 100
         print(f"  {collateral.get('symbol', '?')}/{loan.get('symbol', '?')}")
         print(f"    Market: {m['uniqueKey'][:16]}...")
         print(f"    Supply: ${supply_usd:,.0f} ({supply_apy:.2f}% APY)")
@@ -127,9 +139,10 @@ def get_positions(user_address: str, chain_id: int = 1):
     for p in positions:
         vault = p.get("vault") or {}
         asset = vault.get("asset") or {}
-        apy = float(vault.get("state", {}).get("netApy", 0)) * 100
+        vault_state = vault.get("state") or {}
+        apy = float(vault_state.get("netApy") or 0) * 100
         pos_state = p.get("state") or {}
-        usd = float(pos_state.get("assetsUsd", 0))
+        usd = float(pos_state.get("assetsUsd") or 0)
         print(f"  {vault.get('name', '?')}")
         print(f"    Deposited: ${usd:,.2f} {asset.get('symbol', '')}")
         print(f"    APY: {apy:.2f}%")
@@ -147,24 +160,40 @@ def encode_address(addr: str) -> str:
     return addr.lower().replace("0x", "").zfill(64)
 
 
-def approve_calldata(asset: str, spender: str, amount_wei: int) -> dict:
+def approve_calldata(asset: str, spender: str, amount_wei: int,
+                     chain_id: int = 1) -> dict:
+    validate_address(asset)
+    validate_address(spender)
+    if amount_wei < 0:
+        raise ValueError(f"Amount must be non-negative, got {amount_wei}")
     selector = "095ea7b3"
     data = "0x" + selector + encode_address(spender) + encode_uint256(amount_wei)
-    return {"to": asset, "amount": "0", "chain_id": 1, "data": data}
+    return {"to": asset, "amount": "0", "chain_id": chain_id, "data": data}
 
 
-def deposit_calldata(vault: str, amount_wei: int, receiver: str) -> dict:
+def deposit_calldata(vault: str, amount_wei: int, receiver: str,
+                     chain_id: int = 1) -> dict:
+    validate_address(vault)
+    validate_address(receiver)
+    if amount_wei <= 0:
+        raise ValueError(f"Deposit amount must be positive, got {amount_wei}")
     # ERC4626 deposit(uint256,address) = 0x6e553f65
     selector = "6e553f65"
     data = "0x" + selector + encode_uint256(amount_wei) + encode_address(receiver)
-    return {"to": vault, "amount": "0", "chain_id": 1, "data": data}
+    return {"to": vault, "amount": "0", "chain_id": chain_id, "data": data}
 
 
-def withdraw_calldata(vault: str, amount_wei: int, receiver: str) -> dict:
+def withdraw_calldata(vault: str, amount_wei: int, receiver: str,
+                      chain_id: int = 1) -> dict:
+    validate_address(vault)
+    validate_address(receiver)
+    if amount_wei <= 0:
+        raise ValueError(f"Withdraw amount must be positive, got {amount_wei}")
     # ERC4626 withdraw(uint256,address,address) = 0xb460af94
     selector = "b460af94"
-    data = "0x" + selector + encode_uint256(amount_wei) + encode_address(receiver) + encode_address(receiver)
-    return {"to": vault, "amount": "0", "chain_id": 1, "data": data}
+    data = ("0x" + selector + encode_uint256(amount_wei)
+            + encode_address(receiver) + encode_address(receiver))
+    return {"to": vault, "amount": "0", "chain_id": chain_id, "data": data}
 
 
 def main():
@@ -174,43 +203,54 @@ def main():
 
     action = sys.argv[1]
 
-    if action == "vaults":
-        chain = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-        print(f"Top Morpho Vaults (chain {chain}):")
-        list_vaults(chain)
-    elif action == "markets":
-        chain = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-        print(f"Top Morpho Markets (chain {chain}):")
-        list_markets(chain)
-    elif action == "position":
-        if len(sys.argv) < 3:
-            print("Usage: position <user_address> [chain_id]")
+    try:
+        if action == "vaults":
+            chain = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+            print(f"Top Morpho Vaults (chain {chain}):")
+            list_vaults(chain)
+        elif action == "markets":
+            chain = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+            print(f"Top Morpho Markets (chain {chain}):")
+            list_markets(chain)
+        elif action == "position":
+            if len(sys.argv) < 3:
+                print("Usage: position <user_address> [chain_id]")
+                sys.exit(1)
+            addr = sys.argv[2]
+            chain = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+            print(f"Positions for {addr} (chain {chain}):")
+            get_positions(addr, chain)
+        elif action == "approve":
+            if len(sys.argv) < 5:
+                print("Usage: approve <asset_addr> <spender_addr> <amount_wei> [chain_id]")
+                sys.exit(1)
+            chain = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+            result = approve_calldata(sys.argv[2], sys.argv[3],
+                                      int(sys.argv[4]), chain)
+            print(json.dumps(result, indent=2))
+        elif action == "deposit":
+            if len(sys.argv) < 5:
+                print("Usage: deposit <vault_addr> <amount_wei> <receiver_addr> [chain_id]")
+                sys.exit(1)
+            chain = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+            result = deposit_calldata(sys.argv[2], int(sys.argv[3]),
+                                      sys.argv[4], chain)
+            print(json.dumps(result, indent=2))
+        elif action == "withdraw":
+            if len(sys.argv) < 5:
+                print("Usage: withdraw <vault_addr> <amount_wei> <receiver_addr> [chain_id]")
+                sys.exit(1)
+            chain = int(sys.argv[5]) if len(sys.argv) > 5 else 1
+            result = withdraw_calldata(sys.argv[2], int(sys.argv[3]),
+                                       sys.argv[4], chain)
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"Unknown action: {action}")
+            print(__doc__)
             sys.exit(1)
-        addr = sys.argv[2]
-        chain = int(sys.argv[3]) if len(sys.argv) > 3 else 1
-        print(f"Positions for {addr} (chain {chain}):")
-        get_positions(addr, chain)
-    elif action == "approve":
-        if len(sys.argv) < 5:
-            print("Usage: approve <asset_addr> <spender_addr> <amount_wei>")
-            sys.exit(1)
-        result = approve_calldata(sys.argv[2], sys.argv[3], int(sys.argv[4]))
-        print(json.dumps(result, indent=2))
-    elif action == "deposit":
-        if len(sys.argv) < 5:
-            print("Usage: deposit <vault_addr> <amount_wei> <receiver_addr>")
-            sys.exit(1)
-        result = deposit_calldata(sys.argv[2], int(sys.argv[3]), sys.argv[4])
-        print(json.dumps(result, indent=2))
-    elif action == "withdraw":
-        if len(sys.argv) < 5:
-            print("Usage: withdraw <vault_addr> <amount_wei> <receiver_addr>")
-            sys.exit(1)
-        result = withdraw_calldata(sys.argv[2], int(sys.argv[3]), sys.argv[4])
-        print(json.dumps(result, indent=2))
-    else:
-        print(f"Unknown action: {action}")
-        print(__doc__)
+
+    except (ValueError, RuntimeError) as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

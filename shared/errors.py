@@ -221,8 +221,10 @@ class NonceError(ChainError):
 async def safe_call(fn, *args, tool_name: str = "",
                     fallback_msg: str = "Operation failed", **kwargs):
     """
-    Wrap any async function call with structured error handling.
+    Wrap an **async** function call with structured error handling.
     Never returns None silently — always returns result or raises SkillError.
+
+    For synchronous functions, use ``safe_call_sync()`` instead.
 
     替代 try/except: pass 模式:
         # ❌ Before (小模型收到 None 无法诊断)
@@ -261,6 +263,46 @@ async def safe_call(fn, *args, tool_name: str = "",
             ) from e
 
         # Generic fallback — still structured
+        raise SkillError(
+            f"{fallback_msg}: {type(e).__name__}: {e}",
+            tool_name=tool_name,
+            suggestion="Check parameters and retry. If persistent, report as bug."
+        ) from e
+
+
+def safe_call_sync(fn, *args, tool_name: str = "",
+                   fallback_msg: str = "Operation failed", **kwargs):
+    """
+    Synchronous version of ``safe_call`` — same structured error handling,
+    but for regular (non-async) functions.
+
+    Usage:
+        result = safe_call_sync(requests.get, url, tool_name="coingecko/price")
+    """
+    try:
+        result = fn(*args, **kwargs)
+        if result is None:
+            raise SkillError(
+                f"{fallback_msg}: function returned None (empty response)",
+                tool_name=tool_name,
+                suggestion="The API may be down or the request parameters invalid"
+            )
+        return result
+    except SkillError:
+        raise
+    except Exception as e:
+        err_str = str(e).lower()
+        if '429' in err_str or 'rate limit' in err_str:
+            raise RateLimitError(service=tool_name) from e
+        if '503' in err_str or '502' in err_str:
+            raise ServiceUnavailableError(service=tool_name) from e
+        if 'timeout' in err_str:
+            raise TimeoutError(service=tool_name) from e
+        if 'insufficient' in err_str and ('balance' in err_str or 'fund' in err_str):
+            raise InsufficientBalanceError(
+                available=0, required=0, asset="unknown",
+                suggestion="Check your balance and try again"
+            ) from e
         raise SkillError(
             f"{fallback_msg}: {type(e).__name__}: {e}",
             tool_name=tool_name,

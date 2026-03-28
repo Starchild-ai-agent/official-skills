@@ -5,7 +5,7 @@ from .errors import (  # noqa: F401
     UserInputError, InvalidParameterError, UnsupportedAssetError,
     InsufficientBalanceError, InsufficientGasError,
     ChainError, TransactionRevertedError, SlippageExceededError, NonceError,
-    safe_call,
+    safe_call, safe_call_sync,
 )
 from .response import ok, fail, fmt_price, fmt_balance, fmt_table  # noqa: F401
 from .retry import with_retry, RetryConfig, async_retry, sync_retry, PRESETS  # noqa: F401

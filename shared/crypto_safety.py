@@ -14,15 +14,21 @@ Crypto-Specific Safety Checks
 # ── Chain Finality Constants ──────────────────────
 
 CHAIN_FINALITY = {
-    # chain_id: (expected_seconds, min_confirmations, description)
-    "ethereum":  (180, 12, "~3 min for finality (12 blocks × 12s)"),
-    "arbitrum":  (15, 1, "~15s (L2, but 7-day challenge period for withdrawals to L1)"),
-    "base":      (15, 1, "~15s (L2, 7-day challenge for L1 withdrawals)"),
-    "optimism":  (15, 1, "~15s (L2, 7-day challenge for L1 withdrawals)"),
-    "polygon":   (120, 64, "~2 min (64 confirmations for safety)"),
-    "linea":     (60, 1, "~60s (zkRollup, proof takes longer)"),
-    "solana":    (0.4, 1, "~400ms per slot, finalized in ~13s (32 slots)"),
+    # chain_name: (expected_seconds, min_confirmations, description)
+    "ethereum": (180, 12, "~3 min for finality (12 blocks × 12s)"),
+    "arbitrum": (15, 1, "~15s (L2, but 7-day challenge period for withdrawals to L1)"),
+    "base": (15, 1, "~15s (L2, 7-day challenge for L1 withdrawals)"),
+    "optimism": (15, 1, "~15s (L2, 7-day challenge for L1 withdrawals)"),
+    "polygon": (120, 64, "~2 min (64 confirmations for safety)"),
+    "linea": (60, 1, "~60s (zkRollup, proof takes longer)"),
+    "solana": (0.4, 1, "~400ms per slot, finalized in ~13s (32 slots)"),
     "hyperliquid": (2, 1, "~2s (L1, single slot finality)"),
+}
+
+# Map integer chain IDs to canonical chain names
+CHAIN_ID_TO_NAME = {
+    1: "ethereum", 42161: "arbitrum", 8453: "base",
+    10: "optimism", 137: "polygon", 59144: "linea",
 }
 
 L2_WITHDRAWAL_CHALLENGE = {
@@ -32,9 +38,17 @@ L2_WITHDRAWAL_CHALLENGE = {
 }
 
 
-def get_finality_info(chain: str) -> dict:
-    """Get finality expectations for a chain. Used in post-tx messaging."""
-    info = CHAIN_FINALITY.get(chain.lower())
+def _resolve_chain(chain) -> str:
+    """Accept chain name (str) or chain_id (int) and return canonical name."""
+    if isinstance(chain, int):
+        return CHAIN_ID_TO_NAME.get(chain, str(chain))
+    return str(chain).lower()
+
+
+def get_finality_info(chain) -> dict:
+    """Get finality expectations for a chain name or chain_id (int)."""
+    chain = _resolve_chain(chain)
+    info = CHAIN_FINALITY.get(chain)
     if not info:
         return {
             "chain": chain,
@@ -57,6 +71,7 @@ def format_finality_message(chain: str, tx_hash: str = "") -> str:
     Generate user-facing message about when a transaction will be confirmed.
     Small models should include this in responses after any on-chain action.
     """
+    chain = _resolve_chain(chain)
     info = get_finality_info(chain)
     parts = ["⏳ Transaction submitted"]
     if tx_hash:
@@ -66,7 +81,7 @@ def format_finality_message(chain: str, tx_hash: str = "") -> str:
     parts.append(f"   Expected confirmation: {info['description']}")
 
     # L2 withdrawal warning
-    challenge = L2_WITHDRAWAL_CHALLENGE.get(chain.lower())
+    challenge = L2_WITHDRAWAL_CHALLENGE.get(_resolve_chain(chain))
     if challenge:
         parts.append(
             f"   ⚠️ Note: Withdrawals to L1 have a {challenge // 86400}-day challenge period"
@@ -206,7 +221,7 @@ def _native_token(chain: str) -> str:
         "ethereum": "ETH", "arbitrum": "ETH", "base": "ETH",
         "optimism": "ETH", "polygon": "MATIC", "linea": "ETH",
         "solana": "SOL", "hyperliquid": "USDC",
-    }.get(chain.lower(), "native token")
+    }.get(_resolve_chain(chain), "native token")
 
 
 def _get_explorer_url(chain: str, tx_hash: str) -> str:
@@ -219,4 +234,4 @@ def _get_explorer_url(chain: str, tx_hash: str) -> str:
         "linea": f"https://lineascan.build/tx/{tx_hash}",
         "solana": f"https://solscan.io/tx/{tx_hash}",
     }
-    return explorers.get(chain.lower(), f"https://blockscan.com/tx/{tx_hash}")
+    return explorers.get(_resolve_chain(chain), f"https://blockscan.com/tx/{tx_hash}")

@@ -198,12 +198,12 @@ def verification_checklist(operation: str, chain: str,
         if 'balance_change' in expected:
             checks.append(
                 f"2. 💰 Verify balance changed by ~{expected['balance_change']} "
-                f"(call wallet_balance or hl_account)"
+                "(call wallet_balance or hl_account)"
             )
         if 'position_change' in expected:
             checks.append(
                 f"3. 📊 Verify position: {expected['position_change']} "
-                f"(call hl_account)"
+                "(call hl_account)"
             )
     else:
         checks.append("2. 💰 Call balance tool to verify funds changed")

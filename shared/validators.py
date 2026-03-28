@@ -76,7 +76,7 @@ def validate_evm_address(
     if not addr or not isinstance(addr, str):
         raise ValueError(
             f"Invalid {param_name}: empty or not a string. "
-            f"Expected format: 0x followed by 40 hex characters."
+            "Expected format: 0x followed by 40 hex characters."
         )
 
     addr = addr.strip()
@@ -84,15 +84,15 @@ def validate_evm_address(
     if not _HEX_ADDR.match(addr):
         raise ValueError(
             f"Invalid {param_name}: '{addr[:20]}...' is not a valid EVM address. "
-            f"Expected: 0x + 40 hex characters (e.g., 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045). "
-            f"→ Check for typos or extra characters."
+            "Expected: 0x + 40 hex characters (e.g., 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045). "
+            "→ Check for typos or extra characters."
         )
 
     if addr.lower() == _ZERO_ADDR and not allow_zero:
         raise ValueError(
             f"Invalid {param_name}: zero address (0x000...000) detected. "
-            f"Sending to zero address would burn funds permanently. "
-            f"→ Double-check the destination address."
+            "Sending to zero address would burn funds permanently. "
+            "→ Double-check the destination address."
         )
 
     return to_checksum_address(addr)
@@ -119,7 +119,7 @@ def validate_order_size(
     if size <= 0:
         raise ValueError(
             f"Invalid order size: {size} {asset}. Size must be positive. "
-            f"→ Check your amount calculation."
+            "→ Check your amount calculation."
         )
 
     if size < min_sz:
@@ -131,7 +131,7 @@ def validate_order_size(
     if max_sz and size > max_sz:
         raise ValueError(
             f"Order size {size} {asset} exceeds maximum {max_sz} {asset}. "
-            f"→ Reduce size or split into multiple orders."
+            "→ Reduce size or split into multiple orders."
         )
 
     # Round to allowed decimals
@@ -140,7 +140,7 @@ def validate_order_size(
         if size < min_sz:
             raise ValueError(
                 f"After rounding to {sz_decimals} decimals, size {size} < minSz {min_sz}. "
-                f"→ Use a larger size."
+                "→ Use a larger size."
             )
 
     return size
@@ -222,7 +222,7 @@ def parse_token_amount(
     if decimals < 0 or decimals > 77:
         raise ValueError(
             f"Invalid decimals={decimals} for {token_symbol}. "
-            f"Expected 0-77 (common: 6 for USDC, 8 for WBTC, 18 for ETH)."
+            "Expected 0-77 (common: 6 for USDC, 8 for WBTC, 18 for ETH)."
         )
     return raw_value / (10 ** decimals)
 
@@ -270,6 +270,6 @@ def validate_chain_id(chain_id: int) -> int:
         warnings.warn(
             f"Unknown chain_id={chain_id}. Known chains: "
             f"{', '.join(f'{k}={v}' for k, v in KNOWN_CHAINS.items())}. "
-            f"Proceeding, but verify this is the correct chain."
+            "Proceeding, but verify this is the correct chain."
         )
     return chain_id

@@ -142,7 +142,7 @@ class InsufficientBalanceError(SkillError):
                  asset: str = "", **kw):
         suggestion = kw.pop('suggestion',
                             f"Need {required - available:.4f} more {asset}. "
-                            f"Deposit funds or reduce the amount."
+                            "Deposit funds or reduce the amount."
                             )
         super().__init__(
             f"Insufficient {asset} balance",

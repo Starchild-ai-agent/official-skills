@@ -387,8 +387,11 @@ class HyperliquidClient:
                     )
                 elif account_value == 0:
                     error_msg += (
-                        "\n\n💡 NOTE: Showing $0 balance in PERP account. If you have funds in SPOT, enable unified account mode "
-                        "to share collateral across spot/perp, or manually transfer USDC to perp using `hl_transfer_usd`."
+                        "\n\n💡 NOTE: Showing $0 balance in PERP account."
+                        " If you have funds in SPOT, enable unified"
+                        " account mode to share collateral across"
+                        " spot/perp, or manually transfer USDC to"
+                        " perp using `hl_transfer_usd`."
                     )
 
                 if ":" in coin:

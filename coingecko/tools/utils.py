@@ -11,7 +11,7 @@ This module provides utility functions for CoinGecko API tools including:
 
 import re
 from datetime import datetime, timedelta
-from typing import Union, List, Tuple, Optional, Dict, Any
+from typing import Union, List, Tuple, Optional, Dict
 import os
 from dotenv import load_dotenv
 

@@ -6,7 +6,7 @@ Provides derivatives data: funding rates, open interest, liquidations, long/shor
 """
 import asyncio
 import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
 

@@ -5,7 +5,7 @@ DeBank Protocol API Tools
 Get DeFi protocol and pool information.
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 try:
     from .utils import debank_api_request, validate_chain_id

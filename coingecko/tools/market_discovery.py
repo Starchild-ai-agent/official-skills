@@ -9,14 +9,9 @@ import os
 from dotenv import load_dotenv
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 
 from core.http_client import proxied_get
-
-try:
-    from .utils import search_coin_by_name
-except ImportError:
-    from utils import search_coin_by_name
 
 # Load environment variables
 load_dotenv()
@@ -243,8 +238,10 @@ def main():
     # Gainers/losers command
     gl_parser = subparsers.add_parser("gainers-losers", help="Get top gainers and losers")
     gl_parser.add_argument("--currency", default="usd")
-    gl_parser.add_argument("--duration", default="24h",
-                          choices=["1h", "24h", "7d", "14d", "30d", "60d", "1y"])
+    gl_parser.add_argument(
+        "--duration", default="24h",
+        choices=["1h", "24h", "7d", "14d", "30d", "60d", "1y"]
+    )
 
     # New coins command
     subparsers.add_parser("new", help="Get newly added coins")

@@ -6,7 +6,6 @@ Provides pre-calculated technical analysis indicators.
 """
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
 
@@ -14,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 # Import original tools from local tools directory
 try:
-    from .tools.indicators import get_indicator, get_multiple_indicators
+    from .tools.indicators import get_indicator
     from .tools.support_resistance import get_support_resistance
     TAAPI_AVAILABLE = True
 except ImportError as e:

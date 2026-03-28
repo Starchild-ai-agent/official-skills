@@ -7,7 +7,6 @@ Note: Wallet APIs have limited rate (5 req/s, 75 req/min).
 """
 import asyncio
 import logging
-from typing import Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
 
@@ -16,7 +15,6 @@ logger = logging.getLogger(__name__)
 try:
     from .tools.wallet import (
         get_wallet_networth,
-        get_wallet_networth_chart
     )
     BIRDEYE_WALLET_AVAILABLE = True
 except ImportError as e:

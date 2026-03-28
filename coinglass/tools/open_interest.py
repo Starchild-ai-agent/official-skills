@@ -10,7 +10,7 @@ import os
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 try:
     from dotenv import load_dotenv
@@ -261,7 +261,7 @@ def main():
                 else:
                     print(f"Total OI (USD): ${result['total_open_interest_usd']:,.0f}")
                     print(f"Total OI (Coin): {result['total_open_interest_coin']:,.2f}")
-                    print(f"\nTop exchanges:")
+                    print("\nTop exchanges:")
                     for ex in result['exchanges'][:5]:
                         print(f"  {ex['exchange']:15s} ${ex['open_interest_usd']:>15,.0f} ({ex.get('change_24h', 0):+.2f}% 24h)")
             return 0

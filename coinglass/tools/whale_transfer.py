@@ -99,7 +99,7 @@ def main():
 
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
 
-    args = parser.parse_args()
+    parser.parse_args()
 
     result = get_whale_transfers()
 

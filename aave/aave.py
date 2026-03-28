@@ -277,7 +277,7 @@ async def supply_token(chain: str, token: str, amount: float) -> dict:
 
     # 4. TX2: supply
     supply_data = _encode_supply(token_address, amount_base, wallet_address, 0)
-    logger.info(f"Aave supply: sending supply TX")
+    logger.info("Aave supply: sending supply TX")
     supply_result = await _wallet_request("POST", "/agent/transfer", {
         "to": pool_address,
         "amount": "0",

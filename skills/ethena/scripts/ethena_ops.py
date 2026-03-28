@@ -10,6 +10,8 @@ Actions:
 """
 import sys
 import json
+import re
+from decimal import Decimal
 
 # Contract addresses
 USDE = "0x4c9EDD5852cd905f086C759E8383e09bff1E68B3"
@@ -21,8 +23,17 @@ DECIMALS = 18
 
 
 def to_wei(amount_str: str) -> int:
-    """Convert human-readable amount to wei (18 decimals)."""
-    return int(float(amount_str) * (10 ** DECIMALS))
+    """Convert human-readable amount to wei (18 decimals).
+    Uses Decimal to avoid float precision loss on large values."""
+    return int(Decimal(amount_str) * Decimal(10 ** DECIMALS))
+
+
+def validate_address(addr: str) -> str:
+    """Validate EVM address format. Returns address or raises."""
+    if not re.match(r'^0x[0-9a-fA-F]{40}$', addr):
+        print(f"Error: invalid EVM address: {addr}", file=sys.stderr)
+        sys.exit(1)
+    return addr
 
 
 def encode_uint256(val: int) -> str:
@@ -103,8 +114,12 @@ def main():
         print(json.dumps(result, indent=2))
 
     elif action == "deposit":
-        amount = sys.argv[2] if len(sys.argv) > 2 else "1000"
-        receiver = sys.argv[3] if len(sys.argv) > 3 else "RECEIVER_ADDRESS_REQUIRED"
+        if len(sys.argv) < 4:
+            print("Usage: deposit <amount_usde> <receiver_address>",
+                  file=sys.stderr)
+            sys.exit(1)
+        amount = sys.argv[2]
+        receiver = validate_address(sys.argv[3])
         wei = to_wei(amount)
         result = deposit_calldata(wei, receiver)
         print(json.dumps(result, indent=2))
@@ -116,7 +131,11 @@ def main():
         print(json.dumps(result, indent=2))
 
     elif action == "unstake":
-        receiver = sys.argv[2] if len(sys.argv) > 2 else "RECEIVER_ADDRESS_REQUIRED"
+        if len(sys.argv) < 3:
+            print("Usage: unstake <receiver_address>",
+                  file=sys.stderr)
+            sys.exit(1)
+        receiver = validate_address(sys.argv[2])
         result = unstake_calldata(receiver)
         print(json.dumps(result, indent=2))
 

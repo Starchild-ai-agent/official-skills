@@ -161,7 +161,8 @@ class HyperliquidClient:
                         # Non-canonical like "@1" — map as-is
                         self._spot_name_to_index[pair_name] = idx
                         self._spot_mid_key[pair_name] = pair_name
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to load spot metadata: {e}")
                 self._spot_meta = {}
 
     async def _ensure_builder_dex(self, dex_name: str) -> None:
@@ -328,7 +329,8 @@ class HyperliquidClient:
                     current_mode = abstraction_state
                 elif isinstance(abstraction_state, dict):
                     current_mode = abstraction_state.get("type", abstraction_state.get("state", "default"))
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Abstraction state query failed, assuming default: {e}")
                 current_mode = "default"
 
             # Get account state based on abstraction mode
@@ -593,7 +595,8 @@ class HyperliquidClient:
                         current_abstraction = abstraction_state.get("type", abstraction_state.get("state", "default"))
                     else:
                         current_abstraction = "default"
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Abstraction state query failed, assuming default: {e}")
                     current_abstraction = "default"
 
                 # Get margin state - check SPOT if unified, otherwise check perp

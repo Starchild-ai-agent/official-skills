@@ -90,7 +90,7 @@ Returns: marginSummary (accountValue, totalMarginUsed, totalNtlPos), assetPositi
             data = await client.get_account_state(address, dex=dex if dex else None)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLBalancesTool(BaseTool):
@@ -129,7 +129,7 @@ Returns: balances array with coin, hold, total for each token"""
             data = await client.get_spot_state(address)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLTotalBalanceTool(BaseTool):
@@ -177,7 +177,8 @@ Returns:
                     abstraction_mode = abstraction_result.get("type", abstraction_result.get("state", "default"))
                 else:
                     abstraction_mode = "default"
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Abstraction state query failed, assuming default: {e}")
                 abstraction_mode = "default"
 
             # Get spot and perp balances
@@ -226,7 +227,7 @@ Returns:
                 },
             )
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLOpenOrdersTool(BaseTool):
@@ -255,7 +256,7 @@ Returns: array of orders with coin, side, sz, limitPx, oid, timestamp"""
             data = await client.get_open_orders(address)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLMarketTool(BaseTool):
@@ -377,7 +378,7 @@ Returns: mid prices, and if coin specified: maxLeverage, szDecimals"""
 
             return ToolResult(success=True, output=mids)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 class HLOrderbookTool(BaseTool):
     """Get L2 orderbook snapshot."""
@@ -419,7 +420,7 @@ Returns: levels array with [[price, size], ...] for bids and asks"""
             data = await client.get_l2_book(coin)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLFillsTool(BaseTool):
@@ -459,7 +460,7 @@ Returns: array of fills with coin, side, px, sz, fee, time"""
             fills = await client.get_user_fills(address)
             return ToolResult(success=True, output=fills[:limit])
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLCandlesTool(BaseTool):
@@ -520,7 +521,7 @@ Returns: array of candles with t (time), o, h, l, c (prices), v (volume)"""
             data = await client.get_candles(coin, interval, start, end)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLFundingTool(BaseTool):
@@ -607,7 +608,7 @@ Returns: predicted funding rates, and if coin specified: historical rates"""
 
             return ToolResult(success=True, output={"predicted": summary})
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 # ── Exchange Tools ───────────────────────────────────────────────────────────
@@ -702,7 +703,7 @@ Returns: order status with oid, filled size, price"""
             )
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLSpotOrderTool(BaseTool):
@@ -785,7 +786,7 @@ Returns: order status with oid, filled size, price"""
             )
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLTPSLOrderTool(BaseTool):
@@ -915,7 +916,7 @@ Returns: order status with oid, trigger details"""
             )
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLCancelTool(BaseTool):
@@ -964,7 +965,7 @@ Returns: cancel confirmation"""
             data = await client.cancel_order(coin, order_id)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLCancelAllTool(BaseTool):
@@ -1007,7 +1008,7 @@ Returns: array of cancel results"""
                 },
             )
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLModifyTool(BaseTool):
@@ -1087,7 +1088,7 @@ Returns: modified order confirmation"""
             )
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLLeverageTool(BaseTool):
@@ -1149,7 +1150,7 @@ Returns: leverage update confirmation"""
             data = await client.update_leverage(coin, leverage, is_cross=cross)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLTransferUsdTool(BaseTool):
@@ -1208,7 +1209,7 @@ Returns: transfer confirmation"""
             data = await client.transfer_usd(amount, to_perp=to_perp)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLWithdrawTool(BaseTool):
@@ -1259,7 +1260,7 @@ Returns: withdrawal confirmation"""
             )
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLDepositTool(BaseTool):
@@ -1309,7 +1310,7 @@ Returns: approve_tx_hash, transfer_tx_hash, amount_deposited"""
             data = await client.deposit_usdc(amount)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")
 
 
 class HLSetAbstractionTool(BaseTool):
@@ -1366,4 +1367,4 @@ Returns: abstraction update confirmation"""
             data = await client._user_set_abstraction(address, mode)
             return ToolResult(success=True, output=data)
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=False, error=f"{type(e).__name__}: {e}")

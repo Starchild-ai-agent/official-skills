@@ -146,6 +146,12 @@
       "description": "Guide users through the Telegram Bot binding process — creating a bot, adding it to Starchild, verifying ownership, and troubleshooting common issues."
     },
     {
+      "name": "tokenmist",
+      "path": "tokenmist/SKILL.md",
+      "version": "1.0.0",
+      "description": "Tokenomist unlock/emission/allocation API skill. Use when users ask token unlock schedules, cliff unlock events, daily emissions, allocation breakdowns, or tokenomics supply pressure analytics."
+    },
+    {
       "name": "trading-strategy",
       "path": "trading-strategy/SKILL.md",
       "version": "1.0.0",

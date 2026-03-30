@@ -1,5 +1,5 @@
 ---
-name: "Polymarket"
+name: "polymarket"
 version: 5.0.0
 description: "Trade Polymarket prediction markets via Privy wallet. Script-first: most flows are 1 bash + 1 sign. Search, analyze, place/cancel orders, manage positions."
 author: starchild

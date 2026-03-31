@@ -395,10 +395,10 @@ class NetPositionTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get historical net position data showing net long/short changes.
+        return """[v1 BASIC] Get net position history (basic fields only).
 
-Net position = difference between long and short positions opened.
-Useful for tracking institutional positioning.
+⚠️ Prefer cg_net_position_v2 for enhanced data with more fields and better accuracy.
+Only use v1 if v2 is unavailable or you need backward compatibility.
 
 Examples:
 - Get BTC net position: cg_net_position(symbol="BTC", exchange="Binance")
@@ -507,11 +507,12 @@ class LiquidationsTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get recent liquidation data across exchanges.
+        return """[BASIC] Get simple liquidation totals for a single coin.
 
-Liquidations = forced position closures due to insufficient margin.
-More long liquidations = bearish pressure (longs being squeezed)
-More short liquidations = bullish pressure (shorts being squeezed)
+Returns aggregate long/short liquidation amounts for one timeframe.
+⚠️ For richer data, prefer:
+- cg_liquidation_coin_list(exchange) — all coins on an exchange, multi-timeframe
+- cg_coin_liquidation_history(symbol) — time-series liquidation history
 
 Examples:
 - Get BTC liquidations (24h): cg_liquidations(symbol="BTC")
@@ -574,9 +575,12 @@ class LiquidationAnalysisTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get liquidation data with market sentiment analysis.
+        return """[BASIC] Get liquidation totals with a simple sentiment label.
 
-Includes interpretation of liquidation imbalances.
+Wraps cg_liquidations + adds bull/bear interpretation.
+⚠️ For detailed data, prefer:
+- cg_liquidation_coin_list(exchange) — all coins, multi-timeframe
+- cg_coin_liquidation_history(symbol) — time-series with exchange breakdown
 
 Examples:
 - Analyze BTC liquidations: cg_liquidation_analysis(symbol="BTC")

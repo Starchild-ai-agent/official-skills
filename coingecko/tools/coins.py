@@ -9,7 +9,7 @@ import os
 from dotenv import load_dotenv
 import json
 import argparse
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from core.http_client import proxied_get
 
@@ -111,32 +111,18 @@ def get_coins_markets(
 
     coins = []
     for coin in data:
+        # Core fields only — reduces output by ~68% (saves ~50K tokens per 100 coins)
         coin_data = {
             "id": coin.get("id", ""),
             "symbol": coin.get("symbol", "").upper(),
             "name": coin.get("name", ""),
-            "image": coin.get("image"),
             "current_price": coin.get("current_price"),
             "market_cap": coin.get("market_cap"),
             "market_cap_rank": coin.get("market_cap_rank"),
-            "fully_diluted_valuation": coin.get("fully_diluted_valuation"),
             "total_volume": coin.get("total_volume"),
+            "price_change_percentage_24h": coin.get("price_change_percentage_24h"),
             "high_24h": coin.get("high_24h"),
             "low_24h": coin.get("low_24h"),
-            "price_change_24h": coin.get("price_change_24h"),
-            "price_change_percentage_24h": coin.get("price_change_percentage_24h"),
-            "market_cap_change_24h": coin.get("market_cap_change_24h"),
-            "market_cap_change_percentage_24h": coin.get("market_cap_change_percentage_24h"),
-            "circulating_supply": coin.get("circulating_supply"),
-            "total_supply": coin.get("total_supply"),
-            "max_supply": coin.get("max_supply"),
-            "ath": coin.get("ath"),
-            "ath_change_percentage": coin.get("ath_change_percentage"),
-            "ath_date": coin.get("ath_date"),
-            "atl": coin.get("atl"),
-            "atl_change_percentage": coin.get("atl_change_percentage"),
-            "atl_date": coin.get("atl_date"),
-            "last_updated": coin.get("last_updated")
         }
         # Add price change percentages if available
         for key in coin:
@@ -206,67 +192,42 @@ def get_coin_data(
         "block_time_in_minutes": data.get("block_time_in_minutes"),
         "hashing_algorithm": data.get("hashing_algorithm"),
         "categories": data.get("categories", []),
-        "description": data.get("description", {}).get("en", ""),
+        "description": data.get("description", {}).get("en", "")[:500],  # Trimmed to save tokens
         "links": {
-            "homepage": data.get("links", {}).get("homepage", []),
-            "blockchain_site": data.get("links", {}).get("blockchain_site", []),
-            "official_forum_url": data.get("links", {}).get("official_forum_url", []),
-            "chat_url": data.get("links", {}).get("chat_url", []),
-            "announcement_url": data.get("links", {}).get("announcement_url", []),
-            "twitter_screen_name": data.get("links", {}).get("twitter_screen_name"),
-            "facebook_username": data.get("links", {}).get("facebook_username"),
-            "telegram_channel_identifier": data.get("links", {}).get("telegram_channel_identifier"),
-            "subreddit_url": data.get("links", {}).get("subreddit_url"),
-            "repos_url": data.get("links", {}).get("repos_url", {})
+            "homepage": data.get("links", {}).get("homepage", [])[:1],
+            "twitter": data.get("links", {}).get("twitter_screen_name"),
+            "telegram": data.get("links", {}).get("telegram_channel_identifier"),
+            "subreddit": data.get("links", {}).get("subreddit_url"),
+            "github": (data.get("links", {}).get("repos_url", {}).get("github", []) or [""])[:1]
         },
-        "image": data.get("image", {}),
-        "country_origin": data.get("country_origin"),
         "genesis_date": data.get("genesis_date"),
         "sentiment_votes_up_percentage": data.get("sentiment_votes_up_percentage"),
-        "sentiment_votes_down_percentage": data.get("sentiment_votes_down_percentage"),
         "market_cap_rank": data.get("market_cap_rank"),
-        "coingecko_rank": data.get("coingecko_rank"),
-        "coingecko_score": data.get("coingecko_score"),
-        "developer_score": data.get("developer_score"),
-        "community_score": data.get("community_score"),
-        "liquidity_score": data.get("liquidity_score"),
-        "public_interest_score": data.get("public_interest_score"),
         "last_updated": data.get("last_updated")
     }
 
     if market_data and "market_data" in data:
         md = data["market_data"]
+        # Extract USD only from multi-currency dicts to save ~90% tokens
+        def _usd(d):
+            return d.get("usd") if isinstance(d, dict) else d
         result["market_data"] = {
-            "current_price": md.get("current_price", {}),
-            "total_value_locked": md.get("total_value_locked"),
-            "mcap_to_tvl_ratio": md.get("mcap_to_tvl_ratio"),
-            "fdv_to_tvl_ratio": md.get("fdv_to_tvl_ratio"),
-            "roi": md.get("roi"),
-            "ath": md.get("ath", {}),
-            "ath_change_percentage": md.get("ath_change_percentage", {}),
-            "ath_date": md.get("ath_date", {}),
-            "atl": md.get("atl", {}),
-            "atl_change_percentage": md.get("atl_change_percentage", {}),
-            "atl_date": md.get("atl_date", {}),
-            "market_cap": md.get("market_cap", {}),
+            "current_price_usd": _usd(md.get("current_price", {})),
+            "market_cap_usd": _usd(md.get("market_cap", {})),
             "market_cap_rank": md.get("market_cap_rank"),
-            "fully_diluted_valuation": md.get("fully_diluted_valuation", {}),
-            "total_volume": md.get("total_volume", {}),
-            "high_24h": md.get("high_24h", {}),
-            "low_24h": md.get("low_24h", {}),
-            "price_change_24h": md.get("price_change_24h"),
+            "total_volume_usd": _usd(md.get("total_volume", {})),
+            "high_24h_usd": _usd(md.get("high_24h", {})),
+            "low_24h_usd": _usd(md.get("low_24h", {})),
             "price_change_percentage_24h": md.get("price_change_percentage_24h"),
             "price_change_percentage_7d": md.get("price_change_percentage_7d"),
-            "price_change_percentage_14d": md.get("price_change_percentage_14d"),
             "price_change_percentage_30d": md.get("price_change_percentage_30d"),
-            "price_change_percentage_60d": md.get("price_change_percentage_60d"),
-            "price_change_percentage_200d": md.get("price_change_percentage_200d"),
-            "price_change_percentage_1y": md.get("price_change_percentage_1y"),
-            "market_cap_change_24h": md.get("market_cap_change_24h"),
-            "market_cap_change_percentage_24h": md.get("market_cap_change_percentage_24h"),
+            "ath_usd": _usd(md.get("ath", {})),
+            "ath_change_percentage": _usd(md.get("ath_change_percentage", {})),
+            "atl_usd": _usd(md.get("atl", {})),
+            "circulating_supply": md.get("circulating_supply"),
             "total_supply": md.get("total_supply"),
             "max_supply": md.get("max_supply"),
-            "circulating_supply": md.get("circulating_supply")
+            "total_value_locked": md.get("total_value_locked"),
         }
 
     if tickers and "tickers" in data:

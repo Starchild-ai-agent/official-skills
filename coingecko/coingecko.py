@@ -7,7 +7,7 @@ exchanges, NFTs, infrastructure, search, and contract lookups.
 """
 import asyncio
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 from core.tool import BaseTool, ToolContext, ToolResult
 
@@ -275,7 +275,19 @@ Examples:
                 from_timestamp=from_timestamp,
                 to_timestamp=to_timestamp
             )
-            return ToolResult(success=True, output=result)
+            # Trim output: return only prices, sampled to max 60 points
+            prices = result.get("prices", [])
+            if len(prices) > 60:
+                step = len(prices) // 60
+                prices = prices[::step][:60]
+            trimmed = {
+                "coin_id": coin_id,
+                "vs_currency": vs_currency,
+                "days": days,
+                "data_points": len(prices),
+                "prices": prices
+            }
+            return ToolResult(success=True, output=trimmed)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
 
@@ -602,6 +614,10 @@ Examples:
 
         try:
             result = await asyncio.to_thread(get_derivatives_exchanges, order, per_page)
+            keep = {"id", "name", "open_interest_btc", "trade_volume_24h_btc", "number_of_perpetual_pairs",
+                    "number_of_futures_pairs", "country", "year_established", "url"}
+            if isinstance(result, list):
+                result = [{k: v for k, v in ex.items() if k in keep} for ex in result[:20]]
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -618,13 +634,18 @@ class CoinGeckoCategoriesjTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get coin categories with market data (DeFi, L1, L2, Memes, etc.).
+        return """Get crypto SECTOR and CATEGORY performance data. THE tool for sector/category questions.
 
-See sector performance and top coins in each category.
+⚠️ WHEN TO USE: Any question about sectors, categories, themes, or narratives performance.
+Keywords: "sector", "category", "板块", "L1 vs DeFi", "AI coins", "meme sector", "which sector", "theme".
+
+Returns: market_cap, market_cap_change_24h, volume_24h for ALL sectors (DeFi, L1, L2, Memes, AI, Gaming, RWA, etc.) in ONE call.
+
+⚠️ DO NOT use cg_coins_markets for sector comparison — that returns individual coins, not aggregated sector data.
 
 Examples:
-- Get categories by market cap: cg_categories()
-- Get categories by 24h change: cg_categories(order="market_cap_change_24h_desc")"""
+- Compare all sectors: cg_categories()
+- Sort by 24h performance: cg_categories(order="market_cap_change_24h_desc")"""
 
     @property
     def parameters(self) -> dict:
@@ -653,6 +674,17 @@ Examples:
 
         try:
             result = await asyncio.to_thread(get_categories, order)
+            # Trim categories: keep top 50, remove sparkline + description to save ~200K tokens
+            if isinstance(result, dict) and "data" in result:
+                cats = result["data"]
+                if isinstance(cats, list):
+                    for cat in cats:
+                        cat.pop("sparkline", None)
+                        cat.pop("description", None)
+                        cat.pop("updated_at", None)
+                    if len(cats) > 50:
+                        result["data"] = cats[:50]
+                        result["_trimmed"] = f"Showing top 50 of {len(cats)} categories by market cap"
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -722,15 +754,19 @@ class CoinGeckoCoinsMarketsTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get market data for coins with sorting, filtering, and pagination.
+        return """Get market data for MULTIPLE coins — bulk list with price, market cap, volume, ranking.
 
-Screen coins by market cap, volume, price change, or category.
+⚠️ WHEN TO USE: Ranking/screening INDIVIDUAL coins by market cap, volume, or price change.
+Keywords: "top coins", "market cap ranking", "排名", "前10", compare specific coins side by side.
+
+⚠️ NOT for sector/category analysis — use cg_categories() for that (aggregated sector data).
+⚠️ NOT for deep research on one coin — use cg_coin_data() for that (ATH, community, dev data).
 
 Examples:
-- Get top 100 by market cap: cg_coins_markets()
-- Get top by volume: cg_coins_markets(order="volume_desc")
-- Get DeFi coins: cg_coins_markets(category="decentralized-finance-defi")
-- Get specific coins: cg_coins_markets(ids="bitcoin,ethereum,solana")"""
+- Top 20 by market cap: cg_coins_markets()
+- Top by volume: cg_coins_markets(order="volume_desc")
+- DeFi tokens: cg_coins_markets(category="decentralized-finance-defi")
+- Compare BTC/ETH/SOL: cg_coins_markets(ids="bitcoin,ethereum,solana")"""
 
     @property
     def parameters(self) -> dict:
@@ -809,6 +845,11 @@ Examples:
                 category=category,
                 ids=ids
             )
+            keep = {"id", "symbol", "name", "current_price", "market_cap", "market_cap_rank",
+                    "total_volume", "price_change_percentage_24h", "circulating_supply",
+                    "ath", "atl", "last_updated"}
+            if isinstance(result, list):
+                result = [{k: v for k, v in coin.items() if k in keep} for coin in result[:20]]
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -825,14 +866,21 @@ class CoinGeckoCoinDataTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get comprehensive coin data including description, links, ATH, ATL, market data.
+        return """Deep research on a SINGLE coin — the most detailed data source for one specific coin.
 
-Deep research on specific coin.
+⚠️ WHEN TO USE: In-depth research on ONE coin. Includes data NO other tool provides:
+- ATH (all-time high) and ATL with dates and drawdown %
+- Community stats (reddit subscribers, telegram members)
+- Developer stats (GitHub commits, forks, stars)
+- Description, project links, genesis date, categories
+
+For just price → use coin_price(). For comparing multiple coins → use cg_coins_markets().
+This tool is best when the user asks for "research", "deep dive", "fundamentals", "基础研究", or needs ATH/community/developer data.
 
 Examples:
-- Get Bitcoin data: cg_coin_data(coin_id="bitcoin")
-- Include tickers: cg_coin_data(coin_id="ethereum", tickers=True)
-- Full data: cg_coin_data(coin_id="solana", community_data=True, developer_data=True)"""
+- Research SOL: cg_coin_data(coin_id="solana")
+- With community: cg_coin_data(coin_id="ethereum", community_data=True)
+- Full research: cg_coin_data(coin_id="bitcoin", community_data=True, developer_data=True)"""
 
     @property
     def parameters(self) -> dict:
@@ -906,6 +954,22 @@ Examples:
                 developer_data=developer_data,
                 sparkline=sparkline
             )
+            # Trim: multi-currency dicts → USD only, cap description, remove noise
+            if isinstance(result, dict):
+                md = result.get("market_data", {})
+                if isinstance(md, dict):
+                    for field in ["current_price", "ath", "atl", "market_cap", "total_volume", "high_24h", "low_24h", "fully_diluted_valuation"]:
+                        if field in md and isinstance(md[field], dict):
+                            md[field] = {"usd": md[field].get("usd")}
+                desc = result.get("description", {})
+                if isinstance(desc, dict):
+                    en = desc.get("en", "")
+                    if len(en) > 500:
+                        result["description"] = {"en": en[:500] + "..."}
+                for k in ["image", "country_origin", "genesis_date", "sentiment_votes_up_percentage", "sentiment_votes_down_percentage", "platforms", "asset_platform_id", "block_time_in_minutes", "hashing_algorithm"]:
+                    result.pop(k, None)
+                if isinstance(result.get("categories"), list):
+                    result["categories"] = result["categories"][:5]
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1105,6 +1169,9 @@ Examples:
 
         try:
             result = await asyncio.to_thread(get_exchange, exchange_id)
+            if isinstance(result, dict):
+                result.pop("tickers", None)
+                result.pop("status_updates", None)
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1268,13 +1335,14 @@ class CoinGeckoNFTsListTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get all NFT collections with IDs and contract addresses.
+        return """Get NFT collection rankings with market data (floor price, market cap, 24h volume).
 
-NFT discovery.
+Use for: "top NFTs", "NFT rankings", "NFT floor prices", "best NFT collections by volume".
+Supports filtering by asset_platform_id (e.g. "ethereum") for chain-specific results.
 
 Examples:
-- Get top NFTs by market cap: cg_nfts_list()
-- Sort by volume: cg_nfts_list(order="h24_volume_usd_desc")"""
+- Top NFTs by market cap: cg_nfts_list()
+- Sort by 24h volume: cg_nfts_list(order="h24_volume_usd_desc")"""
 
     @property
     def parameters(self) -> dict:
@@ -1315,6 +1383,11 @@ Examples:
 
         try:
             result = await asyncio.to_thread(get_nfts_list, order, per_page, page)
+            keep = {"id", "contract_address", "asset_platform_id", "name", "symbol",
+                    "floor_price_in_usd_24h_percentage_change", "floor_price_usd",
+                    "h24_volume_usd", "market_cap_usd", "native_currency_symbol"}
+            if isinstance(result, list):
+                result = [{k: v for k, v in nft.items() if k in keep} for nft in result[:20]]
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))

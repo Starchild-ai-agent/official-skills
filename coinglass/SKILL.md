@@ -86,6 +86,23 @@ Coinglass provides the most comprehensive crypto derivatives and institutional d
 **API Version**: V4 (with V2 backward compatibility)
 **Total Tools**: 37 across 8 categories
 
+## Rules
+- **One call per tool per question.** Never call the same tool twice in one response unless the user explicitly asks for two different coins/exchanges.
+- **For overviews, call at most 3 tools.** Pick the most relevant; do not exhaustively fetch every metric.
+
+## Quick Routing (use this first)
+
+| Query type | Tool |
+|---|---|
+| 爆仓/liquidation summary (24h, by coin) | `cg_liquidation_coin_list` |
+| Individual liquidation orders | `cg_liquidation_orders` |
+| Liquidation history for a coin | `cg_coin_liquidation_history` |
+| Funding rate | `funding_rate` |
+| Long/short ratio (global) | `cg_global_account_ratio` |
+| Open interest | `cg_open_interest` |
+| Whale activity on Hyperliquid | `cg_hyperliquid_whale_alerts` |
+| ETF flows (BTC) | `cg_btc_etf_flows` |
+
 ## When to Use Coinglass
 
 Use Coinglass for:

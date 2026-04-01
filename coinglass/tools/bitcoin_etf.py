@@ -80,7 +80,14 @@ def get_btc_etf_flows() -> Optional[Dict[str, Any]]:
     try:
         response = proxied_get(url, headers=headers, timeout=30)
         response.raise_for_status()
-        return response.json()
+        result = response.json()
+        # Trim to last 30 days — full history is 300+ days (~300K chars → ~30K chars)
+        if isinstance(result, dict) and "data" in result:
+            data = result["data"]
+            if isinstance(data, list) and len(data) > 30:
+                result["data"] = data[-30:]
+                result["_note"] = f"Showing last 30 of {len(data)} days. Use start_time/end_time params for custom range."
+        return result
     except Exception as e:
         print(f"Request failed: {e}", file=sys.stderr)
         return None

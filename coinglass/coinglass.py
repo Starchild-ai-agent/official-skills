@@ -70,6 +70,18 @@ except ImportError as e:
     COINGLASS_AVAILABLE = False
 
 
+
+def _trim_time_series(result: dict, max_items: int = 30, sort_key: str = "") -> dict:
+    """Trim time-series data to most recent N items to save tokens."""
+    if isinstance(result, dict) and "data" in result:
+        data = result["data"]
+        if isinstance(data, list) and len(data) > max_items:
+            original_len = len(data)
+            result["data"] = data[-max_items:]  # Keep most recent
+            result["_trimmed"] = f"Showing most recent {max_items} of {original_len} entries."
+    return result
+
+
 class FundingRateTool(BaseTool):
     """
     Get perpetual futures funding rates across exchanges.
@@ -395,10 +407,10 @@ class NetPositionTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get historical net position data showing net long/short changes.
+        return """[v1 BASIC] Get net position history (basic fields only).
 
-Net position = difference between long and short positions opened.
-Useful for tracking institutional positioning.
+⚠️ Prefer cg_net_position_v2 for enhanced data with more fields and better accuracy.
+Only use v1 if v2 is unavailable or you need backward compatibility.
 
 Examples:
 - Get BTC net position: cg_net_position(symbol="BTC", exchange="Binance")
@@ -507,11 +519,12 @@ class LiquidationsTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get recent liquidation data across exchanges.
+        return """[BASIC] Get simple liquidation totals for a single coin.
 
-Liquidations = forced position closures due to insufficient margin.
-More long liquidations = bearish pressure (longs being squeezed)
-More short liquidations = bullish pressure (shorts being squeezed)
+Returns aggregate long/short liquidation amounts for one timeframe.
+⚠️ For richer data, prefer:
+- cg_liquidation_coin_list(exchange) — all coins on an exchange, multi-timeframe
+- cg_coin_liquidation_history(symbol) — time-series liquidation history
 
 Examples:
 - Get BTC liquidations (24h): cg_liquidations(symbol="BTC")
@@ -574,9 +587,12 @@ class LiquidationAnalysisTool(BaseTool):
 
     @property
     def description(self) -> str:
-        return """Get liquidation data with market sentiment analysis.
+        return """[BASIC] Get liquidation totals with a simple sentiment label.
 
-Includes interpretation of liquidation imbalances.
+Wraps cg_liquidations + adds bull/bear interpretation.
+⚠️ For detailed data, prefer:
+- cg_liquidation_coin_list(exchange) — all coins, multi-timeframe
+- cg_coin_liquidation_history(symbol) — time-series with exchange breakdown
 
 Examples:
 - Analyze BTC liquidations: cg_liquidation_analysis(symbol="BTC")
@@ -910,6 +926,12 @@ Examples:
             result = await asyncio.to_thread(get_coins_data)
             if result is None:
                 return ToolResult(success=False, output=None, error="Failed to fetch coins market data. Check COINGLASS_API_KEY.")
+            # Trim output: keep only essential fields, limit to top 50 by OI
+            if isinstance(result, dict) and "data" in result:
+                coins = result["data"]
+                if isinstance(coins, list) and len(coins) > 50:
+                    result["data"] = coins[:50]
+                    result["_trimmed"] = f"Showing top 50 of {len(coins)} coins. Use cg_pair_market_data(symbol, exchange) for specific coin details."
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1029,6 +1051,11 @@ Examples:
             result = await asyncio.to_thread(get_whale_alerts)
             if result is None:
                 return ToolResult(success=False, output=None, error="Failed to fetch whale alerts. Check COINGLASS_API_KEY.")
+            if isinstance(result, dict) and "data" in result:
+                data = result["data"]
+                if isinstance(data, list) and len(data) > 50:
+                    result["data"] = data[:50]
+                    result["_trimmed"] = f"Showing 50 most recent of {len(data)} alerts"
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1062,6 +1089,11 @@ Examples:
             result = await asyncio.to_thread(get_whale_positions)
             if result is None:
                 return ToolResult(success=False, output=None, error="Failed to fetch whale positions. Check COINGLASS_API_KEY.")
+            if isinstance(result, dict) and "data" in result:
+                data = result["data"]
+                if isinstance(data, list) and len(data) > 30:
+                    result["data"] = data[:30]
+                    result["_trimmed"] = f"Showing top 30 of {len(data)} positions"
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1397,6 +1429,8 @@ Examples:
             result = await asyncio.to_thread(get_btc_etf_flows)
             if result is None:
                 return ToolResult(success=False, output=None, error="Failed to fetch BTC ETF flows. Check COINGLASS_API_KEY.")
+            # Trim to last 30 days — full history is 300+ days and wastes ~250K tokens
+            result = _trim_time_series(result, max_items=30)
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))
@@ -1574,6 +1608,7 @@ Examples:
             result = await asyncio.to_thread(get_eth_etf_flows)
             if result is None:
                 return ToolResult(success=False, output=None, error="Failed to fetch ETH ETF flows. Check COINGLASS_API_KEY.")
+            result = _trim_time_series(result, max_items=30)
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))

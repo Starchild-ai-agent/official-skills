@@ -5,23 +5,12 @@ Provides tools for fetching current market data including price, volume, and 52-
 """
 
 import logging
-from typing import Optional, List
+from typing import List
 
 from core.tool import BaseTool, ToolContext, ToolResult
-from .client import TwelveDataClient
+from .client import get_client, handle_api_error
 
 logger = logging.getLogger(__name__)
-
-# Singleton client instance
-_client: Optional[TwelveDataClient] = None
-
-
-def _get_client() -> TwelveDataClient:
-    """Get or create singleton client instance."""
-    global _client
-    if _client is None:
-        _client = TwelveDataClient()
-    return _client
 
 
 class TwelveDataQuoteTool(BaseTool):
@@ -67,41 +56,16 @@ Returns: Real-time quote with all current market metrics"""
             "required": ["symbol"],
         }
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        symbol: str = "",
-        prepost: bool = False,
-        **kwargs,
-    ) -> ToolResult:
+    async def execute(self, ctx: ToolContext, symbol: str = "", prepost: bool = False, **kwargs) -> ToolResult:
         if not symbol:
             return ToolResult(success=False, error="'symbol' is required")
-
         try:
-            client = _get_client()
-            data = await client.get_quote(symbol=symbol, prepost=prepost)
-
-            # Check for API errors
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            data = await get_client().get_quote(symbol=symbol, prepost=prepost)
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)
 
 
 class TwelveDataQuoteBatchTool(BaseTool):
@@ -143,41 +107,16 @@ Returns: Quotes for all requested symbols"""
             "required": ["symbols"],
         }
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        symbols: List[str] = None,
-        prepost: bool = False,
-        **kwargs,
-    ) -> ToolResult:
-        if not symbols or len(symbols) == 0:
+    async def execute(self, ctx: ToolContext, symbols: List[str] = None, prepost: bool = False, **kwargs) -> ToolResult:
+        if not symbols:
             return ToolResult(success=False, error="'symbols' array is required and must not be empty")
-
         try:
-            client = _get_client()
-            data = await client.get_quote_batch(symbols=symbols, prepost=prepost)
-
-            # Check for API errors
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            data = await get_client().get_quote_batch(symbols=symbols, prepost=prepost)
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)
 
 
 class TwelveDataPriceBatchTool(BaseTool):
@@ -219,38 +158,13 @@ Returns: Current prices for all requested symbols"""
             "required": ["symbols"],
         }
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        symbols: List[str] = None,
-        prepost: bool = False,
-        **kwargs,
-    ) -> ToolResult:
-        if not symbols or len(symbols) == 0:
+    async def execute(self, ctx: ToolContext, symbols: List[str] = None, prepost: bool = False, **kwargs) -> ToolResult:
+        if not symbols:
             return ToolResult(success=False, error="'symbols' array is required and must not be empty")
-
         try:
-            client = _get_client()
-            data = await client.get_price_batch(symbols=symbols, prepost=prepost)
-
-            # Check for API errors
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            data = await get_client().get_price_batch(symbols=symbols, prepost=prepost)
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)

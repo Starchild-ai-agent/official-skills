@@ -1,31 +1,19 @@
 """
 Twelve Data Time Series Tools — Historical OHLCV data for stocks and forex.
 
-Provides tools for fetching historical price data with various intervals.
+Provides tools for fetching historical price data and end-of-day prices.
 """
 
 import logging
-from typing import Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
-from .client import TwelveDataClient, INTERVALS
+from .client import get_client, handle_api_error, INTERVALS
 
 logger = logging.getLogger(__name__)
 
-# Singleton client instance
-_client: Optional[TwelveDataClient] = None
-
-
-def _get_client() -> TwelveDataClient:
-    """Get or create singleton client instance."""
-    global _client
-    if _client is None:
-        _client = TwelveDataClient()
-    return _client
-
 
 class TwelveDataTimeSeriesTools(BaseTool):
-    """Get historical OHLCV time series data for stocks and forex."""
+    """Get historical OHLCV time series data."""
 
     @property
     def name(self) -> str:
@@ -43,6 +31,7 @@ Parameters:
 - outputsize: Number of data points to return (1-5000, default: 30). Common values: 30 (compact), 100, 500, 5000 (maximum)
 - start_date: (optional) Start date in YYYY-MM-DD format
 - end_date: (optional) End date in YYYY-MM-DD format
+- prepost: (optional) Include pre/post-market data when available (US/Cboe Europe, Pro+ only)
 
 Returns: Historical OHLCV data with metadata including symbol, exchange, currency, and interval"""
 
@@ -57,7 +46,7 @@ Returns: Historical OHLCV data with metadata including symbol, exchange, currenc
                 },
                 "interval": {
                     "type": "string",
-                    "description": f"Time interval: {', '.join(INTERVALS)} (default: 1day)",
+                    "description": "Time interval: 1min, 5min, 15min, 30min, 45min, 1h, 2h, 4h, 8h, 1day, 1week, 1month (default: 1day)",
                     "enum": INTERVALS,
                 },
                 "outputsize": {
@@ -66,10 +55,6 @@ Returns: Historical OHLCV data with metadata including symbol, exchange, currenc
                     "minimum": 1,
                     "maximum": 5000,
                 },
-                "prepost": {
-                    "type": "boolean",
-                    "description": "Include pre/post-market data when available (US/Cboe Europe, Pro+ only)",
-                },
                 "start_date": {
                     "type": "string",
                     "description": "Start date in YYYY-MM-DD format (optional)",
@@ -77,6 +62,10 @@ Returns: Historical OHLCV data with metadata including symbol, exchange, currenc
                 "end_date": {
                     "type": "string",
                     "description": "End date in YYYY-MM-DD format (optional)",
+                },
+                "prepost": {
+                    "type": "boolean",
+                    "description": "Include pre/post-market data when available (US/Cboe Europe, Pro+ only)",
                 },
             },
             "required": ["symbol"],
@@ -95,10 +84,10 @@ Returns: Historical OHLCV data with metadata including symbol, exchange, currenc
     ) -> ToolResult:
         if not symbol:
             return ToolResult(success=False, error="'symbol' is required")
-
+        if interval not in INTERVALS:
+            return ToolResult(success=False, error=f"Invalid interval '{interval}'. Must be one of: {', '.join(INTERVALS)}")
         try:
-            client = _get_client()
-            data = await client.get_time_series(
+            data = await get_client().get_time_series(
                 symbol=symbol,
                 interval=interval,
                 outputsize=outputsize,
@@ -106,28 +95,11 @@ Returns: Historical OHLCV data with metadata including symbol, exchange, currenc
                 end_date=end_date if end_date else None,
                 prepost=prepost,
             )
-
-            # Check for API errors
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)
 
 
 class TwelveDataPriceTool(BaseTool):
@@ -166,44 +138,20 @@ Returns: Current price value"""
             "required": ["symbol"],
         }
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        symbol: str = "",
-        prepost: bool = False,
-        **kwargs,
-    ) -> ToolResult:
+    async def execute(self, ctx: ToolContext, symbol: str = "", prepost: bool = False, **kwargs) -> ToolResult:
         if not symbol:
             return ToolResult(success=False, error="'symbol' is required")
-
         try:
-            client = _get_client()
-            data = await client.get_price(symbol=symbol, prepost=prepost)
-
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            data = await get_client().get_price(symbol=symbol, prepost=prepost)
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)
 
 
 class TwelveDataEODTool(BaseTool):
-    """Get end-of-day price for a stock or forex pair."""
+    """Get end-of-day closing price for a stock or forex pair."""
 
     @property
     def name(self) -> str:
@@ -243,42 +191,17 @@ Returns: EOD price data with close, high, low, open, volume"""
             "required": ["symbol"],
         }
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        symbol: str = "",
-        date: str = "",
-        prepost: bool = False,
-        **kwargs,
-    ) -> ToolResult:
+    async def execute(self, ctx: ToolContext, symbol: str = "", date: str = "", prepost: bool = False, **kwargs) -> ToolResult:
         if not symbol:
             return ToolResult(success=False, error="'symbol' is required")
-
         try:
-            client = _get_client()
-            data = await client.get_eod(
+            data = await get_client().get_eod(
                 symbol=symbol,
                 date=date if date else None,
                 prepost=prepost,
             )
-
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)

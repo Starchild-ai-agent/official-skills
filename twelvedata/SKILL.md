@@ -1,6 +1,6 @@
 ---
 name: twelvedata
-version: 1.0.0
+version: 1.1.0
 description: Stocks and forex price data, time series, quotes, and reference data
 tools:
   - twelvedata_time_series

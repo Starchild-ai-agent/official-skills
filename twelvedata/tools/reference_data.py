@@ -5,23 +5,11 @@ Provides tools for searching symbols, listing available stocks, forex pairs, and
 """
 
 import logging
-from typing import Optional
 
 from core.tool import BaseTool, ToolContext, ToolResult
-from .client import TwelveDataClient
+from .client import get_client, handle_api_error
 
 logger = logging.getLogger(__name__)
-
-# Singleton client instance
-_client: Optional[TwelveDataClient] = None
-
-
-def _get_client() -> TwelveDataClient:
-    """Get or create singleton client instance."""
-    global _client
-    if _client is None:
-        _client = TwelveDataClient()
-    return _client
 
 
 class TwelveDataSearchTool(BaseTool):
@@ -60,40 +48,16 @@ Returns: Array of matching symbols with name, exchange, type, and currency info"
             "required": ["query"],
         }
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        query: str = "",
-        **kwargs,
-    ) -> ToolResult:
+    async def execute(self, ctx: ToolContext, query: str = "", **kwargs) -> ToolResult:
         if not query:
             return ToolResult(success=False, error="'query' is required")
-
         try:
-            client = _get_client()
-            data = await client.search_symbol(query=query)
-
-            # Check for API errors
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            data = await get_client().search_symbol(query=query)
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)
 
 
 class TwelveDataStocksTool(BaseTool):
@@ -131,41 +95,17 @@ Returns: Array of stocks with symbol, name, currency, exchange, and type"""
             },
         }
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        exchange: str = "",
-        country: str = "",
-        **kwargs,
-    ) -> ToolResult:
+    async def execute(self, ctx: ToolContext, exchange: str = "", country: str = "", **kwargs) -> ToolResult:
         try:
-            client = _get_client()
-            data = await client.get_stocks(
+            data = await get_client().get_stocks(
                 exchange=exchange if exchange else None,
                 country=country if country else None,
             )
-
-            # Check for API errors
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)
 
 
 class TwelveDataForexPairsTool(BaseTool):
@@ -190,41 +130,16 @@ Returns: Array of forex pairs with symbol, currency base, currency quote"""
 
     @property
     def parameters(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {},
-        }
+        return {"type": "object", "properties": {}}
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        **kwargs,
-    ) -> ToolResult:
+    async def execute(self, ctx: ToolContext, **kwargs) -> ToolResult:
         try:
-            client = _get_client()
-            data = await client.get_forex_pairs()
-
-            # Check for API errors
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            data = await get_client().get_forex_pairs()
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)
 
 
 class TwelveDataExchangesTool(BaseTool):
@@ -246,38 +161,13 @@ Returns: Array of exchanges with name, code, country, and timezone"""
 
     @property
     def parameters(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {},
-        }
+        return {"type": "object", "properties": {}}
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        **kwargs,
-    ) -> ToolResult:
+    async def execute(self, ctx: ToolContext, **kwargs) -> ToolResult:
         try:
-            client = _get_client()
-            data = await client.get_exchanges()
-
-            # Check for API errors
-            if "status" in data and data["status"] == "error":
-                return ToolResult(
-                    success=False,
-                    error=f"API Error: {data.get('message', 'Unknown error')}",
-                )
-
+            data = await get_client().get_exchanges()
+            if data.get("status") == "error":
+                return ToolResult(success=False, error=f"API Error: {data.get('message', 'Unknown error')}")
             return ToolResult(success=True, output=data)
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Invalid API key. Set TWELVEDATA_API_KEY environment variable.",
-                )
-            elif "429" in error_msg:
-                return ToolResult(
-                    success=False,
-                    error="Rate limit exceeded. Wait a moment and try again.",
-                )
-            return ToolResult(success=False, error=error_msg)
+            return handle_api_error(e)

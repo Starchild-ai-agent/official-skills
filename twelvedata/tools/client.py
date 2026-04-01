@@ -26,8 +26,36 @@ from typing import Any, Dict, Optional, List
 import aiohttp
 
 from core.http_client import get_aiohttp_proxy_kwargs
+from core.tool import ToolResult
 
 logger = logging.getLogger(__name__)
+
+# ── Singleton client ──────────────────────────────────────────────
+_client: Optional["TwelveDataClient"] = None
+
+
+def get_client() -> "TwelveDataClient":
+    """Return a shared TwelveDataClient singleton."""
+    global _client
+    if _client is None:
+        _client = TwelveDataClient()
+    return _client
+
+
+def handle_api_error(e: Exception) -> ToolResult:
+    """Unified error handler for all Twelve Data tool execute() methods."""
+    error_str = str(e)
+    if "401" in error_str:
+        return ToolResult(
+            success=False,
+            error="API key error. The TWELVEDATA_API_KEY may be invalid or missing.",
+        )
+    if "429" in error_str:
+        return ToolResult(
+            success=False,
+            error="Rate limit exceeded. Please wait before making more requests.",
+        )
+    return ToolResult(success=False, error=f"Twelve Data API error: {error_str}")
 
 # API Configuration
 BASE_URL = "https://api.twelvedata.com"

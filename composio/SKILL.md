@@ -115,7 +115,7 @@ Give `connect_url` to the user — they click it to complete OAuth.
 ### 5. List Available Toolkits
 
 ```bash
-curl -s http://composio-gateway.flycast/internal/toolkits | python3 -m json.tool
+curl -s http://composio-gateway.flycast/api/toolkits?limit=200 | python3 -m json.tool
 ```
 
 ## Workflows
@@ -131,7 +131,7 @@ curl -s http://composio-gateway.flycast/internal/toolkits | python3 -m json.tool
 
 ### User asks "what apps can I connect?"
 
-1. Call `/internal/toolkits` to get the full list
+1. Call `/api/toolkits` to get the full list
 2. Present a curated summary (there are 1000+, so filter to popular ones)
 
 ### User asks "what apps do I have connected?"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Extended scenario test for tokenmist skill using common user questions.
+Extended scenario test for tokenomist skill using common user questions.
 
 Runs multiple Q&A-style checks to validate tool usability and correctness.
 """
@@ -12,13 +12,13 @@ import json
 from datetime import datetime, timedelta, timezone
 
 from core.tool import ToolContext
-from skills.tokenmist.tools.tokenmist_tools import (
-    TokenmistTokenListTool,
-    TokenmistResolveTokenTool,
-    TokenmistAllocationsSummaryTool,
-    TokenmistDailyEmissionTool,
-    TokenmistUnlockEventsTool,
-    TokenmistTokenOverviewTool,
+from skills.tokenomist.tools.tokenomist_tools import (
+    TokenomistTokenListTool,
+    TokenomistResolveTokenTool,
+    TokenomistAllocationsSummaryTool,
+    TokenomistDailyEmissionTool,
+    TokenomistUnlockEventsTool,
+    TokenomistTokenOverviewTool,
 )
 
 
@@ -53,8 +53,8 @@ async def main() -> int:
     end = (datetime.now(timezone.utc).date() + timedelta(days=30)).isoformat()
 
     # Q1
-    q1 = "Tokenmist 当前 token 覆盖规模如何？"
-    r1 = await TokenmistTokenListTool().execute(ctx, limit=500)
+    q1 = "Tokenomist 当前 token 覆盖规模如何？"
+    r1 = await TokenomistTokenListTool().execute(ctx, limit=500)
     if r1.success:
         items = (r1.output or {}).get("items", [])
         internal = sum(1 for x in items if (x or {}).get("listedMethod") == "INTERNAL")
@@ -66,7 +66,7 @@ async def main() -> int:
 
     # Q2
     q2 = "输入 ARB 能否稳定解析到 tokenId？"
-    r2 = await TokenmistResolveTokenTool().execute(ctx, query="ARB")
+    r2 = await TokenomistResolveTokenTool().execute(ctx, query="ARB")
     token = (r2.output or {}).get("token") if r2.success else None
     token_id = (token or {}).get("id")
     ok2 = bool(r2.success and token_id)
@@ -74,7 +74,7 @@ async def main() -> int:
 
     # Q3
     q3 = "ARB 的 top allocations 和质量标记是否可直接读取？"
-    r3 = await TokenmistAllocationsSummaryTool().execute(ctx, query="ARB", top_n=5)
+    r3 = await TokenomistAllocationsSummaryTool().execute(ctx, query="ARB", top_n=5)
     if r3.success:
         summary = (r3.output or {}).get("summary", {})
         top = summary.get("top_allocations", []) if isinstance(summary, dict) else []
@@ -93,7 +93,7 @@ async def main() -> int:
 
     # Q4
     q4 = "ARB 未来 30 天有多少 unlock cliff 事件、总额多大？"
-    r4 = await TokenmistUnlockEventsTool().execute(ctx, token_id=token_id or "arbitrum", start=start, end=end)
+    r4 = await TokenomistUnlockEventsTool().execute(ctx, token_id=token_id or "arbitrum", start=start, end=end)
     if r4.success:
         rows = ((r4.output or {}).get("data") or [])
         total_amt = 0.0
@@ -110,7 +110,7 @@ async def main() -> int:
 
     # Q5
     q5 = "ARB 最近 7 条 daily emission 的释放总量是多少？"
-    r5 = await TokenmistDailyEmissionTool().execute(ctx, token_id=token_id or "arbitrum")
+    r5 = await TokenomistDailyEmissionTool().execute(ctx, token_id=token_id or "arbitrum")
     if r5.success:
         rows = ((r5.output or {}).get("data") or [])
         rows_sorted = sorted(
@@ -127,7 +127,7 @@ async def main() -> int:
 
     # Q6 (avoid burst 429 by reusing previous successful outputs semantics)
     q6 = "一条 overview 是否能同时返回 resolve + allocations + emission + events？"
-    r6 = await TokenmistTokenOverviewTool().execute(
+    r6 = await TokenomistTokenOverviewTool().execute(
         ctx,
         query="ARB",
         start=start,

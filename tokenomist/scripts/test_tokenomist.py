@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Integration-style smoke test for tokenmist skill client.
+Integration-style smoke test for tokenomist skill client.
 
 Runs against live Tokenomist API through core/http_client proxied_get.
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import traceback
 
-from skills.tokenmist.tools.client import TokenmistClient, normalize_token_index, resolve_token_id
+from skills.tokenomist.tools.client import TokenomistClient, normalize_token_index, resolve_token_id
 
 
 def main() -> int:
@@ -26,7 +26,7 @@ def main() -> int:
             report["errors"].append({"name": name, "detail": detail})
 
     try:
-        c = TokenmistClient()
+        c = TokenomistClient()
 
         # 1) token list v4
         tl = c.token_list_v4()

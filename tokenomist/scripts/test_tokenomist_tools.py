@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Integration test for tokenmist tool wrappers (not just raw client).
+Integration test for tokenomist tool wrappers (not just raw client).
 
 Validates:
-- tokenmist_allocations normalized output exists
+- tokenomist_allocations normalized output exists
 - trackedAllocationPercentage is consumed correctly
 - coverage flags are present
 """
@@ -15,11 +15,11 @@ import json
 import traceback
 
 from core.tool import ToolContext
-from skills.tokenmist.tools.tokenmist_tools import (
-    TokenmistResolveTokenTool,
-    TokenmistAllocationsTool,
-    TokenmistAllocationsSummaryTool,
-    TokenmistTokenOverviewTool,
+from skills.tokenomist.tools.tokenomist_tools import (
+    TokenomistResolveTokenTool,
+    TokenomistAllocationsTool,
+    TokenomistAllocationsSummaryTool,
+    TokenomistTokenOverviewTool,
 )
 
 
@@ -45,7 +45,7 @@ async def main() -> int:
         ctx = _ctx()
 
         # Resolve token
-        r = await TokenmistResolveTokenTool().execute(ctx, query="ARB")
+        r = await TokenomistResolveTokenTool().execute(ctx, query="ARB")
         t("resolve_success", r.success, str(r.error or ""))
         if not r.success:
             print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -59,7 +59,7 @@ async def main() -> int:
             return 1
 
         # Allocations normalized output
-        a = await TokenmistAllocationsTool().execute(ctx, token_id=token_id)
+        a = await TokenomistAllocationsTool().execute(ctx, token_id=token_id)
         t("allocations_success", a.success, str(a.error or ""))
         if not a.success:
             print(json.dumps(report, ensure_ascii=False, indent=2))
@@ -86,7 +86,7 @@ async def main() -> int:
             )
 
         # Allocations summary wrapper
-        s = await TokenmistAllocationsSummaryTool().execute(ctx, query="ARB", top_n=5)
+        s = await TokenomistAllocationsSummaryTool().execute(ctx, query="ARB", top_n=5)
         t("allocations_summary_success", s.success, str(s.error or ""))
         s_out = s.output or {}
         s_summary = s_out.get("summary") if isinstance(s_out, dict) else None
@@ -96,7 +96,7 @@ async def main() -> int:
         t("allocations_summary_quality_present", isinstance(s_quality, dict), f"type={type(s_quality).__name__}")
 
         # Overview includes normalized allocations
-        ov = await TokenmistTokenOverviewTool().execute(
+        ov = await TokenomistTokenOverviewTool().execute(
             ctx,
             query="ARB",
             include_allocations=True,

@@ -1,5 +1,5 @@
 """
-Tokenmist API client (Tokenomist API wrapper).
+Tokenomist API client (Tokenomist API wrapper).
 
 - Uses latest endpoint versions by default:
   - Token List API v4
@@ -25,16 +25,16 @@ BASE_URL = "https://api.tokenomist.ai"
 DEFAULT_TIMEOUT = 30
 
 
-class TokenmistApiError(Exception):
-    """Tokenmist API request failed."""
+class TokenomistApiError(Exception):
+    """Tokenomist API request failed."""
 
 
-class TokenmistClient:
+class TokenomistClient:
     def __init__(self, api_key: Optional[str] = None, timeout: int = DEFAULT_TIMEOUT):
         self.api_key = api_key or os.environ.get("TOKENMIST_API_KEY", "")
         self.timeout = timeout
         if not self.api_key:
-            logger.warning("TOKENMIST_API_KEY not set. Tokenmist API calls will fail.")
+            logger.warning("TOKENMIST_API_KEY not set. Tokenomist API calls will fail.")
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -44,26 +44,26 @@ class TokenmistClient:
 
     def _request(self, path: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         if not self.api_key:
-            raise TokenmistApiError("TOKENMIST_API_KEY is required")
+            raise TokenomistApiError("TOKENMIST_API_KEY is required")
 
         url = f"{BASE_URL}{path}"
         try:
             resp = proxied_get(url, headers=self._headers(), params=params or {}, timeout=self.timeout)
         except Exception as e:
-            raise TokenmistApiError(f"Request failed: {e}") from e
+            raise TokenomistApiError(f"Request failed: {e}") from e
 
         if resp.status_code >= 400:
             body = resp.text
-            raise TokenmistApiError(f"Tokenmist API {resp.status_code}: {body}")
+            raise TokenomistApiError(f"Tokenomist API {resp.status_code}: {body}")
 
         try:
             data = resp.json()
         except Exception as e:
-            raise TokenmistApiError(f"Invalid JSON response: {e}") from e
+            raise TokenomistApiError(f"Invalid JSON response: {e}") from e
 
         # API-level status check
         if isinstance(data, dict) and data.get("status") is False:
-            raise TokenmistApiError(f"API status=false response: {data}")
+            raise TokenomistApiError(f"API status=false response: {data}")
 
         return data
 
@@ -74,7 +74,7 @@ class TokenmistClient:
         try:
             datetime.strptime(value, "%Y-%m-%d")
         except ValueError as e:
-            raise TokenmistApiError(f"{field_name} must be YYYY-MM-DD, got: {value}") from e
+            raise TokenomistApiError(f"{field_name} must be YYYY-MM-DD, got: {value}") from e
 
     # ---- Canonical latest-version endpoints ----
 
@@ -83,7 +83,7 @@ class TokenmistClient:
 
     def allocations_v2(self, token_id: str) -> Dict[str, Any]:
         if not token_id:
-            raise TokenmistApiError("token_id is required")
+            raise TokenomistApiError("token_id is required")
         return self._request("/v2/allocations", params={"tokenId": token_id})
 
     def daily_emission_v2(
@@ -93,7 +93,7 @@ class TokenmistClient:
         end: Optional[str] = None,
     ) -> Dict[str, Any]:
         if not token_id:
-            raise TokenmistApiError("token_id is required")
+            raise TokenomistApiError("token_id is required")
         self._validate_date_yyyy_mm_dd(start, "start")
         self._validate_date_yyyy_mm_dd(end, "end")
         params: Dict[str, Any] = {"tokenId": token_id}
@@ -110,7 +110,7 @@ class TokenmistClient:
         end: Optional[str] = None,
     ) -> Dict[str, Any]:
         if not token_id:
-            raise TokenmistApiError("token_id is required")
+            raise TokenomistApiError("token_id is required")
         self._validate_date_yyyy_mm_dd(start, "start")
         self._validate_date_yyyy_mm_dd(end, "end")
         params: Dict[str, Any] = {"tokenId": token_id}
@@ -156,7 +156,7 @@ def resolve_token_id(
     query: str,
 ) -> Dict[str, Any]:
     if not query:
-        raise TokenmistApiError("query is required")
+        raise TokenomistApiError("query is required")
 
     q = query.strip().lower()
 

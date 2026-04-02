@@ -1,4 +1,4 @@
-"""Tool wrappers for Tokenmist client."""
+"""Tool wrappers for Tokenomist client."""
 
 from __future__ import annotations
 
@@ -8,28 +8,28 @@ from typing import Any, Dict, List, Optional
 from core.tool import BaseTool, ToolContext, ToolResult
 
 from .client import (
-    TokenmistApiError,
-    TokenmistClient,
+    TokenomistApiError,
+    TokenomistClient,
     normalize_token_index,
     resolve_token_id,
 )
 
 
-_client_singleton: Optional[TokenmistClient] = None
+_client_singleton: Optional[TokenomistClient] = None
 _token_index_cache: Optional[List[Dict[str, Any]]] = None
 
 
-def _client() -> TokenmistClient:
+def _client() -> TokenomistClient:
     global _client_singleton
     if _client_singleton is None:
-        _client_singleton = TokenmistClient()
+        _client_singleton = TokenomistClient()
     return _client_singleton
 
 
 def _safe_error_message(e: Exception) -> str:
     msg = str(e)
     # never leak key in tool output, redact common fake key literal if echoed by upstream
-    return msg.replace("fake-tokenmist-key-12345", "[REDACTED]")
+    return msg.replace("fake-tokenomist-key-12345", "[REDACTED]")
 
 
 def _get_index(force_refresh: bool = False) -> List[Dict[str, Any]]:
@@ -131,14 +131,14 @@ def _normalize_allocations_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-class TokenmistTokenListTool(BaseTool):
+class TokenomistTokenListTool(BaseTool):
     @property
     def name(self) -> str:
-        return "tokenmist_token_list"
+        return "tokenomist_token_list"
 
     @property
     def description(self) -> str:
-        return """Get Token List API v4 from Tokenmist.
+        return """Get Token List API v4 from Tokenomist.
 
 Uses latest Token List version (v4). Supports optional keyword filtering and limit to reduce payload size.
 """
@@ -200,10 +200,10 @@ Uses latest Token List version (v4). Supports optional keyword filtering and lim
             return ToolResult(success=False, error=_safe_error_message(e))
 
 
-class TokenmistResolveTokenTool(BaseTool):
+class TokenomistResolveTokenTool(BaseTool):
     @property
     def name(self) -> str:
-        return "tokenmist_resolve_token"
+        return "tokenomist_resolve_token"
 
     @property
     def description(self) -> str:
@@ -247,10 +247,10 @@ Input can be tokenId, symbol, or token name. Returns best match and alternatives
             return ToolResult(success=False, error=_safe_error_message(e))
 
 
-class TokenmistAllocationsTool(BaseTool):
+class TokenomistAllocationsTool(BaseTool):
     @property
     def name(self) -> str:
-        return "tokenmist_allocations"
+        return "tokenomist_allocations"
 
     @property
     def description(self) -> str:
@@ -269,7 +269,7 @@ Returns normalized allocation percentages to reduce ambiguity:
             "properties": {
                 "token_id": {
                     "type": "string",
-                    "description": "Canonical tokenId from tokenmist_token_list/tokenmist_resolve_token",
+                    "description": "Canonical tokenId from tokenomist_token_list/tokenomist_resolve_token",
                 },
                 "include_raw": {
                     "type": "boolean",
@@ -304,10 +304,10 @@ Returns normalized allocation percentages to reduce ambiguity:
             return ToolResult(success=False, error=_safe_error_message(e))
 
 
-class TokenmistAllocationsSummaryTool(BaseTool):
+class TokenomistAllocationsSummaryTool(BaseTool):
     @property
     def name(self) -> str:
-        return "tokenmist_allocations_summary"
+        return "tokenomist_allocations_summary"
 
     @property
     def description(self) -> str:
@@ -416,10 +416,10 @@ If query is provided, resolves to canonical tokenId first.
             return ToolResult(success=False, error=_safe_error_message(e))
 
 
-class TokenmistDailyEmissionTool(BaseTool):
+class TokenomistDailyEmissionTool(BaseTool):
     @property
     def name(self) -> str:
-        return "tokenmist_daily_emission"
+        return "tokenomist_daily_emission"
 
     @property
     def description(self) -> str:
@@ -467,10 +467,10 @@ class TokenmistDailyEmissionTool(BaseTool):
             return ToolResult(success=False, error=_safe_error_message(e))
 
 
-class TokenmistUnlockEventsTool(BaseTool):
+class TokenomistUnlockEventsTool(BaseTool):
     @property
     def name(self) -> str:
-        return "tokenmist_unlock_events"
+        return "tokenomist_unlock_events"
 
     @property
     def description(self) -> str:
@@ -518,10 +518,10 @@ class TokenmistUnlockEventsTool(BaseTool):
             return ToolResult(success=False, error=_safe_error_message(e))
 
 
-class TokenmistTokenOverviewTool(BaseTool):
+class TokenomistTokenOverviewTool(BaseTool):
     @property
     def name(self) -> str:
-        return "tokenmist_token_overview"
+        return "tokenomist_token_overview"
 
     @property
     def description(self) -> str:

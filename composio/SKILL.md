@@ -191,14 +191,81 @@ resp = requests.post(f"{GATEWAY}/internal/execute", json={
 
 Then future calls are just: `bash("python3 scripts/calendar_events.py 7 Asia/Hong_Kong")` — **1 tool call**.
 
-## Common Tools (skip search for these)
+## Common Tools Quick Reference (skip search for these)
+
+### 📧 Gmail
+
+| Tool Slug | Purpose | Key Arguments |
+|-----------|---------|---------------|
+| `GMAIL_SEND_EMAIL` | 发邮件 | `to`, `subject`, `body`, `cc`, `bcc` |
+| `GMAIL_FETCH_EMAILS` | 查邮件 | `max_results` (int), `label_ids` (list), `q` (Gmail search syntax) |
+| `GMAIL_CREATE_EMAIL_DRAFT` | 创建草稿 | `to`, `subject`, `body` |
+
+**Gmail 使用示例：**
+
+```bash
+# 发送邮件
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GMAIL_SEND_EMAIL", "arguments": {"to": "user@example.com", "subject": "Hello", "body": "Hi there!"}}'
+
+# 查最近 5 封邮件
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GMAIL_FETCH_EMAILS", "arguments": {"max_results": 5}}'
+
+# 搜索特定邮件（使用 Gmail 搜索语法）
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GMAIL_FETCH_EMAILS", "arguments": {"max_results": 10, "q": "from:github.com after:2026/03/01"}}'
+```
+
+**Gmail 响应解析：** 邮件数据在 `data.data.messages[]` 中，每封邮件有 `id`, `snippet`, `payload.headers[]`（From/Subject/Date 在 headers 里按 name 查找）。
+
+### 🐦 Twitter
+
+| Tool Slug | Purpose | Key Arguments |
+|-----------|---------|---------------|
+| `TWITTER_CREATION_OF_A_POST` | 发推 | `text` (必选), `media_media_ids`, `reply_in_reply_to_tweet_id` |
+| `TWITTER_POST_DELETE_BY_POST_ID` | 删推 | `id` |
+| `TWITTER_POST_LOOKUP_BY_POST_ID` | 查单条推文 | `id`, `tweet_fields` |
+| `TWITTER_RECENT_SEARCH` | 搜索最近 7 天推文 | `query`, `max_results` (min 10) |
+| `TWITTER_USER_LOOKUP_ME` | 获取自己的资料 | (无参数) |
+| `TWITTER_USER_LOOKUP_BY_USERNAME` | 查用户资料 | `username` |
+
+**Twitter 使用示例：**
+
+```bash
+# 发推文
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "TWITTER_CREATION_OF_A_POST", "arguments": {"text": "Hello from Composio!"}}'
+
+# 删推文
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "TWITTER_POST_DELETE_BY_POST_ID", "arguments": {"id": "2039756730192601584"}}'
+```
+
+**Twitter 响应结构：** 发推/查推返回 `data.data.data` (三层嵌套)，内含 `id`, `text`, `edit_history_tweet_ids`。
+
+**⚠️ Twitter 限制与 Fallback：**
+- `TWITTER_RECENT_SEARCH` 只覆盖**最近 7 天**，超过就搜不到
+- `TWITTER_FULL_ARCHIVE_SEARCH` 需要 Twitter API **Pro 权限**，普通 OAuth App 用不了
+- **获取用户历史推文时，优先使用平台 native tool `twitter_user_tweets`**，不受 7 天限制
+
+### 📅 Google Calendar
+
+| Tool Slug | Purpose | Key Arguments |
+|-----------|---------|---------------|
+| `GOOGLECALENDAR_EVENTS_LIST` | 查事件 | `calendarId` (default: "primary"), `timeMin`, `timeMax` (RFC3339+tz), `singleEvents` (true), `timeZone` |
+| `GOOGLECALENDAR_CREATE_EVENT` | 创建事件 | `calendarId`, `summary`, `start`, `end`, `description`, `attendees` |
+| `GOOGLECALENDAR_DELETE_EVENT` | 删除事件 | `calendarId`, `eventId` |
+
+### 其他 App
 
 | App | Tool Slug | Key Arguments |
 |-----|-----------|---------------|
-| Gmail | `GMAIL_SEND_EMAIL` | `to`, `subject`, `body`, `cc`, `bcc` |
-| Gmail | `GMAIL_FETCH_EMAILS` | `max_results`, `label_ids`, `q` (search query) |
-| Google Calendar | `GOOGLECALENDAR_EVENTS_LIST` | `calendarId` (default: "primary"), `timeMin`, `timeMax` (RFC3339+tz), `singleEvents` (true), `timeZone` |
-| Google Calendar | `GOOGLECALENDAR_CREATE_EVENT` | `calendarId`, `summary`, `start`, `end`, `description`, `attendees` |
 | GitHub | `GITHUB_CREATE_ISSUE` | `owner`, `repo`, `title`, `body` |
 | Slack | `SLACK_SEND_MESSAGE` | `channel`, `text` |
 | Notion | `NOTION_CREATE_PAGE` | `parent_id`, `title`, `content` |
@@ -210,3 +277,18 @@ Then future calls are just: `bash("python3 scripts/calendar_events.py 7 Asia/Hon
 - **Arguments key**: always use `"arguments"`, never `"params"` — `params` silently gets ignored
 - **Time parameters**: use RFC3339 with timezone offset (`2026-04-08T00:00:00+08:00`), not UTC unless intended
 - **OAuth tokens are managed by Composio** — auto-refreshed on expiry
+- **响应嵌套**: Composio execute 的响应一般是 `data.data`，但 Twitter 是 `data.data.data`（三层）。解析时注意递归取 data。
+- **Native tool fallback**: 当 Composio 的工具有限制（如 Twitter 搜索只 7 天），优先用平台自带的 native tool（如 `twitter_user_tweets`）
+
+## Common Issues
+
+### Gmail 嵌套 JSON 解析
+Gmail 返回的 JSON 结构复杂，包含多层 HTML 内容。**不要**尝试用 `json.loads` 解析嵌套字符串。直接在 Python 中用 dict 访问即可，gateway 已返回 parsed JSON。
+
+### Twitter OAuth 权限不足
+如果遇到 `"you must use keys and tokens from a Twitter developer App that is attached to a Project"` 错误，说明该 API endpoint 需要更高权限（如 Pro/Enterprise）。改用替代工具或 native tool。
+
+### execute 返回 "No active connection found"
+Gateway 已修复此问题（使用 REST API v2 + connectedAccountId）。如果仍出现，检查 `/internal/connections` 确认该 toolkit 有 ACTIVE 状态的连接。
+
+---

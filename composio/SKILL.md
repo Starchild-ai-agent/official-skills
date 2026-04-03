@@ -197,78 +197,203 @@ Then future calls are just: `bash("python3 scripts/calendar_events.py 7 Asia/Hon
 
 | Tool Slug | Purpose | Key Arguments |
 |-----------|---------|---------------|
-| `GMAIL_SEND_EMAIL` | 发邮件 | `to`, `subject`, `body`, `cc`, `bcc` |
-| `GMAIL_FETCH_EMAILS` | 查邮件 | `max_results` (int), `label_ids` (list), `q` (Gmail search syntax) |
-| `GMAIL_CREATE_EMAIL_DRAFT` | 创建草稿 | `to`, `subject`, `body` |
+| `GMAIL_SEND_EMAIL` | Send email | `to`, `subject`, `body`, `cc`, `bcc` |
+| `GMAIL_FETCH_EMAILS` | Fetch emails | `max_results` (int), `label_ids` (list), `q` (Gmail search syntax) |
+| `GMAIL_CREATE_EMAIL_DRAFT` | Create draft | `to`, `subject`, `body` |
 
-**Gmail 使用示例：**
+**Gmail Usage Examples:**
 
 ```bash
-# 发送邮件
+# Send email
 curl -s -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GMAIL_SEND_EMAIL", "arguments": {"to": "user@example.com", "subject": "Hello", "body": "Hi there!"}}'
 
-# 查最近 5 封邮件
+# Fetch last 5 emails
 curl -s -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GMAIL_FETCH_EMAILS", "arguments": {"max_results": 5}}'
 
-# 搜索特定邮件（使用 Gmail 搜索语法）
+# Search specific emails (using Gmail search syntax)
 curl -s -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GMAIL_FETCH_EMAILS", "arguments": {"max_results": 10, "q": "from:github.com after:2026/03/01"}}'
 ```
 
-**Gmail 响应解析：** 邮件数据在 `data.data.messages[]` 中，每封邮件有 `id`, `snippet`, `payload.headers[]`（From/Subject/Date 在 headers 里按 name 查找）。
+**Gmail Response Parsing:** Email data is in `data.data.messages[]`, each email has `id`, `snippet`, `payload.headers[]` (From/Subject/Date are in headers, lookup by name).
 
 ### 🐦 Twitter
 
 | Tool Slug | Purpose | Key Arguments |
 |-----------|---------|---------------|
-| `TWITTER_CREATION_OF_A_POST` | 发推 | `text` (必选), `media_media_ids`, `reply_in_reply_to_tweet_id` |
-| `TWITTER_POST_DELETE_BY_POST_ID` | 删推 | `id` |
-| `TWITTER_POST_LOOKUP_BY_POST_ID` | 查单条推文 | `id`, `tweet_fields` |
-| `TWITTER_RECENT_SEARCH` | 搜索最近 7 天推文 | `query`, `max_results` (min 10) |
-| `TWITTER_USER_LOOKUP_ME` | 获取自己的资料 | (无参数) |
-| `TWITTER_USER_LOOKUP_BY_USERNAME` | 查用户资料 | `username` |
+| `TWITTER_CREATION_OF_A_POST` | Create post | `text` (required), `media_media_ids`, `reply_in_reply_to_tweet_id` |
+| `TWITTER_POST_DELETE_BY_POST_ID` | Delete post | `id` |
+| `TWITTER_POST_LOOKUP_BY_POST_ID` | Get single tweet | `id`, `tweet_fields` |
+| `TWITTER_RECENT_SEARCH` | Search last 7 days | `query`, `max_results` (min 10) |
+| `TWITTER_USER_LOOKUP_ME` | Get own profile | (no params) |
+| `TWITTER_USER_LOOKUP_BY_USERNAME` | Get user profile | `username` |
 
-**Twitter 使用示例：**
+**Twitter Usage Examples:**
 
 ```bash
-# 发推文
+# Post tweet
 curl -s -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "TWITTER_CREATION_OF_A_POST", "arguments": {"text": "Hello from Composio!"}}'
 
-# 删推文
+# Delete tweet
 curl -s -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "TWITTER_POST_DELETE_BY_POST_ID", "arguments": {"id": "2039756730192601584"}}'
 ```
 
-**Twitter 响应结构：** 发推/查推返回 `data.data.data` (三层嵌套)，内含 `id`, `text`, `edit_history_tweet_ids`。
+**Twitter Response Structure:** Post/create returns `data.data.data` (3-level nesting), contains `id`, `text`, `edit_history_tweet_ids`.
 
-**⚠️ Twitter 限制与 Fallback：**
-- `TWITTER_RECENT_SEARCH` 只覆盖**最近 7 天**，超过就搜不到
-- `TWITTER_FULL_ARCHIVE_SEARCH` 需要 Twitter API **Pro 权限**，普通 OAuth App 用不了
-- **获取用户历史推文时，优先使用平台 native tool `twitter_user_tweets`**，不受 7 天限制
+**⚠️ Twitter Limitations & Fallback:**
+- `TWITTER_RECENT_SEARCH` only covers **last 7 days**, older tweets won't appear
+- `TWITTER_FULL_ARCHIVE_SEARCH` requires Twitter API **Pro access**, regular OAuth App can't use it
+- **When fetching user tweet history, prefer platform native tool `twitter_user_tweets`**, not limited to 7 days
 
 ### 📅 Google Calendar
 
 | Tool Slug | Purpose | Key Arguments |
 |-----------|---------|---------------|
-| `GOOGLECALENDAR_EVENTS_LIST` | 查事件 | `calendarId` (default: "primary"), `timeMin`, `timeMax` (RFC3339+tz), `singleEvents` (true), `timeZone` |
-| `GOOGLECALENDAR_CREATE_EVENT` | 创建事件 | `calendarId`, `summary`, `start`, `end`, `description`, `attendees` |
-| `GOOGLECALENDAR_DELETE_EVENT` | 删除事件 | `calendarId`, `eventId` |
+| `GOOGLECALENDAR_EVENTS_LIST` | List events | `calendarId` (default: "primary"), `timeMin`, `timeMax` (RFC3339+tz), `singleEvents` (true), `timeZone` |
+| `GOOGLECALENDAR_CREATE_EVENT` | Create event | `calendarId`, `summary`, `start`, `end`, `description`, `attendees` |
+| `GOOGLECALENDAR_DELETE_EVENT` | Delete event | `calendarId`, `eventId` |
 
-### 其他 App
+### 🐙 GitHub
 
-| App | Tool Slug | Key Arguments |
-|-----|-----------|---------------|
-| GitHub | `GITHUB_CREATE_ISSUE` | `owner`, `repo`, `title`, `body` |
-| Slack | `SLACK_SEND_MESSAGE` | `channel`, `text` |
-| Notion | `NOTION_CREATE_PAGE` | `parent_id`, `title`, `content` |
+| Tool Slug | Purpose | Key Arguments |
+|-----------|---------|---------------|
+| `GITHUB_CREATE_AN_ISSUE` | Create issue | `owner`, `repo`, `title`, `body`, `labels`, `assignees` |
+| `GITHUB_LIST_REPOSITORY_ISSUES` | List issues | `owner`, `repo`, `sort`, `state` (open/closed/all), `page`, `per_page` |
+| `GITHUB_GET_AN_ISSUE` | Get issue detail | `owner`, `repo`, `issue_number` |
+| `GITHUB_CREATE_A_PULL_REQUEST` | Create PR | `owner`, `repo`, `title`, `head`, `base`, `body`, `draft` |
+| `GITHUB_LIST_PULL_REQUESTS` | List PRs | `owner`, `repo`, `state`, `sort`, `head`, `base` |
+| `GITHUB_MERGE_A_PULL_REQUEST` | Merge PR | `owner`, `repo`, `pull_number`, `commit_title`, `sha` |
+| `GITHUB_GET_A_REPOSITORY` | Get repo info | `owner`, `repo` |
+| `GITHUB_SEARCH_CODE` | Search code | `q` (GitHub search syntax), `sort`, `order`, `per_page` |
+| `GITHUB_GET_REPOSITORY_CONTENT` | Get file content | `owner`, `repo`, `path`, `ref` |
+
+```bash
+# Create issue
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GITHUB_CREATE_AN_ISSUE", "arguments": {"owner": "myorg", "repo": "myrepo", "title": "Bug: login fails", "body": "Steps to reproduce..."}}'
+
+# List open issues
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GITHUB_LIST_REPOSITORY_ISSUES", "arguments": {"owner": "myorg", "repo": "myrepo", "state": "open", "per_page": 10}}'
+```
+
+### 📝 Notion
+
+| Tool Slug | Purpose | Key Arguments |
+|-----------|---------|---------------|
+| `NOTION_CREATE_NOTION_PAGE` | Create page | `parent_id`, `title`, `markdown`, `icon`, `cover` |
+| `NOTION_SEARCH_NOTION_PAGE` | Search pages/DBs | `query`, `filter_value` (page/database), `page_size` |
+| `NOTION_QUERY_DATABASE_WITH_FILTER` | Query DB rows | `database_id`, `filter`, `sorts`, `page_size` |
+| `NOTION_INSERT_ROW_DATABASE` | Add DB row | `database_id`, `properties` |
+| `NOTION_UPDATE_ROW_DATABASE` | Update DB row | `row_id`, `properties`, `icon`, `cover` |
+| `NOTION_FETCH_DATABASE` | Get DB schema | `database_id` |
+| `NOTION_FETCH_BLOCK_CONTENTS` | Get page content | `block_id` (= page_id) |
+| `NOTION_ADD_MULTIPLE_PAGE_CONTENT` | Add blocks | `parent_block_id`, `content_blocks`, `after` |
+| `NOTION_UPDATE_PAGE` | Update page props | `page_id`, `properties`, `icon`, `cover`, `archived` |
+| `NOTION_DELETE_BLOCK` | Delete/archive block | `block_id` |
+
+```bash
+# Search pages
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "NOTION_SEARCH_NOTION_PAGE", "arguments": {"query": "Meeting Notes", "page_size": 5}}'
+
+# Query database with filter
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "NOTION_QUERY_DATABASE_WITH_FILTER", "arguments": {"database_id": "abc123", "filter": {"property": "Status", "select": {"equals": "In Progress"}}, "page_size": 10}}'
+```
+
+### 📁 Google Drive
+
+| Tool Slug | Purpose | Key Arguments |
+|-----------|---------|---------------|
+| `GOOGLEDRIVE_CREATE_FILE_FROM_TEXT` | Create file | `file_name`, `text_content`, `mime_type`, `parent_id` |
+| `GOOGLEDRIVE_FIND_FILE` | Search files | `q` (Drive search syntax), `fields`, `spaces` |
+| `GOOGLEDRIVE_DOWNLOAD_FILE` | Download file | `fileId`, `mime_type` |
+| `GOOGLEDRIVE_COPY_FILE` | Copy file | `fileId` |
+| `GOOGLEDRIVE_ADD_FILE_SHARING_PREFERENCE` | Share file | `fileId`, `role`, `type`, `emailAddress` |
+
+```bash
+# Search files by name
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GOOGLEDRIVE_FIND_FILE", "arguments": {"q": "name contains '\''report'\'' and mimeType != '\''application/vnd.google-apps.folder'\''"}}'
+
+# Create text file
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GOOGLEDRIVE_CREATE_FILE_FROM_TEXT", "arguments": {"file_name": "notes.txt", "text_content": "Hello World"}}'
+```
+
+**Google Drive Search Syntax (`q` param):** `name contains 'keyword'`, `mimeType = 'application/vnd.google-apps.folder'` (folders), `'<folderId>' in parents` (files in folder), `modifiedTime > '2026-01-01'`.
+
+### 📄 Google Docs
+
+| Tool Slug | Purpose | Key Arguments |
+|-----------|---------|---------------|
+| `GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN` | Create doc from markdown | `title`, `markdown_text` |
+| `GOOGLEDOCS_GET_DOCUMENT_PLAINTEXT` | Get doc as text | `document_id`, `include_tables`, `include_headers` |
+| `GOOGLEDOCS_GET_DOCUMENT_BY_ID` | Get raw doc object | `id` |
+
+```bash
+# Create doc with markdown content
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN", "arguments": {"title": "Meeting Notes", "markdown_text": "# Q2 Planning\n\n- Item 1\n- Item 2"}}'
+
+# Read doc as plain text
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GOOGLEDOCS_GET_DOCUMENT_PLAINTEXT", "arguments": {"document_id": "1abc...xyz"}}'
+```
+
+### 📊 Google Sheets
+
+| Tool Slug | Purpose | Key Arguments |
+|-----------|---------|---------------|
+| `GOOGLESHEETS_CREATE_GOOGLE_SHEET1` | Create spreadsheet | `title` |
+| `GOOGLESHEETS_GET_SHEET_NAMES` | List sheets in spreadsheet | `spreadsheet_id`, `exclude_hidden` |
+| `GOOGLESHEETS_BATCH_GET` | Read cell values | `spreadsheet_id`, `ranges` (list, A1 notation), `majorDimension`, `valueRenderOption` |
+| `GOOGLESHEETS_UPDATE_VALUES_BATCH` | Write cell values | `spreadsheet_id`, `data` (list of {range, values}), `valueInputOption` |
+| `GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND` | Append rows | `spreadsheetId`, `range`, `values`, `valueInputOption`, `insertDataOption` |
+| `GOOGLESHEETS_SPREADSHEETS_VALUES_BATCH_CLEAR` | Clear ranges | `spreadsheet_id`, `ranges` |
+| `GOOGLESHEETS_GET_SPREADSHEET_INFO` | Get full spreadsheet metadata | `spreadsheet_id` |
+| `GOOGLESHEETS_UPDATE_SHEET_PROPERTIES` | Update sheet props | `spreadsheet_id`, `sheet_id`, `title`, `index` |
+
+```bash
+# Read cells
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GOOGLESHEETS_BATCH_GET", "arguments": {"spreadsheet_id": "1abc...xyz", "ranges": ["Sheet1!A1:D10"]}}'
+
+# Write cells
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GOOGLESHEETS_UPDATE_VALUES_BATCH", "arguments": {"spreadsheet_id": "1abc...xyz", "valueInputOption": "USER_ENTERED", "data": [{"range": "Sheet1!A1:B2", "values": [["Name", "Score"], ["Alice", 95]]}]}}'
+
+# Append rows
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", "arguments": {"spreadsheetId": "1abc...xyz", "range": "Sheet1!A:B", "valueInputOption": "USER_ENTERED", "values": [["Bob", 88], ["Charlie", 92]]}}'
+```
+
+**⚠️ Google Sheets Notes:**
+- `valueInputOption`: `"USER_ENTERED"` (parses formulas/numbers) or `"RAW"` (literal text)
+- `ranges` uses **A1 notation**: `"Sheet1!A1:D10"`, `"Sheet1!A:A"` (entire column)
+- `BATCH_GET` returns `data.data.valueRanges[].values` (2D array)
+- `spreadsheetId` vs `spreadsheet_id`: some tools use camelCase, some snake_case — check schema if unsure
 
 ## Important Notes
 
@@ -277,18 +402,21 @@ curl -s -X POST $GATEWAY/internal/execute \
 - **Arguments key**: always use `"arguments"`, never `"params"` — `params` silently gets ignored
 - **Time parameters**: use RFC3339 with timezone offset (`2026-04-08T00:00:00+08:00`), not UTC unless intended
 - **OAuth tokens are managed by Composio** — auto-refreshed on expiry
-- **响应嵌套**: Composio execute 的响应一般是 `data.data`，但 Twitter 是 `data.data.data`（三层）。解析时注意递归取 data。
-- **Native tool fallback**: 当 Composio 的工具有限制（如 Twitter 搜索只 7 天），优先用平台自带的 native tool（如 `twitter_user_tweets`）
+- **Response nesting**: Composio execute response is usually `data.data`, but Twitter is `data.data.data` (3 levels). Parse by recursively accessing data.
+- **Native tool fallback**: When Composio tools have limitations (e.g., Twitter search only 7 days), prefer platform built-in native tools (e.g., `twitter_user_tweets`)
 
 ## Common Issues
 
-### Gmail 嵌套 JSON 解析
-Gmail 返回的 JSON 结构复杂，包含多层 HTML 内容。**不要**尝试用 `json.loads` 解析嵌套字符串。直接在 Python 中用 dict 访问即可，gateway 已返回 parsed JSON。
+### Gmail Nested JSON Parsing
 
-### Twitter OAuth 权限不足
-如果遇到 `"you must use keys and tokens from a Twitter developer App that is attached to a Project"` 错误，说明该 API endpoint 需要更高权限（如 Pro/Enterprise）。改用替代工具或 native tool。
+Gmail returns complex JSON structure with multiple levels of HTML content. **Do not** try to parse nested strings with `json.loads`. Access directly as dict in Python — gateway already returns parsed JSON.
 
-### execute 返回 "No active connection found"
-Gateway 已修复此问题（使用 REST API v2 + connectedAccountId）。如果仍出现，检查 `/internal/connections` 确认该 toolkit 有 ACTIVE 状态的连接。
+### Twitter OAuth Permission Insufficient
+
+If you encounter `"you must use keys and tokens from a Twitter developer App that is attached to a Project"` error, this API endpoint requires higher permission (Pro/Enterprise). Use alternative tools or native tools.
+
+### Execute Returns "No active connection found"
+
+Gateway has fixed this issue (using REST API v2 + connectedAccountId). If still occurs, check `/internal/connections` to confirm the toolkit has ACTIVE status connection.
 
 ---

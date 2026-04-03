@@ -1,6 +1,6 @@
 ---
 name: composio
-version: 1.1.0
+version: 1.2.0
 description: "Universal tool gateway via Composio — connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration."
 
 metadata:
@@ -410,13 +410,5 @@ curl -s -X POST $GATEWAY/internal/execute \
 ### Gmail Nested JSON Parsing
 
 Gmail returns complex JSON structure with multiple levels of HTML content. **Do not** try to parse nested strings with `json.loads`. Access directly as dict in Python — gateway already returns parsed JSON.
-
-### Twitter OAuth Permission Insufficient
-
-If you encounter `"you must use keys and tokens from a Twitter developer App that is attached to a Project"` error, this API endpoint requires higher permission (Pro/Enterprise). Use alternative tools or native tools.
-
-### Execute Returns "No active connection found"
-
-Gateway has fixed this issue (using REST API v2 + connectedAccountId). If still occurs, check `/internal/connections` to confirm the toolkit has ACTIVE status connection.
 
 ---

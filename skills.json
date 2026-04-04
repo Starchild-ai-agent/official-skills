@@ -29,7 +29,7 @@
       "name": "browser-preview",
       "path": "browser-preview/SKILL.md",
       "version": "1.0.0",
-      "description": "Browser preview panel knowledge — the iframe-based Browser tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, 白屏, 页面挂了, tab 不见了, preview not loading, or asks about running services."
+      "description": "Browser preview panel knowledge \u2014 the iframe-based Browser tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, \u767d\u5c4f, \u9875\u9762\u6302\u4e86, tab \u4e0d\u89c1\u4e86, preview not loading, or asks about running services."
     },
     {
       "name": "charting",
@@ -59,7 +59,7 @@
       "name": "composio",
       "path": "composio/SKILL.md",
       "version": "1.2.0",
-      "description": "Universal tool gateway via Composio — connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration."
+      "description": "Universal tool gateway via Composio \u2014 connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration."
     },
     {
       "name": "creator-insights",
@@ -88,7 +88,7 @@
     {
       "name": "hyperliquid",
       "path": "hyperliquid/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Trade perpetual futures and spot on Hyperliquid DEX"
     },
     {
@@ -119,13 +119,13 @@
       "name": "preview-dev",
       "path": "preview-dev/SKILL.md",
       "version": "1.0.0",
-      "description": "Frontend & fullstack development with live preview. Use when the user wants to build a web page, frontend app, fullstack project, or any web UI — including React, Vue, Vite, static HTML, Express, FastAPI, or any framework that produces a browser-viewable result. Also use when the user wants to deploy, publish, or share a preview to the public internet (community publish)."
+      "description": "Frontend & fullstack development with live preview. Use when the user wants to build a web page, frontend app, fullstack project, or any web UI \u2014 including React, Vue, Vite, static HTML, Express, FastAPI, or any framework that produces a browser-viewable result. Also use when the user wants to deploy, publish, or share a preview to the public internet (community publish)."
     },
     {
       "name": "sc-vpn",
       "path": "sc-vpn/SKILL.md",
       "version": "1.0.0",
-      "description": "Route outbound HTTP traffic through SC-VPN Gateway for geo-restricted access. Use when a script or request is blocked by region restrictions and needs to appear from a specific country. Do NOT set global proxy — use per-request proxy only."
+      "description": "Route outbound HTTP traffic through SC-VPN Gateway for geo-restricted access. Use when a script or request is blocked by region restrictions and needs to appear from a specific country. Do NOT set global proxy \u2014 use per-request proxy only."
     },
     {
       "name": "script-generator",
@@ -155,7 +155,7 @@
       "name": "tg-bot-binding",
       "path": "tg-bot-binding/SKILL.md",
       "version": "1.0.0",
-      "description": "Guide users through the Telegram Bot binding process — creating a bot, adding it to Starchild, verifying ownership, and troubleshooting common issues."
+      "description": "Guide users through the Telegram Bot binding process \u2014 creating a bot, adding it to Starchild, verifying ownership, and troubleshooting common issues."
     },
     {
       "name": "tokenomist",
@@ -167,7 +167,7 @@
       "name": "trading-strategy",
       "path": "trading-strategy/SKILL.md",
       "version": "1.0.0",
-      "description": "Thinking partner for developing trading theses — from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, \"what do you think about\", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill)."
+      "description": "Thinking partner for developing trading theses \u2014 from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, \"what do you think about\", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill)."
     },
     {
       "name": "twelvedata",
@@ -179,7 +179,7 @@
       "name": "twitter",
       "path": "twitter/SKILL.md",
       "version": "1.0.0",
-      "description": "Twitter/X data lookup — search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts."
+      "description": "Twitter/X data lookup \u2014 search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts."
     },
     {
       "name": "wallet",
@@ -191,13 +191,13 @@
       "name": "wallet-policy",
       "path": "wallet-policy/SKILL.md",
       "version": "1.1.0",
-      "description": "Generate Privy wallet policy rules from natural language. Use when the user wants to set up, modify, or review wallet security policies — transfer limits, address allowlists, method restrictions, time windows, etc."
+      "description": "Generate Privy wallet policy rules from natural language. Use when the user wants to set up, modify, or review wallet security policies \u2014 transfer limits, address allowlists, method restrictions, time windows, etc."
     },
     {
       "name": "woofi-swap",
       "path": "woofi-swap/SKILL.md",
       "version": "7.0.0",
-      "description": "Swap any token at the best price with a single API call. One POST to /v1/swap handles everything — best-price quote, approval check, and transaction building — no separate calls needed. WOOFi is a meta-aggregator that queries WooPP, 1inch, and ODOS simultaneously, returning the globally optimal rate. Supports all ERC-20 tokens and native gas tokens (ETH, BNB, AVAX, MATIC, etc.) on 14 EVM chains."
+      "description": "Swap any token at the best price with a single API call. One POST to /v1/swap handles everything \u2014 best-price quote, approval check, and transaction building \u2014 no separate calls needed. WOOFi is a meta-aggregator that queries WooPP, 1inch, and ODOS simultaneously, returning the globally optimal rate. Supports all ERC-20 tokens and native gas tokens (ETH, BNB, AVAX, MATIC, etc.) on 14 EVM chains."
     }
   ]
 }

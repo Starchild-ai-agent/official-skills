@@ -1,6 +1,6 @@
 ---
 name: hyperliquid
-version: 1.0.0
+version: 1.1.0
 description: Trade perpetual futures and spot on Hyperliquid DEX
 tools:
   - hl_account
@@ -326,11 +326,39 @@ When a user asks to trade a ticker, you need to determine whether it's a **nativ
 | Category | Examples |
 |----------|----------|
 | **US Stocks** | `xyz:NVDA`, `xyz:TSLA`, `xyz:AAPL`, `xyz:MSFT`, `xyz:AMZN`, `xyz:GOOG`, `xyz:META`, `xyz:TSM` |
-| **Commodities** | `xyz:GOLD`, `xyz:SILVER` |
+| **Commodities — Metals** | `xyz:GOLD`, `xyz:SILVER`, `xyz:COPPER`, `xyz:PLATINUM`, `xyz:PALLADIUM`, `xyz:ALUMINIUM` |
+| **Commodities — Energy** | `xyz:CL` (WTI), `xyz:BRENTOIL`, `xyz:NATGAS`, `xyz:TTF` (EU Gas) |
+| **Commodities — Agriculture** | `xyz:CORN`, `xyz:WHEAT` |
+| **Commodities — Other** | `xyz:URANIUM` |
 | **Indices** | `xyz:SPY` |
 | **Forex** | `xyz:EUR`, `xyz:GBP`, `xyz:JPY` |
 
 > If a user says "buy NVDA" or "trade GOLD", use `xyz:NVDA` / `xyz:GOLD`. These are real-world assets, not crypto.
+
+### ⚠️ HIP-3 Commodity Price Lookup
+
+**All 13 commodity markets are HIP-3 builder-deployed perps.** Their symbols use the `xyz:` prefix (e.g. `xyz:GOLD`, `xyz:CL`), NOT standard formats like XAU, XAG, or WTI.
+
+**Full commodity list:** GOLD, SILVER, COPPER, PLATINUM, PALLADIUM, ALUMINIUM, CL (WTI crude), BRENTOIL, NATGAS, TTF (EU gas), CORN, WHEAT, URANIUM.
+
+**Key gotcha:** HIP-3 assets are **NOT included in `allMids`** (the standard price feed). This means:
+- `hl_market(coin="xyz:GOLD")` may return **no price** or fail to find the asset
+- `hl_market(dex="xyz")` lists all builder markets but may not include mid prices
+
+**The reliable way to get commodity prices is `hl_candles`:**
+
+```
+# Get latest gold price (use 1h candles, lookback=24 for 24h data)
+hl_candles(coin="xyz:GOLD", interval="1h", lookback=24)
+
+# Get latest copper price
+hl_candles(coin="xyz:COPPER", interval="1h", lookback=24)
+
+# Get latest silver price
+hl_candles(coin="xyz:SILVER", interval="1h", lookback=24)
+```
+
+The `close` field of the most recent candle = current price. The oldest candle's `open` vs latest `close` gives 24h change.
 
 ### Prefixed Name — Same Tools
 
@@ -363,6 +391,27 @@ hl_cancel(coin="xyz:NVDA", order_id=12345678)                 # Cancel order
 ---
 
 ## Common Workflows
+
+### Query Commodity Prices
+
+User: "What's the gold price?" or "Show me commodity prices" or "Oil price?"
+
+**Name → Symbol mapping:**
+- Metals: GOLD→`xyz:GOLD`, SILVER→`xyz:SILVER`, COPPER→`xyz:COPPER`, PLATINUM→`xyz:PLATINUM`, PALLADIUM→`xyz:PALLADIUM`, ALUMINIUM→`xyz:ALUMINIUM`
+- Energy: WTI/Crude Oil→`xyz:CL`, Brent→`xyz:BRENTOIL`, Natural Gas→`xyz:NATGAS`, EU Gas→`xyz:TTF`
+- Agriculture: Corn→`xyz:CORN`, Wheat→`xyz:WHEAT`
+- Other: Uranium→`xyz:URANIUM`
+
+**Steps:**
+1. Map commodity name → HIP-3 symbol using the table above
+2. `hl_candles(coin="xyz:GOLD", interval="1h", lookback=24)` — Get 24h of hourly candles
+3. Current price = last candle's `close`
+4. 24h change = `(last_close - first_open) / first_open * 100`
+5. Repeat for each commodity as needed
+
+**Do NOT use `hl_market()` for commodities** — HIP-3 assets are not in `allMids`. Always use `hl_candles`.
+
+**Liquidity note:** CL (WTI) and BRENTOIL have the highest volume. ALUMINIUM, URANIUM, CORN, WHEAT, TTF may have zero or very low liquidity — warn the user before trading these.
 
 ### Trade Crypto Perps (BTC, ETH, SOL, etc.)
 

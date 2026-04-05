@@ -146,6 +146,14 @@ Use slash format (`BASE/QUOTE`). **Always use slash notation** — compact forms
 - `open`, `high`, `low`, `close` - OHLC
 - `volume` - Trading volume
 
+## Commodities
+
+Supported symbols (verified):
+- **Precious metals:** `XAU/USD` (gold), `XAG/USD` (silver), `XPT/USD` (platinum), `XPD/USD` (palladium)
+- **Energy:** `WTI/USD` (crude oil), `NG/USD` (natural gas)
+
+Use `twelvedata_search` to discover others. All standard tools work with these symbols.
+
 ## Important Notes
 
 - **API Key**: Requires TWELVEDATA_API_KEY environment variable (Pro subscription)

@@ -28,6 +28,15 @@ disable-model-invocation: false
 
 Read-only access to Twitter/X via twitterapi.io. Use these tools to look up tweets, users, followers, and social activity.
 
+## ⚡ FAST PATHS (act immediately, no clarification needed)
+
+| Trigger keywords | Action |
+|-----------------|--------|
+| crypto sentiment / 情绪扫描 / market mood / BTC ETH SOL 讨论 | Call `twitter_search_tweets` once per coin: `"$BTC"`, `"$ETH"`, `"$SOL"` — summarize tone, **no user profile lookups** |
+| search tweets about X | Call `twitter_search_tweets` with the topic |
+| who is @username | Call `twitter_user_info` |
+| what did @username post | Call `twitter_user_tweets` |
+
 ## Tool Decision Tree
 
 **"Search for tweets about a topic"** → `twitter_search_tweets`
@@ -57,6 +66,10 @@ Users who retweeted a specific tweet.
 **"Find accounts related to a topic"** → `twitter_search_users`
 Search users by name or keyword.
 
+**"Crypto sentiment scan / 情绪扫描 / market mood"** → `twitter_search_tweets` (call once per coin)
+For BTC/ETH/SOL sentiment: search `"$BTC"`, `"$ETH"`, `"$SOL"` separately, then summarize tone inline.
+⛔ NEVER call `twitter_user_info`, `twitter_user_followers`, or `twitter_user_tweets` during a sentiment scan — text analysis only.
+
 ## Available Tools
 
 | Tool | Description | Key Params |
@@ -73,6 +86,11 @@ Search users by name or keyword.
 
 ## Usage Patterns
 
+### ⚠️ Token Budget Rules
+- Sentiment scan: max **3 `twitter_search_tweets` calls** (one per coin), then summarize. Stop.
+- Account research: max **2 tool calls total** unless user asks for more depth.
+- Never chain more than 5 Twitter tool calls in one response.
+
 ### Research an account
 1. `twitter_user_info` — get profile, follower count, bio
 2. `twitter_user_tweets` — see what they've been posting
@@ -81,7 +99,14 @@ Search users by name or keyword.
 ### Track a topic or token
 1. `twitter_search_tweets` with query like `"$SOL min_faves:50"` — find popular tweets
 2. `twitter_search_users` with the topic — find relevant accounts
-3. Follow up with `twitter_user_info` on interesting accounts
+
+## Output Constraints (IMPORTANT for small models)
+
+- **Max 1 `twitter_search_tweets` call per coin/topic** — do not repeat searches for same query.
+- **Max 3 `twitter_user_info` calls per response** — profile lookups are expensive; only look up the most relevant accounts.
+- **Never call `bash` or `write_file` for Twitter data** — summarize results inline in your reply.
+- **Sentiment summaries**: after fetching tweets, write a short inline summary (3–5 sentences). Do not produce files or run scripts.
+- **Pagination**: only fetch next page if user explicitly asks for more results.with `twitter_user_info` on interesting accounts
 
 ### Analyze engagement on a tweet
 1. `twitter_get_tweets` — get the tweet and its metrics

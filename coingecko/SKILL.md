@@ -1,6 +1,6 @@
 ---
 name: coingecko
-version: 1.0.0
+version: 1.0.1
 description: CoinGecko crypto price data, charts, market discovery, and global stats
 tools:
   - coin_price
@@ -45,86 +45,107 @@ user-invocable: false
 disable-model-invocation: false
 ---
 
-# CoinGecko
+# CoinGecko Skill
 
-CoinGecko provides comprehensive crypto market data including spot prices, OHLC candles, market cap, trending coins, sector performance, and global stats.
+## 🚫 CRITICAL: STOP — READ THIS BEFORE CALLING ANY TOOL
 
-## When to Use CoinGecko
+**The #1 error is calling Coinglass tools instead of CoinGecko tools.** They have similar names but are COMPLETELY DIFFERENT systems.
 
-Use CoinGecko for:
-- **Price queries** - Current prices, historical prices, OHLC data
-- **Market overview** - Market cap, volume, trending coins, top gainers/losers
-- **Coin information** - Detailed coin data, tickers, trading pairs
-- **Exchange data** - Exchange listings, volumes, trading pairs
-- **NFT data** - NFT collections, floor prices, market stats
-- **Global metrics** - Total market cap, dominance, DeFi stats
-- **Categories** - Sector performance (DeFi, Gaming, Layer 1, etc.)
+### WRONG → RIGHT Tool Substitution Table
 
-## Common Workflows
+| ❌ NEVER call this | ✅ Call this instead | How to tell them apart |
+|---|---|---|
+| `cg_coins_market_data` | **`cg_coins_markets`** | market_data=Coinglass derivatives. markets=CoinGecko spot. |
+| `cg_ohlc_history` | **`coin_ohlc`** | ohlc_history=Coinglass futures candles. coin_ohlc=CoinGecko spot candles. |
+| `cg_pair_market_data` | **`cg_coin_tickers`** | pair_market_data=Coinglass futures pair. coin_tickers=CoinGecko spot pairs. |
+| `cg_supported_exchanges` | **`cg_exchanges`** | supported_exchanges=Coinglass futures. exchanges=CoinGecko spot. |
+| `cg_taker_exchanges` | **`cg_exchange`** | taker=Coinglass volume. exchange=CoinGecko exchange info. |
+| `cg_aggregated_taker_volume` | **`cg_coin_tickers`** | taker_volume=Coinglass. coin_tickers=CoinGecko volume across exchanges. |
+| `defillama_chains` | **`cg_global_defi`** | For DeFi stats from CoinGecko, use cg_global_defi(). |
 
-### Get Coin Price
+### Also FORBIDDEN:
+- ❌ `web_search` / `web_fetch` — ALL data is available via native CoinGecko tools above. NEVER use web_search for crypto market data.
+- ❌ `bash` for data processing — CoinGecko tools return clean data. No bash needed.
+- ❌ **NEVER answer with training data** — all prices, rankings, OHLC are stale. CALL THE TOOL.
+
+## ⚠️ MANDATORY TOOL CALLS — You MUST call a tool before answering these
+
+| Request type | You MUST call | Why |
+|---|---|---|
+| K线 / OHLC / candlestick / open high low close | `coin_ohlc(coin_id, days)` | Price data is real-time; training data is stale |
+| 走势图 / price chart / 价格趋势 | `coin_chart(coin_id, days)` | Same reason |
+| 当前价格 / price right now | `coin_price(coin_ids)` | Training data has no live prices |
+
+**DO NOT return any numeric market data (prices, OHLC values, percentages) without calling a tool first.**
+
+## ⚡ Question → Tool Map (match first keyword, call immediately)
+
+| Question keyword | Tool to call | Example |
+|---|---|---|
+| 价格 / price / 多少钱 (single coin) | `coin_price(coin_id)` | `coin_price(coin_ids="bitcoin")` |
+| K线 / OHLC / candlestick / 蜡烛图 | `coin_ohlc(coin_id, days)` | `coin_ohlc(coin_id="ethereum", days=7)` |
+| 走势 / trend / price chart / 价格历史 | `coin_chart(coin_id, days)` | `coin_chart(coin_id="solana", days=30)` |
+| 热门 / trending / 趋势币 | `cg_trending()` | `cg_trending()` |
+| 涨幅最大 / 跌幅最大 / gainers / losers | `cg_top_gainers_losers()` | `cg_top_gainers_losers()` |
+| 新币 / 新上线 / new coins / recently added | `cg_new_coins()` | `cg_new_coins()` |
+| 总市值 / BTC市占率 / global / 晨报 / 市场概况 | `cg_global()` | `cg_global()` |
+| DeFi总市值 / DeFi TVL / DeFi dominance | `cg_global_defi()` | `cg_global_defi()` |
+| 板块 / sector / category / L1 / L2 / Meme / AI coins | `cg_categories()` | `cg_categories()` |
+| 板块内个币 / Meme前10 / AI币排名 / DeFi币排名 | `cg_coins_markets(category=X)` | `cg_coins_markets(category="meme-token", per_page=10)` |
+| 市值排名 / top 10 / ranking / 前10币 | `cg_coins_markets(per_page=N)` | `cg_coins_markets(per_page=10)` |
+| ATH / 历史最高 / 社区 / dev / 研究 / fundamentals | `cg_coin_data(coin_id)` | `cg_coin_data(coin_id="solana", community_data=True)` |
+| 对比两个币 / compare / XX vs YY | `cg_coin_data()` × 2 | call once per coin |
+| NFT排名 / NFT市场 / floor price / top NFTs | `cg_nfts_list()` | `cg_nfts_list()` |
+| 某个NFT (BAYC/Punks/Azuki) | `cg_nft(nft_id)` | `cg_nft(nft_id="bored-ape-yacht-club")` |
+| 交易所详情 / Binance详情 / exchange data | `cg_exchange(exchange_id)` | `cg_exchange(exchange_id="binance")` |
+| 交易所列表 / exchange ranking | `cg_exchanges()` | `cg_exchanges()` |
+| 交易对 / trading pairs / 流动性分布 | `cg_coin_tickers(coin_id)` | `cg_coin_tickers(coin_id="bitcoin")` |
+| 交易所交易量趋势 / volume chart | `cg_exchange_volume_chart(exchange_id)` | `cg_exchange_volume_chart(exchange_id="binance", days=30)` |
+| 合约地址价格 / token price on-chain | `cg_token_price(platform, contract)` | `cg_token_price(platform="ethereum", contract_addresses="0xa0b...")` |
+| 搜索币 / 找币 / coin lookup / search | `cg_search(query)` | `cg_search(query="pepe")` |
+| 永续合约交易所 / derivatives exchange / OI排名 | `cg_derivatives_exchanges()` | `cg_derivatives_exchanges()` |
+| 合约ticker / perpetual / funding / basis | `cg_derivatives()` | `cg_derivatives()` |
+| 交易所对比 + 永续交易所 | `cg_exchanges()` + `cg_derivatives_exchanges()` | both calls |
+
+## 🌳 Decision Tree
+
 ```
-coin_price(coin_id="bitcoin")  # Supports symbols like BTC, ETH, SOL
-coin_price(coin_id="ethereum", vs_currencies="usd,eur")
+How many coins?
+├─ ONE coin
+│   ├─ Just price? → coin_price()
+│   ├─ ATH/community/dev/deep? → cg_coin_data()
+│   ├─ OHLC candles? → coin_ohlc()
+│   ├─ Price trend? → coin_chart()
+│   └─ Unknown ID? → cg_search() first
+├─ MULTIPLE coins / ranking
+│   ├─ Sector aggregate (板块总市值)? → cg_categories()
+│   ├─ Sector individual (Meme前10)? → cg_coins_markets(category=X)
+│   └─ General ranking? → cg_coins_markets(per_page=N)
+├─ NFTs → cg_nfts_list() or cg_nft(nft_id)
+├─ Exchange → cg_exchange(id) or cg_exchanges()
+├─ Global → cg_global() or cg_global_defi()
+└─ Token by contract → cg_token_price()
 ```
 
-### Historical Data
-```
-coin_ohlc(coin_id="bitcoin", vs_currency="usd", days=7)  # OHLC candles
-coin_chart(coin_id="ethereum", vs_currency="usd", days=30)  # Price chart data
-```
+## Common Category IDs
 
-### Market Discovery
-```
-cg_trending()  # Trending coins in the last 24h
-cg_top_gainers_losers()  # Top movers
-cg_new_coins()  # Recently listed coins
-cg_coins_markets(vs_currency="usd", order="market_cap_desc", per_page=100)
-```
+`meme-token`, `artificial-intelligence`, `layer-1`, `layer-2`, `decentralized-finance-defi`, `gaming`, `real-world-assets-rwa`
 
-### Coin Information
-```
-cg_coin_data(id="bitcoin")  # Detailed coin data
-cg_coin_tickers(id="ethereum")  # All trading pairs
-cg_search(query="solana")  # Search for coins
-```
+## Output Formatting
 
-### Exchange Data
-```
-cg_exchanges()  # All exchanges
-cg_exchange(id="binance")  # Specific exchange
-cg_exchange_tickers(id="binance")  # Exchange trading pairs
-cg_exchange_volume_chart(id="binance", days=7)
-```
-
-### Global Metrics
-```
-cg_global()  # Total market stats
-cg_global_defi()  # DeFi specific stats
-cg_categories()  # Sector performance
-```
-
-### Contract Address Queries
-```
-cg_token_price(contract_addresses=["0x..."], vs_currencies="usd")
-cg_coin_by_contract(contract_address="0x...", platform="ethereum")
-```
+- Prices: always use `$` sign → `$66,697`
+- Percentages: always use `%` → `+4.2%`
+- NFT floor in ETH: show USD too → `5.17 ETH ($10,534)`
 
 ## Important Notes
 
-- **Coin IDs**: CoinGecko uses slug IDs (e.g., "bitcoin", "ethereum", "solana"). The tools auto-resolve common symbols like BTC, ETH, SOL.
-- **API Key**: Requires COINGECKO_API_KEY environment variable (Pro API)
-- **Rate Limits**: Be mindful of API rate limits. Use batch endpoints when querying multiple coins.
-- **vs_currencies**: Most endpoints support multiple currencies (usd, eur, btc, eth, etc.). Use `cg_vs_currencies()` to see all supported currencies.
+- CoinGecko uses slug IDs: "bitcoin", "ethereum", "solana". Symbols (BTC, ETH, SOL) auto-resolve.
+- If unsure about a coin ID → `cg_search(query="coin name")` first.
+- Most questions need only 1-2 tool calls. Do NOT chain 3+ calls.
 
-## Symbol Resolution
+## Common Issues
 
-Common symbols are automatically resolved:
-- BTC → bitcoin
-- ETH → ethereum
-- SOL → solana
-- USDT → tether
-- USDC → usd-coin
-- BNB → binancecoin
+### coin_price failed with invalid ID
+**Solution:** Use `cg_search(query="coin name")` to find the correct CoinGecko ID first, or use the symbol directly (e.g., 'COMP').
 
-**Important:** If unsure about a coin ID, always use `cg_search(query="coin name")` first to find the exact CoinGecko ID before calling price tools.
+---

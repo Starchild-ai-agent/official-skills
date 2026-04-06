@@ -76,39 +76,113 @@ activate_task(job_id)
 
 ### Data Integrity for Tasks with LLM Analysis
 
-When a task script calls `/chat` for LLM analysis, the script MUST:
-1. Fetch all data FIRST (pure Python / requests)
-2. Format data as a structured block in the prompt
-3. Explicitly instruct LLM: "Use ONLY the data provided below. Do NOT use your own knowledge for any numbers."
-4. After getting LLM response: spot-check that key numbers in the response match the injected data
+**Core principle: Script owns the numbers, LLM owns the words.**
+
+The script fetches data, the LLM analyzes/formats text. Numbers in the final output must come from script variables, NOT from LLM output. This eliminates hallucinated data entirely.
+
+**The template pattern (recommended):**
 
 ```python
-# ✅ CORRECT: data fetched by script, injected into prompt
-prices = fetch_prices()  # Script fetches real data
-prompt = f"""Analyze these verified prices:
+# ✅ BEST: Script builds the output, LLM only provides analysis text
+prices = fetch_prices()
+
+# Ask LLM for qualitative analysis only — no numbers in its output
+analysis = llm_call(f"""Given these facts:
+- WTI crude is at ${prices['wti']:.2f}, changed {prices['wti_change']:+.1f}% today
+- Brent crude is at ${prices['brent']:.2f}, changed {prices['brent_change']:+.1f}% today
+Write a 2-sentence market analysis. Do NOT repeat the exact prices — I will insert them myself.""")
+
+# Script assembles final output — numbers from variables, words from LLM
+output = f"""🛢️ Oil Market Update
 WTI: ${prices['wti']:.2f} ({prices['wti_change']:+.1f}%)
 Brent: ${prices['brent']:.2f} ({prices['brent_change']:+.1f}%)
 
-Rules:
-- Use ONLY the prices above. Do NOT estimate or recall prices from memory.
-- Your analysis must reference the exact numbers provided.
-"""
-response = call_agent(prompt)
+{analysis}"""
+print(output)
+```
 
-# Post-check: verify LLM didn't hallucinate different numbers
-if f"${prices['wti']:.2f}" not in response:
-    print(f"[WARNING] LLM output may have wrong WTI price", file=sys.stderr)
+**Why this works:** Even if the LLM hallucinates, the numbers the user sees (`${prices['wti']:.2f}`) come directly from the API response variable, not from LLM text. The LLM output is sandwiched between script-controlled data.
+
+**Fallback — when LLM must reference numbers:**
+
+If the analysis inherently needs to mention numbers (e.g. "WTI is above Brent by $X"), use post-validation:
+
+```python
+# ✅ OK: LLM references numbers, but script validates afterward
+analysis = llm_call(f"""Analyze these prices:
+WTI: ${prices['wti']:.2f} | Brent: ${prices['brent']:.2f}
+Use ONLY these exact numbers. Do NOT round or estimate.""")
+
+# Post-check: verify key numbers survive
+for key, val in [("WTI", prices['wti']), ("Brent", prices['brent'])]:
+    if f"{val:.2f}" not in analysis:
+        analysis = analysis.replace(f"${val:.0f}", f"${val:.2f}")  # fix rounding
+        print(f"[WARNING] LLM may have altered {key} price", file=sys.stderr)
 ```
 
 ```python
 # ❌ WRONG: asking LLM to fetch/know prices
 prompt = "What's the current WTI oil price and analyze its trend?"
 # LLM will hallucinate a number — guaranteed
+
+# ❌ WRONG: trusting LLM output for the final number display
+response = call_agent("Summarize BTC price and trends")
+print(response)  # Numbers in here are unverified — user sees hallucinated data
 ```
 
-### Localhost /chat/stream Call Pattern
+### LLM Integration: Two Options
 
-For task scripts that need LLM analysis:
+Pick the right weight class for the LLM task:
+
+| Need | Use | Cost |
+|------|-----|------|
+| Simple summarize/translate/format text | **OpenRouter** (lightweight, direct API call) | ~$0.10-0.30/M tokens |
+| Complex analysis needing agent tools | **localhost /chat/stream** (full agent with tools) | heavier, tool calls |
+
+**Rule of thumb:** If the task just needs "read this text, produce that text" → OpenRouter. If it needs to call tools, search the web, or use agent capabilities → /chat/stream.
+
+#### Option 1: OpenRouter via sc-proxy (lightweight LLM)
+
+For simple text tasks (summarize news, translate, format reports). Uses sc-proxy, no auth needed.
+
+```python
+import os, base64, tempfile, requests, json
+
+def setup_proxy():
+    """One-time proxy setup. Call once at script start."""
+    ca_pem = base64.b64decode(os.environ["STARCHILD_API_PROXY_CA_BASE64"])
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".crt") as f:
+        f.write(ca_pem)
+        ca_path = f.name
+    proxy_url = f"http://[{os.environ['STARCHILD_API_PROXY_HOST']}]:{os.environ['STARCHILD_API_PROXY_PORT']}"
+    return {"http": proxy_url, "https": proxy_url}, ca_path
+
+PROXIES, CA_BUNDLE = setup_proxy()
+
+def llm_call(prompt, model="google/gemini-2.5-flash-lite", max_tokens=1000):
+    """Lightweight LLM call via OpenRouter. No agent tools, just text in → text out."""
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        proxies=PROXIES, verify=CA_BUNDLE, timeout=30,
+        headers={"Content-Type": "application/json"},
+        json={"model": model, "messages": [{"role": "user", "content": prompt}], "max_tokens": max_tokens},
+    )
+    data = resp.json()
+    if "choices" not in data:
+        raise RuntimeError(f"OpenRouter error: {data}")
+    return data["choices"][0]["message"]["content"]
+```
+
+**Model selection for OpenRouter:**
+- **Cheapest** (summaries, formatting): `google/gemini-2.5-flash-lite` ($0.10/M)
+- **Balanced** (analysis, longer text): `google/gemini-2.5-flash` ($0.30/M)
+- **Quality** (nuanced writing): `anthropic/claude-sonnet-4` (~$3/M)
+- Browse all models: `GET https://openrouter.ai/api/v1/models` (filter by pricing)
+
+#### Option 2: localhost /chat/stream (full agent)
+
+For tasks that need agent capabilities (tool calls, web search, memory, complex reasoning):
+
 ```python
 import requests, json, sys, os
 

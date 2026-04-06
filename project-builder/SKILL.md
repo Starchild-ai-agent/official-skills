@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.1.0
+version: 1.2.0
 description: "End-to-end project engineering — from understanding user intent to architecture design, incremental build with verification, and systematic debugging. Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any software the user wants built. Replaces coder + preview-dev with a unified methodology."
 tags: [engineering, development, tasks, dashboards, preview, debugging]
 tools: [read_file, write_file, edit_file, bash, preview_serve, preview_stop, preview_check, community_publish, community_unpublish, community_list, register_task, activate_task, cancel_scheduled_task, update_scheduled_task, list_scheduled_tasks, get_scheduled_task_log]
@@ -68,7 +68,7 @@ Before designing, **read `config/context/references/sc-proxy.md`** for pricing t
 - Dashboard auto-refresh costs credits — default to manual refresh unless user asks otherwise
 
 **Data reliability:** Native tools > proxied APIs > direct requests > web scraping > LLM numbers (never).
-**Iron rule: Scripts fetch data. LLMs only analyze pre-fetched data.**
+**Iron rule: Scripts fetch data. LLMs analyze text. Final output = script variables + LLM prose.**
 
 ---
 
@@ -85,7 +85,7 @@ Build one small piece → Run it → Verify output → ✅ Next piece / ❌ Fix 
 | API endpoint | `curl localhost:{port}/api/...` | Correct JSON |
 | HTML page | `preview_serve` + `preview_check` | `ok = true` |
 | Task script | `python3 tasks/{id}/run.py` | Numbers match source |
-| LLM analysis | Compare output numbers vs input | All traceable to source |
+| LLM analysis | Numbers from script vars, not LLM text | Template pattern used |
 
 **Verification layering:**
 - **Critical** (must pass before preview/activate): data correctness, core logic, no crashes
@@ -115,7 +115,11 @@ Build one small piece → Run it → Verify output → ✅ Next piece / ❌ Fix 
 - Preview serving & publishing → read platform reference `config/context/references/preview-guide.md`
 - localhost APIs → read `config/context/references/localhost-api.md`
   - Task scripts decide WHEN to invoke the agent, WHAT data/context to pass, WHICH model to use
-  - Pattern: script fetches data → evaluates if noteworthy → calls /chat/stream only when needed → prints result
+  - Pattern: script fetches data → evaluates if noteworthy → calls LLM only when needed → prints result
+- **LLM in scripts — two options** (details in `references/build-patterns.md`):
+  - **OpenRouter** (via sc-proxy): lightweight, for summarize/translate/format text. Direct API call, no agent overhead.
+  - **localhost /chat/stream**: full agent with tools. Use only when LLM needs tool access.
+- **Data template rule**: Script owns the numbers, LLM owns the words. Final output assembles data from script variables + analysis from LLM. Never let LLM output be the sole source of numbers the user sees.
 - API costs & rate limits → read platform reference `config/context/references/sc-proxy.md`
 
 ---

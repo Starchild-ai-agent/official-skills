@@ -1,7 +1,7 @@
 ---
 name: twelvedata
-version: 1.1.0
-description: Stocks and forex price data, time series, quotes, and reference data
+version: 1.2.0
+description: "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
 tools:
   - twelvedata_time_series
   - twelvedata_price
@@ -28,174 +28,131 @@ disable-model-invocation: false
 
 # Twelve Data
 
-Twelve Data provides stocks and forex market data including real-time quotes, historical time series, and reference data. Use for traditional markets (stocks, forex) instead of crypto.
+Stocks, forex, and commodities price data. **Traditional markets only — not for crypto.**
 
-## When to Use Twelve Data
+## Keyword → Tool Lookup
 
-Use Twelve Data for:
-- **Stock prices** - Real-time and historical stock quotes
-- **Forex prices** - Currency pair quotes and time series
-- **Time series data** - OHLCV historical data
-- **Reference data** - Stock lists, forex pairs, exchanges
-- **Search** - Find stock symbols and company names
+| User asks about | Tool | NOT this |
+|----------------|------|----------|
+| "AAPL 股价", "current price" (single) | `twelvedata_quote` | Not `twelvedata_price` (less detail) |
+| "just the price number" | `twelvedata_price` | — |
+| "多只股票对比" (2+ symbols) | `twelvedata_quote_batch` | Not multiple `twelvedata_quote` calls |
+| "K线", "历史数据", "time series" | `twelvedata_time_series` | — |
+| "收盘价" | `twelvedata_eod` | — |
+| "找股票代码" | `twelvedata_search` | — |
+| "NASDAQ 有哪些股票" | `twelvedata_stocks` | — |
+| "汇率", "EUR/USD" | `twelvedata_quote(symbol="EUR/USD")` | — |
+| "外汇对列表" | `twelvedata_forex_pairs` | — |
+| "金价", "oil price" | `twelvedata_quote(symbol="XAU/USD")` | Not CoinGecko |
+| "BTC price", any crypto | **CoinGecko** `coin_price` | ❌ Never twelvedata for crypto |
 
-**Important**: Use Twelve Data for stocks and forex only. For crypto, use CoinGecko.
+## TwelveData vs CoinGecko — Boundary
 
-## Common Workflows
+| Asset class | Use | Why |
+|-------------|-----|-----|
+| Stocks (AAPL, TSLA) | **TwelveData** | CoinGecko has no stocks |
+| Forex (EUR/USD) | **TwelveData** | CoinGecko has no forex |
+| Commodities (gold, oil) | **TwelveData** | CoinGecko has no commodities |
+| Crypto (BTC, ETH, SOL) | **CoinGecko** | TwelveData crypto data is limited/unreliable |
 
-### Get Stock Price
+## MISTAKES — Read Before Calling
+
+### ❌ MISTAKE 1: Using TwelveData for crypto
 ```
-twelvedata_quote(symbol="AAPL")  # Apple real-time quote
-twelvedata_price(symbol="MSFT")  # Microsoft current price
-twelvedata_quote(symbol="TSLA")  # Tesla quote with full details
+User: "BTC 价格"
+❌ WRONG: twelvedata_quote(symbol="BTC/USD")
+✅ RIGHT: coin_price(ids="bitcoin")  ← CoinGecko
 ```
 
-### Get Pre/Post-Market Data (US/Cboe Europe, Pro+)
+### ❌ MISTAKE 2: Calling quote individually for multiple stocks
+```
+User: "AAPL MSFT GOOGL 现在什么价"
+❌ WRONG: twelvedata_quote("AAPL"), twelvedata_quote("MSFT"), twelvedata_quote("GOOGL")  ← 3 calls
+✅ RIGHT: twelvedata_quote_batch(symbols=["AAPL", "MSFT", "GOOGL"])  ← 1 call, up to 120 symbols
+```
+
+### ❌ MISTAKE 3: Forex without slash
+```
+❌ WRONG: twelvedata_quote(symbol="EURUSD")
+✅ RIGHT: twelvedata_quote(symbol="EUR/USD")  ← always slash format
+```
+Also: `USD/CNH` not `USDCNH`, `GBP/JPY` not `GBPJPY`.
+
+### ❌ MISTAKE 4: Expecting bid/ask from quote
+```
+❌ WRONG: "EUR/USD bid: 1.0850, ask: 1.0852"  ← quote only returns close
+✅ RIGHT: "EUR/USD current price: 1.0851 (close/last price — bid/ask spread not available)"
+```
+
+### ❌ MISTAKE 5: Wrong interval format
+```
+❌ WRONG: twelvedata_time_series(interval="1D")  ← uppercase
+✅ RIGHT: twelvedata_time_series(interval="1day")
+```
+Valid: `1min`, `5min`, `15min`, `30min`, `1h`, `2h`, `4h`, `8h`, `1day`, `1week`, `1month`
+
+### ❌ MISTAKE 6: Using full output when compact suffices
+```
+User: "AAPL 最近走势"
+❌ WRONG: twelvedata_time_series(symbol="AAPL", interval="1day", outputsize="full")  ← 5000 candles
+✅ RIGHT: twelvedata_time_series(symbol="AAPL", interval="1day", outputsize="compact")  ← 30 candles
+```
+Use `full` only when user explicitly needs deep history.
+
+## Symbol Reference
+
+### Commodities (verified)
+
+| Asset | Symbol |
+|-------|--------|
+| Gold | `XAU/USD` |
+| Silver | `XAG/USD` |
+| Platinum | `XPT/USD` |
+| Palladium | `XPD/USD` |
+| Crude Oil (WTI) | `WTI/USD` |
+| Natural Gas | `NG/USD` |
+
+### Popular Forex Pairs
+
+| Pair | Symbol |
+|------|--------|
+| Euro / USD | `EUR/USD` |
+| GBP / USD | `GBP/USD` |
+| USD / JPY | `USD/JPY` |
+| USD / CNH | `USD/CNH` |
+
+Use `twelvedata_search` to discover others.
+
+## Pre/Post-Market Data
+
 ```
 twelvedata_quote(symbol="AAPL", prepost=true)
-twelvedata_price(symbol="AAPL", prepost=true)
 twelvedata_time_series(symbol="AAPL", interval="1min", prepost=true)
 ```
-When available, response may include fields such as `premarket_change`, `premarket_change_percent`, `postmarket_change`, and `postmarket_change_percent`.
-
-### Get Forex Price
-```
-twelvedata_quote(symbol="EUR/USD")  # Euro to USD — returns close price (not bid/ask)
-twelvedata_quote(symbol="GBP/JPY")  # British Pound to Japanese Yen
-```
-
-> **Note on bid/ask**: The `quote` endpoint returns `close` as the current price. There is no separate `bid`/`ask` field. When users ask for bid/ask, report the `close` price as the mid/last price and clarify that bid/ask spread is not available from this endpoint.
-
-### Historical Data
-```
-twelvedata_time_series(symbol="AAPL", interval="1day", outputsize="compact")  # Last 30 days
-twelvedata_time_series(symbol="MSFT", interval="1h", outputsize="full")  # 5000 hourly candles
-twelvedata_eod(symbol="GOOGL")  # End of day price
-```
-
-### Batch Queries (Efficient)
-```
-twelvedata_quote_batch(symbols=["AAPL", "MSFT", "GOOGL", "TSLA"])  # Up to 120 symbols
-twelvedata_price_batch(symbols=["AAPL", "MSFT"])  # Just prices
-twelvedata_quote_batch(symbols=["AAPL", "MSFT"], prepost=true)  # Include pre/post-market when available
-```
-
-### Search for Symbols
-```
-twelvedata_search(query="Apple")  # Find AAPL
-twelvedata_search(query="Microsoft")  # Find MSFT
-twelvedata_search(query="EUR")  # Find EUR forex pairs
-```
-
-### Reference Data
-```
-twelvedata_stocks(exchange="NASDAQ")  # All NASDAQ stocks
-twelvedata_forex_pairs()  # All forex pairs
-twelvedata_exchanges(type="stock")  # All stock exchanges
-```
-
-## Symbol Format
-
-### Stocks
-Use standard ticker symbols:
-- `AAPL` - Apple
-- `MSFT` - Microsoft
-- `TSLA` - Tesla
-- `GOOGL` - Google
-- `AMZN` - Amazon
-
-### Forex Pairs
-Use slash format (`BASE/QUOTE`). **Always use slash notation** — compact forms like `EURUSD` or `USDCNH` are invalid.
-- `EUR/USD` - Euro to US Dollar
-- `GBP/JPY` - British Pound to Japanese Yen
-- `USD/CHF` - US Dollar to Swiss Franc
-- `USD/CNH` - US Dollar to Chinese Yuan Offshore (use `USD/CNH`, **not** `USDCNH`)
-
-## Intervals
-
-### Intraday
-- `1min`, `5min`, `15min`, `30min`
-- `1h`, `2h`, `4h`, `8h`
-
-### Daily and Above
-- `1day` - Daily candles
-- `1week` - Weekly candles
-- `1month` - Monthly candles
+Returns `premarket_change`, `premarket_change_percent`, `postmarket_change`, `postmarket_change_percent` when available.
 
 ## Output Sizes
 
-- `compact` - Last 30 data points (default, faster)
-- `full` - Up to 5000 data points (for deep analysis)
+- `compact` — Last 30 data points (default, faster). Use for "最近走势".
+- `full` — Up to 5000 data points. Use for deep analysis / charting.
 
-## Response Fields
+## Proxy-Safe Usage
 
-### Quote Response
-- `symbol` - Ticker symbol
-- `name` - Company/pair name
-- `price` - Current price
-- `open`, `high`, `low`, `close` - OHLC data
-- `volume` - Trading volume
-- `change` - Price change
-- `percent_change` - Percentage change
-- `timestamp` - Last update time
-- `premarket_change` / `premarket_change_percent` - Pre-market delta (when prepost=true and available)
-- `postmarket_change` / `postmarket_change_percent` - Post-market delta (when prepost=true and available)
+1. **Agent tool calls**: Always prefer `twelvedata_*` tools (this skill).
+2. **Platform code** (`skills/`, `tools/`): use `core.http_client`.
+3. **Workspace scripts** (`bash`): Do NOT call TwelveData directly. Use skill tools.
 
-### Time Series Response
-- `datetime` - Timestamp
-- `open`, `high`, `low`, `close` - OHLC
-- `volume` - Trading volume
+## Compound Queries
 
-## Commodities
-
-Supported symbols (verified):
-- **Precious metals:** `XAU/USD` (gold), `XAG/USD` (silver), `XPT/USD` (platinum), `XPD/USD` (palladium)
-- **Energy:** `WTI/USD` (crude oil), `NG/USD` (natural gas)
-
-Use `twelvedata_search` to discover others. All standard tools work with these symbols.
-
-## Important Notes
-
-- **API Key**: Requires TWELVEDATA_API_KEY environment variable (Pro subscription)
-- **Crypto**: DO NOT use Twelve Data for crypto. Use CoinGecko instead.
-- **Fundamental data**: Fundamental data tools (income_statement, balance_sheet, etc.) require Grow/Pro+/Ultra/Enterprise tiers and are not included in this skill
-- **Rate limits**: Be mindful of API rate limits. Use batch endpoints for multiple symbols.
-- **Real-time**: Quotes are near real-time (typically 15-minute delay for free tier, real-time for Pro)
-- **Pre/Post market**: Use `prepost=true` on `quote`, `price`, `time_series`, `eod`, `quote_batch`, `price_batch` to request pre/post-market fields when your plan and symbol support it
-
-## Proxy-Safe Usage (Critical)
-
-Use this order to avoid sc-proxy / fake-key failures:
-
-1. **Agent/CLI calls**: always prefer `twelvedata_*` tools (this skill).
-2. **Platform extension code** (inside `skills/*`, `tools/*`, `extensions/*`): use `core.http_client` helpers (already implemented in `tools/client.py` via `get_aiohttp_proxy_kwargs`).
-3. **Workspace standalone scripts (`bash` Python)**: do **not** call Twelve Data directly with fake key unless you explicitly configure `HTTP_PROXY/HTTPS_PROXY` from `PROXY_HOST/PROXY_PORT`.
-
-If you need market data in scripts, call the skill tools instead of re-implementing HTTP auth/proxy logic.
-
-## Workflow Examples
-
-### Stock Analysis
-1. Search for symbol: `twelvedata_search(query="Apple")`
-2. Get current quote: `twelvedata_quote(symbol="AAPL")`
-3. Get historical data: `twelvedata_time_series(symbol="AAPL", interval="1day", outputsize="compact")`
-
-### Forex Analysis
-1. Get forex pair: `twelvedata_quote(symbol="EUR/USD")`
-2. Get historical: `twelvedata_time_series(symbol="EUR/USD", interval="1h", outputsize="compact")`
-
-### Forex Comparison (Multiple Pairs)
-Use batch for efficiency when comparing 2+ forex pairs:
+### Stock Comparison
 ```
-twelvedata_quote_batch(symbols=["EUR/USD", "USD/JPY"])   # Compare two pairs
-twelvedata_quote_batch(symbols=["EUR/USD", "GBP/USD", "AUD/USD"])  # Multi-pair scan
+1. twelvedata_quote_batch(symbols=["AAPL", "MSFT", "GOOGL", "TSLA"])
+2. twelvedata_time_series(symbol="AAPL", interval="1day", outputsize="compact")  ← only for the one user cares most about
 ```
-Report each pair's `close` price and `timestamp`. Note: no bid/ask — use `close` as current mid-price.
 
-### Portfolio Check
-1. Batch quote: `twelvedata_quote_batch(symbols=["AAPL", "MSFT", "GOOGL", "TSLA"])`
-2. Analyze each stock individually if needed
-
-### Market Scan
-1. List all stocks: `twelvedata_stocks(exchange="NASDAQ")`
-2. Filter and analyze specific symbols
+### Macro Dashboard (stocks + forex + commodities)
+```
+1. twelvedata_quote_batch(symbols=["SPY", "QQQ"])          → US indices
+2. twelvedata_quote_batch(symbols=["EUR/USD", "USD/JPY"])   → Forex
+3. twelvedata_quote(symbol="XAU/USD")                       → Gold
+```

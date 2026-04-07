@@ -1,7 +1,7 @@
 ---
 name: lunarcrush
-version: 1.0.1
-description: Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity
+version: 1.1.0
+description: "Social intelligence and sentiment data — Galaxy Score, AltRank, social volume, influencer activity, trending topics"
 tools:
   - lunar_coin
   - lunar_coin_time_series
@@ -24,81 +24,97 @@ disable-model-invocation: false
 
 # LunarCrush
 
-LunarCrush provides social intelligence and sentiment data including Galaxy Score, AltRank, social volume, influencer activity, and trending topics. This is the crowd-mood layer.
+Social intelligence and sentiment data: Galaxy Score, AltRank, social volume, influencer activity, trending topics. This is the **crowd-mood layer**.
 
-## When to Use LunarCrush
+## Keyword → Tool Lookup
 
-Use LunarCrush for:
-- **Social sentiment** - What is the crowd saying?
-- **Galaxy Score** - Overall social momentum (0-100)
-- **AltRank** - Social ranking (lower is better)
-- **Social volume** - Number of social mentions
-- **Influencer activity** - What are key voices saying?
-- **Trending topics** - What's gaining attention?
+| User asks about | Tool | NOT this |
+|----------------|------|----------|
+| "BTC 社交情绪", "Galaxy Score", "social sentiment" | `lunar_coin(symbol="BTC")` | Not twitter_search_tweets |
+| "社交情绪趋势", "sentiment over time" | `lunar_coin_time_series` | Not lunar_coin (snapshot only) |
+| "token links", "official site" | `lunar_coin_meta` | — |
+| "DeFi 话题热度", "topic trending" | `lunar_topic(topic="defi")` | — |
+| "人们在说什么", "recent posts about X" | `lunar_topic_posts` | — |
+| "KOL 数据", "influencer stats" | `lunar_creator` | Not twitter_user_info |
 
-## Common Workflows
+## LunarCrush vs Twitter — When to Use Which
 
-### Coin Social Data
+| Need | Use | Why |
+|------|-----|-----|
+| Overall crowd mood / sentiment score | **LunarCrush** | Aggregated score across all platforms |
+| Specific tweets / what someone said | **Twitter** | Raw tweet content |
+| Galaxy Score / AltRank | **LunarCrush** | Proprietary metrics, Twitter doesn't have |
+| KOL follower count / bio | **Twitter** `twitter_user_info` | Profile data |
+| KOL influence metrics / engagement quality | **LunarCrush** `lunar_creator` | Cross-platform engagement |
+| "市场情绪怎么样" (general mood) | **LunarCrush** first | Structured score > raw tweet scan |
+| "推特上在讨论什么" (specific discussion) | **Twitter** first | Raw content > aggregated score |
+
+## MISTAKES — Read Before Calling
+
+### ❌ MISTAKE 1: Using Twitter for sentiment scores
 ```
-lunar_coin(symbol="BTC")  # Current social metrics
-lunar_coin(symbol="ETH")  # Ethereum social data
-lunar_coin_time_series(symbol="SOL", interval="1d", bucket="day")  # Historical
-lunar_coin_meta(symbol="BTC")  # Metadata and links
+User: "BTC 社交情绪怎么样"
+❌ WRONG: twitter_search_tweets(query="$BTC") then manually summarize tone
+✅ RIGHT: lunar_coin(symbol="BTC")  ← returns Galaxy Score, AltRank, social volume as numbers
+```
+LunarCrush gives quantified sentiment. Twitter gives raw text you'd have to interpret.
+
+### ❌ MISTAKE 2: Using lunar_coin for historical trends
+```
+User: "最近一周社交情绪变化"
+❌ WRONG: lunar_coin(symbol="BTC")  ← snapshot only, no history
+✅ RIGHT: lunar_coin_time_series(symbol="BTC", interval="1d", bucket="day")  ← daily history
 ```
 
-### Topic Analysis
+### ❌ MISTAKE 3: Calling lunar_creator without a creator_id
 ```
-lunar_topic(topic="defi")  # DeFi topic metrics
-lunar_topic_posts(topic="nft")  # Recent posts about NFTs
-```
-
-### Creator/Influencer
-```
-lunar_creator(creator_id="123456")  # Specific influencer data
+❌ WRONG: lunar_creator(creator_id="elonmusk")  ← not a username, needs numeric ID
+✅ RIGHT: Get creator_id from lunar_topic_posts results, then call lunar_creator
 ```
 
-## Key Metrics
+### ❌ MISTAKE 4: Confusing AltRank direction
+```
+❌ WRONG: "AltRank 500, social presence is strong"
+✅ RIGHT: "AltRank 500, social presence is weak"  ← lower = better, #1 = highest attention
+```
+
+### ❌ MISTAKE 5: Using LunarCrush for non-crypto topics
+```
+User: "AI 行业社交热度"
+❌ WRONG: lunar_topic(topic="artificial intelligence")  ← LunarCrush is crypto-only
+✅ RIGHT: twitter_search_tweets(query="artificial intelligence")
+```
+**Boundary**: LunarCrush = crypto social metrics only. General topics → Twitter.
+
+## Key Metrics — How to Read
 
 ### Galaxy Score (0-100)
 
-| Score | Read |
-|-------|------|
-| 80–100 | Exceptional social momentum — watch for tops |
-| 60–79 | Strong sustained interest |
-| 40–59 | Normal activity |
-| 20–39 | Declining interest |
-| 0–19 | Dead or bottoming |
+| Score | Read | Trading Signal |
+|-------|------|---------------|
+| 80–100 | Exceptional social momentum | Watch for tops / FOMO peak |
+| 60–79 | Strong sustained interest | Momentum confirmed |
+| 40–59 | Normal activity | Neutral |
+| 20–39 | Declining interest | Caution |
+| 0–19 | Dead or bottoming | Contrarian opportunity? |
 
-**Divergence signal**: High Galaxy Score + negative price = potential reversal.
+### AltRank (lower = better)
 
-### AltRank
+| Rank | Read |
+|------|------|
+| 1–10 | Top social attention — likely already priced in |
+| 11–50 | Strong presence — monitor for entry |
+| 51–100 | Moderate — potential early signal |
+| 100+ | Low attention — under the radar |
 
-Lower is better. #1–50 is top tier social presence. Useful for finding altcoins gaining attention before price moves.
+### Divergence Signals
 
-- **Rank 1-10**: Highest social attention
-- **Rank 11-50**: Strong social presence
-- **Rank 51-100**: Moderate attention
-- **Rank 100+**: Low social attention
-
-### Social Volume
-
-Number of social mentions across platforms (Twitter, Reddit, etc.). Rising social volume often precedes price moves.
-
-### Social Dominance
-
-Percentage of total crypto social volume. High dominance means the coin is dominating crypto conversations.
-
-## Analysis Patterns
-
-**Social alpha**: Rising Galaxy Score + flat price = potential breakout setup. Social attention building before price moves.
-
-**Divergence signals**:
-- High Galaxy Score + falling price = bearish divergence
-- Low Galaxy Score + rising price = weak rally
-
-**Sentiment confirmation**: Combine Galaxy Score + social volume + AltRank. All three moving in same direction = strong signal.
-
-**Influencer tracking**: Monitor what key voices are saying via creator tools. Influencer attention can drive retail interest.
+| Pattern | Interpretation |
+|---------|---------------|
+| High Galaxy Score + falling price | Bearish divergence — crowd bullish but price disagrees |
+| Low Galaxy Score + rising price | Weak rally — no crowd conviction |
+| Rising social volume + flat price | Potential breakout setup — attention building |
+| Falling social volume + rising price | Unsustainable rally — watch for reversal |
 
 ## Time Intervals
 
@@ -106,28 +122,18 @@ Percentage of total crypto social volume. High dominance means the coin is domin
 - `1d` - Daily
 - `1w` - Weekly
 
-## Important Notes
+## Compound Queries
 
-- **API Key**: Requires LUNARCRUSH_API_KEY environment variable
-- **Symbols**: Use standard symbols (BTC, ETH, SOL, etc.)
-- **Social platforms**: Data aggregated from Twitter, Reddit, Medium, YouTube, and more
-- **Real-time**: Social metrics update in near real-time
-- **Leading indicator**: Social data often leads price - attention builds before price moves
+### Crypto Social Alpha Scan
+```
+1. lunar_coin(symbol="BTC")          → Galaxy Score + AltRank baseline
+2. lunar_coin(symbol="SOL")          → Compare social momentum
+3. lunar_coin_time_series(symbol="SOL", interval="1d", bucket="day")  → Trend direction
+```
 
-## Workflow Examples
-
-### Find Rising Coins
-1. Use `lunar_coin` to check AltRank and Galaxy Score
-2. Look for coins with rising AltRank (lower number = better) and Galaxy Score > 60
-3. Check if price is flat or rising - social attention building is a leading signal
-
-### Sentiment Check
-1. Get current Galaxy Score and social volume
-2. Compare to historical data via `lunar_coin_time_series`
-3. High score + rising volume = strong momentum
-4. Low score + falling volume = weak interest
-
-### Topic Trends
-1. Use `lunar_topic` to find trending topics (DeFi, NFT, Gaming, etc.)
-2. Use `lunar_topic_posts` to see what people are saying
-3. Cross-reference with price action for early trend signals
+### Topic Sentiment Deep Dive
+```
+1. lunar_topic(topic="defi")         → Overall DeFi social metrics
+2. lunar_topic_posts(topic="defi")   → What people are actually saying
+3. twitter_search_tweets(query="$DeFi min_faves:50")  → Cross-reference with raw tweets
+```

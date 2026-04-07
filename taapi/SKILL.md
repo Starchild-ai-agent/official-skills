@@ -1,7 +1,7 @@
 ---
 name: taapi
-version: 1.0.1
-description: Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators
+version: 1.1.0
+description: "Technical analysis indicators — RSI, MACD, Bollinger Bands, support/resistance, and 200+ pre-calculated indicators"
 tools:
   - indicator
   - support_resistance
@@ -20,118 +20,119 @@ disable-model-invocation: false
 
 # TaAPI
 
-TaAPI provides technical analysis indicators including RSI, MACD, Bollinger Bands, support/resistance, and 200+ pre-calculated indicators. No local computation needed.
+Technical analysis indicators: RSI, MACD, Bollinger Bands, support/resistance, 200+ pre-calculated. No local computation needed.
 
-## When to Use TaAPI
+## Keyword → Tool Lookup
 
-Use TaAPI for:
-- **Technical indicators** - RSI, MACD, Bollinger Bands, ADX, Stochastic, etc.
-- **Support/Resistance** - Key price levels
-- **Trend analysis** - Moving averages, ADX, trend indicators
-- **Momentum** - RSI, Stochastic, CCI
-- **Volatility** - Bollinger Bands, ATR
+| User asks about | Tool | NOT this |
+|----------------|------|----------|
+| "RSI", "MACD", "布林带", any indicator name | `indicator` | — |
+| "支撑位", "阻力位", "support/resistance" | `support_resistance` | Not `indicator` |
+| "funding rate", "OI", "long/short ratio" | **Coinglass** | ❌ Not taapi — those are derivatives metrics |
+| "Galaxy Score", "social sentiment" | **LunarCrush** | ❌ Not taapi |
+| "BTC 价格" (just price) | **CoinGecko** `coin_price` | ❌ Not taapi |
 
-## Common Workflows
+## TaAPI vs Others — Boundary
 
-### Get Indicator
+| Need | Use | Why |
+|------|-----|-----|
+| Technical indicators (RSI, MACD, BB) | **TaAPI** | Pre-calculated, 200+ indicators |
+| Derivatives metrics (funding, OI, L/S) | **Coinglass** | Different data source entirely |
+| Price data only | **CoinGecko** (crypto) / **TwelveData** (stocks) | TaAPI is for indicators, not raw prices |
+| Social sentiment | **LunarCrush** | Different data type |
+
+## MISTAKES — Read Before Calling
+
+### ❌ MISTAKE 1: Wrong symbol format
 ```
-indicator(exchange="binance", symbol="BTC/USDT", interval="1h", indicator="rsi")
-indicator(exchange="binance", symbol="ETH/USDT", interval="4h", indicator="macd")
-indicator(exchange="binance", symbol="SOL/USDT", interval="1d", indicator="bbands")
+❌ WRONG: indicator(symbol="BTC")
+✅ RIGHT: indicator(symbol="BTC/USDT")  ← always pair format
 ```
 
-### Support/Resistance
+### ❌ MISTAKE 2: Wrong interval format
 ```
-support_resistance(exchange="binance", symbol="BTC/USDT", interval="1d")
+❌ WRONG: indicator(interval="1day")  ← TwelveData format
+❌ WRONG: indicator(interval="1D")
+✅ RIGHT: indicator(interval="1d")
+```
+Valid: `1m`, `5m`, `15m`, `30m`, `1h`, `2h`, `4h`, `8h`, `12h`, `1d`, `1w`, `1M`
+
+### ❌ MISTAKE 3: Using taapi for derivatives data
+```
+User: "BTC funding rate"
+❌ WRONG: indicator(indicator="funding_rate")  ← doesn't exist in taapi
+✅ RIGHT: funding_rate(symbol="BTC")  ← Coinglass tool
 ```
 
-## Available Indicators
+### ❌ MISTAKE 4: Forgetting exchange parameter
+```
+❌ WRONG: indicator(symbol="BTC/USDT", interval="1h", indicator="rsi")  ← missing exchange
+✅ RIGHT: indicator(exchange="binance", symbol="BTC/USDT", interval="1h", indicator="rsi")
+```
+Default exchange is `binance` but always specify explicitly for clarity.
 
-### Momentum Indicators
-- `rsi` - Relative Strength Index
-- `stoch` - Stochastic Oscillator
-- `cci` - Commodity Channel Index
-- `williams` - Williams %R
-- `roc` - Rate of Change
+### ❌ MISTAKE 5: Calling support_resistance with indicator tool
+```
+User: "BTC 支撑位阻力位"
+❌ WRONG: indicator(indicator="support_resistance")
+✅ RIGHT: support_resistance(exchange="binance", symbol="BTC/USDT", interval="1d")
+```
+Support/resistance is a separate tool, not an indicator name.
 
-### Trend Indicators
-- `macd` - Moving Average Convergence Divergence
-- `adx` - Average Directional Index
-- `ema` - Exponential Moving Average
-- `sma` - Simple Moving Average
-- `dema` - Double Exponential Moving Average
+## Indicator Quick Reference
 
-### Volatility Indicators
-- `bbands` - Bollinger Bands
-- `atr` - Average True Range
-- `keltner` - Keltner Channels
+### Momentum
+| Indicator | Code | Bullish | Bearish |
+|-----------|------|---------|---------|
+| RSI | `rsi` | < 30 (oversold) | > 70 (overbought) |
+| Stochastic | `stoch` | < 20 (oversold) | > 80 (overbought) |
+| CCI | `cci` | < -100 (oversold) | > 100 (overbought) |
+| Williams %R | `williams` | < -80 (oversold) | > -20 (overbought) |
 
-### Volume Indicators
-- `obv` - On Balance Volume
-- `vwap` - Volume Weighted Average Price
+### Trend
+| Indicator | Code | Bullish | Bearish |
+|-----------|------|---------|---------|
+| MACD | `macd` | Histogram > 0, crossing up | Histogram < 0, crossing down |
+| ADX | `adx` | > 25 with +DI > -DI | > 25 with -DI > +DI |
+| EMA | `ema` | Price above EMA | Price below EMA |
+| SMA | `sma` | Price above SMA | Price below SMA |
 
-See TaAPI documentation for the full list of 200+ indicators.
+### Volatility
+| Indicator | Code | Signal |
+|-----------|------|--------|
+| Bollinger Bands | `bbands` | Upper = overbought, Lower = oversold, Squeeze = breakout coming |
+| ATR | `atr` | Rising = increasing volatility, Falling = decreasing |
+| Keltner | `keltner` | Similar to BB but uses ATR instead of stddev |
 
-## Intervals
+### Volume
+| Indicator | Code | Signal |
+|-----------|------|--------|
+| OBV | `obv` | Rising OBV + rising price = trend confirmed |
+| VWAP | `vwap` | Price above = bullish, below = bearish |
 
-- `1m`, `5m`, `15m`, `30m` - Minutes
-- `1h`, `2h`, `4h`, `8h`, `12h` - Hours
-- `1d`, `1w`, `1M` - Days, Weeks, Months
+## Divergence Detection Pattern
 
-## Exchanges
+```
+User: "BTC 有没有背离"
+1. indicator(exchange="binance", symbol="BTC/USDT", interval="4h", indicator="rsi")
+2. Compare RSI direction vs price direction:
+   - Price new high + RSI lower high = bearish divergence
+   - Price new low + RSI higher low = bullish divergence
+```
 
-Default exchange is Binance. Supports:
-- `binance`
-- `coinbase`
-- `kraken`
-- `bitfinex`
-- And many more...
+## Compound Queries
 
-## Symbol Format
+### Full Technical Scan
+```
+1. indicator(exchange="binance", symbol="BTC/USDT", interval="4h", indicator="rsi")
+2. indicator(exchange="binance", symbol="BTC/USDT", interval="4h", indicator="macd")
+3. support_resistance(exchange="binance", symbol="BTC/USDT", interval="1d")
+→ Synthesize: momentum + trend + key levels
+```
 
-Use exchange format: `BTC/USDT`, `ETH/USDT`, `SOL/USDT`
-
-## Interpretation Guides
-
-### Common Indicator Reads
-
-| Indicator | Bullish | Bearish |
-|-----------|---------|---------|
-| RSI | < 30 (oversold) | > 70 (overbought) |
-| MACD | Histogram crossing above zero | Histogram crossing below zero |
-| Bollinger Bands | Price touching lower band | Price touching upper band |
-| ADX | > 25 with +DI > -DI | > 25 with -DI > +DI |
-| Stochastic | < 20 (oversold) | > 80 (overbought) |
-
-### RSI Levels
-- **> 70**: Overbought (potential reversal down)
-- **50-70**: Bullish momentum
-- **30-50**: Bearish momentum
-- **< 30**: Oversold (potential reversal up)
-
-### MACD Signals
-- **Histogram > 0**: Bullish
-- **Histogram < 0**: Bearish
-- **Histogram crossing zero**: Trend change
-- **MACD line crossing signal line**: Buy/sell signal
-
-### Bollinger Bands
-- **Price at upper band**: Overbought
-- **Price at lower band**: Oversold
-- **Bands widening**: Increasing volatility
-- **Bands narrowing**: Decreasing volatility (squeeze)
-
-## Analysis Patterns
-
-**Trend confirmation**: Use ADX + EMA/SMA. ADX > 25 indicates strong trend. EMA crossing SMA confirms direction.
-
-**Overbought/Oversold**: Use RSI + Stochastic together. Both confirming increases signal strength.
-
-**Divergence**: Price making new highs/lows but indicator not confirming = potential reversal.
-
-## Important Notes
-
-- **API Key**: Requires TAAPI_API_KEY environment variable
-- **Pre-calculated**: All indicators are pre-calculated by TaAPI - no local computation needed
-- **Real-time**: Data is near real-time from exchanges
-- **200+ Indicators**: TaAPI supports 200+ technical indicators
+### Multi-Timeframe Analysis
+```
+1. indicator(exchange="binance", symbol="BTC/USDT", interval="1d", indicator="rsi")   → daily trend
+2. indicator(exchange="binance", symbol="BTC/USDT", interval="4h", indicator="rsi")   → entry timing
+3. indicator(exchange="binance", symbol="BTC/USDT", interval="1h", indicator="rsi")   → immediate momentum
+```

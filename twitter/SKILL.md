@@ -1,7 +1,7 @@
 ---
 name: twitter
-version: 1.0.0
-description: Twitter/X data lookup — search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts.
+version: 1.1.0
+description: "Twitter/X data lookup — search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts."
 tools:
   - twitter_search_tweets
   - twitter_get_tweets
@@ -26,129 +26,127 @@ disable-model-invocation: false
 
 # Twitter / X Data
 
-Read-only access to Twitter/X via twitterapi.io. Use these tools to look up tweets, users, followers, and social activity.
+Read-only access to Twitter/X via twitterapi.io.
 
-## ⚡ FAST PATHS (act immediately, no clarification needed)
+## Keyword → Tool Lookup
 
-| Trigger keywords | Action |
-|-----------------|--------|
-| crypto sentiment / 情绪扫描 / market mood / BTC ETH SOL 讨论 | Call `twitter_search_tweets` once per coin: `"$BTC"`, `"$ETH"`, `"$SOL"` — summarize tone, **no user profile lookups** |
-| search tweets about X | Call `twitter_search_tweets` with the topic |
-| who is @username | Call `twitter_user_info` |
-| what did @username post | Call `twitter_user_tweets` |
+| User asks about | Tool | NOT this |
+|----------------|------|----------|
+| "tweets about BTC", "搜推文" | `twitter_search_tweets` | — |
+| "看某条推文" (by ID) | `twitter_get_tweets` | Not search |
+| "@username 是谁" | `twitter_user_info` | — |
+| "@username 最近发了什么" | `twitter_user_tweets` | — |
+| "谁关注了他" | `twitter_user_followers` | — |
+| "他关注了谁" | `twitter_user_followings` | — |
+| "这条推文下面评论" | `twitter_tweet_replies` | — |
+| "谁转发了" | `twitter_tweet_retweeters` | — |
+| "找相关账号" | `twitter_search_users` | — |
+| "BTC 社交情绪" / sentiment score | **LunarCrush** `lunar_coin` | Not twitter — see boundary below |
 
-## Tool Decision Tree
+## Twitter vs LunarCrush — When to Use Which
 
-**"Search for tweets about a topic"** → `twitter_search_tweets`
-Advanced query with operators: keywords, from:user, #hashtag, $cashtag, min_faves, date ranges.
+| Need | Use | Why |
+|------|-----|-----|
+| Raw tweets / what people said | **Twitter** | Actual content |
+| Quantified sentiment score | **LunarCrush** | Galaxy Score > manual tweet reading |
+| KOL profile / follower count | **Twitter** `twitter_user_info` | — |
+| KOL engagement quality | **LunarCrush** `lunar_creator` | Cross-platform metric |
+| Non-crypto topics (AI, stocks) | **Twitter** | LunarCrush is crypto-only |
+| "市场情绪" without specifying tweets | **LunarCrush** first | Structured > unstructured |
 
-**"Look up a specific tweet or set of tweets"** → `twitter_get_tweets`
-Pass one or more tweet IDs directly.
+## MISTAKES — Read Before Calling
 
-**"Who is this Twitter account?"** → `twitter_user_info`
-Profile data: bio, follower count, tweet count, verification.
+### ❌ MISTAKE 1: Using Twitter for sentiment scoring
+```
+User: "市场情绪怎么样"
+❌ WRONG: twitter_search_tweets("$BTC") → manually count positive/negative tweets
+✅ RIGHT: lunar_coin(symbol="BTC")  ← Galaxy Score gives instant quantified sentiment
+```
+Only use Twitter for sentiment if user specifically wants tweet-level content or non-crypto topics.
 
-**"What has this account been posting?"** → `twitter_user_tweets`
-Recent tweets from a specific user.
+### ❌ MISTAKE 2: Calling user_info during sentiment scan
+```
+User: "扫描一下 BTC ETH SOL 的推特讨论"
+❌ WRONG: twitter_search_tweets("$BTC") → twitter_user_info on each author → ...
+✅ RIGHT: twitter_search_tweets("$BTC"), twitter_search_tweets("$ETH"), twitter_search_tweets("$SOL") → summarize tone
+```
+⛔ Sentiment scan = text analysis only. NEVER call user_info/followers/tweets during scan.
 
-**"Who follows this account?"** → `twitter_user_followers`
-List of followers for a user.
+### ❌ MISTAKE 3: Searching with @ prefix in username
+```
+❌ WRONG: twitter_user_info(username="@elonmusk")
+✅ RIGHT: twitter_user_info(username="elonmusk")  ← no @ prefix
+```
 
-**"Who does this account follow?"** → `twitter_user_followings`
-List of accounts a user follows.
+### ❌ MISTAKE 4: Repeating same search query
+```
+❌ WRONG: twitter_search_tweets("$BTC") twice in same response
+✅ RIGHT: One call per coin/topic, then summarize
+```
 
-**"What are people saying in reply to this tweet?"** → `twitter_tweet_replies`
-Replies to a specific tweet by ID.
+### ❌ MISTAKE 5: Too many tool calls in one response
+```
+❌ WRONG: 8 Twitter tool calls researching an account
+✅ RIGHT: Max 5 Twitter calls per response. Account research = user_info + user_tweets (2 calls).
+```
 
-**"Who retweeted this?"** → `twitter_tweet_retweeters`
-Users who retweeted a specific tweet.
+## Token Budget Rules
 
-**"Find accounts related to a topic"** → `twitter_search_users`
-Search users by name or keyword.
-
-**"Crypto sentiment scan / 情绪扫描 / market mood"** → `twitter_search_tweets` (call once per coin)
-For BTC/ETH/SOL sentiment: search `"$BTC"`, `"$ETH"`, `"$SOL"` separately, then summarize tone inline.
-⛔ NEVER call `twitter_user_info`, `twitter_user_followers`, or `twitter_user_tweets` during a sentiment scan — text analysis only.
-
-## Available Tools
-
-| Tool | Description | Key Params |
-|------|-------------|------------|
-| `twitter_search_tweets` | Advanced tweet search | `query` (required), `cursor` |
-| `twitter_get_tweets` | Get tweets by ID | `tweet_ids` (array, required) |
-| `twitter_user_info` | User profile lookup | `username` (required) |
-| `twitter_user_tweets` | User's recent tweets | `username` (required), `cursor` |
-| `twitter_user_followers` | User's followers | `username` (required), `cursor` |
-| `twitter_user_followings` | User's followings | `username` (required), `cursor` |
-| `twitter_tweet_replies` | Replies to a tweet | `tweet_id` (required), `cursor` |
-| `twitter_tweet_retweeters` | Who retweeted | `tweet_id` (required), `cursor` |
-| `twitter_search_users` | Search for users | `query` (required), `cursor` |
-
-## Usage Patterns
-
-### ⚠️ Token Budget Rules
-- Sentiment scan: max **3 `twitter_search_tweets` calls** (one per coin), then summarize. Stop.
-- Account research: max **2 tool calls total** unless user asks for more depth.
-- Never chain more than 5 Twitter tool calls in one response.
-
-### Research an account
-1. `twitter_user_info` — get profile, follower count, bio
-2. `twitter_user_tweets` — see what they've been posting
-3. `twitter_user_followings` — who they follow (reveals interests)
-
-### Track a topic or token
-1. `twitter_search_tweets` with query like `"$SOL min_faves:50"` — find popular tweets
-2. `twitter_search_users` with the topic — find relevant accounts
-
-## Output Constraints (IMPORTANT for small models)
-
-- **Max 1 `twitter_search_tweets` call per coin/topic** — do not repeat searches for same query.
-- **Max 3 `twitter_user_info` calls per response** — profile lookups are expensive; only look up the most relevant accounts.
-- **Never call `bash` or `write_file` for Twitter data** — summarize results inline in your reply.
-- **Sentiment summaries**: after fetching tweets, write a short inline summary (3–5 sentences). Do not produce files or run scripts.
-- **Pagination**: only fetch next page if user explicitly asks for more results.with `twitter_user_info` on interesting accounts
-
-### Analyze engagement on a tweet
-1. `twitter_get_tweets` — get the tweet and its metrics
-2. `twitter_tweet_replies` — see the conversation
-3. `twitter_tweet_retweeters` — see who amplified it
-
-### Find influencers in a space
-1. `twitter_search_users` with keyword (e.g. "DeFi analyst")
-2. `twitter_user_info` on top results to compare follower counts
-3. `twitter_user_tweets` to check content quality
+| Scenario | Max calls |
+|----------|-----------|
+| Sentiment scan (multi-coin) | 3 `search_tweets` calls total |
+| Account research | 2 calls (user_info + user_tweets) |
+| Any single response | 5 Twitter calls max |
+| Pagination | Only if user explicitly asks "more" |
 
 ## Search Query Operators
 
-The `twitter_search_tweets` tool supports advanced operators:
-
 | Operator | Example | Description |
 |----------|---------|-------------|
-| keyword | `bitcoin` | Tweets containing the word |
-| exact phrase | `"ethereum merge"` | Exact phrase match |
-| `from:` | `from:elonmusk` | Tweets by a specific user |
-| `to:` | `to:elonmusk` | Tweets replying to a user |
-| `#hashtag` | `#crypto` | Tweets with hashtag |
-| `$cashtag` | `$BTC` | Tweets with cashtag |
-| `lang:` | `lang:en` | Filter by language |
-| `has:media` | `has:media` | Tweets with images/video |
-| `has:links` | `has:links` | Tweets with URLs |
-| `is:reply` | `is:reply` | Only replies |
+| keyword | `bitcoin` | Contains word |
+| exact phrase | `"ethereum merge"` | Exact match |
+| `from:` | `from:elonmusk` | By specific user |
+| `to:` | `to:elonmusk` | Replying to user |
+| `#hashtag` | `#crypto` | With hashtag |
+| `$cashtag` | `$BTC` | With cashtag |
+| `lang:` | `lang:en` | Filter language |
+| `has:media` | `has:media` | With images/video |
 | `min_faves:` | `min_faves:100` | Minimum likes |
 | `min_retweets:` | `min_retweets:50` | Minimum retweets |
-| `since:` | `since:2024-01-01` | Tweets after date |
-| `until:` | `until:2024-12-31` | Tweets before date |
+| `since:` / `until:` | `since:2024-01-01` | Date range |
 
-Combine operators: `from:VitalikButerin $ETH min_faves:100 since:2024-01-01`
+Combine: `from:VitalikButerin $ETH min_faves:100 since:2024-01-01`
 
-## Pagination
+## Compound Queries
 
-Most endpoints support cursor-based pagination. When a response includes a cursor value, pass it as the `cursor` parameter to get the next page. If no cursor is returned, you've reached the end.
+### KOL Tracking
+```
+1. twitter_user_info(username="cobie")          → profile + follower count
+2. twitter_user_tweets(username="cobie")        → recent posts
+```
+
+### Project Sentiment (hybrid with LunarCrush)
+```
+1. lunar_coin(symbol="SOL")                     → Galaxy Score baseline
+2. twitter_search_tweets(query="$SOL min_faves:50")  → high-engagement tweets
+3. Synthesize: quantified score + qualitative content
+```
+
+### Event Monitoring
+```
+twitter_search_tweets(query="$ETH ETF min_faves:100 since:2025-01-01")
+→ Filter high-engagement tweets about a specific event
+```
+
+## Output Rules
+
+- Summarize tweet results inline (3-5 sentences). Never write to files.
+- Max 3 `twitter_user_info` calls per response — profile lookups are expensive.
+- No `bash` or `write_file` for Twitter data.
 
 ## Notes
 
-- **API key required**: Set `TWITTER_API_KEY` environment variable. Tools will error without it.
-- **Read-only**: These tools only retrieve data. No posting, liking, or following.
-- **Usernames**: Always pass without the `@` prefix (e.g. `"elonmusk"` not `"@elonmusk"`).
-- **Tweet IDs**: Use string format for tweet IDs to avoid integer overflow issues.
-- **Rate limits**: The API has rate limits. If you get rate-limited, wait before retrying.
+- **Read-only**: No posting, liking, or following.
+- **Usernames**: Always without `@` prefix.
+- **Tweet IDs**: Use string format (avoid integer overflow).
+- **Pagination**: cursor-based. Only paginate if user explicitly requests more.

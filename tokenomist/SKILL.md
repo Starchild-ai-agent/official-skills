@@ -1,7 +1,7 @@
 ---
 name: tokenomist
-version: 1.0.1
-description: Tokenomist unlock/emission/allocation API skill. Use when users ask token unlock schedules, cliff unlock events, daily emissions, allocation breakdowns, or tokenomics supply pressure analytics.
+version: 1.1.0
+description: "Token unlock schedules, cliff events, daily emissions, allocation breakdowns, and supply pressure analytics via Tokenomist API"
 tools:
   - tokenomist_token_list
   - tokenomist_resolve_token
@@ -25,76 +25,111 @@ disable-model-invocation: false
 
 # Tokenomist (Tokenomist API)
 
-Use this skill for token unlock timeline analysis.
+Token unlock schedules, cliff events, daily emissions, allocation breakdowns, and supply pressure analytics.
 
 ## Version Policy (hard rule)
 
-When multiple API versions exist, always use latest stable versions:
+- Token List → **v4** (`/v4/token/list`)
+- Allocations → **v2** (`/v2/allocations`)
+- Daily Emission → **v2** (`/v2/daily-emission`)
+- Unlock Events → **v4** (`/v4/unlock/events`)
 
-- Token List API → **v4** (`/v4/token/list`)
-- Allocations API → **v2** (`/v2/allocations`)
-- Daily Emission API → **v2** (`/v2/daily-emission`)
-- Unlock Events API → **v4** (`/v4/unlock/events`)
-
-Do not downgrade unless user explicitly asks for legacy behavior.
+Do not downgrade unless user explicitly asks.
 
 ## Auth + Proxy
 
 - Header: `x-api-key: $TOKENMIST_API_KEY`
 - Base URL: `https://api.tokenomist.ai`
-- This skill uses `core/http_client.py` (`proxied_get`), so requests follow platform sc-proxy behavior.
-- Fake key configured in environment is expected (e.g. `fake-tokenomist-key-12345`). Never treat fake prefix as invalid in this platform.
+- Uses `core/http_client.py` (`proxied_get`) — sc-proxy handles key replacement.
+- Fake key in env (e.g. `fake-tokenomist-key-12345`) is expected. Never treat as invalid.
 
-## Tool Map
+## Keyword → Tool Lookup
 
-### `tokenomist_token_list`
-Get Token List v4. Supports optional keyword filtering and result cap.
+| User asks about | Tool | NOT this |
+|----------------|------|----------|
+| "tokenomics overview", "全面分析" | `tokenomist_token_overview` | Don't call 4 tools separately |
+| "allocation", "分配", "top holders" | `tokenomist_allocations_summary` | Not `tokenomist_allocations` (too verbose) |
+| "allocation raw data", "full breakdown" | `tokenomist_allocations` | — |
+| "unlock schedule", "解锁", "cliff" | `tokenomist_unlock_events` | — |
+| "daily emission", "每日释放" | `tokenomist_daily_emission` | — |
+| "find token", "which token id" | `tokenomist_resolve_token` | Not `tokenomist_token_list` |
+| "list all tokens" | `tokenomist_token_list` | — |
 
-### `tokenomist_resolve_token`
-Resolve a token query (id/symbol/name) to canonical `tokenId` from v4 list.
+## MISTAKES — Read Before Calling
 
-### `tokenomist_allocations`
-Fetch Allocations v2 by `token_id`, with normalized output optimized for agent use:
-- Primary percentage field: `trackedAllocationPercentage`
-- Computed fallback: `effectivePercentage`
-- `top_allocations` and `coverage` quality summary included
-- Optional `include_raw=true` for upstream payload debugging
+### ❌ MISTAKE 1: Calling 4 tools for a general tokenomics question
+```
+User: "ARB 的 tokenomics 情况"
+❌ WRONG: tokenomist_resolve_token → tokenomist_allocations → tokenomist_daily_emission → tokenomist_unlock_events
+✅ RIGHT: tokenomist_token_overview(query="ARB")  ← does all 4 in one call
+```
+
+### ❌ MISTAKE 2: Using allocations instead of allocations_summary
+```
+User: "ARB 的代币分配"
+❌ WRONG: tokenomist_allocations(token_id="arb")  ← returns raw verbose data
+✅ RIGHT: tokenomist_allocations_summary(query="ARB")  ← concise, auto-resolves, has quality flags
+```
+Only use `tokenomist_allocations` when user explicitly asks for raw/full data or debugging.
+
+### ❌ MISTAKE 3: Passing symbol directly without resolving
+```
+❌ WRONG: tokenomist_unlock_events(token_id="ARB")  ← might not match API's internal ID
+✅ RIGHT: tokenomist_resolve_token(query="ARB") → get canonical token_id → then call events
+```
+Exception: `tokenomist_token_overview` and `tokenomist_allocations_summary` auto-resolve — no need to call resolve first.
+
+### ❌ MISTAKE 4: Forgetting date format
+```
+❌ WRONG: tokenomist_unlock_events(token_id="arb", start="2025/01/01")
+✅ RIGHT: tokenomist_unlock_events(token_id="arb", start="2025-01-01")  ← YYYY-MM-DD only
+```
+
+### ❌ MISTAKE 5: Confusing tokenomist with coingecko for supply data
+```
+User: "ARB 的 circulating supply"
+❌ WRONG: tokenomist_*  ← Tokenomist does unlocks/emissions, not live supply
+✅ RIGHT: coin_price(ids="arbitrum") or cg_coin_data(id="arbitrum")  ← CoinGecko has supply
+```
+**Boundary**: Tokenomist = unlock schedules & emission pressure. CoinGecko = live supply & market cap.
+
+## Tool Reference
+
+### `tokenomist_token_overview` ⭐ Default choice
+One-call wrapper: resolve → allocations → emission → unlock events.
+Use when user asks broad tokenomics question.
 
 ### `tokenomist_allocations_summary`
-Compact allocation summary wrapper (v2):
-- Accepts either `token_id` or `query`
-- Auto-resolves query to canonical tokenId when needed
-- Returns `top_allocations` (configurable `top_n`) and `coverage` / `quality` flags
-- Best default when user asks "top allocation buckets" and you want one concise response
+Compact allocation view with `top_allocations`, `coverage`, `quality` flags.
+Accepts `token_id` or `query` (auto-resolves).
 
-### `tokenomist_daily_emission`
-Fetch Daily Emission v2 by `token_id` and optional `start/end` (`YYYY-MM-DD`).
+### `tokenomist_allocations`
+Full allocation data. Use only when user needs raw detail or `include_raw=true` for debugging.
 
 ### `tokenomist_unlock_events`
-Fetch Unlock Events v4 by `token_id` and optional `start/end` (`YYYY-MM-DD`).
+Cliff unlock events (v4). Linear/mining-yield events excluded.
+Params: `token_id` (required), `start`/`end` (optional, YYYY-MM-DD).
 
-### `tokenomist_token_overview`
-One-call wrapper to reduce tool count:
-1) resolve token
-2) fetch allocations v2
-3) fetch daily emission v2
-4) fetch unlock events v4
+### `tokenomist_daily_emission`
+Daily emission schedule (v2).
+Params: `token_id` (required), `start`/`end` (optional, YYYY-MM-DD).
 
-Use this by default when user asks broad tokenomics overview and you want minimal tool calls.
+### `tokenomist_resolve_token`
+Resolve symbol/name → canonical `tokenId`. Use before granular tools.
 
-## Recommended workflow
+### `tokenomist_token_list`
+Full token list (v4). Use for browsing, not single-token lookup.
 
-1. If user query is ambiguous, call `tokenomist_resolve_token` first.
-2. For comprehensive analysis, call `tokenomist_token_overview` once.
-3. For allocations-specific questions, prefer `tokenomist_allocations_summary` (fewest fields, least ambiguity).
-4. If full detail is needed, call `tokenomist_allocations` and read:
-   - `normalized.top_allocations`
-   - `normalized.coverage.tracked_percentage_sum`
-   - `normalized.coverage.tracked_sum_close_to_100`
-5. Only call granular tools when user asks one specific dataset.
-6. Keep dates UTC and use `YYYY-MM-DD`.
+## Interpreting Results — Supply Pressure
 
-## Notes
+When presenting unlock/emission data, help user assess **supply pressure**:
 
-- `unlock-events v4` focuses on cliff unlocks (linear start/mining-yield style events removed).
-- `daily-emission v2` and `allocations v2` include listing method context (`INTERNAL/AI/EXTERNAL`).
+| Signal | Interpretation |
+|--------|---------------|
+| Large cliff unlock within 7 days | ⚠️ Short-term sell pressure likely |
+| Daily emission > 0.5% of circulating supply | ⚠️ Persistent dilution |
+| Unlock to team/investor wallets | Higher sell probability than ecosystem/community |
+| Multiple unlocks clustering in same week | Compounding pressure — flag explicitly |
+| No major unlocks for 30+ days | Reduced supply-side pressure |
+
+**Always contextualise**: "ARB has a $50M team unlock in 3 days" is more actionable than "ARB has an unlock event".

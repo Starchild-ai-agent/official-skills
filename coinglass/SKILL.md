@@ -86,154 +86,6 @@ Coinglass provides the most comprehensive crypto derivatives and institutional d
 **API Version**: V4 (with V2 backward compatibility)
 **Total Tools**: 37 across 8 categories
 
-
-## Tool Selection Guide
-
-### Decision Tree
-
-**Step 1: Is this about LIQUIDATIONS?**
-
-```
-Liquidation query?
-├─ YES → How many coins?
-│   ├─ ALL coins / ranking / 排行 / 汇总
-│   │   └─ → cg_liquidation_coin_list  ✅ (most liquidation queries land here)
-│   ├─ ONE coin, need history over time
-│   │   └─ → cg_coin_liquidation_history
-│   ├─ ONE coin, specific orders (price/side/USD)
-│   │   └─ → cg_liquidation_orders
-│   └─ ONE coin, just a quick total + sentiment label
-│       └─ → cg_liquidation_analysis  (rarely needed; only if explicitly "simple summary")
-```
-
-**Step 2: Is this about LONG/SHORT RATIO?**
-
-```
-Long/short query?
-├─ Historical time-series, trend over time, 多空比变化
-│   └─ → cg_global_account_ratio  (ALL accounts)
-│      or cg_top_account_ratio    (top traders only)
-│      or cg_top_position_ratio   (by position size)
-└─ Current snapshot only (no history needed)
-    └─ → long_short_ratio
-```
-
-**Step 3: Is this about OPEN INTEREST?**
-
-```
-OI query?
-└─ → cg_open_interest  (always — do NOT use cg_coins_market_data for OI)
-```
-
-**Step 4: Is this a MARKET OVERVIEW / SENTIMENT query?**
-
-```
-Sentiment / 市场情绪 / pre-trade check?
-└─ Use: funding_rate + long_short_ratio + cg_open_interest
-   DO NOT use cg_coins_market_data as a substitute for any of the above
-```
-
----
-
-### Keyword → Tool Lookup
-
-| Keyword / Pattern | Correct Tool | ❌ Do NOT use |
-|---|---|---|
-| 爆仓排行 / 今日爆仓 / all coins liquidation | `cg_liquidation_coin_list` | `cg_liquidations` |
-| 24h爆仓汇总 / liquidation summary | `cg_liquidation_coin_list` | `cg_liquidation_analysis` |
-| 全网账户多空比 / account L/S ratio | `cg_global_account_ratio` | `long_short_ratio` |
-| 头部交易者多空 / top trader ratio | `cg_top_account_ratio` | `long_short_ratio` |
-| 未平仓合约 / open interest | `cg_open_interest` | `cg_coins_market_data` |
-| 市场情绪多空分析 | `funding_rate` + `long_short_ratio` + `cg_open_interest` | `cg_coins_market_data` |
-| BTC做多检查 / pre-trade checklist | `funding_rate` + `cg_global_account_ratio` + `cg_liquidation_coin_list` | — |
-
----
-
-### Common Mistakes
-
-**Mistake 1 (most common — 8x failure): Using `cg_liquidations` when you need `cg_liquidation_coin_list`**
-- `cg_liquidations` → one coin, one timeframe, basic total only
-- `cg_liquidation_coin_list(exchange)` → ALL coins, multi-timeframe (1h/4h/12h/24h), per-exchange breakdown
-- **Rule:** If the question asks for a ranking, overview, or doesn't specify a single coin → use `cg_liquidation_coin_list`
-
-**Mistake 2 (5x failure): Using `cg_liquidation_analysis` for liquidation rankings**
-- `cg_liquidation_analysis` adds a sentiment label to a single-coin total — it is NOT a ranking tool
-- **Rule:** "今日爆仓排行" / "各币种爆仓" → always `cg_liquidation_coin_list`
-
-**Mistake 3 (3x failure): Using `long_short_ratio` for historical L/S analysis**
-- `long_short_ratio` is a current snapshot (no time-series)
-- `cg_global_account_ratio` returns history — use it when the user wants trends or comparison over time
-- **Rule:** If the question compares 全网 (global) vs 头部 (top traders) → call BOTH `cg_global_account_ratio` AND `cg_top_account_ratio`
-
-**Mistake 4 (2x failure): Using `cg_coins_market_data` for open interest**
-- `cg_coins_market_data` is a bulk snapshot of many coins — not a replacement for dedicated OI or L/S tools
-- **Rule:** OI question → `cg_open_interest`. L/S question → `long_short_ratio` or `cg_global_account_ratio`. Never route either to `cg_coins_market_data`.
-
-## Rules
-
-### Tool Call Guidance
-
-**❌ FORBIDDEN TOOLS — NEVER USE:**
-- `bash` — Do NOT write scripts to process/format data. Use natural language.
-- `write_file` / `read_file` / `edit_file` — Do NOT save intermediate data. Answer directly.
-- `learning_log` — ONLY for genuine skill bugs or persistent API errors. NOT for empty responses.
-- `echo` — Do NOT use for debugging or output.
-
-**✅ CORRECT PATTERN:**
-- Tool returns data → Summarize in natural language → Done
-- Tool returns empty/null → Report "no data available" → Done
-- Need calculation (%, change, ratio) → Do mental math in reply
-
-**Match tool count to question scope:**
-  - 单一指标问题（"BTC 资金费率"、"ETH 多空比"）→ 1 个工具，直接返回
-  - 多维度分析（"做多是否合适"、"衍生品体检"）→ 3-5 个工具，综合分析
-  - 对比问题（"ETH vs SOL"）→ 每个币种调相同工具，并列对比
-- **避免重复调用同一工具。** 除非用户明确要求不同币种/交易所的对比。
-
-### Learning Log Usage (CRITICAL)
-
-**`learning_log` is FORBIDDEN for:**
-- ❌ Empty API responses — just report "no data available"
-- ❌ Tool returning None/null — handle gracefully
-- ❌ Uncertainty about tool selection — check decision tree first
-- ❌ Normal tool errors — retry once, then report failure
-
-**`learning_log` is ONLY for:**
-- ✅ Genuine bugs in skill code (wrong data format returned)
-- ✅ Persistent API rate limit errors after 2+ retries
-- ✅ Missing tools that should exist per skill definition
-
-### ETF Tool Selection
-| Query | Primary Tool | Secondary Tool |
-|-------|--------------|----------------|
-| BTC ETF 资金流入/流出 | `cg_btc_etf_flows()` | `cg_btc_etf_history()` for detailed history |
-| ETH ETF 资金流入/流出 | `cg_eth_etf_flows()` | — |
-| SOL/XRP ETF flows | `cg_sol_etf_flows()` / `cg_xrp_etf_flows()` | — |
-| HK ETF flows | `cg_hk_btc_etf_flows()` / `cg_hk_eth_etf_flows()` | — |
-| ETF 列表/代码 | `cg_btc_etf_list()` / `cg_eth_etf_list()` | — |
-| ETF 溢价/折价 | `cg_btc_etf_premium_discount()` | — |
-
-**ETF 对比问题 workflow:**
-```
-# BTC vs ETH ETF 对比
-btc = cg_btc_etf_flows()
-eth = cg_eth_etf_flows()
-# Compare the latest day's net flows, summarize in 2-3 sentences
-```
-
-## Quick Routing (use this first)
-
-| Query type | Tool |
-|---|---|
-| 爆仓/liquidation summary (24h, by coin) | `cg_liquidation_coin_list` |
-| Individual liquidation orders | `cg_liquidation_orders` |
-| Liquidation history for a coin | `cg_coin_liquidation_history` |
-| Funding rate | `funding_rate` |
-| Long/short ratio (global) | `cg_global_account_ratio` |
-| Open interest | `cg_open_interest` |
-| Whale activity on Hyperliquid | `cg_hyperliquid_whale_alerts` |
-| ETF flows (BTC) | `cg_btc_etf_flows` |
-
 ## When to Use Coinglass
 
 Use Coinglass for:
@@ -409,6 +261,10 @@ cvd = cg_cumulative_volume_delta("BTC", "Binance", "1h", 100)
 netflow = cg_coin_netflow()  # All coins
 taker_vol = cg_aggregated_taker_volume("BTC", "1h", 100)
 ```
+
+## ⚠️ Gotcha: Funding Rate Values
+
+API `rate` field is **already in percent** — `0.0058` means `0.0058%`, NOT `0.58%`. Do NOT multiply by 100. Display directly with `%` suffix.
 
 ## Interpretation Guides
 

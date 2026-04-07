@@ -7,18 +7,30 @@
 **Build order (each step verified before the next):**
 
 **Step 1 — Data fetching (verify: real data comes back)**
+
+**Preferred: Use `core.skill_tools` to call skill functions directly:**
 ```python
-# Write JUST the data fetching part first
+# skill_tools auto-discovers skills/*/exports.py — no manual path setup needed
+from core.skill_tools import coingecko, coinglass
+
+# Same function names as agent tools, namespaced by skill
+prices = coingecko.coin_price(coin_ids=["bitcoin", "ethereum"], timestamps=["now"])
+btc_price = prices[0]['price']
+
+fr = coinglass.funding_rate(symbol="BTC")
+binance_rate = [e for e in fr['exchanges_data'] if e['exchangeName'] == 'Binance'][0]['rate']
+```
+
+**Fallback: Direct API call (for skills without exports.py):**
+```python
 import requests, os, json
 
 def fetch_prices():
-    # Use native APIs via requests (not tool calls)
     resp = requests.get("https://api.twelvedata.com/price", params={
         "symbol": "CL1,BZ1",
         "apikey": os.environ.get("TWELVEDATA_API_KEY", "")
     })
-    data = resp.json()
-    return data
+    return resp.json()
 
 if __name__ == "__main__":
     result = fetch_prices()
@@ -73,6 +85,35 @@ bash("python3 tasks/{id}/run.py")
 # Only then:
 activate_task(job_id)
 ```
+
+### Using Skill Functions in Task Scripts (`core.skill_tools`)
+
+Skills with `exports.py` expose their tool functions for direct use in task scripts.
+No manual path setup needed — `core.skill_tools` auto-discovers all exports.
+
+```python
+from core.skill_tools import coingecko, coinglass, birdeye
+
+# Same names as agent tools, namespaced by skill
+prices = coingecko.coin_price(coin_ids=["bitcoin", "ethereum"], timestamps=["now"])
+btc_price = prices[0]['price']
+
+fr = coinglass.funding_rate(symbol="BTC")
+binance = [e for e in fr['exchanges_data'] if e['exchangeName'] == 'Binance']
+btc_funding = binance[0]['rate'] if binance else None
+
+etf = coinglass.cg_btc_etf_flows()
+```
+
+**How to know what's available:**
+- Tool names = SKILL.md frontmatter `tools:` list
+- Import pattern: `from core.skill_tools import {skill_name}` → `{skill_name}.{tool_name}(...)`
+- Functions are sync (safe for task scripts). Return types match the underlying API response.
+
+**When skill_tools is NOT available:**
+- Skills without `exports.py` (e.g. hyperliquid — needs wallet context)
+- Async-only tools (twelvedata uses aiohttp)
+- For these, use direct API calls via `requests` / `core.http_client`
 
 ### Data Integrity for Tasks with LLM Analysis
 

@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.2.0
+version: 1.3.0
 description: "End-to-end project engineering — from understanding user intent to architecture design, incremental build with verification, and systematic debugging. Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any software the user wants built. Replaces coder + preview-dev with a unified methodology."
 tags: [engineering, development, tasks, dashboards, preview, debugging]
 tools: [read_file, write_file, edit_file, bash, preview_serve, preview_stop, preview_check, community_publish, community_unpublish, community_list, register_task, activate_task, cancel_scheduled_task, update_scheduled_task, list_scheduled_tasks, get_scheduled_task_log]
@@ -69,6 +69,13 @@ Before designing, **read `config/context/references/sc-proxy.md`** for pricing t
 
 **Data reliability:** Native tools > proxied APIs > direct requests > web scraping > LLM numbers (never).
 **Iron rule: Scripts fetch data. LLMs analyze text. Final output = script variables + LLM prose.**
+
+**Task scripts can import skill functions directly:**
+```python
+from core.skill_tools import coingecko, coinglass  # auto-discovers skills/*/exports.py
+prices = coingecko.coin_price(coin_ids=["bitcoin"], timestamps=["now"])
+```
+Tool names = SKILL.md frontmatter `tools:` list. See `build-patterns.md § Using Skill Functions`.
 
 ---
 

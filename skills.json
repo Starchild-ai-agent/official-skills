@@ -23,7 +23,8 @@
       "name": "birdeye",
       "path": "birdeye/SKILL.md",
       "version": "1.0.0",
-      "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis."
+      "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis.",
+      "has_exports": true
     },
     {
       "name": "browser-preview",
@@ -47,13 +48,15 @@
       "name": "coingecko",
       "path": "coingecko/SKILL.md",
       "version": "1.0.1",
-      "description": "CoinGecko crypto price data, charts, market discovery, and global stats"
+      "description": "CoinGecko crypto price data, charts, market discovery, and global stats",
+      "has_exports": true
     },
     {
       "name": "coinglass",
       "path": "coinglass/SKILL.md",
       "version": "3.0.0",
-      "description": "Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data"
+      "description": "Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data",
+      "has_exports": true
     },
     {
       "name": "composio",
@@ -95,7 +98,8 @@
       "name": "hyperliquid",
       "path": "hyperliquid/SKILL.md",
       "version": "1.1.0",
-      "description": "Trade perpetual futures and spot on Hyperliquid DEX"
+      "description": "Trade perpetual futures and spot on Hyperliquid DEX",
+      "has_exports": true
     },
     {
       "name": "lunarcrush",
@@ -185,7 +189,8 @@
       "name": "twelvedata",
       "path": "twelvedata/SKILL.md",
       "version": "1.1.0",
-      "description": "Stocks and forex price data, time series, quotes, and reference data"
+      "description": "Stocks and forex price data, time series, quotes, and reference data",
+      "has_exports": true
     },
     {
       "name": "twitter",

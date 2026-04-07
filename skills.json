@@ -5,246 +5,211 @@
       "name": "1inch",
       "path": "1inch/SKILL.md",
       "version": "2.0.0",
-      "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service.",
-      "has_exports": false
+      "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
     },
     {
       "name": "aave",
       "path": "aave/SKILL.md",
       "version": "1.0.0",
-      "description": "Supply and withdraw tokens on Aave V3 lending pools",
-      "has_exports": false
+      "description": "Supply and withdraw tokens on Aave V3 lending pools"
     },
     {
       "name": "backtest",
       "path": "backtest/SKILL.md",
       "version": "1.0.0",
-      "description": "Build and run backtests against real historical data. Use when a strategy needs validation, the user wants performance numbers, or before committing to a trade approach.",
-      "has_exports": false
+      "description": "Build and run backtests against real historical data. Use when a strategy needs validation, the user wants performance numbers, or before committing to a trade approach."
     },
     {
       "name": "birdeye",
       "path": "birdeye/SKILL.md",
       "version": "1.0.0",
-      "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis.",
-      "has_exports": true
+      "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis."
     },
     {
       "name": "browser-preview",
       "path": "browser-preview/SKILL.md",
       "version": "1.0.0",
-      "description": "Browser preview panel knowledge \u2014 the iframe-based Browser tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, \u767d\u5c4f, \u9875\u9762\u6302\u4e86, tab \u4e0d\u89c1\u4e86, preview not loading, or asks about running services.",
-      "has_exports": false
+      "description": "Browser preview panel knowledge — the iframe-based Browser tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, 白屏, 页面挂了, tab 不见了, preview not loading, or asks about running services."
     },
     {
       "name": "charting",
       "path": "charting/SKILL.md",
       "version": "1.0.0",
-      "description": "Generate TradingView-style candlestick charts with indicators. Use when the user wants a visual chart, price visualization, or technical analysis plot.",
-      "has_exports": false
+      "description": "Generate TradingView-style candlestick charts with indicators. Use when the user wants a visual chart, price visualization, or technical analysis plot."
     },
     {
       "name": "coder",
       "path": "coder/SKILL.md",
       "version": "1.0.0",
-      "description": "Code specialist for writing, debugging, and technical implementation. Use when the user needs code written, bugs fixed, files edited, or features built.",
-      "has_exports": false
+      "description": "Code specialist for writing, debugging, and technical implementation. Use when the user needs code written, bugs fixed, files edited, or features built."
     },
     {
       "name": "coingecko",
       "path": "coingecko/SKILL.md",
       "version": "1.0.1",
-      "description": "CoinGecko crypto price data, charts, market discovery, and global stats",
-      "has_exports": true
+      "description": "CoinGecko crypto price data, charts, market discovery, and global stats"
     },
     {
       "name": "coinglass",
       "path": "coinglass/SKILL.md",
       "version": "3.0.1",
-      "description": "Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data",
-      "has_exports": true
+      "description": "Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data"
     },
     {
       "name": "composio",
       "path": "composio/SKILL.md",
       "version": "1.2.0",
-      "description": "Universal tool gateway via Composio \u2014 connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration.",
-      "has_exports": false
+      "description": "Universal tool gateway via Composio — connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration."
     },
     {
       "name": "creator-insights",
       "path": "creator-insights/SKILL.md",
       "version": "1.0.0",
-      "description": "Comprehensive Twitter/X intelligence system providing account analytics, competitive intelligence, thread & follower analysis, viral content patterns, and AI-powered content generation. Uses TwitterAPI.io + OpenRouter to deliver data-driven growth strategies with beautiful ASCII dashboards. Use when creators need performance insights, VIP follower discovery, thread engagement analysis, viral content research, or AI-generated tweet drafting.",
-      "has_exports": false
+      "description": "Comprehensive Twitter/X intelligence system providing account analytics, competitive intelligence, thread & follower analysis, viral content patterns, and AI-powered content generation. Uses TwitterAPI.io + OpenRouter to deliver data-driven growth strategies with beautiful ASCII dashboards. Use when creators need performance insights, VIP follower discovery, thread engagement analysis, viral content research, or AI-generated tweet drafting."
     },
     {
       "name": "dashboard",
       "path": "dashboard/SKILL.md",
       "version": "1.0.0",
-      "description": "Create HTML/CSS/JS dashboards with data visualization and real-time updates",
-      "has_exports": false
+      "description": "Create HTML/CSS/JS dashboards with data visualization and real-time updates"
     },
     {
       "name": "debank",
       "path": "debank/SKILL.md",
       "version": "1.0.1",
-      "description": "DeBank blockchain data API - user portfolios, token balances, transaction history, and DeFi protocol positions",
-      "has_exports": true
+      "description": "DeBank blockchain data API - user portfolios, token balances, transaction history, and DeFi protocol positions"
     },
     {
       "name": "defillama",
       "path": "defillama/SKILL.md",
       "version": "2.1.1",
-      "description": "DefiLlama API integration for DeFi analytics - TVL, stablecoin yields, vault/APY ranking, protocol revenue, fees, DEX volume, chain flows, bridges, and treasury data. Best for DeFi research, stablecoin farming, yield strategy screening, and protocol/chain market intelligence.",
-      "has_exports": true
+      "description": "DefiLlama API integration for DeFi analytics - TVL, stablecoin yields, vault/APY ranking, protocol revenue, fees, DEX volume, chain flows, bridges, and treasury data. Best for DeFi research, stablecoin farming, yield strategy screening, and protocol/chain market intelligence."
     },
     {
       "name": "dgclaw",
       "path": "dgclaw/SKILL.md",
-      "version": "1.0.0",
-      "description": "",
-      "has_exports": false
+      "version": "3.0",
+      "description": ""
     },
     {
       "name": "hyperliquid",
       "path": "hyperliquid/SKILL.md",
       "version": "1.1.0",
-      "description": "Trade perpetual futures and spot on Hyperliquid DEX",
-      "has_exports": true
+      "description": "Trade perpetual futures and spot on Hyperliquid DEX"
     },
     {
       "name": "lunarcrush",
       "path": "lunarcrush/SKILL.md",
       "version": "1.0.1",
-      "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity",
-      "has_exports": true
+      "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity"
     },
     {
       "name": "okx",
       "path": "okx/SKILL.md",
       "version": "1.0.0",
-      "description": "OKX OnChainOS - Complete on-chain operations suite with 11 specialized skills for trading, analytics, security, and wallet management across 20+ blockchains",
-      "has_exports": false
+      "description": "OKX OnChainOS - Complete on-chain operations suite with 11 specialized skills for trading, analytics, security, and wallet management across 20+ blockchains"
     },
     {
       "name": "orderly-onboarding",
       "path": "orderly-onboarding/SKILL.md",
       "version": "1.0.0",
-      "description": "Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart",
-      "has_exports": false
+      "description": "Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart"
     },
     {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "5.0.0",
-      "description": "Trade Polymarket prediction markets via Privy wallet. Script-first: most flows are 1 bash + 1 sign. Search, analyze, place/cancel orders, manage positions.",
-      "has_exports": false
+      "description": "Trade Polymarket prediction markets via Privy wallet. Script-first: most flows are 1 bash + 1 sign. Search, analyze, place/cancel orders, manage positions."
     },
     {
       "name": "preview-dev",
       "path": "preview-dev/SKILL.md",
       "version": "1.0.0",
-      "description": "Frontend & fullstack development with live preview. Use when the user wants to build a web page, frontend app, fullstack project, or any web UI \u2014 including React, Vue, Vite, static HTML, Express, FastAPI, or any framework that produces a browser-viewable result. Also use when the user wants to deploy, publish, or share a preview to the public internet (community publish).",
-      "has_exports": false
+      "description": "Frontend & fullstack development with live preview. Use when the user wants to build a web page, frontend app, fullstack project, or any web UI — including React, Vue, Vite, static HTML, Express, FastAPI, or any framework that produces a browser-viewable result. Also use when the user wants to deploy, publish, or share a preview to the public internet (community publish)."
     },
     {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
       "version": "1.3.0",
-      "description": "End-to-end project engineering \u2014 from understanding user intent to architecture design, incremental build with verification, and systematic debugging. Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any software the user wants built. Replaces coder + preview-dev with a unified methodology.",
-      "has_exports": false
+      "description": "End-to-end project engineering — from understanding user intent to architecture design, incremental build with verification, and systematic debugging. Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any software the user wants built. Replaces coder + preview-dev with a unified methodology."
     },
     {
       "name": "sc-vpn",
       "path": "sc-vpn/SKILL.md",
       "version": "1.0.0",
-      "description": "Route outbound HTTP traffic through SC-VPN Gateway for geo-restricted access. Use when a script or request is blocked by region restrictions and needs to appear from a specific country. Do NOT set global proxy \u2014 use per-request proxy only.",
-      "has_exports": false
+      "description": "Route outbound HTTP traffic through SC-VPN Gateway for geo-restricted access. Use when a script or request is blocked by region restrictions and needs to appear from a specific country. Do NOT set global proxy — use per-request proxy only."
     },
     {
       "name": "script-generator",
       "path": "script-generator/SKILL.md",
       "version": "1.0.0",
-      "description": "Write and schedule trading scripts for strategy automation. Use when the user needs a recurring monitor, price alert, indicator script, or any automated data pipeline.",
-      "has_exports": false
+      "description": "Write and schedule trading scripts for strategy automation. Use when the user needs a recurring monitor, price alert, indicator script, or any automated data pipeline."
     },
     {
       "name": "skill-creator",
       "path": "skill-creator/SKILL.md",
       "version": "1.0.0",
-      "description": "Create and scaffold new skills with proper frontmatter, directory structure, and validation. Use when the user asks to build a new capability, integrate a new API, or extend the system with a repeatable workflow.",
-      "has_exports": false
+      "description": "Create and scaffold new skills with proper frontmatter, directory structure, and validation. Use when the user asks to build a new capability, integrate a new API, or extend the system with a repeatable workflow."
     },
     {
       "name": "skillmarketplace",
       "path": "skillmarketplace/SKILL.md",
       "version": "4.0.0",
-      "description": "Search, install, and publish skills. Use search_skills tool for discovery + auto-install. Manual publish via gateway.",
-      "has_exports": false
+      "description": "Search, install, and publish skills. Use search_skills tool for discovery + auto-install. Manual publish via gateway."
     },
     {
       "name": "taapi",
       "path": "taapi/SKILL.md",
       "version": "1.0.1",
-      "description": "Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators",
-      "has_exports": true
+      "description": "Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators"
     },
     {
       "name": "tg-bot-binding",
       "path": "tg-bot-binding/SKILL.md",
       "version": "1.0.0",
-      "description": "Guide users through the Telegram Bot binding process \u2014 creating a bot, adding it to Starchild, verifying ownership, and troubleshooting common issues.",
-      "has_exports": false
+      "description": "Guide users through the Telegram Bot binding process — creating a bot, adding it to Starchild, verifying ownership, and troubleshooting common issues."
     },
     {
       "name": "tokenomist",
       "path": "tokenomist/SKILL.md",
       "version": "1.0.1",
-      "description": "Tokenomist unlock/emission/allocation API skill. Use when users ask token unlock schedules, cliff unlock events, daily emissions, allocation breakdowns, or tokenomics supply pressure analytics.",
-      "has_exports": true
+      "description": "Tokenomist unlock/emission/allocation API skill. Use when users ask token unlock schedules, cliff unlock events, daily emissions, allocation breakdowns, or tokenomics supply pressure analytics."
     },
     {
       "name": "trading-strategy",
       "path": "trading-strategy/SKILL.md",
       "version": "1.0.0",
-      "description": "Thinking partner for developing trading theses \u2014 from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, \"what do you think about\", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill).",
-      "has_exports": false
+      "description": "Thinking partner for developing trading theses — from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, \"what do you think about\", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill)."
     },
     {
       "name": "twelvedata",
       "path": "twelvedata/SKILL.md",
       "version": "1.1.0",
-      "description": "Stocks and forex price data, time series, quotes, and reference data",
-      "has_exports": true
+      "description": "Stocks and forex price data, time series, quotes, and reference data"
     },
     {
       "name": "twitter",
       "path": "twitter/SKILL.md",
       "version": "1.0.0",
-      "description": "Twitter/X data lookup \u2014 search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts.",
-      "has_exports": false
+      "description": "Twitter/X data lookup — search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts."
     },
     {
       "name": "wallet",
       "path": "wallet/SKILL.md",
       "version": "1.1.0",
-      "description": "Multi-chain wallet operations - balance, transfers, signing, policy management, and transaction history via Privy Server Wallets (EVM + Solana)",
-      "has_exports": false
+      "description": "Multi-chain wallet operations - balance, transfers, signing, policy management, and transaction history via Privy Server Wallets (EVM + Solana)"
     },
     {
       "name": "wallet-policy",
       "path": "wallet-policy/SKILL.md",
       "version": "1.1.0",
-      "description": "Generate Privy wallet policy rules from natural language. Use when the user wants to set up, modify, or review wallet security policies \u2014 transfer limits, address allowlists, method restrictions, time windows, etc.",
-      "has_exports": false
+      "description": "Generate Privy wallet policy rules from natural language. Use when the user wants to set up, modify, or review wallet security policies — transfer limits, address allowlists, method restrictions, time windows, etc."
     },
     {
       "name": "woofi-swap",
       "path": "woofi-swap/SKILL.md",
       "version": "7.0.0",
-      "description": "Swap any token at the best price with a single API call. One POST to /v1/swap handles everything \u2014 best-price quote, approval check, and transaction building \u2014 no separate calls needed. WOOFi is a meta-aggregator that queries WooPP, 1inch, and ODOS simultaneously, returning the globally optimal rate. Supports all ERC-20 tokens and native gas tokens (ETH, BNB, AVAX, MATIC, etc.) on 14 EVM chains.",
-      "has_exports": false
+      "description": "Swap any token at the best price with a single API call. One POST to /v1/swap handles everything — best-price quote, approval check, and transaction building — no separate calls needed. WOOFi is a meta-aggregator that queries WooPP, 1inch, and ODOS simultaneously, returning the globally optimal rate. Supports all ERC-20 tokens and native gas tokens (ETH, BNB, AVAX, MATIC, etc.) on 14 EVM chains."
     }
   ]
 }

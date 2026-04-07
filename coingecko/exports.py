@@ -7,12 +7,6 @@ Usage in task scripts:
     ohlc = coingecko.coin_ohlc(coin_id="bitcoin", days=30)
     trending = coingecko.cg_trending()
 """
-import os
-import sys
-
-_tools_dir = os.path.join(os.path.dirname(__file__), 'tools')
-sys.path.insert(0, _tools_dir)
-
 from coin_prices import get_coin_prices_at_timestamps
 from coin_ohlc_range_by_id import get_coin_ohlc_range_by_id
 from coin_historical_chart_range_by_id import get_coin_historical_chart_range_by_id

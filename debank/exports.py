@@ -7,32 +7,12 @@ Usage in task scripts:
     tokens = debank.db_user_all_token_list(user_addr="0x...")
     chains = debank.db_chain_list()
 """
-import importlib.util
-import os
-import sys
-
-_tools_dir = os.path.join(os.path.dirname(__file__), "tools")
-
-
-def _load(filename, register_name=None):
-    """Load a module from tools/ by absolute path. Optionally register in sys.modules."""
-    path = os.path.join(_tools_dir, filename)
-    mod_name = register_name or f"debank_tools.{filename[:-3]}"
-    spec = importlib.util.spec_from_file_location(mod_name, path)
-    mod = importlib.util.module_from_spec(spec)
-    if register_name:
-        sys.modules[register_name] = mod
-    spec.loader.exec_module(mod)
-    return mod
-
-
-# Load utils first so other modules can `from utils import ...`
-_utils = _load("utils.py", register_name="utils")
-_chain = _load("chain.py")
-_token = _load("token.py")
-_user = _load("user.py")
-_protocol = _load("protocol.py")
-_wallet = _load("wallet.py")
+from utils import debank_api_request, validate_chain_id
+import chain as _chain
+import token as _token
+import user as _user
+import protocol as _protocol
+import wallet as _wallet
 
 # --- Chain ---
 def db_chain_list():

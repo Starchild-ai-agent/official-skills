@@ -5,12 +5,6 @@ Usage in task scripts:
     from core.skill_tools import coinglass
     fr = coinglass.funding_rate(symbol="BTC")
 """
-import os, sys
-
-_tools_dir = os.path.join(os.path.dirname(__file__), "tools")
-if _tools_dir not in sys.path:
-    sys.path.insert(0, _tools_dir)
-
 # --- Funding Rate ---
 from funding_rate import get_symbol_funding_rate as funding_rate
 

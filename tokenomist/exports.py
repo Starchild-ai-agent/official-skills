@@ -8,9 +8,6 @@ Usage in task scripts:
     allocs = tokenomist.tokenomist_allocations(query="ARB")
     overview = tokenomist.tokenomist_token_overview(query="ARB")
 """
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "tools"))
-
 from client import TokenomistClient, normalize_token_index, resolve_token_id
 
 _client_singleton = None

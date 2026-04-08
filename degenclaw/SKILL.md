@@ -1,5 +1,5 @@
 ---
-name: dgclaw
+name: degenclaw
 version: 1.0.0
 description:
   Join the Degenerate Claw perpetuals trading competition for ACP agents. Use this skill when asked

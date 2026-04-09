@@ -145,16 +145,16 @@ Use '0' amount for contract calls. Policy-gated if enabled."""
         "properties": {
             "to": {"type": "string", "description": "Target address (0x...)"},
             "amount": {"type": "string", "description": "Amount in wei"},
-            "chain_id": {"type": "integer", "description": "Chain ID (default: 1)"},
+            "chain_id": {"type": "string", "description": "Chain ID, e.g. '137' for Polygon (default: '1')"},
             "data": {"type": "string", "description": "Hex calldata for contract calls"},
             "gas_limit": {"type": "string"}, "gas_price": {"type": "string"},
             "max_fee_per_gas": {"type": "string"}, "max_priority_fee_per_gas": {"type": "string"},
-            "nonce": {"type": "string"}, "tx_type": {"type": "integer", "description": "0=legacy, 2=EIP-1559"},
+            "nonce": {"type": "string"}, "tx_type": {"type": "string", "description": "0=legacy, 2=EIP-1559"},
         },
         "required": ["to", "amount"],
     }
 
-    async def execute(self, ctx: ToolContext, to="", amount="", chain_id=1,
+    async def execute(self, ctx: ToolContext, to="", amount="", chain_id="1",
                       data="", gas_limit="", gas_price="",
                       max_fee_per_gas="", max_priority_fee_per_gas="",
                       nonce="", tx_type=None, **kw) -> ToolResult:
@@ -162,6 +162,9 @@ Use '0' amount for contract calls. Policy-gated if enabled."""
         if not to or not amount:
             return ToolResult(success=False, error="'to' and 'amount' required")
         try:
+            chain_id = int(chain_id) if chain_id else 1
+            if tx_type is not None:
+                tx_type = int(tx_type)
             resp = await evm_transfer(to, amount, chain_id, data, gas_limit, gas_price,
                                       max_fee_per_gas, max_priority_fee_per_gas, nonce, tx_type)
             return ToolResult(success=True, output=resp)
@@ -184,15 +187,15 @@ class WalletSignTransactionTool(BaseTool):
         "type": "object",
         "properties": {
             "to": {"type": "string"}, "amount": {"type": "string"},
-            "chain_id": {"type": "integer"}, "data": {"type": "string"},
+            "chain_id": {"type": "string", "description": "Chain ID (default: '1')"}, "data": {"type": "string"},
             "gas_limit": {"type": "string"}, "gas_price": {"type": "string"},
             "max_fee_per_gas": {"type": "string"}, "max_priority_fee_per_gas": {"type": "string"},
-            "nonce": {"type": "string"}, "tx_type": {"type": "integer"},
+            "nonce": {"type": "string"}, "tx_type": {"type": "string"},
         },
         "required": ["to", "amount"],
     }
 
-    async def execute(self, ctx: ToolContext, to="", amount="", chain_id=1,
+    async def execute(self, ctx: ToolContext, to="", amount="", chain_id="1",
                       data="", gas_limit="", gas_price="",
                       max_fee_per_gas="", max_priority_fee_per_gas="",
                       nonce="", tx_type=None, **kw) -> ToolResult:
@@ -200,6 +203,9 @@ class WalletSignTransactionTool(BaseTool):
         if not to or not amount:
             return ToolResult(success=False, error="'to' and 'amount' required")
         try:
+            chain_id = int(chain_id) if chain_id else 1
+            if tx_type is not None:
+                tx_type = int(tx_type)
             resp = await evm_sign_transaction(to, amount, chain_id, data, gas_limit, gas_price,
                                               max_fee_per_gas, max_priority_fee_per_gas, nonce, tx_type)
             return ToolResult(success=True, output=resp)
@@ -276,9 +282,12 @@ class WalletTransactionsTool(BaseTool):
         },
     }
 
-    async def execute(self, ctx: ToolContext, chain="ethereum", asset="eth", limit=20, **kw) -> ToolResult:
+    async def execute(self, ctx: ToolContext, **kw) -> ToolResult:
         if err := _fly_check(): return err
         try:
+            chain = kw.get("chain", "ethereum")
+            asset = kw.get("asset", "")
+            limit = kw.get("limit", 20)
             return ToolResult(success=True, output=await evm_transactions(chain, asset, limit))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
@@ -290,27 +299,26 @@ class WalletSolTransferTool(BaseTool):
     @property
     def name(self): return "wallet_sol_transfer"
     @property
-    def description(self): return "Sign and BROADCAST a Solana transaction. Gas sponsored. Policy-gated if enabled."
+    def description(self): return "Sign and BROADCAST a Solana transaction. No gas sponsorship — user pays gas. Signs via wallet-service, broadcasts via Solana RPC."
     @property
     def parameters(self): return {
         "type": "object",
         "properties": {
             "transaction": {"type": "string", "description": "Base64-encoded Solana tx"},
-            "caip2": {"type": "string", "description": "CAIP-2 chain ID (default: mainnet)"},
         },
         "required": ["transaction"],
     }
 
-    async def execute(self, ctx: ToolContext, transaction="", caip2="solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", **kw) -> ToolResult:
+    async def execute(self, ctx: ToolContext, transaction="", **kw) -> ToolResult:
         if err := _fly_check(): return err
         if not transaction: return ToolResult(success=False, error="'transaction' required")
         try:
-            return ToolResult(success=True, output=await sol_transfer(transaction, caip2))
+            result = await sol_transfer(transaction)
+            if "error" in result:
+                return ToolResult(success=False, error=str(result))
+            return ToolResult(success=True, output=result)
         except Exception as e:
-            msg = str(e)
-            if "policy" in msg.lower():
-                return ToolResult(success=False, error=f"Policy violation: {msg}")
-            return ToolResult(success=False, error=msg)
+            return ToolResult(success=False, error=str(e))
 
 
 # ── Solana Sign Transaction ─────────────────────────────────────────────────

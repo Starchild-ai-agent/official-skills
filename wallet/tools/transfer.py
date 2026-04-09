@@ -73,19 +73,46 @@ async def evm_sign_typed_data(
     })
 
 
-async def evm_transactions(chain: str = "ethereum", asset: str = "eth", limit: int = 20) -> dict:
-    """Get EVM transaction history."""
+_CHAIN_NATIVE_ASSET = {
+    "ethereum": "eth", "base": "eth", "arbitrum": "eth",
+    "optimism": "eth", "linea": "eth",
+    "polygon": "pol", "matic": "pol",
+    "bnb": "bnb", "bsc": "bnb",
+    "avalanche": "avax", "fantom": "ftm",
+}
+
+async def evm_transactions(chain: str = "ethereum", asset: str = "", limit: int = 20) -> dict:
+    """Get EVM transaction history. Asset auto-detected from chain if empty."""
+    if not asset:
+        asset = _CHAIN_NATIVE_ASSET.get(chain.lower(), "eth")
     qs = f"?chain_type=ethereum&chain={chain}&asset={asset}&limit={limit}"
     return await wallet_request("GET", f"/agent/transactions{qs}")
 
 
 # ── Solana ───────────────────────────────────────────────────────────────────
 
-async def sol_transfer(transaction: str, caip2: str = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp") -> dict:
-    """Sign and BROADCAST a Solana transaction."""
-    return await wallet_request("POST", "/agent/sol/transfer", {
-        "transaction": transaction, "caip2": caip2,
+async def sol_transfer(transaction: str, rpc_url: str = "https://api.mainnet-beta.solana.com") -> dict:
+    """Sign and BROADCAST a Solana transaction (no gas sponsorship).
+    Signs via wallet-service, then broadcasts via Solana RPC.
+    """
+    import httpx
+    # Step 1: sign
+    sign_result = await wallet_request("POST", "/agent/sol/sign-transaction", {
+        "transaction": transaction,
     })
+    signed_tx = sign_result.get("signed_transaction")
+    if not signed_tx:
+        return {"error": "signing failed", "details": sign_result}
+    # Step 2: broadcast via RPC
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(rpc_url, json={
+            "jsonrpc": "2.0", "id": 1, "method": "sendTransaction",
+            "params": [signed_tx, {"encoding": "base64"}],
+        })
+    rpc = resp.json()
+    if "error" in rpc:
+        return {"error": "broadcast failed", "details": rpc["error"]}
+    return {"tx_hash": rpc.get("result"), "signed_transaction": signed_tx}
 
 
 async def sol_sign_transaction(transaction: str) -> dict:

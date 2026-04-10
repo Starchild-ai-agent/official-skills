@@ -1,0 +1,208 @@
+{
+  "schema_version": "1.1.0",
+  "network": "mantle",
+  "updated_at": "2026-03-08T04:00:14Z",
+  "notes": "Seeded from official Merchant Moe docs, the official AGNI app mainnet config bundle, and the Aave Mantle address book. Do not insert guessed addresses or placeholder values.",
+  "chain_ids": {
+    "mainnet": 5000,
+    "testnet": 5003
+  },
+  "contracts": [
+    {
+      "key": "MERCHANT_MOE_ROUTER",
+      "label": "Merchant Moe Router",
+      "environment": "mainnet",
+      "category": "defi",
+      "address": "0xeaEE7EE68874218c3558b40063c42B82D3E7232a",
+      "status": "active",
+      "is_official": true,
+      "aliases": [
+        "MoeRouter",
+        "merchant_moe_router"
+      ],
+      "protocol_id": "merchant_moe",
+      "contract_role": "router",
+      "supports": [
+        "swap",
+        "add_liquidity",
+        "remove_liquidity"
+      ],
+      "source": {
+        "url": "https://docs.merchantmoe.com/resources/contracts",
+        "retrieved_at": "2026-03-08T04:00:14Z"
+      },
+      "notes": "Curated Tier 1 DEX default on Mantle for classic AMM swap and LP flows."
+    },
+    {
+      "key": "MERCHANT_MOE_LB_ROUTER",
+      "label": "Merchant Moe LB Router",
+      "environment": "mainnet",
+      "category": "defi",
+      "address": "0x013e138EF6008ae5FDFDE29700e3f2Bc61d21E3a",
+      "status": "active",
+      "is_official": true,
+      "aliases": [
+        "LBRouter",
+        "merchant_moe_lb_router"
+      ],
+      "protocol_id": "merchant_moe",
+      "contract_role": "router",
+      "supports": [
+        "swap",
+        "add_liquidity",
+        "remove_liquidity"
+      ],
+      "source": {
+        "url": "https://docs.merchantmoe.com/resources/contracts",
+        "retrieved_at": "2026-03-08T04:00:14Z"
+      },
+      "notes": "Curated Tier 1 DEX default on Mantle for Liquidity Book route planning."
+    },
+    {
+      "key": "MERCHANT_MOE_LB_QUOTER",
+      "label": "Merchant Moe LB Quoter",
+      "environment": "mainnet",
+      "category": "defi",
+      "address": "0x501b8AFd35df20f531fF45F6f695793AC3316c85",
+      "status": "active",
+      "is_official": true,
+      "aliases": [
+        "LBQuoter",
+        "merchant_moe_lb_quoter",
+        "merchant_moe_quoter"
+      ],
+      "protocol_id": "merchant_moe",
+      "contract_role": "quoter",
+      "supports": [
+        "quote"
+      ],
+      "source": {
+        "url": "https://docs.merchantmoe.com/resources/contracts",
+        "retrieved_at": "2026-03-08T04:00:14Z"
+      },
+      "notes": "Verified quoting helper for Merchant Moe Liquidity Book routes."
+    },
+    {
+      "key": "AGNI_ROUTER",
+      "label": "Agni Swap Router",
+      "environment": "mainnet",
+      "category": "defi",
+      "address": "0x319B69888b0d11cEC22caA5034e25FfFBDc88421",
+      "status": "active",
+      "is_official": true,
+      "aliases": [
+        "SwapRouter",
+        "agni_router",
+        "agni_swap_router"
+      ],
+      "protocol_id": "agni",
+      "contract_role": "router",
+      "supports": [
+        "swap"
+      ],
+      "source": {
+        "url": "https://agni.finance/_next/static/chunks/pages/_app-9e7d79d3ffa0011c.js",
+        "retrieved_at": "2026-03-08T04:00:14Z"
+      },
+      "notes": "Curated Tier 1 DEX default on Mantle from the official AGNI mainnet app config."
+    },
+    {
+      "key": "AGNI_POSITION_MANAGER",
+      "label": "Agni Nonfungible Position Manager",
+      "environment": "mainnet",
+      "category": "defi",
+      "address": "0x218bf598D1453383e2F4AA7b14fFB9BfB102D637",
+      "status": "active",
+      "is_official": true,
+      "aliases": [
+        "NonfungiblePositionManager",
+        "agni_position_manager"
+      ],
+      "protocol_id": "agni",
+      "contract_role": "position_manager",
+      "supports": [
+        "add_liquidity",
+        "remove_liquidity",
+        "position_management"
+      ],
+      "source": {
+        "url": "https://agni.finance/_next/static/chunks/pages/_app-9e7d79d3ffa0011c.js",
+        "retrieved_at": "2026-03-08T04:00:14Z"
+      },
+      "notes": "Official AGNI v3-style position manager from the mainnet app address config."
+    },
+    {
+      "key": "AGNI_QUOTER",
+      "label": "Agni Quoter V2",
+      "environment": "mainnet",
+      "category": "defi",
+      "address": "0xc4aaDc921E1cdb66c5300Bc158a313292923C0cb",
+      "status": "active",
+      "is_official": true,
+      "aliases": [
+        "QuoterV2",
+        "agni_quoter",
+        "agni_quoter_v2"
+      ],
+      "protocol_id": "agni",
+      "contract_role": "quoter",
+      "supports": [
+        "quote"
+      ],
+      "source": {
+        "url": "https://agni.finance/_next/static/chunks/pages/_app-9e7d79d3ffa0011c.js",
+        "retrieved_at": "2026-03-08T04:00:14Z"
+      },
+      "notes": "Official AGNI QuoterV2 from the mainnet app address config."
+    },
+    {
+      "key": "AAVE_V3_POOL",
+      "label": "Aave v3 Pool",
+      "environment": "mainnet",
+      "category": "defi",
+      "address": "0x458F293454fE0d67EC0655f3672301301DD51422",
+      "status": "active",
+      "is_official": true,
+      "aliases": [
+        "Pool",
+        "aave_v3_pool"
+      ],
+      "protocol_id": "aave_v3",
+      "contract_role": "pool",
+      "supports": [
+        "supply",
+        "withdraw",
+        "borrow",
+        "repay"
+      ],
+      "source": {
+        "url": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Mantle.sol",
+        "retrieved_at": "2026-03-08T04:00:14Z"
+      },
+      "notes": "Curated Tier 1 lending default on Mantle."
+    },
+    {
+      "key": "AAVE_V3_POOL_ADDRESSES_PROVIDER",
+      "label": "Aave v3 Pool Addresses Provider",
+      "environment": "mainnet",
+      "category": "defi",
+      "address": "0xba50Cd2A20f6DA35D788639E581bca8d0B5d4D5f",
+      "status": "active",
+      "is_official": true,
+      "aliases": [
+        "PoolAddressesProvider",
+        "aave_v3_pool_addresses_provider"
+      ],
+      "protocol_id": "aave_v3",
+      "contract_role": "pool_addresses_provider",
+      "supports": [
+        "lookup"
+      ],
+      "source": {
+        "url": "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3Mantle.sol",
+        "retrieved_at": "2026-03-08T04:00:14Z"
+      },
+      "notes": "Official Aave v3 Mantle pool registry entry."
+    }
+  ]
+}

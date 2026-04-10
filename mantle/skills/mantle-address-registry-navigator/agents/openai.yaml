@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle Address Registry Navigator"
+  short_description: "Resolve trusted Mantle contract addresses"
+  default_prompt: "Use $mantle-address-registry-navigator to resolve trusted Mantle token or system contract addresses via mantle_resolveToken/mantle_resolveAddress and validate with mantle_validateAddress, using the local registry as fallback."

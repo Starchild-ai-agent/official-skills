@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle Smart Contract Deployer"
+  short_description: "Plan Mantle deployment handoff and verification"
+  default_prompt: "Use $mantle-smart-contract-deployer to prepare deployment readiness checks, external execution handoff, and explorer verification planning for an already-designed Mantle contract."

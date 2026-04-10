@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle Smart Contract Developer"
+  short_description: "Guide Mantle contract design and OpenZeppelin MCP handoff"
+  default_prompt: "Use $mantle-smart-contract-developer to scope a Mantle smart contract, route contract authoring through OpenZeppelin MCP, and produce a deployment-ready development brief."

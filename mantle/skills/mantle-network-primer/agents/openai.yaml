@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle Network Primer"
+  short_description: "Reference skill for Mantle onboarding"
+  default_prompt: "Use $mantle-network-primer as a reference/onboarding skill when users need Mantle fundamentals, MNT gas context, settlement/finality explanations, or developer onboarding guidance."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle DeFi Operator"
+  short_description: "Coordinate verified Mantle DeFi preflight and external handoff"
+  default_prompt: "Use $mantle-defi-operator when a Mantle DeFi task needs discovery, venue comparison, or execution-ready planning with verified contracts, evidence references, and an external handoff."

@@ -1,0 +1,10 @@
+runtime:
+  name: openai
+  model: gpt-4o
+metadata:
+  version: "1.0"
+  author: mantle-xyz
+  tags:
+    - competition
+    - defi
+    - openclaw

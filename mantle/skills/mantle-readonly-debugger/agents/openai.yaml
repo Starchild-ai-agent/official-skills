@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle Readonly Debugger"
+  short_description: "Diagnose Mantle read/query failures"
+  default_prompt: "Use $mantle-readonly-debugger to diagnose Mantle RPC or quote failures before any execution attempt."

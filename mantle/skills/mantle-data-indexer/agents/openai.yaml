@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle Data Indexer"
+  short_description: "Analyze Mantle historical activity and metrics"
+  default_prompt: "Use $mantle-data-indexer when a Mantle task needs historical wallet activity, time-windowed metrics, event backfills, or protocol analytics from indexers."

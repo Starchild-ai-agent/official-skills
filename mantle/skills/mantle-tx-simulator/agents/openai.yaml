@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle Tx Simulator"
+  short_description: "Prepare external Mantle tx simulation handoff and WYSIWYS summary"
+  default_prompt: "Use $mantle-tx-simulator to prepare an external Mantle simulation handoff package and summarize returned state changes in WYSIWYS format."

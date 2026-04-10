@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle Portfolio Analyst"
+  short_description: "Analyze Mantle balances and allowances"
+  default_prompt: "Use $mantle-portfolio-analyst to produce a wallet balance and allowance exposure report on Mantle."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mantle Risk Evaluator"
+  short_description: "Run Mantle preflight risk checks"
+  default_prompt: "Use $mantle-risk-evaluator to run preflight checks on a Mantle transaction intent before execution."

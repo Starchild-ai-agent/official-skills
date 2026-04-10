@@ -1,6 +1,6 @@
 ---
 name: twitter
-version: 1.0.0
+version: 1.1.0
 description: Twitter/X data lookup — search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts.
 tools:
   - twitter_search_tweets
@@ -27,6 +27,31 @@ disable-model-invocation: false
 # Twitter / X Data
 
 Read-only access to Twitter/X via twitterapi.io. Use these tools to look up tweets, users, followers, and social activity.
+
+## 🔴 HARD LIMITS — READ FIRST
+
+> **⛔ CALL AT MOST 3 TWITTER TOOLS PER RESPONSE. STOP AFTER 3 CALLS.**
+> After each tool call, check: "Do I have enough data to answer?" If yes → STOP AND REPLY.
+> **⛔ NEVER call `bash` for any twitter task** — reason inline, no scripts.
+> **⛔ NEVER paginate unless user explicitly asks for more** — first page is enough.
+
+## 💡 Few-Shot Examples
+
+**Q: 找 3 个关于 BTC ETF 的高赞推文，只要 ID 和点赞数**
+→ PLAN: 1 call `twitter_search_tweets("BTC ETF min_faves:100")` → pick top 3 from results → reply JSON
+→ STOP after 1 call. Total tools: 1
+
+**Q: @elonmusk 最近发的推文哪条点赞最多？只要数字**
+→ PLAN: 1 call `twitter_user_tweets("elonmusk")` → find max likes in results → reply number
+→ STOP after 1 call. Total tools: 1
+
+**Q: 搜索 solana 推文，找点赞最多那条的作者**
+→ PLAN: 1 call `twitter_search_tweets("solana")` → find tweet with most likes → extract username
+→ STOP after 1 call. Total tools: 1
+
+**Q: 对比 @A 和 @B 谁粉丝多，再看粉丝多的最新推文**
+→ PLAN: call `twitter_user_info("A")` + `twitter_user_info("B")` → determine winner → call `twitter_user_tweets(winner)`
+→ Total tools: 3. STOP.
 
 ## ⚡ FAST PATHS (act immediately, no clarification needed)
 
@@ -102,11 +127,12 @@ For BTC/ETH/SOL sentiment: search `"$BTC"`, `"$ETH"`, `"$SOL"` separately, then 
 
 ## Output Constraints (IMPORTANT for small models)
 
-- **Max 1 `twitter_search_tweets` call per coin/topic** — do not repeat searches for same query.
-- **Max 3 `twitter_user_info` calls per response** — profile lookups are expensive; only look up the most relevant accounts.
-- **Never call `bash` or `write_file` for Twitter data** — summarize results inline in your reply.
-- **Sentiment summaries**: after fetching tweets, write a short inline summary (3–5 sentences). Do not produce files or run scripts.
-- **Pagination**: only fetch next page if user explicitly asks for more results.with `twitter_user_info` on interesting accounts
+- **Max 1 `twitter_search_tweets` call per coin/topic** — do not repeat searches for same query. First result set is sufficient.
+- **Max 3 `twitter_user_info` calls per response** — only look up the most relevant accounts.
+- **Never call `bash` or `write_file` for Twitter data** — reason inline directly from tool results.
+- **Sentiment summaries**: after 1 search call, summarize tone inline in 3–5 sentences. Done.
+- **Pagination**: only fetch next page if user explicitly asks for more results.
+- **After getting search results: sort/filter in your head, do not call bash to sort.**
 
 ### Analyze engagement on a tweet
 1. `twitter_get_tweets` — get the tweet and its metrics

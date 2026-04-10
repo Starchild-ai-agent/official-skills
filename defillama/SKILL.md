@@ -2,444 +2,253 @@
 name: defillama
 description: DefiLlama API integration for DeFi analytics - TVL, stablecoin yields, vault/APY ranking, protocol revenue, fees, DEX volume, chain flows, bridges, and treasury data. Best for DeFi research, stablecoin farming, yield strategy screening, and protocol/chain market intelligence.
 version: 2.1.2
+tools:
+  - defillama_tvl_rank
+  - defillama_protocol
+  - defillama_chains
+  - defillama_chain_history
+  - defillama_fees
+  - defillama_dex_volume
+  - defillama_yields
+  - defillama_stablecoins
 ---
 
+# DefiLlama Skill
 
-# DefiLlama API
-
-**Trit**: -1 (MINUS - Validator/Data Source)
-**Color**: #4A90D9 (Cold blue, 210°)
-
-Comprehensive DeFi data from DefiLlama's API ecosystem.
+Native Python tools for DefiLlama DeFi analytics. No API key required for most endpoints.
 
 ## Matching Keywords (intent triggers)
 
 Use this skill when users ask about any of the following:
 
 - **TVL**: TVL ranking, protocol TVL, chain TVL, TVL changes, DeFi market share
-- **Stablecoin yield**: stablecoin yield, USDC/USDT APY, low-risk yield pools, safe yield, fixed-income-like DeFi
+- **Stablecoin yield**: stablecoin yield, USDC/USDT APY, low-risk yield pools, safe yield
 - **Yield / Farming**: APY ranking, yield pool screening, vault yield, lending APY, borrow rates, LSD/LRT yield
-- **DEX / Fees / Revenue**: DEX volume, protocol fees, protocol revenue, revenue growth, which DEX revenue is growing fastest
+- **DEX / Fees / Revenue**: DEX volume, protocol fees, protocol revenue, revenue growth
 - **Flows / Rotation**: capital flows, chain inflow/outflow, stablecoin netflow, liquidity rotation
-- **Protocol Research**: protocol fundamentals, multi-protocol comparison, sector comparison, DeFi snapshot/report
+- **Protocol Research**: protocol fundamentals, multi-protocol comparison, sector comparison, DeFi snapshot
 
-Typical user prompts this skill should match:
-- “Which DEX has seen the strongest revenue growth recently?”
-- “Find me some low-risk stablecoin yield options with decent returns.”
-- “Create a DeFi market snapshot for today (TVL / volume / fees).”
-- “Compare ETH vs SOL on-chain flow changes over the last 30 days.”
+Typical user prompts:
+- "Which DEX has seen the strongest revenue growth recently?"
+- "Find me some low-risk stablecoin yield options with decent returns."
+- "Create a DeFi market snapshot for today (TVL / volume / fees)."
+- "Compare ETH vs SOL on-chain flow changes over the last 30 days."
 
-## Base URLs
+---
 
-| API | Base URL | Auth |
-|-----|----------|------|
-| **Free API** | `https://api.llama.fi` | None (no key needed) |
-| Pro API | `https://pro-api.llama.fi/{API_KEY}` | Key in path `/API_KEY/endpoint` |
-| Bridge API | `https://bridges.llama.fi` | None |
+## Tool Selection Guide
 
-> **Key rule**: Use `https://api.llama.fi` for all **free endpoints** (TVL, chains, DEX, fees, prices).
-> Use `https://pro-api.llama.fi/{API_KEY}` ONLY for **pro endpoints** (yields, derivatives, emissions).
-> Env var: `DEFILLAMA_API_KEY` — used in pro URL path, NOT as HTTP header.
+> **ROOT CAUSE of all failures:** The model ignores defillama_* tools and falls back to web_search/web_fetch/CoinGecko. Every DeFi analytics question has a defillama_* tool. Use it. Do not search the web.
 
-## Most Common Endpoints (Start Here)
+### Decision Tree — Pick Your Tool in 3 Steps
 
-For 90% of DeFi analytics tasks, use these free endpoints (`api.llama.fi`):
+**STEP 1: Is the question about DeFi data?**
+- TVL, fees, DEX volume, yields, stablecoins, chain capital flows → **GO TO STEP 2**
+- Crypto price, market cap of a non-DeFi token → use coingecko tools
 
-| Task | Endpoint | Example |
-|------|----------|---------|
-| TVL Top N protocols | `GET /protocols` | Sort by `.tvl` field |
-| Single protocol detail | `GET /protocol/{slug}` | e.g. `/protocol/aave` |
-| Chain TVL history | `GET /v2/historicalChainTvl/{chain}` | `.date` + `.tvl` fields |
-| DEX volumes | `GET /overview/dexs?excludeChart=true` | `.total24h`, `.total7d` |
-| Protocol fees | `GET /overview/fees?excludeChart=true` | `.total24h` |
-| All chains TVL | `GET /v2/chains` | Sum `.tvl` for global total |
+**STEP 2: What is the subject?**
 
-> ⚠️ **Pro endpoints** (`/yields/*`, `/emissions`, etc.) require `DEFILLAMA_API_KEY` in the URL path.
+| Subject | Keyword Triggers | CALL THIS TOOL |
+|---|---|---|
+| Protocol ranking | "top protocols", "TVL ranking", "biggest DeFi", "前10协议" | `defillama_tvl_rank(top_n=N)` |
+| One specific protocol | "Aave TVL", "Lido", "Uniswap details", protocol name + "how much" | `defillama_protocol(slug="...")` |
+| Chain comparison | "which chain", "ETH vs SOL TVL", "all chains", "链TVL排名" | `defillama_chains()` |
+| Chain TVL over time | "30-day trend", "TVL history", "net inflow", "以太坊TVL趋势" | `defillama_chain_history(chain=X, days=N)` |
+| Fees / revenue | "fees", "revenue", "协议手续费", "earns most", "24h fees" | `defillama_fees(top_n=N)` |
+| DEX volume | "DEX volume", "trading volume", "top DEX", "Uniswap vs Raydium volume" | `defillama_dex_volume(top_n=N)` |
+| Yields / APY | "yield", "APY", "best returns", "farming", "stablecoin pool" | `defillama_yields(min_apy=X, min_tvl=Y)` |
+| Stablecoin market | "USDT", "USDC", "stablecoin market cap", "稳定币总市值" | `defillama_stablecoins()` |
 
-## Proxy Requirement (sc-proxy)
+**STEP 3: Multi-topic questions → call multiple tools**
 
-When using fake API keys (for example `fake-defillama-key-12345`), requests **must** go through sc-proxy so the key can be replaced upstream.
+- "DeFi market snapshot" → `defillama_tvl_rank` + `defillama_dex_volume` + `defillama_fees`
+- "Solana DeFi analysis" → `defillama_chains()` + `defillama_dex_volume(chain="Solana")` + `defillama_yields(chain="Solana")`
+- "Compare Lido vs Rocket Pool" → `defillama_protocol(slug="lido")` + `defillama_protocol(slug="rocket-pool")`
 
-- Env key name: `DEFILLAMA_API_KEY`
-- Auto proxy detection envs: `PROXY_HOST`, `PROXY_PORT`
-- If `HTTP_PROXY` / `HTTPS_PROXY` are unset, direct requests may hit upstream and return key errors.
+---
 
-### Python template (recommended)
+## Common Mistakes — Explicit Corrections
 
-```python
-import os
-import requests
+**❌ MISTAKE 1: Using `web_search` for any DeFi data**
+```
+WRONG:  web_search("Aave TVL 2024")
+RIGHT:  defillama_protocol(slug="aave")
+```
+web_search returns stale articles. defillama_protocol returns live on-chain data.
 
-host = os.getenv("PROXY_HOST")
-port = os.getenv("PROXY_PORT")
-session = requests.Session()
-if host and port:
-    if ":" in host and not host.startswith("["):
-        host = f"[{host}]"  # IPv6-safe
-    proxy = f"http://{host}:{port}"
-    session.proxies.update({"http": proxy, "https": proxy})
-
-# Free endpoint (no key needed):
-r_free = session.get("https://api.llama.fi/protocols", timeout=25)
-print("Free:", r_free.status_code)
-
-# Pro endpoint (key in URL path):
-api_key = os.environ["DEFILLAMA_API_KEY"]
-r_pro = session.get(f"https://pro-api.llama.fi/{api_key}/yields/pools", timeout=25)
-print("Pro:", r_pro.status_code)
+**❌ MISTAKE 2: Using `web_fetch` for protocol or chain data**
+```
+WRONG:  web_fetch("https://defillama.com/chain/Ethereum")
+RIGHT:  defillama_chain_history(chain="Ethereum", days=30)
 ```
 
-### Quick test commands
-
-```bash
-set -a && source .env && set +a
-python3 - << 'PY'
-import os, requests
-s = requests.Session()
-host, port = os.getenv('PROXY_HOST'), os.getenv('PROXY_PORT')
-if host and port:
-    if ':' in host and not host.startswith('['):
-        host = f'[{host}]'
-    p = f'http://{host}:{port}'
-    s.proxies.update({'http': p, 'https': p})
-
-# Free endpoint
-r1 = s.get('https://api.llama.fi/protocols', timeout=25)
-print('free /protocols:', r1.status_code)
-
-# Pro endpoint
-k = os.environ['DEFILLAMA_API_KEY']
-r2 = s.get(f'https://pro-api.llama.fi/{k}/yields/pools', timeout=25)
-print('pro /yields/pools:', r2.status_code)
-PY
+**❌ MISTAKE 3: Using `cg_global_defi` INSTEAD OF defillama tools for DEX volume or TVL**
+```
+WRONG:  cg_global_defi() alone  ← returns aggregate stats only, not DEX rankings
+RIGHT:  defillama_dex_volume(top_n=10)
+OK:     defillama_dex_volume() + cg_global_defi()  ← combining is fine for context
 ```
 
-## Quick Reference
-
-### TVL & Protocols
-```bash
-# All protocols with TVL
-GET /protocols
-
-# Single protocol detail
-GET /protocol/{slug}
-
-# Chain TVL
-GET /v2/chains
-GET /v2/historicalChainTvl/{chain}
+**❌ MISTAKE 4: Using `cg_global` INSTEAD OF defillama tools for chain TVL**
+```
+WRONG:  cg_global() alone  ← returns total crypto market cap, not chain TVL
+RIGHT:  defillama_chains()
+OK:     defillama_chains() + cg_global()  ← combining for market context is fine
 ```
 
-### Prices
-```bash
-# Current prices (chain:address format)
-GET /coins/prices/current/{coins}
+**❌ MISTAKE 5: Using `cg_coins_markets` for stablecoin data**
+```
+WRONG:  cg_coins_markets(ids="tether,usd-coin")
+RIGHT:  defillama_stablecoins()
+```
+DefiLlama tracks stablecoins cross-chain with accurate supply data. CoinGecko does not.
 
-# Historical
-GET /coins/prices/historical/{timestamp}/{coins}
+**❌ MISTAKE 6: Using `cg_derivatives_exchanges` for DEX volume**
+```
+WRONG:  cg_derivatives_exchanges()   ← this is CEX derivatives (Binance futures, etc.)
+RIGHT:  defillama_dex_volume()
+```
+These are completely different markets. DEX ≠ derivatives exchange.
 
-# Chart data
-GET /coins/chart/{coins}?period=30d
+**❌ MISTAKE 7: Not calling defillama_yields at all**
+```
+WRONG:  "I don't have data on DeFi yields."
+RIGHT:  defillama_yields(min_apy=5, min_tvl=50000000, stablecoin_only=True)
 ```
 
-### Yields (Pro)
-```bash
-GET /yields/pools           # All yield pools
-GET /yields/chart/{pool}    # Pool history
-GET /yields/poolsBorrow     # Borrow rates
-GET /yields/perps           # Perp funding
-GET /yields/lsdRates        # LSD rates
+**❌ MISTAKE 8: Using `coin_chart` for chain TVL trends**
+```
+WRONG:  coin_chart(coin_id="ethereum", days=30)  ← price chart, not TVL
+RIGHT:  defillama_chain_history(chain="Ethereum", days=30)
 ```
 
-### Volume
-```bash
-GET /overview/dexs?excludeChart=true              # DEX volumes (recommended)
-GET /overview/dexs/{chain}?excludeChart=true      # Chain DEX
-GET /summary/dexs/{protocol}                       # Protocol detail
-GET /overview/options?excludeChart=true           # Options
-GET /overview/derivatives?excludeChart=true       # Derivatives (Pro)
+---
+
+## Quick-Reference: Do NOT Substitute
+
+| If you're tempted to call... | Call this FIRST (primary) | OK to add for context |
+|---|---|---|
+| `web_search` for any DeFi question | Any `defillama_*` tool matching the subject | — |
+| `web_fetch` on defillama.com | Any `defillama_*` tool matching the subject | — |
+| `cg_global_defi` alone | `defillama_tvl_rank` or `defillama_dex_volume` | `cg_global_defi` as supplement |
+| `cg_global` alone | `defillama_chains` | `cg_global` for market cap context |
+| `cg_coins_markets` for stablecoins | `defillama_stablecoins` | — |
+| `cg_derivatives_exchanges` | `defillama_dex_volume` | — |
+| `coin_chart` for TVL history | `defillama_chain_history` | — |
+
+---
+
+## ⚠️ CRITICAL: Always Use DefiLlama Tools FIRST
+
+**For any DeFi analytics question, use the defillama_* tools as PRIMARY data source. Do NOT use web_search, web_fetch as substitutes.**
+
+## Tool Decision Table
+
+| Question / Intent | CORRECT Tool | WRONG (never use) |
+|---|---|---|
+| Top protocols by TVL | `defillama_tvl_rank(top_n=10)` | web_search, cg_global_defi |
+| Specific protocol TVL (Aave, Lido…) | `defillama_protocol(slug="aave")` | web_search, web_fetch |
+| Chain TVL comparison (ETH, SOL, BSC…) | `defillama_chains()` | cg_global, cg_global_defi |
+| Chain TVL trend / 30-day history | `defillama_chain_history(chain="Ethereum", days=30)` | web_search, coin_chart |
+| Chain net inflow / outflow | `defillama_chain_history(chain=X, days=7)` | web_search, cg_global |
+| Protocol fees / revenue (24h, 7d) | `defillama_fees(top_n=10)` | web_search, web_fetch |
+| DEX trading volume | `defillama_dex_volume(top_n=10)` | cg_global_defi, cg_derivatives_exchanges |
+| Yield pool discovery (APY, stablecoins) | `defillama_yields(min_apy=5, min_tvl=50000000)` | web_search |
+| Stablecoin market caps | `defillama_stablecoins()` | cg_coins_markets |
+
+---
+
+## Key Rules
+
+1. **DEX volume** → always `defillama_dex_volume`. CoinGecko returns CEX derivatives data, not DEX volume.
+2. **Protocol fees/revenue** → always `defillama_fees`. Real-time on-chain fee data.
+3. **Chain capital flows** → `defillama_chain_history` for multiple chains; compare TVL start vs end.
+4. **Protocol comparison** → `defillama_protocol(slug=X)` for each, then compare.
+5. **Never use web_search as primary** for any data defillama tools cover.
+6. **Cross-skill OK** — combine defillama + coingecko for complex reports; defillama stays primary.
+
+---
+
+## Tool Reference
+
+### defillama_tvl_rank(top_n=10)
+Returns top N DeFi protocols by TVL with name, TVL in USD, chain, category.
+
+### defillama_protocol(slug="aave")
+Returns detailed data for one protocol: TVL, 7d/30d change, chain breakdown, category.
+Protocol slugs: aave, lido, makerdao, uniswap, compound-finance, curve-dex, rocket-pool, eigenlayer, jito, raydium, pancakeswap
+
+### defillama_chains()
+Returns all chains ranked by TVL: name, TVL, 1d/7d/30d pct change.
+Use for "which chain has most TVL?" or chain TVL comparison.
+
+### defillama_chain_history(chain="Ethereum", days=30)
+Returns daily TVL history for a specific chain over N days.
+Use for "30-day trend", "TVL change over time", "net inflow/outflow last 7 days".
+For chain flows: call for each chain (Ethereum, Solana, BSC, Arbitrum, Base…), compare start vs end TVL.
+
+### defillama_fees(top_n=10)
+Returns top protocols by fee revenue: 24h fees, 7d fees, protocol name.
+Use for "which protocols earn most fees", "fee revenue ranking", "protocol income".
+
+### defillama_dex_volume(top_n=10)
+Returns DEX trading volume: 24h volume, 7d volume, protocol name, chain.
+First row is usually the aggregate total across all DEXes.
+
+### defillama_yields(min_apy=5, min_tvl=50000000, stable_only=True)
+Returns yield pools meeting criteria: APY%, TVL, protocol, token, chain.
+
+### defillama_stablecoins()
+Returns stablecoin data: name, market cap, 24h change, peg price.
+Use for "total stablecoin market cap", "USDT vs USDC dominance".
+
+---
+
+## Composite Queries
+
+**DeFi market snapshot:**
+```
+defillama_tvl_rank(top_n=5)      # Top protocols by TVL
+defillama_fees(top_n=5)          # Top fee earners (24h revenue)
+defillama_dex_volume(top_n=5)    # Top DEXes by volume
 ```
 
-### Fees & Revenue
-```bash
-GET /overview/fees?excludeChart=true              # All fees/revenue (recommended)
-GET /overview/fees/{chain}?excludeChart=true      # Chain fees
-GET /summary/fees/{protocol}                      # Protocol fees
-# dataType: dailyFees | dailyRevenue | dailyHoldersRevenue
+**Protocol comparison (e.g. Lido vs Rocket Pool):**
+```
+defillama_protocol(slug="lido")
+defillama_protocol(slug="rocket-pool")
+defillama_fees(top_n=20)   # to get fee data for both
 ```
 
-### Bridges
-```bash
-# Base: https://bridges.llama.fi
-GET /bridges                        # All bridges
-GET /bridge/{id}                    # Bridge detail
-GET /bridgevolume/{chain}           # Volume by chain
-GET /transactions/{id}              # Bridge txs
+**Chain capital flows (past 7 days):**
+```
+defillama_chains()                              # current TVL snapshot with 7d pct change
+defillama_chain_history(chain="Ethereum", days=7)
+defillama_chain_history(chain="Solana", days=7)
+# Compare TVL[0] vs TVL[-1] to get net inflow/outflow
 ```
 
-### DAT (Digital Asset Treasury)
-```bash
-GET /dat/institutions               # All institutions
-GET /dat/institutions/{symbol}      # e.g., MSTR
+**Solana ecosystem DeFi analysis:**
+```
+defillama_chain_history(chain="Solana", days=30)   # TVL trend
+defillama_dex_volume(top_n=20)                      # filter for Solana DEXes
+defillama_yields(min_apy=5)                          # Solana yield pools
 ```
 
-## Usage Script
+---
 
-```clojure
-;; See scripts/defillama.bb for full implementation
-(require '[defillama :as dl])
+## Common Protocol Slugs
 
-;; TVL
-(dl/protocols)
-(dl/protocol "aave")
-(dl/chain-tvl "Ethereum")
-
-;; Prices
-(dl/price "ethereum:0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
-(dl/price-chart "coingecko:ethereum" {:period "30d"})
-
-;; Yields
-(dl/yield-pools)
-(dl/pool-chart "747c1d2a-c668-4682-b9f9-296708a3dd90")
-
-;; Volumes
-(dl/dex-overview)
-(dl/dex-protocol "uniswap")
-
-;; Fees
-(dl/fees-overview)
-(dl/fees-protocol "hyperliquid")
-```
-
-## Endpoint Categories
-
-### Free Endpoints
-- `/protocols`, `/protocol/{slug}`, `/tvl/{slug}`
-- `/v2/chains`, `/v2/historicalChainTvl`
-- `/coins/prices/*`, `/coins/chart/*`
-- `/overview/dexs`, `/overview/options`
-- `/overview/fees`, `/summary/fees/*`
-
-### Pro Endpoints (API Key Required)
-- `/yields/*` - All yield endpoints (stablecoin pools, APY ranking, borrow/perps/LSD)
-- `/overview/derivatives`
-- `/tokenProtocols/{symbol}`
-- `/inflows/{protocol}/{timestamp}`
-- `/chainAssets`
-- `/emissions`, `/emission/{protocol}`
-- `/categories`, `/forks`, `/oracles`
-- `/entities`, `/treasuries`
-- `/hacks`, `/raises`
-- `/etfs/*`, `/dat/*`
-- Bridge endpoints on bridges.llama.fi
-
-## Response Patterns
-
-### TVL Response
-```json
-{"id": "2269", "name": "Aave", "tvl": 5200000000, "chains": ["Ethereum"]}
-```
-
-### Price Response
-```json
-{"coins": {"ethereum:0x...": {"price": 0.999, "symbol": "USDC", "confidence": 0.99}}}
-```
-
-### Yield Pool Response
-```json
-{"pool": "uuid", "chain": "Ethereum", "project": "aave-v3", "apy": 3.5, "tvlUsd": 1500000000}
-```
-
-## GF(3) Integration
-
-This skill serves as MINUS (-1) validator in triads:
-- Provides authoritative DeFi data
-- Validates protocol metrics
-- Constrains analysis with real data
-
-Compose with:
-- `aptos-agent` (+1): Execute based on data
-- `exa-search` (0): Enrich with web context
-## Output Format Guidelines (Chinese/English Queries)
-
-Always format DeFi data responses as human-readable markdown. Support both Chinese and English queries.
-
-### Number Formatting
-- TVL ≥ $1B → `$X.XXB`; TVL ≥ $1M → `$XXXM`
-- APY → `XX.X%`
-- 24h changes → `+X.X%` or `-X.X%`
-- Always include units: `$`, `%`, `B` (billion), `M` (million)
-
-### Recommended Output Templates
-
-**TVL Leaderboard**:
-```markdown
-| # | Protocol | TVL | Chains |
-|---|--------------|-----|-----------|
-| 1 | Aave V3      | $24.7B | Ethereum, Arbitrum |
-```
-
-**Yield Pools**:
-```markdown
-| Pool | APY | TVL | Risk |
-|---------|-----|-----|---------|
-| USDC    | 5.2% | $500M | ✅ Low risk |
-```
-
-**Market Snapshot**:
-```markdown
-| Metric | Value |
-|------------|-----------|
-| Total TVL       | $96B       |
-| DEX 24h volume  | $5.7B      |
-| Fees 24h        | $49M       |
-```
-
-### Risk Labels
-Always include risk indicators for yield pools:
-- `✅ Low risk` — stable APY < 20%, no IL risk
-- `⚠️ Medium risk` — APY 20-100%, or IL risk present
-- `🔴 High risk` — APY > 100% (likely incentive-driven, unsustainable)
-
-### Tip: excludeChart Parameter
-For volume/fee overview endpoints, always add `?excludeChart=true` to reduce response size:
-```bash
-GET /overview/dexs?excludeChart=true    # DEX volumes (much faster)
-GET /overview/fees?excludeChart=true    # Fee data (much faster)
-```
-
-## Common Pitfalls & Gotchas
-
-### 1. Wrong Base URL for Free Endpoints
-❌ WRONG: `https://pro-api.llama.fi/protocols` → returns 404 "Path needs to start with /yields/..."
-✅ CORRECT: `https://api.llama.fi/protocols`
-
-Free endpoints NEVER go through `pro-api.llama.fi`.
-
-### 2. Pro Endpoint Without API Key
-❌ WRONG: `https://pro-api.llama.fi/yields/pools` → 401 or wrong route
-✅ CORRECT: `https://pro-api.llama.fi/{DEFILLAMA_API_KEY}/yields/pools`
-
-The API key is in the **URL path**, not in a header.
-
-### 3. Missing `excludeChart=true` for Volume/Fee Endpoints
-Without this param, `/overview/dexs` returns large chart history arrays.
-Always add `?excludeChart=true` for summary queries.
-
-### 4. Handling TVL Null Values
-When sorting protocols by TVL, filter first:
-```python
-valid = [p for p in protocols if isinstance(p.get('tvl'), (int, float)) and p['tvl'] > 0]
-```
-
-### 5. Stablecoins vs TVL
-DefiLlama's chain TVL includes ALL DeFi assets, not just stablecoins.
-For stablecoin-specific flows, use the `stablecoins.llama.fi` API (separate from pro-api).
-When asked about "stablecoin flows", the chain TVL change is a reasonable proxy.
-
-### 6. Yields Pool UUID
-The `pool` field in `/yields/pools` is a UUID like `"747c1d2a-c668-4682-b9f9-296708a3dd90"`.
-Use this UUID (not token address) for `/yields/chart/{pool}` history.
-
-### 7. Stablecoin Yield Screening Baseline
-For “conservative stablecoin yield” requests, start with this baseline filter:
-- `stablecoin == true`
-- `tvlUsd >= 50_000_000`
-- `apy` between `2` and `20` (drop extreme incentive spikes)
-- `ilRisk == "no"`
-- Prefer `exposure == "single"` for conservative profiles
-
-## Workflow Examples (Agent Recipes)
-
-### Recipe 1: DeFi TVL Top 10 (1 call)
-```python
-r = requests.get("https://api.llama.fi/protocols")
-protocols = r.json()
-top10 = sorted([p for p in protocols if p.get('tvl',0) > 0], key=lambda x: x['tvl'], reverse=True)[:10]
-# Output: markdown table with | # | Protocol | TVL | Chain |
-```
-
-### Recipe 2: ETH vs SOL 30-day TVL comparison (2 calls)
-```python
-r1 = requests.get("https://api.llama.fi/v2/historicalChainTvl/Ethereum")
-r2 = requests.get("https://api.llama.fi/v2/historicalChainTvl/Solana")
-# Filter last 30d: [d for d in r1.json() if d['date'] >= time.time() - 30*86400]
-# Output: | Chain | TVL 30d ago | TVL today | Change % |
-```
-
-### Recipe 3: Stablecoin yield shortlist (1 call)
-```python
-r = requests.get(f"https://pro-api.llama.fi/{API_KEY}/yields/pools")
-raw = r.json()
-pools = raw.get('data', raw) if isinstance(raw, dict) else raw
-safe = [p for p in pools
-        if p.get('stablecoin') is True
-        and (p.get('tvlUsd') or 0) >= 50_000_000
-        and (p.get('apy') or 0) >= 2
-        and (p.get('apy') or 0) <= 20
-        and p.get('ilRisk') == 'no']
-top = sorted(safe, key=lambda x: x.get('apy', 0), reverse=True)[:10]
-# Output: | Project | Chain | Symbol | APY | TVL | Risk |
-```
-
-### Recipe 4: DeFi Market Snapshot (3 calls)
-```python
-chains = requests.get("https://api.llama.fi/v2/chains").json()
-dexs   = requests.get("https://api.llama.fi/overview/dexs?excludeChart=true").json()
-fees   = requests.get("https://api.llama.fi/overview/fees?excludeChart=true").json()
-# total_tvl = sum(c['tvl'] for c in chains if isinstance(c.get('tvl'), (int,float)))
-# Output: snapshot table with TVL, DEX 24h vol, Fee 24h
-```
-
-### Recipe 5: Protocol TVL spike analysis (2 calls)
-```python
-r1 = requests.get("https://api.llama.fi/protocols")  # find protocol with big change_1d
-r2 = requests.get(f"https://api.llama.fi/protocol/{slug}")  # get chainTvls detail
-# Output: | Hypothesis | Explanation | How to verify | (table + step-by-step verification)
-```
-
-## Stablecoin Data
-
-For stablecoin-specific analytics (distinct from general TVL), use the stablecoins API:
-
-```bash
-# Stablecoins overview (separate from pro-api)
-GET https://stablecoins.llama.fi/stablecoins?includePrices=true
-
-# Chain-specific stablecoin data
-GET https://stablecoins.llama.fi/stablecoincharts/{chain}
-# chain = "Ethereum", "Solana", "BSC", etc.
-
-# All chains stablecoin summary
-GET https://stablecoins.llama.fi/stablecoinchains
-```
-
-When users ask about "stablecoin net flows" or "stablecoin inflows":
-1. Use `stablecoincharts/{chain}` for 30-day stablecoin TVL change (more accurate than general TVL)
-2. Or use `/v2/historicalChainTvl/{chain}` as proxy if stablecoin API is unavailable
-
-## Yields Pool Data Handling
-
-The `/yields/pools` response is `{"data": [...], "status": "success"}`:
-
-```python
-r = session.get(f"https://pro-api.llama.fi/{api_key}/yields/pools")
-raw = r.json()
-pools = raw.get('data', raw) if isinstance(raw, dict) else raw
-# Filter example: TVL > $50M and APY > 0
-filtered = [p for p in pools if p.get('tvlUsd', 0) >= 50_000_000 and (p.get('apy') or 0) > 0]
-```
-
-**Key pool fields**:
-| Field | Type | Description |
-|-------|------|-------------|
-| `pool` | UUID string | Unique pool identifier |
-| `chain` | string | Chain name |
-| `project` | string | Protocol name |
-| `symbol` | string | Token pair (e.g. "USDC-WETH") |
-| `tvlUsd` | number | TVL in USD |
-| `apy` | number | Current APY % |
-| `apyBase` | number | Base APY (lending/trading fees) |
-| `apyReward` | number | Incentive APY (token rewards) |
-| `ilRisk` | "yes"/"no" | Impermanent loss risk |
-| `exposure` | "single"/"multi" | Single vs multi-asset exposure |
-| `apyPct7D` | number | APY change past 7 days |
+| Protocol | Slug |
+|---|---|
+| Aave | `aave` |
+| Lido | `lido` |
+| MakerDAO | `makerdao` |
+| Uniswap | `uniswap` |
+| Compound | `compound-finance` |
+| Curve | `curve-dex` |
+| Rocket Pool | `rocket-pool` |
+| EigenLayer | `eigenlayer` |
+| Jito | `jito` |
+| Raydium | `raydium` |
+| PancakeSwap | `pancakeswap` |

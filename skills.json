@@ -106,8 +106,8 @@
     {
       "name": "lunarcrush",
       "path": "lunarcrush/SKILL.md",
-      "version": "1.0.1",
-      "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity"
+      "version": "1.1.0",
+      "description": "Social intelligence and sentiment data — Galaxy Score, AltRank, social volume, influencer activity, trending topics"
     },
     {
       "name": "mantle",
@@ -172,8 +172,8 @@
     {
       "name": "taapi",
       "path": "taapi/SKILL.md",
-      "version": "1.0.1",
-      "description": "Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators"
+      "version": "1.2.0",
+      "description": "Technical analysis indicators — RSI, MACD, Bollinger Bands, ADX, support/resistance, and 200+ pre-calculated indicators. Use when the user asks about ANY technical indicator for crypto."
     },
     {
       "name": "tg-bot-binding",
@@ -184,8 +184,8 @@
     {
       "name": "tokenomist",
       "path": "tokenomist/SKILL.md",
-      "version": "1.0.2",
-      "description": "Tokenomist unlock/emission/allocation API skill. Use when users ask token unlock schedules, cliff unlock events, daily emissions, allocation breakdowns, or tokenomics supply pressure analytics."
+      "version": "1.1.0",
+      "description": "Token unlock schedules, cliff events, daily emissions, allocation breakdowns, and supply pressure analytics via Tokenomist API"
     },
     {
       "name": "trading-strategy",
@@ -196,13 +196,13 @@
     {
       "name": "twelvedata",
       "path": "twelvedata/SKILL.md",
-      "version": "1.1.1",
-      "description": "Stocks and forex price data, time series, quotes, and reference data"
+      "version": "1.2.0",
+      "description": "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
     },
     {
       "name": "twitter",
       "path": "twitter/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.2.0",
       "description": "Twitter/X data lookup — search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts."
     },
     {

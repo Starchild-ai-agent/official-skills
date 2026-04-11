@@ -208,7 +208,7 @@
     {
       "name": "wallet",
       "path": "wallet/SKILL.md",
-      "version": "3.1.1",
+      "version": "3.2.0",
       "description": "Multi-chain wallet — balances, transfers, signing, policy (EVM + Solana)"
     },
     {

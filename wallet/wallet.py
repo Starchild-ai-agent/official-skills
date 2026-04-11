@@ -1,32 +1,57 @@
 """
 Wallet Tool Wrappers — BaseTool classes for Agent framework.
-EVM + Solana: balances, transfers, signing, policy.
+Delegates to /app/tools/wallet core functions for single-source-of-truth maintenance.
 """
 
-import asyncio
 import logging
 import os
 import time
 from core.tool import BaseTool, ToolContext, ToolResult
 
-from .tools.common import is_fly_machine
-from .tools.info import get_wallet_info
-from .tools.balance import get_evm_balance, get_sol_balance, get_all_balances
-from .tools.transfer import (
-    evm_transfer, evm_sign_transaction, evm_sign_message, evm_sign_typed_data,
-    evm_transactions, sol_transfer, sol_sign_transaction, sol_sign_message,
-    sol_transactions,
+# ── Import core wallet functions from /app/tools/wallet ─────────────────────
+from tools.wallet import (
+    _is_fly_machine,
+    _wallet_request,
+    _get_wallet_addresses,
+    _validate_and_clean_rules,
+    DEBANK_CHAIN_MAP,
 )
-from .tools.policy import get_policy, validate_and_clean_rules
+from core.http_client import proxied_get
 
 logger = logging.getLogger(__name__)
 
-EVM_CHAINS = ["ethereum", "base", "arbitrum", "optimism", "polygon", "linea"]
+EVM_CHAINS = list(DEBANK_CHAIN_MAP.keys())
+
 
 def _fly_check():
-    if not is_fly_machine():
+    if not _is_fly_machine():
         return ToolResult(success=False, error="Not running on a Fly Machine — wallet unavailable")
     return None
+
+
+def _proxied_get_with_retry(url, params=None, headers=None, timeout=30, max_retries=3):
+    """proxied_get with retry on timeout / 429 / 5xx."""
+    import requests
+    last_exc = None
+    for attempt in range(max_retries):
+        try:
+            resp = proxied_get(url, params=params, headers=headers, timeout=timeout)
+            if resp.status_code == 429 or resp.status_code >= 500:
+                if attempt < max_retries - 1:
+                    time.sleep(1 * (attempt + 1))
+                    continue
+            resp.raise_for_status()
+            return resp
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            last_exc = e
+            if attempt < max_retries - 1:
+                time.sleep(1)
+        except requests.exceptions.HTTPError:
+            raise
+        except Exception as e:
+            last_exc = e
+            break
+    raise last_exc or Exception("Max retries exceeded")
 
 
 # ── Info ─────────────────────────────────────────────────────────────────────
@@ -42,7 +67,7 @@ class WalletInfoTool(BaseTool):
     async def execute(self, ctx: ToolContext, **kw) -> ToolResult:
         if err := _fly_check(): return err
         try:
-            return ToolResult(success=True, output=await get_wallet_info())
+            return ToolResult(success=True, output=await _wallet_request("GET", "/agent/wallet"))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
@@ -70,13 +95,41 @@ Use wallet_get_all_balances for all chains at once."""
     async def execute(self, ctx: ToolContext, chain="", address="", asset="", **kw) -> ToolResult:
         if not chain or chain not in EVM_CHAINS:
             return ToolResult(success=False, error=f"'chain' required. One of: {', '.join(EVM_CHAINS)}")
-        try:
-            data = await get_evm_balance(chain, address, asset)
-            if "error" in data:
-                return ToolResult(success=False, error=data["error"])
-            return ToolResult(success=True, output=data)
-        except Exception as e:
-            return ToolResult(success=False, error=str(e))
+
+        debank_key = os.environ.get("DEBANK_API_KEY", "")
+        if debank_key:
+            evm_address = address
+            if not evm_address:
+                if err := _fly_check(): return err
+                try:
+                    addrs = await _get_wallet_addresses()
+                    evm_address = addrs.get("evm", "")
+                except Exception as e:
+                    return ToolResult(success=False, error=f"Failed to get wallet address: {e}")
+            if not evm_address:
+                return ToolResult(success=False, error="Could not determine EVM wallet address")
+
+            debank_chain_id = DEBANK_CHAIN_MAP.get(chain)
+            try:
+                resp = _proxied_get_with_retry(
+                    "https://pro-openapi.debank.com/v1/user/token_list",
+                    params={"id": evm_address, "chain_id": debank_chain_id, "is_all": "false"},
+                    headers={"AccessKey": debank_key},
+                )
+                return ToolResult(success=True, output={
+                    "address": evm_address, "chain": chain, "tokens": resp.json(), "source": "debank",
+                })
+            except Exception as e:
+                return ToolResult(success=False, error=f"DeBank request failed: {e}")
+        else:
+            if err := _fly_check(): return err
+            try:
+                params = [f"chain_type=ethereum&chain={chain}"]
+                if asset: params.append(f"asset={asset}")
+                data = await _wallet_request("GET", f"/agent/balance?{'&'.join(params)}")
+                return ToolResult(success=True, output=data)
+            except Exception as e:
+                return ToolResult(success=False, error=str(e))
 
 
 # ── Solana Balance ───────────────────────────────────────────────────────────
@@ -96,13 +149,36 @@ class WalletSolBalanceTool(BaseTool):
     }
 
     async def execute(self, ctx: ToolContext, address="", asset="", **kw) -> ToolResult:
-        try:
-            data = await get_sol_balance(address, asset)
-            if "error" in data:
-                return ToolResult(success=False, error=data["error"])
-            return ToolResult(success=True, output=data)
-        except Exception as e:
-            return ToolResult(success=False, error=str(e))
+        birdeye_key = os.environ.get("BIRDEYE_API_KEY", "")
+        if birdeye_key:
+            sol_address = address
+            if not sol_address:
+                if err := _fly_check(): return err
+                try:
+                    addrs = await _get_wallet_addresses()
+                    sol_address = addrs.get("sol", "")
+                except Exception as e:
+                    return ToolResult(success=False, error=f"Failed to get wallet address: {e}")
+            if not sol_address:
+                return ToolResult(success=False, error="Could not determine Solana wallet address")
+            try:
+                resp = _proxied_get_with_retry(
+                    "https://public-api.birdeye.so/wallet/v2/net-worth",
+                    params={"wallet": sol_address},
+                    headers={"X-API-KEY": birdeye_key, "x-chain": "solana", "accept": "application/json"},
+                )
+                return ToolResult(success=True, output={"address": sol_address, "source": "birdeye", "data": resp.json()})
+            except Exception as e:
+                return ToolResult(success=False, error=f"Birdeye request failed: {e}")
+        else:
+            if err := _fly_check(): return err
+            try:
+                params = ["chain_type=solana"]
+                if asset: params.append(f"asset={asset}")
+                data = await _wallet_request("GET", f"/agent/balance?{'&'.join(params)}")
+                return ToolResult(success=True, output=data)
+            except Exception as e:
+                return ToolResult(success=False, error=str(e))
 
 
 # ── All Balances ─────────────────────────────────────────────────────────────
@@ -122,13 +198,73 @@ class WalletGetAllBalancesTool(BaseTool):
     }
 
     async def execute(self, ctx: ToolContext, evm_address="", sol_address="", **kw) -> ToolResult:
-        try:
-            data = await get_all_balances(evm_address, sol_address)
-            if "error" in data:
-                return ToolResult(success=False, error=data["error"])
-            return ToolResult(success=True, output=data)
-        except Exception as e:
-            return ToolResult(success=False, error=str(e))
+        import asyncio
+        if not evm_address or not sol_address:
+            if _is_fly_machine():
+                try:
+                    addrs = await _get_wallet_addresses()
+                    evm_address = evm_address or addrs.get("evm", "")
+                    sol_address = sol_address or addrs.get("sol", "")
+                except Exception:
+                    pass
+
+        result = {}
+        errors = []
+        evm_usd = 0.0
+        sol_usd = 0.0
+
+        async def _fetch_evm():
+            nonlocal evm_usd
+            if not evm_address: return
+            debank_key = os.environ.get("DEBANK_API_KEY", "")
+            if not debank_key:
+                errors.append("No DEBANK_API_KEY"); return
+            try:
+                resp = _proxied_get_with_retry(
+                    "https://pro-openapi.debank.com/v1/user/all_token_list",
+                    params={"id": evm_address, "is_all": "true"},
+                    headers={"AccessKey": debank_key},
+                )
+                tokens = resp.json()
+                by_chain = {}
+                for t in tokens:
+                    c = t.get("chain", "unknown")
+                    if c not in by_chain:
+                        by_chain[c] = {"tokens": [], "total_usd": 0.0}
+                    usd = t.get("price", 0) * t.get("amount", 0)
+                    by_chain[c]["tokens"].append(t)
+                    by_chain[c]["total_usd"] = round(by_chain[c]["total_usd"] + usd, 2)
+                    evm_usd += usd
+                result["evm"] = {"address": evm_address, "chains": by_chain, "total_usd": round(evm_usd, 2), "source": "debank"}
+            except Exception as e:
+                errors.append(f"DeBank: {e}")
+
+        async def _fetch_sol():
+            nonlocal sol_usd
+            if not sol_address: return
+            birdeye_key = os.environ.get("BIRDEYE_API_KEY", "")
+            if not birdeye_key:
+                errors.append("No BIRDEYE_API_KEY"); return
+            try:
+                resp = _proxied_get_with_retry(
+                    "https://public-api.birdeye.so/wallet/v2/net-worth",
+                    params={"wallet": sol_address},
+                    headers={"X-API-KEY": birdeye_key, "x-chain": "solana", "accept": "application/json"},
+                )
+                data = resp.json()
+                sol_usd = data.get("data", {}).get("totalUsd", 0)
+                result["solana"] = {"address": sol_address, "source": "birdeye", "data": data, "total_usd": round(sol_usd, 2)}
+            except Exception as e:
+                errors.append(f"Birdeye: {e}")
+
+        await asyncio.gather(_fetch_evm(), _fetch_sol())
+        result["total_usd_value"] = round(evm_usd + sol_usd, 2)
+        if errors: result["errors"] = errors
+        has_data = "evm" in result or "solana" in result
+        if not has_data and errors:
+            return ToolResult(success=False, error="All balance queries failed: " + "; ".join(errors))
+        return ToolResult(success=True, output=result)
+
 
 
 # ── EVM Transfer ─────────────────────────────────────────────────────────────
@@ -145,29 +281,31 @@ Use '0' amount for contract calls. Policy-gated if enabled."""
         "properties": {
             "to": {"type": "string", "description": "Target address (0x...)"},
             "amount": {"type": "string", "description": "Amount in wei"},
-            "chain_id": {"type": "string", "description": "Chain ID, e.g. '137' for Polygon (default: '1')"},
+            "chain_id": {"type": "integer", "description": "Chain ID (default: 1)"},
             "data": {"type": "string", "description": "Hex calldata for contract calls"},
             "gas_limit": {"type": "string"}, "gas_price": {"type": "string"},
             "max_fee_per_gas": {"type": "string"}, "max_priority_fee_per_gas": {"type": "string"},
-            "nonce": {"type": "string"}, "tx_type": {"type": "string", "description": "0=legacy, 2=EIP-1559"},
+            "nonce": {"type": "string"}, "tx_type": {"type": "integer", "description": "0=legacy, 2=EIP-1559"},
         },
         "required": ["to", "amount"],
     }
 
-    async def execute(self, ctx: ToolContext, to="", amount="", chain_id="1",
-                      data="", gas_limit="", gas_price="",
-                      max_fee_per_gas="", max_priority_fee_per_gas="",
+    async def execute(self, ctx: ToolContext, to="", amount="", chain_id=1, data="",
+                      gas_limit="", gas_price="", max_fee_per_gas="", max_priority_fee_per_gas="",
                       nonce="", tx_type=None, **kw) -> ToolResult:
         if err := _fly_check(): return err
         if not to or not amount:
             return ToolResult(success=False, error="'to' and 'amount' required")
+        body = {"to": to, "amount": amount, "chain_id": chain_id}
+        if data: body["data"] = data
+        if gas_limit: body["gas_limit"] = gas_limit
+        if gas_price: body["gas_price"] = gas_price
+        if max_fee_per_gas: body["max_fee_per_gas"] = max_fee_per_gas
+        if max_priority_fee_per_gas: body["max_priority_fee_per_gas"] = max_priority_fee_per_gas
+        if nonce: body["nonce"] = nonce
+        if tx_type is not None: body["tx_type"] = tx_type
         try:
-            chain_id = int(chain_id) if chain_id else 1
-            if tx_type is not None:
-                tx_type = int(tx_type)
-            resp = await evm_transfer(to, amount, chain_id, data, gas_limit, gas_price,
-                                      max_fee_per_gas, max_priority_fee_per_gas, nonce, tx_type)
-            return ToolResult(success=True, output=resp)
+            return ToolResult(success=True, output=await _wallet_request("POST", "/agent/transfer", body))
         except Exception as e:
             msg = str(e)
             if "policy" in msg.lower():
@@ -187,33 +325,34 @@ class WalletSignTransactionTool(BaseTool):
         "type": "object",
         "properties": {
             "to": {"type": "string"}, "amount": {"type": "string"},
-            "chain_id": {"type": "string", "description": "Chain ID (default: '1')"}, "data": {"type": "string"},
+            "chain_id": {"type": "integer"}, "data": {"type": "string"},
             "gas_limit": {"type": "string"}, "gas_price": {"type": "string"},
             "max_fee_per_gas": {"type": "string"}, "max_priority_fee_per_gas": {"type": "string"},
-            "nonce": {"type": "string"}, "tx_type": {"type": "string"},
+            "nonce": {"type": "string"}, "tx_type": {"type": "integer"},
         },
         "required": ["to", "amount"],
     }
 
-    async def execute(self, ctx: ToolContext, to="", amount="", chain_id="1",
-                      data="", gas_limit="", gas_price="",
-                      max_fee_per_gas="", max_priority_fee_per_gas="",
+    async def execute(self, ctx: ToolContext, to="", amount="", chain_id=1, data="",
+                      gas_limit="", gas_price="", max_fee_per_gas="", max_priority_fee_per_gas="",
                       nonce="", tx_type=None, **kw) -> ToolResult:
         if err := _fly_check(): return err
-        if not to or not amount:
-            return ToolResult(success=False, error="'to' and 'amount' required")
+        if not to: return ToolResult(success=False, error="'to' required")
+        body = {"to": to, "amount": amount, "chain_id": chain_id}
+        if data: body["data"] = data
+        if gas_limit: body["gas_limit"] = gas_limit
+        if gas_price: body["gas_price"] = gas_price
+        if max_fee_per_gas: body["max_fee_per_gas"] = max_fee_per_gas
+        if max_priority_fee_per_gas: body["max_priority_fee_per_gas"] = max_priority_fee_per_gas
+        if nonce: body["nonce"] = nonce
+        if tx_type is not None: body["tx_type"] = tx_type
         try:
-            chain_id = int(chain_id) if chain_id else 1
-            if tx_type is not None:
-                tx_type = int(tx_type)
-            resp = await evm_sign_transaction(to, amount, chain_id, data, gas_limit, gas_price,
-                                              max_fee_per_gas, max_priority_fee_per_gas, nonce, tx_type)
-            return ToolResult(success=True, output=resp)
+            return ToolResult(success=True, output=await _wallet_request("POST", "/agent/sign-transaction", body))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
 
-# ── EVM Sign Message ─────────────────────────────────────────────────────────
+# ── EVM Sign Message ────────────────────────────────────────────────────────
 
 class WalletSignTool(BaseTool):
     @property
@@ -231,12 +370,12 @@ class WalletSignTool(BaseTool):
         if err := _fly_check(): return err
         if not message: return ToolResult(success=False, error="'message' required")
         try:
-            return ToolResult(success=True, output=await evm_sign_message(message))
+            return ToolResult(success=True, output=await _wallet_request("POST", "/agent/sign", {"message": message}))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
 
-# ── EVM Sign Typed Data ──────────────────────────────────────────────────────
+# ── EVM Sign Typed Data ─────────────────────────────────────────────────────
 
 class WalletSignTypedDataTool(BaseTool):
     @property
@@ -259,14 +398,16 @@ class WalletSignTypedDataTool(BaseTool):
                       primaryType="", message=None, **kw) -> ToolResult:
         if err := _fly_check(): return err
         if not all([domain, types, primaryType, message]):
-            return ToolResult(success=False, error="All params required")
+            return ToolResult(success=False, error="All params required: domain, types, primaryType, message")
         try:
-            return ToolResult(success=True, output=await evm_sign_typed_data(domain, types, primaryType, message))
+            return ToolResult(success=True, output=await _wallet_request("POST", "/agent/sign-typed-data", {
+                "domain": domain, "types": types, "primaryType": primaryType, "message": message,
+            }))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
 
-# ── EVM Transactions ─────────────────────────────────────────────────────────
+# ── EVM Transactions ────────────────────────────────────────────────────────
 
 class WalletTransactionsTool(BaseTool):
     @property
@@ -282,13 +423,11 @@ class WalletTransactionsTool(BaseTool):
         },
     }
 
-    async def execute(self, ctx: ToolContext, **kw) -> ToolResult:
+    async def execute(self, ctx: ToolContext, chain="ethereum", asset="eth", limit=20, **kw) -> ToolResult:
         if err := _fly_check(): return err
         try:
-            chain = kw.get("chain", "ethereum")
-            asset = kw.get("asset", "")
-            limit = kw.get("limit", 20)
-            return ToolResult(success=True, output=await evm_transactions(chain, asset, limit))
+            qs = f"?chain_type=ethereum&chain={chain}&asset={asset}&limit={limit}"
+            return ToolResult(success=True, output=await _wallet_request("GET", f"/agent/transactions{qs}"))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
@@ -299,26 +438,29 @@ class WalletSolTransferTool(BaseTool):
     @property
     def name(self): return "wallet_sol_transfer"
     @property
-    def description(self): return "Sign and BROADCAST a Solana transaction. No gas sponsorship — user pays gas. Signs via wallet-service, broadcasts via Solana RPC."
+    def description(self): return "Sign and BROADCAST a Solana transaction. Gas sponsored. Policy-gated if enabled."
     @property
     def parameters(self): return {
         "type": "object",
         "properties": {
             "transaction": {"type": "string", "description": "Base64-encoded Solana tx"},
+            "caip2": {"type": "string", "description": "CAIP-2 chain ID (default: mainnet)"},
         },
         "required": ["transaction"],
     }
 
-    async def execute(self, ctx: ToolContext, transaction="", **kw) -> ToolResult:
+    async def execute(self, ctx: ToolContext, transaction="", caip2="solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", **kw) -> ToolResult:
         if err := _fly_check(): return err
         if not transaction: return ToolResult(success=False, error="'transaction' required")
         try:
-            result = await sol_transfer(transaction)
-            if "error" in result:
-                return ToolResult(success=False, error=str(result))
-            return ToolResult(success=True, output=result)
+            return ToolResult(success=True, output=await _wallet_request("POST", "/agent/sol/transfer", {
+                "transaction": transaction, "caip2": caip2,
+            }))
         except Exception as e:
-            return ToolResult(success=False, error=str(e))
+            msg = str(e)
+            if "policy" in msg.lower():
+                return ToolResult(success=False, error=f"Policy violation: {msg}")
+            return ToolResult(success=False, error=msg)
 
 
 # ── Solana Sign Transaction ─────────────────────────────────────────────────
@@ -339,12 +481,14 @@ class WalletSolSignTransactionTool(BaseTool):
         if err := _fly_check(): return err
         if not transaction: return ToolResult(success=False, error="'transaction' required")
         try:
-            return ToolResult(success=True, output=await sol_sign_transaction(transaction))
+            return ToolResult(success=True, output=await _wallet_request("POST", "/agent/sol/sign-transaction", {
+                "transaction": transaction,
+            }))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
 
-# ── Solana Sign Message ──────────────────────────────────────────────────────
+# ── Solana Sign Message ─────────────────────────────────────────────────────
 
 class WalletSolSignTool(BaseTool):
     @property
@@ -362,7 +506,7 @@ class WalletSolSignTool(BaseTool):
         if err := _fly_check(): return err
         if not message: return ToolResult(success=False, error="'message' required")
         try:
-            return ToolResult(success=True, output=await sol_sign_message(message))
+            return ToolResult(success=True, output=await _wallet_request("POST", "/agent/sol/sign", {"message": message}))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
@@ -386,7 +530,8 @@ class WalletSolTransactionsTool(BaseTool):
     async def execute(self, ctx: ToolContext, chain="solana", asset="sol", limit=20, **kw) -> ToolResult:
         if err := _fly_check(): return err
         try:
-            return ToolResult(success=True, output=await sol_transactions(chain, asset, limit))
+            qs = f"?chain_type=solana&chain={chain}&asset={asset}&limit={limit}"
+            return ToolResult(success=True, output=await _wallet_request("GET", f"/agent/transactions{qs}"))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
@@ -412,7 +557,7 @@ class WalletGetPolicyTool(BaseTool):
     async def execute(self, ctx: ToolContext, chain_type="ethereum", **kw) -> ToolResult:
         if err := _fly_check(): return err
         try:
-            return ToolResult(success=True, output=await get_policy(chain_type))
+            return ToolResult(success=True, output=await _wallet_request("GET", f"/agent/policy?chain_type={chain_type}"))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
@@ -453,7 +598,8 @@ For both EVM and Solana, call TWICE (once per chain_type)."""
         if not title:
             return ToolResult(success=False, error="'title' required")
 
-        cleaned_rules, validation_errors = validate_and_clean_rules(rules, chain_type)
+        # Use system validation function
+        cleaned_rules, validation_errors = _validate_and_clean_rules(rules, chain_type)
         if validation_errors:
             return ToolResult(
                 success=False,
@@ -480,7 +626,7 @@ For both EVM and Solana, call TWICE (once per chain_type)."""
                 action_id=action_id,
                 action="update_wallet_policy",
                 title=title,
-                description=description,
+                description=description or title,
                 payload=payload,
                 require_signature=True,
             )

@@ -1,6 +1,6 @@
 ---
 name: wallet
-version: 3.1.1
+version: 3.2.0
 description: "Multi-chain wallet — balances, transfers, signing, policy (EVM + Solana)"
 author: starchild
 tags: [wallet, evm, solana, transfer, sign, policy, debank, birdeye]
@@ -78,10 +78,60 @@ rules = [
 ]
 ```
 
+### Policy Modes — CRITICAL DECISION TABLE
+
+⚠️ **DENY > ALLOW in Privy.** `DENY *` overrides ALL ALLOW rules. NEVER mix them.
+
+| Mode | Rules | Effect |
+|------|-------|--------|
+| **Allow-all** (default) | `DENY exportPrivateKey` + `ALLOW *` | Everything allowed except key export |
+| **Deny-all** (lockdown) | `DENY exportPrivateKey` + `DENY *` | Nothing works. No ALLOW rules! |
+| **Whitelist** (selective) | `DENY exportPrivateKey` + specific ALLOW rules only | Only whitelisted ops work, rest implicitly denied |
+
+### Mode 1: Allow-All (Standard Wildcard)
+```
+rules = [
+  {"name": "Deny key export", "method": "exportPrivateKey", "conditions": [], "action": "DENY"},
+  {"name": "Allow all", "method": "*", "conditions": [], "action": "ALLOW"},
+]
+```
+
+### Mode 2: Deny-All (Lockdown)
+```
+rules = [
+  {"name": "Deny key export", "method": "exportPrivateKey", "conditions": [], "action": "DENY"},
+  {"name": "Deny all actions", "method": "*", "conditions": [], "action": "DENY"},
+]
+# ⚠️ NO ALLOW rules here — DENY * would override them!
+```
+
+### Mode 3: Whitelist (Selective Allow)
+```
+rules = [
+  {"name": "Deny key export", "method": "exportPrivateKey", "conditions": [], "action": "DENY"},
+  {"name": "Allow transfer to Uniswap", "method": "eth_sendTransaction", "conditions": [
+    {"field_source": "ethereum_transaction", "field": "to", "operator": "eq", "value": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"}
+  ], "action": "ALLOW"},
+]
+# ⚠️ NO "DENY *" here! enabled=true already denies everything not ALLOWed.
+# Adding DENY * would override the ALLOW rules above (DENY > ALLOW).
+```
+
+## Privy Policy Rules — Key Constraints
+
+| Rule | Details |
+|------|---------|
+| **Default behavior** | `enabled=true` → deny-all unless explicitly ALLOWed |
+| **DENY > ALLOW** | DENY always wins when both match |
+| **Empty conditions** | Only `exportPrivateKey` and `*` (wildcard) allow `conditions: []` |
+| **TX methods need conditions** | `eth_sendTransaction`, `eth_signTransaction`, `eth_signTypedData_v4`, `eth_signUserOperation`, `signAndSendTransaction`, etc. ALL require ≥1 condition |
+| **Valid field_sources** | EVM: `ethereum_transaction` (to/value/chain_id), `ethereum_calldata` (function_name), `ethereum_typed_data_domain` (chainId/verifyingContract), `ethereum_typed_data_message`, `system` |
+| **Valid operators** | `eq`, `gt`, `gte`, `lt`, `lte`, `in` (array, max 100 values) |
+| **Dual chain** | Call `wallet_propose_policy` TWICE for EVM + Solana |
+
 ## Gotchas
 
 - `wallet_propose_policy` sends SSE event to frontend — needs streaming context
 - DeBank/Birdeye keys are auto-injected by sc-proxy
 - `wallet_balance` requires `chain` param — use `wallet_get_all_balances` for discovery
-- Policy validation: `eth_signTypedData_v4` requires at least one condition
 - For both EVM + Solana policy, call `wallet_propose_policy` TWICE

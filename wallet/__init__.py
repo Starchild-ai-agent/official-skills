@@ -1,6 +1,7 @@
 """
 Wallet Skill — Multi-chain wallet (EVM + Solana)
 Balances, transfers, signing, policy management.
+Delegates to /app/tools/wallet for core functions.
 """
 import logging
 from typing import List

@@ -202,8 +202,8 @@
     {
       "name": "twitter",
       "path": "twitter/SKILL.md",
-      "version": "1.2.0",
-      "description": "Twitter/X data lookup — search tweets, user profiles, followers, replies. Use when the user asks about Twitter activity, social signals, or wants to look up accounts."
+      "version": "1.3.0",
+      "description": "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
     },
     {
       "name": "wallet",

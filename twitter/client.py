@@ -1,7 +1,8 @@
 """
 Twitter API client — wraps twitterapi.io endpoints.
 
-Read-only: search tweets, user profiles, followers, replies, etc.
+Read-only: search tweets, user profiles, followers, replies, thread context,
+quote tweets, article, and trends.
 Auth: X-API-Key header from TWITTER_API_KEY env var.
 """
 
@@ -10,6 +11,8 @@ import os
 from typing import Any, List
 
 from core.http_client import proxied_get
+
+CALLER_ID = "chat:twitter-skill"
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +34,7 @@ class TwitterApiClient:
         """GET a twitterapi.io endpoint."""
         url = f"{self.base_url}{path}"
 
-        headers = {}
+        headers = {"SC-CALLER-ID": CALLER_ID}
         if self.api_key:
             headers["X-API-Key"] = self.api_key
 
@@ -67,6 +70,34 @@ class TwitterApiClient:
         if cursor:
             params["cursor"] = cursor
         return self._get("/twitter/tweet/retweeters", params)
+
+    def get_tweet_thread_context(self, tweet_id: str) -> dict:
+        """Get complete thread context for a tweet (parents + direct replies)."""
+        return self._get("/twitter/tweet/thread_context", {"tweetId": tweet_id})
+
+    def get_tweet_quote(self, tweet_id: str, cursor: str = None) -> dict:
+        """Get quote tweets for a tweet."""
+        params = {"tweetId": tweet_id}
+        if cursor:
+            params["cursor"] = cursor
+        return self._get("/twitter/tweet/quotes", params)
+
+    def get_article(self, tweet_id: str) -> dict:
+        """Get article content by tweet ID (long-form X article)."""
+        return self._get("/twitter/article", {"tweet_id": tweet_id})
+
+    def get_trends(self, woeid: str = None, country: str = None, category: str = None, limit: int = None) -> dict:
+        """Get trending topics."""
+        params = {}
+        if woeid:
+            params["woeid"] = woeid
+        if country:
+            params["country"] = country
+        if category:
+            params["category"] = category
+        if limit is not None:
+            params["limit"] = limit
+        return self._get("/twitter/trends", params)
 
     # ── User Endpoints ───────────────────────────────────────────────────
 

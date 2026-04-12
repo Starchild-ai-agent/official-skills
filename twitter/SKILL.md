@@ -1,35 +1,34 @@
 ---
 name: twitter
-version: 1.3.0
-description: Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL.
+version: 1.4.0
+description: "Twitter/X (x.com) data lookup \u2014 fetch tweets by URL or ID, search\
+  \ tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
 tools:
-  - twitter_search_tweets
-  - twitter_get_tweets
-  - twitter_user_info
-  - twitter_user_tweets
-  - twitter_user_followers
-  - twitter_user_followings
-  - twitter_tweet_replies
-  - twitter_tweet_retweeters
-  - twitter_search_users
-
+- twitter_search_tweets
+- twitter_get_tweets
+- twitter_user_info
+- twitter_user_tweets
+- twitter_user_followers
+- twitter_user_followings
+- twitter_tweet_replies
+- twitter_tweet_retweeters
+- twitter_search_users
+- twitter_get_article
+- twitter_tweet_thread_context
+- twitter_tweet_quote
+- twitter_get_trends
 metadata:
   starchild:
-    emoji: "🐦"
+    emoji: "\U0001F426"
     skillKey: twitter
     requires:
-      env: [TWITTER_API_KEY]
-
+      env:
+      - TWITTER_API_KEY
 user-invocable: false
 disable-model-invocation: false
 ---
 
-# Twitter / X Data
-
-Read-only access to Twitter/X via twitterapi.io. Use these tools to look up tweets, users, followers, and social activity.
-
 ## 🔴 HARD LIMITS — READ FIRST
-
 > **⛔ CALL AT MOST 3 TWITTER TOOLS PER RESPONSE. STOP AFTER 3 CALLS.**
 > After each tool call, check: "Do I have enough data to answer?" If yes → STOP AND REPLY.
 > **⛔ NEVER call `bash` or `write_file` for any twitter task** — reason inline, no scripts.
@@ -38,7 +37,6 @@ Read-only access to Twitter/X via twitterapi.io. Use these tools to look up twee
 > **⛔ NEVER call `coin_price`, `cg_trending`, `cg_coins_markets`** — 价格数据超出 Twitter skill 范围。
 
 ## 🔗 URL Handling — x.com / twitter.com
-
 > **⛔ NEVER use `web_fetch` for x.com or twitter.com URLs** — Twitter blocks scraping, you'll only get a login wall.
 > **✅ ALWAYS extract the tweet ID from the URL and use `twitter_get_tweets`.**
 
@@ -54,7 +52,6 @@ Read-only access to Twitter/X via twitterapi.io. Use these tools to look up twee
 → Never: `web_fetch("https://x.com/...")`
 
 ## 💡 Few-Shot Examples
-
 **Q: 找 3 个关于 BTC ETF 的高赞推文，只要 ID 和点赞数**
 → PLAN: 1 call `twitter_search_tweets("BTC ETF min_faves:100")` → pick top 3 from results → reply JSON
 → STOP after 1 call. Total tools: 1
@@ -72,7 +69,6 @@ Read-only access to Twitter/X via twitterapi.io. Use these tools to look up twee
 → Total tools: 3. STOP.
 
 ## ⚡ FAST PATHS (act immediately, no clarification needed)
-
 | Trigger keywords | Action |
 |-----------------|--------|
 | x.com or twitter.com URL with `/status/{id}` | Extract tweet ID → `twitter_get_tweets(tweet_ids=["{id}"])` — **never web_fetch** |
@@ -83,7 +79,6 @@ Read-only access to Twitter/X via twitterapi.io. Use these tools to look up twee
 | what did @username post | Call `twitter_user_tweets` |
 
 ## Tool Decision Tree
-
 **"Search for tweets about a topic"** → `twitter_search_tweets`
 Advanced query with operators: keywords, from:user, #hashtag, $cashtag, min_faves, date ranges.
 
@@ -111,12 +106,23 @@ Users who retweeted a specific tweet.
 **"Find accounts related to a topic"** → `twitter_search_users`
 Search users by name or keyword.
 
+**"Read a long X article"** → `twitter_get_article`
+Pass the article tweet ID. Returns title, preview, cover, and content blocks.
+
+**"Get full thread context"** → `twitter_tweet_thread_context`
+One call returns parent chain + direct replies for the target tweet.
+
+**"Who quoted this tweet?"** → `twitter_tweet_quote`
+Get quote tweets for a specific tweet ID.
+
+**"What is trending now?"** → `twitter_get_trends`
+Get trends with optional `woeid`, `country`, `category`, `limit`.
+
 **"Crypto sentiment scan / 情绪扫描 / market mood"** → `twitter_search_tweets` (call once per coin)
 For BTC/ETH/SOL sentiment: search `"$BTC"`, `"$ETH"`, `"$SOL"` separately, then summarize tone inline.
 ⛔ NEVER call `twitter_user_info`, `twitter_user_followers`, or `twitter_user_tweets` during a sentiment scan — text analysis only.
 
 ## Available Tools
-
 | Tool | Description | Key Params |
 |------|-------------|------------|
 | `twitter_search_tweets` | Advanced tweet search | `query` (required), `cursor` |
@@ -128,9 +134,12 @@ For BTC/ETH/SOL sentiment: search `"$BTC"`, `"$ETH"`, `"$SOL"` separately, then 
 | `twitter_tweet_replies` | Replies to a tweet | `tweet_id` (required), `cursor` |
 | `twitter_tweet_retweeters` | Who retweeted | `tweet_id` (required), `cursor` |
 | `twitter_search_users` | Search for users | `query` (required), `cursor` |
+| `twitter_get_article` | Get long-form article | `tweet_id` (required) |
+| `twitter_tweet_thread_context` | Get full thread context | `tweet_id` (required) |
+| `twitter_tweet_quote` | Get quote tweets | `tweet_id` (required), `cursor` |
+| `twitter_get_trends` | Get trends | `woeid`, `country`, `category`, `limit` |
 
 ## Usage Patterns
-
 ### ⚠️ Token Budget Rules
 - Sentiment scan: max **3 `twitter_search_tweets` calls** (one per coin), then summarize. Stop.
 - Account research: max **2 tool calls total** unless user asks for more depth.
@@ -146,7 +155,6 @@ For BTC/ETH/SOL sentiment: search `"$BTC"`, `"$ETH"`, `"$SOL"` separately, then 
 2. `twitter_search_users` with the topic — find relevant accounts
 
 ## Output Constraints (IMPORTANT for small models)
-
 - **Max 1 `twitter_search_tweets` call per coin/topic** — do not repeat searches for same query. First result set is sufficient.
 - **Max 3 `twitter_user_info` calls per response** — only look up the most relevant accounts.
 - **Never call `bash` or `write_file` for Twitter data** — reason inline directly from tool results.
@@ -165,7 +173,6 @@ For BTC/ETH/SOL sentiment: search `"$BTC"`, `"$ETH"`, `"$SOL"` separately, then 
 3. `twitter_user_tweets` to check content quality
 
 ## Search Query Operators
-
 The `twitter_search_tweets` tool supports advanced operators:
 
 | Operator | Example | Description |
@@ -188,11 +195,9 @@ The `twitter_search_tweets` tool supports advanced operators:
 Combine operators: `from:VitalikButerin $ETH min_faves:100 since:2024-01-01`
 
 ## Pagination
-
 Most endpoints support cursor-based pagination. When a response includes a cursor value, pass it as the `cursor` parameter to get the next page. If no cursor is returned, you've reached the end.
 
 ## Notes
-
 - **API key required**: Set `TWITTER_API_KEY` environment variable. Tools will error without it.
 - **Read-only**: These tools only retrieve data. No posting, liking, or following.
 - **Usernames**: Always pass without the `@` prefix (e.g. `"elonmusk"` not `"@elonmusk"`).

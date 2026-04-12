@@ -1,9 +1,13 @@
 """
 Twitter/X Extension — Read-only data via twitterapi.io
 
-Provides 9 tools for Twitter/X data:
+Provides 13 tools for Twitter/X data:
 - twitter_search_tweets: Advanced tweet search
 - twitter_get_tweets: Get tweets by ID
+- twitter_get_article: Get long-form article by tweet ID
+- twitter_tweet_thread_context: Get complete thread context
+- twitter_tweet_quote: Get quote tweets for a tweet
+- twitter_get_trends: Get trends
 - twitter_user_info: User profile lookup
 - twitter_user_tweets: User's recent tweets
 - twitter_user_followers: User's followers
@@ -41,6 +45,10 @@ def register(api) -> List[str]:
         from .tools import (
             TwitterSearchTweetsTool,
             TwitterGetTweetsTool,
+            TwitterGetArticleTool,
+            TwitterTweetThreadContextTool,
+            TwitterTweetQuoteTool,
+            TwitterGetTrendsTool,
             TwitterUserInfoTool,
             TwitterUserTweetsTool,
             TwitterUserFollowersTool,
@@ -52,6 +60,10 @@ def register(api) -> List[str]:
 
         api.register_tool(TwitterSearchTweetsTool())
         api.register_tool(TwitterGetTweetsTool())
+        api.register_tool(TwitterGetArticleTool())
+        api.register_tool(TwitterTweetThreadContextTool())
+        api.register_tool(TwitterTweetQuoteTool())
+        api.register_tool(TwitterGetTrendsTool())
         api.register_tool(TwitterUserInfoTool())
         api.register_tool(TwitterUserTweetsTool())
         api.register_tool(TwitterUserFollowersTool())
@@ -63,6 +75,10 @@ def register(api) -> List[str]:
         registered = [
             "twitter_search_tweets",
             "twitter_get_tweets",
+            "twitter_get_article",
+            "twitter_tweet_thread_context",
+            "twitter_tweet_quote",
+            "twitter_get_trends",
             "twitter_user_info",
             "twitter_user_tweets",
             "twitter_user_followers",
@@ -82,11 +98,15 @@ def register(api) -> List[str]:
 # Extension metadata
 EXTENSION_INFO = {
     "name": "twitter",
-    "version": "1.0.0",
-    "description": "Twitter/X data — search tweets, user profiles, followers, replies",
+    "version": "1.1.0",
+    "description": "Twitter/X data — search tweets, article, thread context, quote tweets, trends, users",
     "tools": [
         "twitter_search_tweets",
         "twitter_get_tweets",
+        "twitter_get_article",
+        "twitter_tweet_thread_context",
+        "twitter_tweet_quote",
+        "twitter_get_trends",
         "twitter_user_info",
         "twitter_user_tweets",
         "twitter_user_followers",

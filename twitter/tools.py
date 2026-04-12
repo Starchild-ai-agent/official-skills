@@ -1,8 +1,9 @@
 """
 Twitter/X Tools — BaseTool subclasses for agent use.
 
-9 read-only tools: search tweets, get tweets, user info, user tweets,
-user followers, user followings, tweet replies, tweet retweeters, search users.
+13 read-only tools: search tweets, get tweets, user info, user tweets,
+user followers, user followings, tweet replies, tweet retweeters, search users,
+article, thread context, quote tweets, trends.
 """
 
 import asyncio
@@ -207,6 +208,198 @@ Returns: users array with profile data and next cursor"""
 
 
 # ── User Tools ───────────────────────────────────────────────────────────────
+
+
+class TwitterGetArticleTool(BaseTool):
+    """Get long-form article for a tweet."""
+
+    @property
+    def name(self) -> str:
+        return "twitter_get_article"
+
+    @property
+    def description(self) -> str:
+        return """Get X/Twitter long-form article by tweet ID.
+
+Parameters:
+- tweet_id: Tweet ID of the article post (required)
+
+Returns: article object with title, preview text, cover media URL, and content blocks"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "tweet_id": {
+                    "type": "string",
+                    "description": "Tweet ID of the article post",
+                },
+            },
+            "required": ["tweet_id"],
+        }
+
+    async def execute(self, ctx: ToolContext, tweet_id: str = "", **kwargs) -> ToolResult:
+        if not tweet_id:
+            return ToolResult(success=False, error="'tweet_id' is required")
+        try:
+            client = _get_client()
+            data = await asyncio.to_thread(client.get_article, tweet_id)
+            return ToolResult(success=True, output=data)
+        except Exception as e:
+            return ToolResult(success=False, error=str(e))
+
+
+class TwitterTweetThreadContextTool(BaseTool):
+    """Get complete thread context for a tweet."""
+
+    @property
+    def name(self) -> str:
+        return "twitter_tweet_thread_context"
+
+    @property
+    def description(self) -> str:
+        return """Get complete thread context for a tweet.
+
+Parameters:
+- tweet_id: Tweet ID to get thread context for (required)
+
+Returns: parent tweets + direct replies in a single response"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "tweet_id": {
+                    "type": "string",
+                    "description": "Tweet ID to get thread context for",
+                },
+            },
+            "required": ["tweet_id"],
+        }
+
+    async def execute(self, ctx: ToolContext, tweet_id: str = "", **kwargs) -> ToolResult:
+        if not tweet_id:
+            return ToolResult(success=False, error="'tweet_id' is required")
+        try:
+            client = _get_client()
+            data = await asyncio.to_thread(client.get_tweet_thread_context, tweet_id)
+            return ToolResult(success=True, output=data)
+        except Exception as e:
+            return ToolResult(success=False, error=str(e))
+
+
+class TwitterTweetQuoteTool(BaseTool):
+    """Get quote tweets for a tweet."""
+
+    @property
+    def name(self) -> str:
+        return "twitter_tweet_quote"
+
+    @property
+    def description(self) -> str:
+        return """Get quote tweets for a specific tweet.
+
+Parameters:
+- tweet_id: Tweet ID to get quote tweets for (required)
+- cursor: Pagination cursor from previous response (optional)
+
+Returns: quote tweets list and next cursor"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "tweet_id": {
+                    "type": "string",
+                    "description": "Tweet ID to get quote tweets for",
+                },
+                "cursor": {
+                    "type": "string",
+                    "description": "Pagination cursor from previous response",
+                },
+            },
+            "required": ["tweet_id"],
+        }
+
+    async def execute(self, ctx: ToolContext, tweet_id: str = "", cursor: str = None, **kwargs) -> ToolResult:
+        if not tweet_id:
+            return ToolResult(success=False, error="'tweet_id' is required")
+        try:
+            client = _get_client()
+            data = await asyncio.to_thread(client.get_tweet_quote, tweet_id, cursor=cursor)
+            return ToolResult(success=True, output=data)
+        except Exception as e:
+            return ToolResult(success=False, error=str(e))
+
+
+class TwitterGetTrendsTool(BaseTool):
+    """Get Twitter/X trends."""
+
+    @property
+    def name(self) -> str:
+        return "twitter_get_trends"
+
+    @property
+    def description(self) -> str:
+        return """Get Twitter/X trends.
+
+Parameters:
+- woeid: Where On Earth ID (optional)
+- country: Country code/name (optional)
+- category: Trend category (optional)
+- limit: Number of trends to return (optional)
+
+Returns: trends list"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "woeid": {
+                    "type": "string",
+                    "description": "Where On Earth ID",
+                },
+                "country": {
+                    "type": "string",
+                    "description": "Country code/name",
+                },
+                "category": {
+                    "type": "string",
+                    "description": "Trend category",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Number of trends to return",
+                },
+            },
+            "required": [],
+        }
+
+    async def execute(
+        self,
+        ctx: ToolContext,
+        woeid: str = None,
+        country: str = None,
+        category: str = None,
+        limit: int = None,
+        **kwargs,
+    ) -> ToolResult:
+        try:
+            client = _get_client()
+            data = await asyncio.to_thread(
+                client.get_trends,
+                woeid=woeid,
+                country=country,
+                category=category,
+                limit=limit,
+            )
+            return ToolResult(success=True, output=data)
+        except Exception as e:
+            return ToolResult(success=False, error=str(e))
 
 
 class TwitterUserInfoTool(BaseTool):

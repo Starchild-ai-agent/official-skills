@@ -185,7 +185,7 @@
       "name": "twitter",
       "path": "twitter/SKILL.md",
       "version": "1.4.0",
-      "description": "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
+      "description": "Twitter/X (x.com) data lookup \\u2014 fetch tweets by URL or ID, search\\"
     },
     {
       "name": "wallet",

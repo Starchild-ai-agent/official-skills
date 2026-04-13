@@ -296,27 +296,26 @@ Returns: transaction hash"""
         if not token_address:
             return ToolResult(success=False, error="'token_address' is required")
 
-        from tools.wallet import _wallet_request, _is_fly_machine
-
-        if not _is_fly_machine():
-            return ToolResult(
-                success=False,
-                error="Not running on a Fly Machine — wallet unavailable",
-            )
-
         try:
             client = _get_client(chain)
             tx_data = await client.get_approve_transaction(
                 token_address, amount=amount if amount else None
             )
 
-            # Broadcast approval tx via wallet service
-            resp = await _wallet_request("POST", "/agent/transfer", {
-                "to": tx_data["to"],
-                "amount": tx_data.get("value", "0"),
-                "data": tx_data["data"],
-                "chain_id": client.chain_id,
-            })
+            # Broadcast via Starchild wallet_transfer
+            import httpx
+            r = httpx.post(
+                "http://localhost:8000/tools/wallet_transfer",
+                json={
+                    "to": tx_data["to"],
+                    "amount": tx_data.get("value", "0"),
+                    "data": tx_data["data"],
+                    "chain_id": client.chain_id,
+                },
+                timeout=60,
+            )
+            r.raise_for_status()
+            resp = r.json()
 
             return ToolResult(
                 success=True,
@@ -409,14 +408,6 @@ Returns: transaction hash, estimated output amount"""
         if not src or not dst or not amount:
             return ToolResult(success=False, error="'src', 'dst', and 'amount' are required")
 
-        from tools.wallet import _wallet_request, _is_fly_machine
-
-        if not _is_fly_machine():
-            return ToolResult(
-                success=False,
-                error="Not running on a Fly Machine — wallet unavailable",
-            )
-
         try:
             client = _get_client(chain)
             address = await _get_address(chain)
@@ -428,13 +419,20 @@ Returns: transaction hash, estimated output amount"""
             if not tx:
                 return ToolResult(success=False, error="1inch API returned no transaction data")
 
-            # Broadcast swap tx via wallet service
-            resp = await _wallet_request("POST", "/agent/transfer", {
-                "to": tx["to"],
-                "amount": tx.get("value", "0"),
-                "data": tx["data"],
-                "chain_id": client.chain_id,
-            })
+            # Broadcast via Starchild wallet_transfer
+            import httpx
+            r = httpx.post(
+                "http://localhost:8000/tools/wallet_transfer",
+                json={
+                    "to": tx["to"],
+                    "amount": tx.get("value", "0"),
+                    "data": tx["data"],
+                    "chain_id": client.chain_id,
+                },
+                timeout=60,
+            )
+            r.raise_for_status()
+            resp = r.json()
 
             return ToolResult(
                 success=True,

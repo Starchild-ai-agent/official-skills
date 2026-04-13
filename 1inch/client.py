@@ -18,9 +18,7 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
-import aiohttp
-
-from core.http_client import get_aiohttp_proxy_kwargs
+from core.http_client import proxied_get
 
 logger = logging.getLogger(__name__)
 
@@ -64,49 +62,43 @@ class OneInchClient:
 
     # ── Internal helpers ─────────────────────────────────────────────────
 
-    async def _get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
-        """GET request to 1inch API with Bearer auth."""
+    def _get_sync(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        """GET request to 1inch API via sc-proxy (sync, proxied_get)."""
         url = f"{self._api_base}{path}"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Accept": "application/json",
-        }
-        proxy_kw = get_aiohttp_proxy_kwargs(url)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                url,
-                headers=headers,
-                params=params,
-                timeout=aiohttp.ClientTimeout(total=15),
-                **proxy_kw,
-            ) as resp:
-                if resp.status >= 400:
-                    body = await resp.text()
-                    raise Exception(f"1inch API {resp.status}: {body}")
-                return await resp.json()
+        resp = proxied_get(
+            url,
+            params=params,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Accept": "application/json",
+                "SC-CALLER-ID": "skill:1inch",
+            },
+        )
+        if resp.status_code >= 400:
+            raise Exception(f"1inch API {resp.status_code}: {resp.text}")
+        return resp.json()
+
+    async def _get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        """Async wrapper around _get_sync for backward compat."""
+        import asyncio
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self._get_sync, path, params)
 
     # ── Address helper ───────────────────────────────────────────────────
 
     _cached_address: Optional[str] = None
 
     async def _get_address(self) -> str:
-        """Get the agent's EVM address from wallet service (cached)."""
+        """Get the agent's EVM address from environment (Starchild platform)."""
         if self._cached_address:
             return self._cached_address
-
-        from tools.wallet import _wallet_request, _is_fly_machine
-
-        if not _is_fly_machine():
-            raise RuntimeError("Not running on Fly — wallet unavailable")
-
-        data = await _wallet_request("GET", "/agent/wallet")
-        wallets = data if isinstance(data, list) else data.get("wallets", [])
-        for w in wallets:
-            if w.get("chain_type") == "ethereum":
-                self._cached_address = w["wallet_address"]
-                return self._cached_address
-
-        raise RuntimeError("No ethereum wallet found")
+        addr = os.environ.get("AGENT_WALLET_ADDRESS", "")
+        if addr:
+            self._cached_address = addr
+            return self._cached_address
+        raise RuntimeError(
+            "Wallet address not found. Set AGENT_WALLET_ADDRESS env var."
+        )
 
     # ── Quote & Swap ─────────────────────────────────────────────────────
 

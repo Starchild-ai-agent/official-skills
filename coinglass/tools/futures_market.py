@@ -9,9 +9,43 @@ coin-level market data, pair-level data, and OHLC price history.
 import sys
 import json
 import argparse
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from ._api import cg_request
+
+
+def _format_funding_rate(val: Any) -> Any:
+    """Format numeric funding-rate values to percent strings."""
+    if isinstance(val, (int, float)):
+        sign = "+" if val >= 0 else ""
+        return f"{sign}{val:.4f}%"
+    if isinstance(val, str):
+        s = val.strip()
+        if s.endswith("%"):
+            return s
+        try:
+            num = float(s)
+            sign = "+" if num >= 0 else ""
+            return f"{sign}{num:.4f}%"
+        except ValueError:
+            return val
+    return val
+
+
+def _normalize_funding_fields(obj: Any) -> Any:
+    """Recursively normalize only funding-rate fields; keep all other fields unchanged."""
+    if isinstance(obj, list):
+        return [_normalize_funding_fields(x) for x in obj]
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            lk = k.lower()
+            if "funding" in lk and "rate" in lk:
+                out[k] = _format_funding_rate(v)
+            else:
+                out[k] = _normalize_funding_fields(v)
+        return out
+    return obj
 
 
 def get_supported_coins() -> Optional[List[str]]:
@@ -51,7 +85,8 @@ def get_coins_data(
     params = {}
     if symbol:
         params["symbol"] = symbol
-    return cg_request("api/futures/coins-markets", params=params or None)
+    data = cg_request("api/futures/coins-markets", params=params or None)
+    return _normalize_funding_fields(data)
 
 
 def get_pair_data(
@@ -68,7 +103,8 @@ def get_pair_data(
     params = {"symbol": symbol}
     if exchange:
         params["exchange"] = exchange
-    return cg_request("api/futures/pairs-markets", params=params)
+    data = cg_request("api/futures/pairs-markets", params=params)
+    return _normalize_funding_fields(data)
 
 
 def get_ohlc_history(

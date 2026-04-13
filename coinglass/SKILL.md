@@ -1,6 +1,6 @@
 ---
 name: coinglass
-version: 3.0.2
+version: 3.0.3
 description: Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data
 tools:
   # Basic Derivatives (7 tools)
@@ -409,10 +409,6 @@ cvd = cg_cumulative_volume_delta("BTC", "Binance", "1h", 100)
 netflow = cg_coin_netflow()  # All coins
 taker_vol = cg_aggregated_taker_volume("BTC", "1h", 100)
 ```
-
-## ⚠️ Gotcha: Funding Rate Values
-
-API `rate` field is **already in percent** — `0.0058` means `0.0058%`, NOT `0.58%`. Do NOT multiply by 100. All funding rate responses include a **`rate_display`** field (e.g. `"+0.0058%"`) — use it directly for display.
 
 ## Interpretation Guides
 

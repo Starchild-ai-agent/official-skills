@@ -32,6 +32,12 @@
       "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis."
     },
     {
+      "name": "bitget-wallet",
+      "path": "bitget-wallet/SKILL.md",
+      "version": "2026.3.12-1",
+      "description": "Interact with Bitget Wallet API for crypto market data, token info, swap quotes, RWA (real-world asset) stock trading, and security audits. Use when the user asks about wallet, token prices, market data, swap/trading quotes, RWA stock discovery and trading, token security checks, K-line charts, or token rankings on supported chains (ETH, SOL, BSC, Base, etc.)."
+    },
+    {
       "name": "browser-preview",
       "path": "browser-preview/SKILL.md",
       "version": "1.1.0",

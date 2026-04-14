@@ -2,15 +2,16 @@
 1inch DEX Aggregator — Native tool exports for agent routing.
 
 Tools registered:
-  READ  (4): oneinch_quote, oneinch_tokens, oneinch_check_allowance
+  READ  (7): oneinch_quote, oneinch_tokens, oneinch_check_allowance
              oneinch_cross_chain_quote, oneinch_cross_chain_status
              oneinch_get_orders, oneinch_get_order
-  WRITE (4): oneinch_approve, oneinch_swap
+  WRITE (5): oneinch_approve, oneinch_swap
              oneinch_cross_chain_swap
              oneinch_create_limit_order, oneinch_cancel_limit_order
 
 All API calls via sc-proxy (credentials auto-injected).
 No Fly Machine dependency. Works in any Starchild container.
+Cross-chain swap: requests sync path (wallet_sign_typed_data), verified ETH→ARB 2025.
 """
 
 import os
@@ -491,24 +492,67 @@ def oneinch_cancel_limit_order(chain: str, order_hash: str) -> dict:
 # CROSS-CHAIN SWAP EXECUTION (Fusion+)
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _fusion_get(path: str, params: dict = None) -> dict:
+    """Fusion+ API GET via sc-proxy."""
+    url = f"https://api.1inch.com/fusion-plus{path}"
+    resp = proxied_get(url, params=params or {}, headers={"SC-CALLER-ID": SC_CALLER_ID})
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Fusion+ GET {resp.status_code}: {resp.text[:300]}")
+    return resp.json()
+
+
+def _fusion_post(path: str, body: dict, params: dict = None) -> dict:
+    """Fusion+ API POST via sc-proxy."""
+    url = f"https://api.1inch.com/fusion-plus{path}"
+    resp = proxied_post(url, json=body, params=params or {}, headers={"SC-CALLER-ID": SC_CALLER_ID})
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Fusion+ POST {resp.status_code}: {resp.text[:300]}")
+    text = resp.text.strip()
+    return resp.json() if text else {}
+
+
+def _generate_secrets(count: int) -> list:
+    return [os.urandom(32) for _ in range(count)]
+
+
+def _hash_secret(secret: bytes) -> str:
+    try:
+        from eth_utils import keccak
+        return "0x" + keccak(secret).hex()
+    except ImportError:
+        import hashlib
+        return "0x" + hashlib.sha3_256(secret).hexdigest()
+
+
+def _normalize_v(signature: str) -> str:
+    sig_hex = signature.replace("0x", "")
+    if len(sig_hex) == 130:
+        v = int(sig_hex[-2:], 16)
+        if v < 27:
+            signature = "0x" + sig_hex[:-2] + format(v + 27, "02x")
+    return signature
+
+
 def oneinch_cross_chain_swap(
     src_chain: str, dst_chain: str,
     src_token: str, dst_token: str,
     amount: str, preset: str = "medium"
 ) -> dict:
-    """Execute a cross-chain token swap via 1inch Fusion+ (intent-based, long-running).
+    """Execute a cross-chain token swap via 1inch Fusion+ (intent-based atomic swap).
 
-    ⚠️ Long-running operation (~5-10 min). Use sessions_spawn for background execution.
+    Fusion+ is gasless on the destination chain — resolvers handle gas on both sides.
+    Uses requests sync path + wallet_sign_typed_data (verified ETH→ARB, ~76s settlement).
 
-    Fusion+ is gasless on the destination chain — resolvers handle gas.
-    Flow: quote → sign EIP-712 order → submit → poll until executed.
+    Flow: quote → generate secrets → build order → sign EIP-712 → submit → poll → reveal secrets.
+
+    ⚠️ Polling up to 5 minutes. For long waits, use sessions_spawn for background execution.
 
     Args:
         src_chain: Source network — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
         dst_chain: Destination network — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
         src_token: Source token address on source chain
         dst_token: Destination token address on destination chain
-        amount: Amount in wei
+        amount: Amount in wei (e.g. 2 USDC = "2000000")
         preset: Speed — "fast", "medium" (default), or "slow"
     """
     src_id = _chain_id(src_chain)
@@ -518,13 +562,150 @@ def oneinch_cross_chain_swap(
     if preset not in ("fast", "medium", "slow"):
         return {"error": f"Invalid preset '{preset}'. Use: fast, medium, slow"}
 
-    # Delegate to BaseTool implementation (handles secrets, polling, reveal)
-    return {
-        "note": "Cross-chain swap is a long-running operation (~10min). "
-                "Use sessions_spawn to run in background, then poll with oneinch_cross_chain_status(order_hash). "
-                "Direct execution: call oneinch_cross_chain_swap via the registered BaseTool (CrossChainSwapTool).",
-        "src_chain": src_chain, "dst_chain": dst_chain,
-        "src_token": src_token, "dst_token": dst_token,
-        "amount": amount, "preset": preset,
-        "action": "spawn_background_task",
-    }
+    wallet_address = _get_wallet_address()
+    if not wallet_address:
+        return {"error": "No ethereum wallet configured"}
+
+    src_token = src_token.lower()
+    dst_token = dst_token.lower()
+
+    try:
+        # 1. Quote
+        quote = _fusion_get("/quoter/v1.1/quote/receive", {
+            "srcChain": str(src_id),
+            "dstChain": str(dst_id),
+            "srcTokenAddress": src_token,
+            "dstTokenAddress": dst_token,
+            "amount": amount,
+            "walletAddress": wallet_address,
+            "enableEstimate": "true",
+        })
+        quote_id = quote.get("quoteId", "")
+        if not quote_id:
+            return {"error": "Quote missing quoteId — ensure enableEstimate=true"}
+        dst_amount_est = quote.get("dstTokenAmount", "")
+        presets_data = quote.get("presets", {})
+        preset_info = presets_data.get(preset, presets_data.get("medium", {}))
+        secrets_count = preset_info.get("secretsCount", 1)
+
+        # 2. Generate secrets
+        secrets = _generate_secrets(secrets_count)
+        secret_hashes = [_hash_secret(s) for s in secrets]
+
+        # 3. Build order
+        build_result = _fusion_post(
+            "/quoter/v1.1/quote/build/evm",
+            body={"secretsHashList": secret_hashes, "preset": preset},
+            params={"quoteId": quote_id},
+        )
+        order_hash = build_result.get("orderHash", "")
+        typed_data = build_result.get("typedData", {})
+        extension = build_result.get("extension", "")
+        build_tx = build_result.get("transaction")
+        build_signature = build_result.get("signature")
+
+        if not typed_data:
+            return {"error": "Build API returned no typedData", "build_keys": list(build_result.keys())}
+
+        # 4. Sign
+        if build_tx:
+            # Native ETH flow: execute deposit tx, use pre-computed signature
+            from tools.wallet import wallet_sign_transaction
+            tx_result = wallet_sign_transaction({
+                "to": build_tx.get("to", ""),
+                "value": str(build_tx.get("value", "0")),
+                "chain_id": src_id,
+                "data": build_tx.get("data", ""),
+            })
+            if not build_signature:
+                return {"error": "Build API returned transaction but no pre-computed signature"}
+            signature = build_signature
+        else:
+            # ERC-20 flow: sign EIP-712 typed data
+            from tools.wallet import wallet_sign_typed_data
+            sig_result = wallet_sign_typed_data(
+                domain=typed_data.get("domain", {}),
+                types=typed_data.get("types", {}),
+                primary_type=typed_data.get("primaryType", ""),
+                message=typed_data.get("message", {}),
+            )
+            signature = sig_result.get("signature", "")
+            if not signature:
+                return {"error": f"Wallet returned no signature: {sig_result}"}
+
+        signature = _normalize_v(signature)
+
+        # 5. Submit
+        submit_payload = {
+            "order": typed_data.get("message", {}),
+            "signature": signature,
+            "quoteId": quote_id,
+            "extension": extension,
+            "srcChainId": src_id,
+        }
+        if secrets_count > 1:
+            submit_payload["secretHashes"] = secret_hashes
+
+        submit_result = _fusion_post("/relayer/v1.1/submit", submit_payload)
+        order_hash = submit_result.get("orderHash", order_hash)
+
+        if not order_hash:
+            return {"error": "Order submission returned no order hash"}
+
+        # 6. Poll (max 5 min)
+        MAX_POLL = 300
+        INTERVAL = 15
+        revealed = set()
+        start = time.time()
+
+        while time.time() - start < MAX_POLL:
+            # Reveal secrets if fills ready
+            if len(revealed) < secrets_count:
+                try:
+                    fills = _fusion_get(f"/orders/v1.1/order/ready-to-accept-secret-fills/{order_hash}")
+                    for fill in fills.get("fills", []):
+                        idx = fill.get("idx", 0)
+                        if idx not in revealed and idx < len(secrets):
+                            _fusion_post("/relayer/v1.1/submit/secret", {
+                                "orderHash": order_hash,
+                                "secret": "0x" + secrets[idx].hex(),
+                            })
+                            revealed.add(idx)
+                except Exception:
+                    pass
+
+            # Check status
+            try:
+                status = _fusion_get(f"/orders/v1.1/order/status/{order_hash}")
+                order_status = status.get("status", "").lower()
+                if order_status in ("executed", "expired", "refunded", "cancelled"):
+                    return {
+                        "status": order_status,
+                        "order_hash": order_hash,
+                        "src_chain": src_chain, "dst_chain": dst_chain,
+                        "src_token": src_token, "dst_token": dst_token,
+                        "src_amount": amount,
+                        "dst_amount": status.get("dstAmount", status.get("takingAmount", dst_amount_est)),
+                        "secrets_revealed": len(revealed),
+                        "elapsed_seconds": int(time.time() - start),
+                    }
+            except Exception:
+                pass
+
+            time.sleep(INTERVAL)
+
+        # Timeout — order is submitted, just didn't confirm in time
+        return {
+            "status": "submitted_polling_timeout",
+            "order_hash": order_hash,
+            "src_chain": src_chain, "dst_chain": dst_chain,
+            "src_amount": amount, "dst_amount_estimate": dst_amount_est,
+            "message": f"Order submitted but did not confirm within {MAX_POLL}s. "
+                       "Use oneinch_cross_chain_status(order_hash) to check later.",
+        }
+
+    except Exception as e:
+        err = str(e)
+        if "policy" in err.lower():
+            return {"error": f"Policy violation: {err}. Use wallet_propose_policy to allow this operation."}
+        return {"error": err}

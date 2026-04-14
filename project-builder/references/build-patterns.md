@@ -285,7 +285,7 @@ fetch('api/data')
 ```
 Mount in FastAPI: `app.mount("/", StaticFiles(directory="static", html=True))`
 `preview_serve(dir="project", command="python3 app.py", port=8000)`
-✅ Pass = `health_check.ok` is true AND data shows in browser panel
+✅ Pass = `health_check.ok` is true AND data shows in Preview panel
 
 **Step 3 — Polish frontend (verify: looks right, data correct)**
 Add styling, charts, layout. Verify after each significant change.

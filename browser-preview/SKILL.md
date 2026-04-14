@@ -1,7 +1,7 @@
 ---
 name: browser-preview
-version: 1.0.0
-description: "Browser preview panel knowledge — the iframe-based Browser tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, 白屏, 页面挂了, tab 不见了, preview not loading, or asks about running services."
+version: 1.1.0
+description: "Preview panel knowledge — the iframe-based Preview tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, 白屏, 页面挂了, tab 不见了, preview not loading, or asks about running services."
 
 metadata:
   starchild:
@@ -16,16 +16,16 @@ disable-model-invocation: false
 
 You already know `preview_serve` and `preview_stop`. This skill fills the gap: what happens **after** preview_serve returns a URL — how the user actually sees it.
 
-## What is Browser
+## What is the Preview Panel
 
-The frontend has a right-side panel with two tabs: **Workspace** and **Browser**. Browser renders preview URLs inside an iframe. When you call `preview_serve`, the frontend automatically opens a Browser tab loading that URL.
+The frontend has a right-side panel with three tabs: **Files**, **Preview**, and **Jobs**. The Preview tab renders preview URLs inside an iframe. When you call `preview_serve`, the frontend automatically opens a Preview tab loading that URL.
 
 Key facts:
-- Each `preview_serve` call creates one Browser tab
+- Each `preview_serve` call creates one Preview tab
 - URL format: `https://<host>/preview/{id}/`
-- Browser panel has a **⋮ menu** (top-right) showing "RUNNING SERVICES" list
-- Browser tab can be **closed by the user** without stopping the backend service
-- Backend service stopping → Browser tab shows an error page
+- Preview panel has a **⋮ menu** (top-right) showing "RUNNING SERVICES" list
+- Preview tab can be **closed by the user** without stopping the backend service
+- Backend service stopping → Preview tab shows an error page
 
 ## ⚠️ CRITICAL: Never Tell Users to Access localhost
 
@@ -39,7 +39,7 @@ Rules:
 - **NEVER** tell the user to visit `http://localhost:{port}` or `http://127.0.0.1:{port}` — they cannot reach it
 - **ALWAYS** direct users to the preview URL: `/preview/{id}/` (or the full URL `https://<host>/preview/{id}/`)
 - `curl http://localhost:{port}` is for **your own server-side diagnostics only** — never suggest it to the user as a way to "test" the preview
-- When a preview is running, tell the user: "Check the Browser panel, or refresh the Browser panel"
+- When a preview is running, tell the user: "Check the Preview panel, or refresh the Preview panel"
 - If you need to give the user a URL, use the `url` field returned by `preview_serve` (format: `/preview/{id}/`)
 
 ## ⚠️ Static Assets Must Use Relative Paths
@@ -86,9 +86,9 @@ The **only** sources of truth:
 
 Do NOT use `ls`/`find` on workspace directories to diagnose preview issues. Do NOT call unrelated tools like `list_scheduled_tasks`. Stay focused.
 
-## Step-by-Step: Diagnosing Browser Issues
+## Step-by-Step: Diagnosing Preview Issues
 
-When a user reports any Browser problem, follow this exact sequence:
+When a user reports any Preview panel problem, follow this exact sequence:
 
 ### Step 1: Read the registry (running services)
 
@@ -122,7 +122,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:{port}
 **If port responds (200):**
 - The service IS running. Tell the user:
   - "You have a running service: {title}"
-  - "Click the ⋮ menu at the top-right of the Browser panel, then click it in the RUNNING SERVICES list to reopen"
+  - "Click the ⋮ menu at the top-right of the Preview panel, then click it in the RUNNING SERVICES list to reopen"
   - Preview URL: `/preview/{id}/`
 - **If user says the ⋮ menu is empty or doesn't show the service** → frontend lost sync. Fix by recreating: `preview_stop(id)` then `preview_serve(dir, title, command)` using the info from the registry. This forces the frontend to re-register the tab.
 
@@ -189,7 +189,7 @@ Then:
 |-----------|--------|
 | "tab disappeared" / "tab 不见了" | Step 1 → 2 → 3 or 4 |
 | "blank page" / "白屏" | Check port (server-side), if dead → recreate; if alive → check for absolute path issues |
-| "not updating" / "内容没更新" | Suggest refresh button in Browser tab, or recreate preview |
+| "not updating" / "内容没更新" | Suggest refresh button in Preview tab, or recreate preview |
 | "port conflict" / "端口冲突" | `preview_stop` old → `preview_serve` new |
 | "can't see service" / "⋮ menu empty" | `preview_stop` + `preview_serve` to force re-register |
 | "where's my project" / "what did I build" | Read `/data/preview_history.json` and list entries |
@@ -197,11 +197,11 @@ Then:
 
 ## What You Cannot Do
 
-- Cannot directly open/close/refresh Browser tabs (frontend UI)
+- Cannot directly open/close/refresh Preview tabs (frontend UI)
 - Cannot force-refresh the iframe
 - Cannot read what the iframe displays
 
-When you can't do something, tell the user the manual action (e.g., "click refresh in Browser tab"). If manual action doesn't work, recreate the preview with `preview_stop` + `preview_serve`.
+When you can't do something, tell the user the manual action (e.g., "click refresh in Preview tab"). If manual action doesn't work, recreate the preview with `preview_stop` + `preview_serve`.
 
 ## Common Mistakes to Avoid
 
@@ -211,4 +211,4 @@ When you can't do something, tell the user the manual action (e.g., "click refre
 4. ❌ Forgetting to check ALL file types (HTML, JS, CSS, config) for absolute paths
 5. ✅ Always use `/preview/{id}/` as the user-facing URL
 6. ✅ Always use `curl localhost:{port}` only for your own server-side diagnostics
-7. ✅ After fixing paths, call `preview_stop` + `preview_serve` to restart, then tell user to check Browser panel
+7. ✅ After fixing paths, call `preview_stop` + `preview_serve` to restart, then tell user to check Preview panel

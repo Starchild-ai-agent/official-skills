@@ -20,10 +20,11 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ACP_CLI_DIR="${ACP_CLI_DIR:-$(cd "$SKILL_DIR/../acp-cli" 2>/dev/null && pwd || echo "")}"
+acp_cmd() { (cd "$ACP_CLI_DIR" && npx tsx "$ACP_CLI_DIR/bin/acp.ts" "$@"); }
 BASE_URL="${DGCLAW_BASE_URL:-https://degen.virtuals.io}"
 API_KEY="${DGCLAW_API_KEY:-}"
 DEGENCLAW_ADDRESS="0xd478a8B40372db16cA8045F28C6FE07228F3781A"
-SUBSCRIBE_AGENT_ADDRESS="0xC751AF68b3041eDc01d4A0b5eC4BFF2Bf07Bae73"
 
 # Allow 'join' command without API key
 if [[ "${1:-}" != "join" ]]; then
@@ -38,6 +39,7 @@ fi
 # ---- Helper functions ----
 
 # Poll an ACP job until completion/failure. Args: job_id, label
+# Uses --isAutomated true, so no manual payment polling is needed.
 # Exits on failure/timeout. Returns on success.
 poll_acp_job() {
   local job_id="$1"
@@ -50,7 +52,7 @@ poll_acp_job() {
     sleep "$poll_interval"
     poll_count=$((poll_count + 1))
 
-    status_response=$(acp job status "$job_id" --json 2>/dev/null || echo '{}')
+    status_response=$(acp_cmd job history --chain-id 8453 --job-id "$job_id" --json 2>/dev/null || echo '{}')
 
     # The top-level phase field is unreliable (stays NEGOTIATION).
     # Check memoHistory for the latest nextPhase to determine actual state.
@@ -73,19 +75,6 @@ poll_acp_job() {
         echo "$status_response" | jq .
         return 1
         ;;
-      TRANSACTION|transaction)
-        # Check if already approved (status: APPROVED) to avoid double-pay
-        pending=$(echo "$status_response" | jq -r '
-          if type == "array" then .[0] else . end
-          | .memoHistory | map(select(.nextPhase == "TRANSACTION" and .status == "PENDING")) | length
-        ')
-        if [ "$pending" -gt 0 ]; then
-          echo "Payment requested, approving..."
-          acp job pay "$job_id" --accept true --content "Approved" --json > /dev/null 2>&1 || true
-        else
-          echo "  Payment already approved, waiting... (poll $poll_count/$max_polls)"
-        fi
-        ;;
       *)
         echo "  Status: $latest_phase (poll $poll_count/$max_polls)"
         ;;
@@ -93,7 +82,7 @@ poll_acp_job() {
   done
 
   echo "Error: Timed out waiting for $label ($(( max_polls * poll_interval ))s)"
-  echo "Check job status manually: acp job status $job_id --json"
+  echo "Check job status manually: acp_cmd job history --chain-id 8453 --job-id $job_id --json"
   return 1
 }
 
@@ -101,35 +90,35 @@ poll_acp_job() {
 
 case "${1:-}" in
   join)
-    if ! command -v acp &> /dev/null; then
-      echo "Error: 'acp' command not found. Install the ACP skill first:"
-      echo "  git clone https://github.com/Virtual-Protocol/openclaw-acp.git"
-      echo "  cd openclaw-acp && npm install"
-      echo "  npm run acp -- setup"
+    if [[ -z "$ACP_CLI_DIR" ]]; then
+      echo "Error: acp-cli not found. Set ACP_CLI_DIR or clone it as a sibling directory:"
+      echo "  git clone https://github.com/Virtual-Protocol/acp-cli.git"
+      echo "  cd acp-cli && npm install"
+      echo "  acp configure"
       exit 1
     fi
 
     # Get agent address: from argument, or detect from acp agent list
     agent_address="${2:-}"
     if [[ -z "$agent_address" ]]; then
-      agents_json=$(acp agent list --json 2>/dev/null || echo '[]')
-      agent_count=$(echo "$agents_json" | jq 'length')
+      agents_json=$(acp_cmd agent list --json 2>/dev/null || echo '{"data":[]}')
+      agent_count=$(echo "$agents_json" | jq '.data | length')
 
       if [[ "$agent_count" -eq 0 ]]; then
         echo "Error: No agents found. Run 'acp setup' first or pass address manually:"
         echo "  dgclaw.sh join <agentAddress>"
         exit 1
       elif [[ "$agent_count" -eq 1 ]]; then
-        agent_address=$(echo "$agents_json" | jq -r '.[0].walletAddress')
-        agent_name=$(echo "$agents_json" | jq -r '.[0].name')
+        agent_address=$(echo "$agents_json" | jq -r '.data[0].walletAddress')
+        agent_name=$(echo "$agents_json" | jq -r '.data[0].name')
         echo "Using agent: $agent_name ($agent_address)"
       else
         echo "Multiple agents found. Select one:"
         echo ""
         for i in $(seq 0 $((agent_count - 1))); do
-          name=$(echo "$agents_json" | jq -r ".[$i].name")
-          addr=$(echo "$agents_json" | jq -r ".[$i].walletAddress")
-          active=$(echo "$agents_json" | jq -r ".[$i].active")
+          name=$(echo "$agents_json" | jq -r ".data[$i].name")
+          addr=$(echo "$agents_json" | jq -r ".data[$i].walletAddress")
+          active=$(echo "$agents_json" | jq -r ".data[$i].active")
           label="$name ($addr)"
           [[ "$active" == "true" ]] && label="$label *active*"
           echo "  $((i + 1))) $label"
@@ -141,16 +130,16 @@ case "${1:-}" in
           exit 1
         fi
         idx=$((selection - 1))
-        agent_address=$(echo "$agents_json" | jq -r ".[$idx].walletAddress")
-        agent_name=$(echo "$agents_json" | jq -r ".[$idx].name")
+        agent_address=$(echo "$agents_json" | jq -r ".data[$idx].walletAddress")
+        agent_name=$(echo "$agents_json" | jq -r ".data[$idx].name")
         echo "Selected: $agent_name ($agent_address)"
       fi
     fi
 
     # Check agent is tokenized before proceeding
     echo "Checking agent tokenization..."
-    token_json=$(acp token info --json 2>/dev/null || echo '{}')
-    token_address=$(echo "$token_json" | jq -r '.tokenAddress // .data.tokenAddress // empty')
+    agent_info_json=$(acp_cmd agent whoami --json 2>/dev/null || echo '{}')
+    token_address=$(echo "$agent_info_json" | jq -r '.chains[0].tokenAddress // empty')
     if [[ -z "$token_address" ]]; then
       echo "Error: Agent is not tokenized."
       echo "Tokenize your agent first:"
@@ -169,9 +158,9 @@ case "${1:-}" in
     public_key=$(grep -v '^\-\-' "$tmp_dir/public.pem" | tr -d '\n')
 
     echo "Creating join_leaderboard ACP job..."
-    job_response=$(acp job create "$DEGENCLAW_ADDRESS" "join_leaderboard" \
+    job_response=$(acp_cmd client create-job --provider "$DEGENCLAW_ADDRESS" --offering-name "join_leaderboard" \
       --requirements "$(jq -n --arg a "$agent_address" --arg k "$public_key" '{agentAddress:$a,publicKey:$k}')" \
-      --json)
+      --legacy --json)
 
     job_id=$(echo "$job_response" | jq -r '.data.jobId // .jobId // .id // empty')
     if [[ -z "$job_id" ]]; then
@@ -181,6 +170,11 @@ case "${1:-}" in
     fi
 
     echo "ACP job created: $job_id"
+
+    # Accept provider memo and fund the job
+    echo "Funding job..."
+    acp_cmd client fund --job-id "$job_id" --json 2>/dev/null || true
+
     echo "Waiting for registration..."
 
     if ! poll_acp_job "$job_id" "Registration"; then
@@ -188,7 +182,7 @@ case "${1:-}" in
     fi
 
     # Extract deliverable and decrypt API key
-    deliverable=$(acp job status "$job_id" --json 2>/dev/null | jq -r 'if type == "array" then .[0] else . end | .deliverable // empty')
+    deliverable=$(acp_cmd job history --chain-id 8453 --job-id "$job_id" --json 2>/dev/null | jq -r 'if type == "array" then .[0] else . end | .deliverable // empty')
     encrypted_key=$(echo "$deliverable" | jq -r '.encryptedApiKey // empty')
 
     if [[ -z "$encrypted_key" ]]; then
@@ -257,7 +251,7 @@ case "${1:-}" in
     POLL_INTERVAL="${DGCLAW_POLL_INTERVAL:-5}"
     SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
     MARKER="# dgclaw-$2"
-    CRON_LINE="*/$POLL_INTERVAL * * * * DGCLAW_API_KEY=$API_KEY $SCRIPT_PATH unreplied-posts $2 | openclaw agent chat \"Here are unreplied posts in your forum. Reply to each using dgclaw.sh create-post.\" $MARKER"
+    CRON_LINE="*/$POLL_INTERVAL * * * * DGCLAW_API_KEY=$API_KEY $SCRIPT_PATH unreplied-posts $2 | acp_cmd agent chat \"Here are unreplied posts in your forum. Reply to each using dgclaw.sh create-post.\" $MARKER"
     # Remove existing entry for this agentId, then append new one
     ( crontab -l 2>/dev/null | grep -v "$MARKER" || true ; echo "$CRON_LINE" ) | crontab -
     echo "Cron job installed for agent '$2' (every $POLL_INTERVAL minutes)"
@@ -267,91 +261,6 @@ case "${1:-}" in
     MARKER="# dgclaw-$2"
     ( crontab -l 2>/dev/null | grep -v "$MARKER" || true ) | crontab -
     echo "Cron job removed for agent '$2'"
-    ;;
-  subscribe)
-    [[ -z "${2:-}" || -z "${3:-}" ]] && { echo "Usage: dgclaw.sh subscribe <agentId> <yourWalletAddress>"; exit 1; }
-
-    if ! command -v acp &> /dev/null; then
-      echo "Error: 'acp' command not found. Please install the ACP skill:"
-      echo "git clone https://github.com/Virtual-Protocol/openclaw-acp.git"
-      echo "cd openclaw-acp && npm install"
-      exit 1
-    fi
-
-    agent_id="$2"
-    subscriber_address="$3"
-
-    # Fetch agent token address from API
-    echo "Fetching agent info..."
-    agent_response=$(curl -s "${AUTH_HEADER[@]}" "$BASE_URL/api/agents/$agent_id")
-    token_address=$(echo "$agent_response" | jq -r '.data.tokenAddress // empty')
-    if [[ -z "$token_address" ]]; then
-      echo "Error: Could not find token address for agent $agent_id"
-      echo "$agent_response" | jq .
-      exit 1
-    fi
-
-    echo "Creating subscription job for agent $agent_id (token: $token_address)..."
-
-    sub_response=$(acp job create "$SUBSCRIBE_AGENT_ADDRESS" "subscribe" \
-      --requirements "$(jq -n --arg t "$token_address" --arg s "$subscriber_address" '{tokenAddress:$t,subscriber:$s}')" \
-      --json)
-
-    sub_job_id=$(echo "$sub_response" | jq -r '.data.jobId // .jobId // .id // empty')
-    if [[ -z "$sub_job_id" ]]; then
-      echo "Error: Failed to create subscribe ACP job"
-      echo "$sub_response" | jq .
-      exit 1
-    fi
-
-    echo "ACP job created: $sub_job_id"
-    echo "Waiting for subscription to complete (USDC payment + on-chain subscribe)..."
-    echo ""
-
-    if poll_acp_job "$sub_job_id" "Subscription"; then
-      echo ""
-      echo "Subscription completed successfully!"
-    else
-      echo ""
-      echo "Subscription failed. Check job status:"
-      echo "  acp job status $sub_job_id --json"
-      exit 1
-    fi
-    ;;
-  get-price)
-    [[ -z "${2:-}" ]] && { echo "Usage: dgclaw.sh get-price <agentId>"; exit 1; }
-    echo "Getting subscription price..."
-    curl -s -X GET "$BASE_URL/api/agents/$2/subscription-price" \
-      "${AUTH_HEADER[@]}" | jq .
-    ;;
-  set-price)
-    [[ -z "${2:-}" || -z "${3:-}" ]] && { echo "Usage: dgclaw.sh set-price <agentId> <price>"; echo "  price: USDC amount for subscription (e.g. 10, 0.5)"; exit 1; }
-
-    price="$3"
-
-    # Validate price is a number
-    if ! [[ "$price" =~ ^[0-9]*\.?[0-9]+$ ]]; then
-      echo "Error: Price must be a non-negative number"
-      exit 1
-    fi
-
-    echo "Setting subscription price to $price USDC..."
-    response=$(curl -s -X PATCH "$BASE_URL/api/agents/$2/settings" \
-      "${AUTH_HEADER[@]}" \
-      -H "Content-Type: application/json" \
-      -d "$(jq -n --arg p "$price" '{subscriptionPrice:$p}')")
-
-    if echo "$response" | jq -e '.success' > /dev/null 2>&1; then
-      agent_name=$(echo "$response" | jq -r '.data.agentName')
-      new_price=$(echo "$response" | jq -r '.data.subscriptionPrice')
-      echo "Subscription price updated!"
-      echo "   Agent: $agent_name"
-      echo "   New Price: $new_price USDC"
-    else
-      error_msg=$(echo "$response" | jq -r '.error // "Unknown error"')
-      echo "Failed to update price: $error_msg"
-      exit 1
-    fi
     ;;
   *)
     echo "Degenerate Claw CLI"
@@ -374,12 +283,7 @@ case "${1:-}" in
     echo "  setup-cron <agentId>                      Install auto-reply cron job"
     echo "  remove-cron <agentId>                     Remove auto-reply cron job"
     echo ""
-    echo "Subscription:"
-    echo "  subscribe <agentId> <walletAddress>       Subscribe to an agent's forum (via ACP)"
-    echo "  get-price <agentId>                       Get agent's subscription price"
-    echo "  set-price <agentId> <price>               Set your subscription price (USDC)"
-    echo ""
     echo "Info:"
-    echo "  token-info <tokenAddress>                 Get agent token + subscription info"
+    echo "  token-info <tokenAddress>                 Get agent token info"
     ;;
 esac

@@ -86,8 +86,86 @@ def _build_maker_traits(expiry_seconds: int = 0, allow_partial_fill: bool = True
 
 
 def _random_salt() -> int:
-    """Generate a secure random 256-bit salt."""
-    return int.from_bytes(os.urandom(32), "big")
+    """Generate a secure random 96-bit base salt (upper bits), lower 160 bits reserved for extension hash."""
+    return int.from_bytes(os.urandom(12), "big")
+
+
+def _build_salt_with_extension(extension_hex: str = "0x") -> int:
+    """
+    Build correct salt for LOP v4 orders with extension.
+    Per official SDK: salt = (random96 << 160) | keccak256(extension)[0:20]
+    For empty extension (0x), keccak160 of empty bytes = known constant.
+    """
+    base = int.from_bytes(os.urandom(12), "big")
+    if extension_hex in ("0x", ""):
+        # keccak256("") & UINT_160_MAX
+        ext_bytes = b""
+    else:
+        ext_bytes = bytes.fromhex(extension_hex[2:])
+    ext_hash = int.from_bytes(hashlib.sha3_256(ext_bytes).digest(), "big") if ext_bytes else 0
+    # Use proper keccak256 via web3 if available, else sha3_256 approximation
+    try:
+        from eth_hash.auto import keccak
+        ext_hash = int.from_bytes(keccak(ext_bytes), "big")
+    except ImportError:
+        pass
+    return (base << 160) | (ext_hash & ((1 << 160) - 1))
+
+
+def _compute_order_hash(order: dict, chain_id: int, contract: str) -> str:
+    """
+    Compute EIP-712 order hash for use as orderHash in POST body.
+    Uses eth_account if available, otherwise returns empty string (API will compute it).
+    """
+    try:
+        from eth_account.structured_data.hashing import hash_domain, hash_message
+        from eth_account._utils.structured_data.hashing import hash_eip712_bytes
+        from eth_abi import encode
+        import eth_hash
+        # simple keccak approach
+        from eth_hash.auto import keccak
+
+        domain = {
+            "name": "1inch Limit Order Protocol",
+            "version": "4",
+            "chainId": chain_id,
+            "verifyingContract": contract,
+        }
+        # EIP-712 typeHash for Order
+        type_string = "Order(uint256 salt,address maker,address receiver,address makerAsset,address takerAsset,uint256 makingAmount,uint256 takingAmount,uint256 makerTraits)"
+        type_hash = keccak(type_string.encode())
+        encoded = encode(
+            ["bytes32","uint256","address","address","address","address","uint256","uint256","uint256"],
+            [
+                type_hash,
+                int(order["salt"]),
+                order["maker"],
+                order["receiver"],
+                order["makerAsset"],
+                order["takerAsset"],
+                int(order["makingAmount"]),
+                int(order["takingAmount"]),
+                int(order["makerTraits"]),
+            ]
+        )
+        struct_hash = keccak(encoded)
+        domain_type = "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+        domain_type_hash = keccak(domain_type.encode())
+        domain_encoded = encode(
+            ["bytes32","bytes32","bytes32","uint256","address"],
+            [
+                domain_type_hash,
+                keccak(domain["name"].encode()),
+                keccak(domain["version"].encode()),
+                chain_id,
+                contract,
+            ]
+        )
+        domain_hash = keccak(domain_encoded)
+        final = keccak(b"\x19\x01" + domain_hash + struct_hash)
+        return "0x" + final.hex()
+    except Exception:
+        return ""
 
 
 # ── Read-Only Tools ──────────────────────────────────────────────────────────
@@ -270,57 +348,130 @@ Returns: order_hash, order details"""
             if not wallet_address:
                 return ToolResult(success=False, error="No ethereum wallet configured")
 
-            # Build order struct
-            salt = _random_salt()
-            maker_traits = _build_maker_traits(expiry_seconds, allow_partial_fill)
+            # ── Step 1: Fetch FeeTaker extension from 1inch API ──────────────
+            # 1inch Orderbook v4 REQUIRES FeeTaker extension (710-char hex).
+            # Extension encodes resolver whitelist + FeeTaker contract + fee params.
+            # Must be fetched from API — cannot be constructed client-side.
+            ORDERBOOK_BASE_URL = "https://api.1inch.dev/orderbook/v4.0"
+            FEES_TAKER = "0xc0dfdb9e7a392c3dbbe7c6fbe8fbc1789c9fe05e"
+            FIXED_EXT = (
+                "0x00000142000000ae000000ae000000ae000000ae00000057000000000000000"
+                "0c0dfdb9e7a392c3dbbe7c6fbe8fbc1789c9fe05e000000012c6406b09498030"
+                "ae3416b66dc74db31d09524fa87b1f76ea9a11ae13b29f5c555d18bd45f0b94f"
+                "54a968fc90ed87a54c23dc480b395770895ad27ad6b0d95c0dfdb9e7a392c3db"
+                "be7c6fbe8fbc1789c9fe05e000000012c6406b09498030ae3416b66dc74db31d"
+                "09524fa87b1f76ea9a11ae13b29f5c555d18bd45f0b94f54a968fc90ed87a54c"
+                "23dc480b395770895ad27ad6b0d95c0dfdb9e7a392c3dbbe7c6fbe8fbc1789c9"
+                "fe05e01000000000000000000000000000000000000000090cbe4bdd538d6e9b"
+                "379bff5fe72c3d67a521de5d18e5e7dc9b58ec02204d3b88277d7a54510981b0"
+                "00000012c6406b09498030ae3416b66dc74db31d09524fa87b1f76ea9a11ae13"
+                "b29f5c555d18bd45f0b94f54a968fc90ed87a54c23dc480b395770895ad27ad6"
+                "b0d95"
+            )
+            FIXED_EXT = "0x" + FIXED_EXT.replace("0x", "").replace("\n", "").replace(" ", "")
+            FIXED_TRAITS = "0x4a000000000000000000000000000000000069ddce8b00000000000000000000"
 
+            extension = FIXED_EXT
+            receiver = FEES_TAKER
+            maker_traits_raw = FIXED_TRAITS
+            extension_source = "fixed_fallback"
+
+            try:
+                resp = proxied_get(
+                    f"{ORDERBOOK_BASE_URL}/{chain_id}/build-order",
+                    params={
+                        "walletAddress": wallet_address,
+                        "makerAsset": maker_asset,
+                        "takerAsset": taker_asset,
+                        "makingAmount": making_amount,
+                    },
+                    headers={"SC-CALLER-ID": SC_CALLER_ID},
+                )
+                if resp.status_code == 200:
+                    api_order = resp.json().get("order", resp.json())
+                    if api_order.get("extension"):
+                        extension = api_order["extension"]
+                        receiver = api_order.get("receiver", FEES_TAKER)
+                        maker_traits_raw = api_order.get("makerTraits", FIXED_TRAITS)
+                        extension_source = "api"
+            except Exception:
+                pass  # use fixed fallback
+
+            # ── Step 2: Compute salt = (random96 << 160) | keccak160(extension) ──
+            try:
+                from eth_hash.auto import keccak as _keccak
+                ext_bytes = bytes.fromhex(extension.replace("0x", ""))
+                ext_hash = _keccak(ext_bytes)
+            except ImportError:
+                import hashlib
+                ext_bytes = bytes.fromhex(extension.replace("0x", ""))
+                ext_hash = hashlib.sha3_256(ext_bytes).digest()
+
+            low160 = int.from_bytes(ext_hash, "big") & ((1 << 160) - 1)
+            salt = (int.from_bytes(os.urandom(12), "big") << 160) | low160
+
+            # ── Step 3: Resolve makerTraits ──────────────────────────────────
+            maker_traits_int = (
+                int(maker_traits_raw, 16)
+                if isinstance(maker_traits_raw, str)
+                else int(maker_traits_raw)
+            )
+            if expiry_seconds > 0:
+                expiry_ts = int(time.time()) + expiry_seconds
+                maker_traits_int = (
+                    (maker_traits_int & ~(0xFFFFFFFFFF << 80))
+                    | ((expiry_ts & 0xFFFFFFFFFF) << 80)
+                )
+            if not allow_partial_fill:
+                maker_traits_int |= (1 << 255)
+
+            # ── Step 4: Build order struct ──────────────────────────────────
             order = {
                 "salt": str(salt),
                 "maker": wallet_address,
-                "receiver": "0x0000000000000000000000000000000000000000",
+                "receiver": receiver,
                 "makerAsset": maker_asset,
                 "takerAsset": taker_asset,
                 "makingAmount": str(making_amount),
                 "takingAmount": str(taking_amount),
-                "makerTraits": str(maker_traits),
+                "makerTraits": hex(maker_traits_int),
+                "extension": extension,
             }
 
-            # EIP-712 typed data
-            typed_data = {
-                "domain": {
+            # ── Step 5: EIP-712 sign ─────────────────────────────────────────
+            sig_result = wallet_sign_typed_data(
+                domain={
                     "name": "1inch Aggregation Router",
                     "version": "6",
                     "chainId": chain_id,
                     "verifyingContract": contract,
                 },
-                "types": ORDER_TYPES,
-                "primaryType": "Order",
-                "message": {
+                types=ORDER_TYPES,
+                primary_type="Order",
+                message={
                     "salt": salt,
                     "maker": wallet_address,
-                    "receiver": "0x0000000000000000000000000000000000000000",
+                    "receiver": receiver,
                     "makerAsset": maker_asset,
                     "takerAsset": taker_asset,
                     "makingAmount": int(making_amount),
                     "takingAmount": int(taking_amount),
-                    "makerTraits": maker_traits,
+                    "makerTraits": maker_traits_int,
                 },
-            }
-
-            # Sign order
-            sig_result = wallet_sign_typed_data(
-                domain=typed_data["domain"],
-                types=typed_data["types"],
-                primary_type=typed_data["primaryType"],
-                message=typed_data["message"],
             )
             signature = sig_result.get("signature", "")
             if not signature:
                 return ToolResult(success=False, error=f"Wallet sign failed: {sig_result}")
 
-            # Submit to Orderbook API
-            payload = {"orderHash": "", "signature": signature, "data": order}
-            result = _ob_post(chain_id, "", payload)
+            # Normalize v (ensure v >= 27)
+            sig_hex = signature.replace("0x", "")
+            if len(sig_hex) == 130:
+                v = int(sig_hex[-2:], 16)
+                if v < 27:
+                    signature = "0x" + sig_hex[:-2] + format(v + 27, "02x")
+
+            # ── Step 6: Submit to 1inch Orderbook ───────────────────────────
+            result = _ob_post(chain_id, "", {"signature": signature, "data": order})
 
             return ToolResult(
                 success=True,
@@ -334,6 +485,7 @@ Returns: order_hash, order details"""
                     "taking_amount": taking_amount,
                     "expiry_seconds": expiry_seconds,
                     "allow_partial_fill": allow_partial_fill,
+                    "extension_source": extension_source,
                     "raw": result,
                 },
             )

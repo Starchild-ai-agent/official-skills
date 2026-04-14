@@ -4,7 +4,7 @@
     {
       "name": "1inch",
       "path": "1inch/SKILL.md",
-      "version": "3.1.0",
+      "version": "4.0.0",
       "description": "1inch DEX aggregator — EVM same-chain swap, SOL↔EVM cross-chain Fusion+, limit orders. Native tools, no Fly dependency, no aiohttp."
     },
     {

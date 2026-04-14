@@ -485,3 +485,46 @@ def oneinch_cancel_limit_order(chain: str, order_hash: str) -> dict:
         return {"status": "cancel_sent", "order_hash": order_hash, "tx": result}
     except Exception as e:
         return {"error": str(e)}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CROSS-CHAIN SWAP EXECUTION (Fusion+)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def oneinch_cross_chain_swap(
+    src_chain: str, dst_chain: str,
+    src_token: str, dst_token: str,
+    amount: str, preset: str = "medium"
+) -> dict:
+    """Execute a cross-chain token swap via 1inch Fusion+ (intent-based, long-running).
+
+    ⚠️ Long-running operation (~5-10 min). Use sessions_spawn for background execution.
+
+    Fusion+ is gasless on the destination chain — resolvers handle gas.
+    Flow: quote → sign EIP-712 order → submit → poll until executed.
+
+    Args:
+        src_chain: Source network — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
+        dst_chain: Destination network — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
+        src_token: Source token address on source chain
+        dst_token: Destination token address on destination chain
+        amount: Amount in wei
+        preset: Speed — "fast", "medium" (default), or "slow"
+    """
+    src_id = _chain_id(src_chain)
+    dst_id = _chain_id(dst_chain)
+    if src_id == dst_id:
+        return {"error": f"Same chain ({src_chain}). Use oneinch_swap for same-chain swaps."}
+    if preset not in ("fast", "medium", "slow"):
+        return {"error": f"Invalid preset '{preset}'. Use: fast, medium, slow"}
+
+    # Delegate to BaseTool implementation (handles secrets, polling, reveal)
+    return {
+        "note": "Cross-chain swap is a long-running operation (~10min). "
+                "Use sessions_spawn to run in background, then poll with oneinch_cross_chain_status(order_hash). "
+                "Direct execution: call oneinch_cross_chain_swap via the registered BaseTool (CrossChainSwapTool).",
+        "src_chain": src_chain, "dst_chain": dst_chain,
+        "src_token": src_token, "dst_token": dst_token,
+        "amount": amount, "preset": preset,
+        "action": "spawn_background_task",
+    }

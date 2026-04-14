@@ -2,18 +2,23 @@
 1inch DEX Aggregator Tools — BaseTool subclasses for agent use.
 
 Read-only tools (3): oneinch_quote, oneinch_tokens, oneinch_check_allowance
-Write tools (2): oneinch_approve, oneinch_swap
+Write tools (2):     oneinch_approve, oneinch_swap
 
-All tools require a `chain` parameter to specify the network.
+All tools use wallet_transfer (Starchild native) for on-chain tx broadcast.
+No Fly Machine dependency. Works in any Starchild container.
 """
 
 import logging
+import os
 from typing import Dict
 
 from core.tool import BaseTool, ToolContext, ToolResult
 from .client import OneInchClient, NATIVE_TOKEN, resolve_chain
 
 logger = logging.getLogger(__name__)
+
+# Agent wallet address — set once at startup
+AGENT_ADDRESS = os.environ.get("AGENT_EVM_ADDRESS", "")
 
 # Cache of clients per chain_id
 _clients: Dict[int, OneInchClient] = {}
@@ -26,9 +31,15 @@ def _get_client(chain: str) -> OneInchClient:
     return _clients[chain_id]
 
 
-async def _get_address(chain: str) -> str:
-    """Get the agent's EVM address."""
-    return await _get_client(chain)._get_address()
+def _get_address() -> str:
+    """Get agent EVM address from env."""
+    addr = AGENT_ADDRESS or os.environ.get("AGENT_EVM_ADDRESS", "")
+    if not addr:
+        raise RuntimeError(
+            "AGENT_EVM_ADDRESS not configured. "
+            "Starchild sets this automatically for internal wallets."
+        )
+    return addr
 
 
 # ── Read-Only Tools ──────────────────────────────────────────────────────────
@@ -45,14 +56,14 @@ class OneInchQuoteTool(BaseTool):
     def description(self) -> str:
         return """Get a swap price quote from 1inch DEX aggregator.
 
-Returns the estimated output amount and route info WITHOUT executing a swap.
-Use this to check prices before swapping. Use oneinch_tokens to discover token addresses on the target chain.
+Returns the estimated output amount and route WITHOUT executing a swap.
+Use this to check prices before swapping. Use oneinch_tokens to find token addresses.
 
 Parameters:
-- chain: Network name (required) — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
-- src: Source token address (use 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE for native ETH)
+- chain: Network (ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis)
+- src: Source token address (0xEeee...EEeE for native ETH)
 - dst: Destination token address
-- amount: Amount in wei (smallest unit, e.g. "1000000000000000000" = 1 ETH, "1000000" = 1 USDC)
+- amount: Amount in wei (e.g. "2000000" = 2 USDC with 6 decimals)
 
 Returns: dstAmount (estimated output in wei), gas estimate, route protocols"""
 
@@ -61,45 +72,26 @@ Returns: dstAmount (estimated output in wei), gas estimate, route protocols"""
         return {
             "type": "object",
             "properties": {
-                "chain": {
-                    "type": "string",
-                    "description": "Network: arbitrum, ethereum, base, optimism, polygon, bsc, avalanche, gnosis",
-                },
-                "src": {
-                    "type": "string",
-                    "description": "Source token address",
-                },
-                "dst": {
-                    "type": "string",
-                    "description": "Destination token address",
-                },
-                "amount": {
-                    "type": "string",
-                    "description": "Amount in wei (smallest unit)",
-                },
+                "chain": {"type": "string", "description": "Network name"},
+                "src":   {"type": "string", "description": "Source token address"},
+                "dst":   {"type": "string", "description": "Destination token address"},
+                "amount": {"type": "string", "description": "Amount in wei"},
             },
             "required": ["chain", "src", "dst", "amount"],
         }
 
-    async def execute(
-        self, ctx: ToolContext, chain: str = "", src: str = "", dst: str = "", amount: str = "", **kwargs
-    ) -> ToolResult:
-        if not chain:
-            return ToolResult(success=False, error="'chain' is required")
-        if not src or not dst or not amount:
-            return ToolResult(success=False, error="'src', 'dst', and 'amount' are required")
+    async def execute(self, ctx: ToolContext, chain: str = "", src: str = "", dst: str = "", amount: str = "", **kwargs) -> ToolResult:
+        if not all([chain, src, dst, amount]):
+            return ToolResult(success=False, error="chain, src, dst, amount are all required")
         try:
-            client = _get_client(chain)
-            data = await client.get_quote(src, dst, amount)
+            data = _get_client(chain).get_quote(src, dst, amount)
             return ToolResult(success=True, output=data)
-        except ValueError as e:
-            return ToolResult(success=False, error=str(e))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
 
 class OneInchTokensTool(BaseTool):
-    """Search supported tokens on a network."""
+    """Search or list supported tokens on a network via 1inch."""
 
     @property
     def name(self) -> str:
@@ -109,27 +101,21 @@ class OneInchTokensTool(BaseTool):
     def description(self) -> str:
         return """List or search supported tokens on a network via 1inch.
 
-Use this to find token addresses and decimals before quoting or swapping. Token addresses differ between networks.
+Use to find token addresses before quoting or swapping. Addresses differ per network.
 
 Parameters:
-- chain: Network name (required) — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
-- search: (optional) Filter by token name or symbol (case-insensitive). Omit to list popular tokens.
+- chain: Network (ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis)
+- search: (optional) Filter by token name or symbol (case-insensitive)
 
-Returns: array of {address, symbol, name, decimals} (max 20 results)"""
+Returns: [{address, symbol, name, decimals}] (max 20 results)"""
 
     @property
     def parameters(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "chain": {
-                    "type": "string",
-                    "description": "Network: arbitrum, ethereum, base, optimism, polygon, bsc, avalanche, gnosis",
-                },
-                "search": {
-                    "type": "string",
-                    "description": "Filter by name or symbol (optional)",
-                },
+                "chain":  {"type": "string", "description": "Network name"},
+                "search": {"type": "string", "description": "Filter by name or symbol (optional)"},
             },
             "required": ["chain"],
         }
@@ -138,35 +124,14 @@ Returns: array of {address, symbol, name, decimals} (max 20 results)"""
         if not chain:
             return ToolResult(success=False, error="'chain' is required")
         try:
-            client = _get_client(chain)
-            data = await client.get_tokens()
-
-            # API returns {"tokens": {"0x...": {...}, ...}}
+            data = _get_client(chain).get_tokens()
             token_map = data.get("tokens", data) if isinstance(data, dict) else data
             tokens = list(token_map.values()) if isinstance(token_map, dict) else token_map
-
             if search:
-                query = search.lower()
-                tokens = [
-                    t for t in tokens
-                    if query in t.get("symbol", "").lower()
-                    or query in t.get("name", "").lower()
-                ]
-
-            # Return compact info, limited to 20
-            result = [
-                {
-                    "address": t.get("address"),
-                    "symbol": t.get("symbol"),
-                    "name": t.get("name"),
-                    "decimals": t.get("decimals"),
-                }
-                for t in tokens[:20]
-            ]
-
+                q = search.lower()
+                tokens = [t for t in tokens if q in t.get("symbol", "").lower() or q in t.get("name", "").lower()]
+            result = [{"address": t.get("address"), "symbol": t.get("symbol"), "name": t.get("name"), "decimals": t.get("decimals")} for t in tokens[:20]]
             return ToolResult(success=True, output={"tokens": result, "count": len(result)})
-        except ValueError as e:
-            return ToolResult(success=False, error=str(e))
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
@@ -182,72 +147,44 @@ class OneInchCheckAllowanceTool(BaseTool):
     def description(self) -> str:
         return """Check if a token has sufficient allowance for the 1inch router.
 
-Native ETH does not need approval. ERC-20 tokens (USDC, WETH, etc.) must be approved before swapping.
+Native ETH never needs approval. ERC-20 tokens (USDC, WETH, etc.) must be approved before swapping.
 
 Parameters:
-- chain: Network name (required) — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
+- chain: Network (ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis)
 - token_address: ERC-20 token address to check
 
-Returns: allowance amount, whether approval is needed"""
+Returns: allowance amount, needs_approval (bool)"""
 
     @property
     def parameters(self) -> dict:
         return {
             "type": "object",
             "properties": {
-                "chain": {
-                    "type": "string",
-                    "description": "Network: arbitrum, ethereum, base, optimism, polygon, bsc, avalanche, gnosis",
-                },
-                "token_address": {
-                    "type": "string",
-                    "description": "ERC-20 token address to check",
-                },
+                "chain":         {"type": "string", "description": "Network name"},
+                "token_address": {"type": "string", "description": "ERC-20 token address"},
             },
             "required": ["chain", "token_address"],
         }
 
-    async def execute(
-        self, ctx: ToolContext, chain: str = "", token_address: str = "", **kwargs
-    ) -> ToolResult:
-        if not chain:
-            return ToolResult(success=False, error="'chain' is required")
-        if not token_address:
-            return ToolResult(success=False, error="'token_address' is required")
-
-        # Native ETH never needs approval
+    async def execute(self, ctx: ToolContext, chain: str = "", token_address: str = "", **kwargs) -> ToolResult:
+        if not chain or not token_address:
+            return ToolResult(success=False, error="chain and token_address are required")
         if token_address.lower() == NATIVE_TOKEN.lower():
-            return ToolResult(
-                success=True,
-                output={"allowance": "unlimited", "needs_approval": False, "note": "Native ETH does not need approval"},
-            )
-
+            return ToolResult(success=True, output={"allowance": "unlimited", "needs_approval": False, "note": "Native ETH does not need approval"})
         try:
-            client = _get_client(chain)
-            address = await _get_address(chain)
-            data = await client.get_allowance(token_address, address)
+            address = _get_address()
+            data = _get_client(chain).get_allowance(token_address, address)
             allowance = data.get("allowance", "0")
-            needs_approval = allowance == "0"
-            return ToolResult(
-                success=True,
-                output={
-                    "allowance": allowance,
-                    "needs_approval": needs_approval,
-                    "token": token_address,
-                    "wallet": address,
-                },
-            )
-        except ValueError as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=True, output={"allowance": allowance, "needs_approval": allowance == "0", "token": token_address, "wallet": address})
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 
 
-# ── Write Tools (require wallet) ────────────────────────────────────────────
+# ── Write Tools ──────────────────────────────────────────────────────────────
 
 
 class OneInchApproveTool(BaseTool):
-    """Approve a token for 1inch router spending."""
+    """Approve a token for 1inch router spending via wallet_transfer."""
 
     @property
     def name(self) -> str:
@@ -257,12 +194,12 @@ class OneInchApproveTool(BaseTool):
     def description(self) -> str:
         return """Approve an ERC-20 token for the 1inch router.
 
-This sends an on-chain approval transaction so the 1inch router can spend your tokens.
+Sends an on-chain approval transaction so 1inch router can spend your tokens.
 Required before swapping ERC-20 tokens (not needed for native ETH).
 
 Parameters:
-- chain: Network name (required) — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
-- token_address: ERC-20 token address to approve (use oneinch_tokens to find addresses)
+- chain: Network (ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis)
+- token_address: ERC-20 token address to approve
 - amount: (optional) Amount to approve in wei. Omit for unlimited approval.
 
 Returns: transaction hash"""
@@ -272,77 +209,39 @@ Returns: transaction hash"""
         return {
             "type": "object",
             "properties": {
-                "chain": {
-                    "type": "string",
-                    "description": "Network: arbitrum, ethereum, base, optimism, polygon, bsc, avalanche, gnosis",
-                },
-                "token_address": {
-                    "type": "string",
-                    "description": "ERC-20 token address to approve",
-                },
-                "amount": {
-                    "type": "string",
-                    "description": "Amount to approve in wei (omit for unlimited)",
-                },
+                "chain":         {"type": "string", "description": "Network name"},
+                "token_address": {"type": "string", "description": "ERC-20 token address to approve"},
+                "amount":        {"type": "string", "description": "Amount in wei (omit for unlimited)"},
             },
             "required": ["chain", "token_address"],
         }
 
-    async def execute(
-        self, ctx: ToolContext, chain: str = "", token_address: str = "", amount: str = "", **kwargs
-    ) -> ToolResult:
-        if not chain:
-            return ToolResult(success=False, error="'chain' is required")
-        if not token_address:
-            return ToolResult(success=False, error="'token_address' is required")
-
-        from tools.wallet import _wallet_request, _is_fly_machine
-
-        if not _is_fly_machine():
-            return ToolResult(
-                success=False,
-                error="Not running on a Fly Machine — wallet unavailable",
-            )
-
+    async def execute(self, ctx: ToolContext, chain: str = "", token_address: str = "", amount: str = "", **kwargs) -> ToolResult:
+        if not chain or not token_address:
+            return ToolResult(success=False, error="chain and token_address are required")
         try:
+            from tools.wallet import wallet_transfer_sync
+
             client = _get_client(chain)
-            tx_data = await client.get_approve_transaction(
-                token_address, amount=amount if amount else None
-            )
+            tx_data = client.get_approve_transaction(token_address, amount=amount if amount else None)
 
-            # Broadcast approval tx via wallet service
-            resp = await _wallet_request("POST", "/agent/transfer", {
-                "to": tx_data["to"],
-                "amount": tx_data.get("value", "0"),
-                "data": tx_data["data"],
-                "chain_id": client.chain_id,
-            })
-
-            return ToolResult(
-                success=True,
-                output={
-                    "status": "approval_sent",
-                    "token": token_address,
-                    "tx": resp,
-                },
+            # Broadcast via Starchild wallet_transfer (no Fly Machine required)
+            result = wallet_transfer_sync(
+                to=tx_data["to"],
+                amount=tx_data.get("value", "0"),
+                data=tx_data.get("data", ""),
+                chain_id=client.chain_id,
             )
-        except ValueError as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=True, output={"status": "approval_sent", "token": token_address, "tx": result})
         except Exception as e:
-            error_msg = str(e)
-            if "policy" in error_msg.lower():
-                return ToolResult(
-                    success=False,
-                    error=f"Policy violation: {error_msg}. "
-                          f"The wallet policy does not allow this operation. "
-                          f"Use wallet_propose_policy to propose a policy that allows "
-                          f"this transaction. Inform the user what policy change is needed."
-                )
-            return ToolResult(success=False, error=error_msg)
+            err = str(e)
+            if "policy" in err.lower():
+                return ToolResult(success=False, error=f"Policy violation: {err}. Use wallet_propose_policy to allow this operation.")
+            return ToolResult(success=False, error=err)
 
 
 class OneInchSwapTool(BaseTool):
-    """Execute a token swap via 1inch."""
+    """Execute a token swap via 1inch DEX aggregator."""
 
     @property
     def name(self) -> str:
@@ -352,15 +251,16 @@ class OneInchSwapTool(BaseTool):
     def description(self) -> str:
         return """Execute a token swap via 1inch DEX aggregator.
 
-1inch finds the best route across DEXes (Uniswap, SushiSwap, Curve, etc.) and executes the swap.
+1inch finds the best route across DEXes (Uniswap, Curve, etc.) and executes the swap.
 
-IMPORTANT: For ERC-20 source tokens, check allowance first with oneinch_check_allowance and approve with oneinch_approve if needed. Native ETH swaps do not need approval. Use oneinch_tokens to discover token addresses on the target chain.
+IMPORTANT: For ERC-20 tokens, check allowance first with oneinch_check_allowance
+and approve with oneinch_approve if needed. Native ETH needs no approval.
 
 Parameters:
-- chain: Network name (required) — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
-- src: Source token address (use 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE for native ETH)
+- chain: Network (ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis)
+- src: Source token address (0xEeee...EEeE for native ETH)
 - dst: Destination token address
-- amount: Amount in wei (smallest unit)
+- amount: Amount in wei
 - slippage: Slippage tolerance in percent (default: 1.0)
 
 Returns: transaction hash, estimated output amount"""
@@ -370,93 +270,46 @@ Returns: transaction hash, estimated output amount"""
         return {
             "type": "object",
             "properties": {
-                "chain": {
-                    "type": "string",
-                    "description": "Network: arbitrum, ethereum, base, optimism, polygon, bsc, avalanche, gnosis",
-                },
-                "src": {
-                    "type": "string",
-                    "description": "Source token address",
-                },
-                "dst": {
-                    "type": "string",
-                    "description": "Destination token address",
-                },
-                "amount": {
-                    "type": "string",
-                    "description": "Amount in wei (smallest unit)",
-                },
-                "slippage": {
-                    "type": "number",
-                    "description": "Slippage tolerance in percent (default: 1.0)",
-                },
+                "chain":    {"type": "string", "description": "Network name"},
+                "src":      {"type": "string", "description": "Source token address"},
+                "dst":      {"type": "string", "description": "Destination token address"},
+                "amount":   {"type": "string", "description": "Amount in wei"},
+                "slippage": {"type": "number", "description": "Slippage % (default 1.0)"},
             },
             "required": ["chain", "src", "dst", "amount"],
         }
 
-    async def execute(
-        self,
-        ctx: ToolContext,
-        chain: str = "",
-        src: str = "",
-        dst: str = "",
-        amount: str = "",
-        slippage: float = 1.0,
-        **kwargs,
-    ) -> ToolResult:
-        if not chain:
-            return ToolResult(success=False, error="'chain' is required")
-        if not src or not dst or not amount:
-            return ToolResult(success=False, error="'src', 'dst', and 'amount' are required")
-
-        from tools.wallet import _wallet_request, _is_fly_machine
-
-        if not _is_fly_machine():
-            return ToolResult(
-                success=False,
-                error="Not running on a Fly Machine — wallet unavailable",
-            )
-
+    async def execute(self, ctx: ToolContext, chain: str = "", src: str = "", dst: str = "", amount: str = "", slippage: float = 1.0, **kwargs) -> ToolResult:
+        if not all([chain, src, dst, amount]):
+            return ToolResult(success=False, error="chain, src, dst, amount are all required")
         try:
+            from tools.wallet import wallet_transfer_sync
+
             client = _get_client(chain)
-            address = await _get_address(chain)
+            address = _get_address()
 
-            # Get swap tx data from 1inch
-            swap_data = await client.get_swap(src, dst, amount, address, slippage)
-
+            swap_data = client.get_swap(src, dst, amount, address, slippage)
             tx = swap_data.get("tx", {})
             if not tx:
                 return ToolResult(success=False, error="1inch API returned no transaction data")
 
-            # Broadcast swap tx via wallet service
-            resp = await _wallet_request("POST", "/agent/transfer", {
-                "to": tx["to"],
-                "amount": tx.get("value", "0"),
-                "data": tx["data"],
-                "chain_id": client.chain_id,
-            })
-
-            return ToolResult(
-                success=True,
-                output={
-                    "status": "swap_sent",
-                    "src": src,
-                    "dst": dst,
-                    "srcAmount": amount,
-                    "dstAmount": swap_data.get("dstAmount"),
-                    "tx": resp,
-                },
+            # Broadcast via Starchild wallet_transfer (no Fly Machine required)
+            result = wallet_transfer_sync(
+                to=tx["to"],
+                amount=tx.get("value", "0"),
+                data=tx.get("data", ""),
+                chain_id=client.chain_id,
             )
-        except ValueError as e:
-            return ToolResult(success=False, error=str(e))
+            return ToolResult(success=True, output={
+                "status": "swap_sent",
+                "src": src,
+                "dst": dst,
+                "srcAmount": amount,
+                "dstAmount": swap_data.get("dstAmount"),
+                "tx": result,
+            })
         except Exception as e:
-            error_msg = str(e)
-            if "policy" in error_msg.lower():
-                return ToolResult(
-                    success=False,
-                    error=f"Policy violation: {error_msg}. "
-                          f"The wallet policy does not allow this operation. "
-                          f"Use wallet_propose_policy to propose a policy that allows "
-                          f"this transaction. Inform the user what policy change is needed."
-                )
-            return ToolResult(success=False, error=error_msg)
+            err = str(e)
+            if "policy" in err.lower():
+                return ToolResult(success=False, error=f"Policy violation: {err}. Use wallet_propose_policy to allow this operation.")
+            return ToolResult(success=False, error=err)

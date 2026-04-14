@@ -1,6 +1,6 @@
 ---
 name: tokenomist
-version: 1.1.0
+version: 1.2.0
 description: "Token unlock schedules, cliff events, daily emissions, allocation breakdowns, and supply pressure analytics via Tokenomist API"
 tools:
   - tokenomist_token_list
@@ -45,15 +45,30 @@ Do not downgrade unless user explicitly asks.
 
 ## Keyword → Tool Lookup
 
-| User asks about | Tool | NOT this |
-|----------------|------|----------|
-| "tokenomics overview", "全面分析" | `tokenomist_token_overview` | Don't call 4 tools separately |
-| "allocation", "分配", "top holders" | `tokenomist_allocations_summary` | Not `tokenomist_allocations` (too verbose) |
-| "allocation raw data", "full breakdown" | `tokenomist_allocations` | — |
-| "unlock schedule", "解锁", "cliff" | `tokenomist_unlock_events` | — |
-| "daily emission", "每日释放" | `tokenomist_daily_emission` | — |
-| "find token", "which token id" | `tokenomist_resolve_token` | Not `tokenomist_token_list` |
-| "list all tokens" | `tokenomist_token_list` | — |
+> **Priority rule**: Specific tool wins over `token_overview`. If an unlock/cliff/emission keyword matches, use that specific tool — do NOT fall back to `token_overview`.
+
+| Intent | Trigger keywords (any match) | Tool | ⛔ NOT |
+|--------|------------------------------|------|--------|
+| Broad overview | "tokenomics overview", "全面分析", "综合分析", "告诉我所有" | `tokenomist_token_overview` | 4 tools separately |
+| Allocation summary | "allocation", "分配", "who holds", "谁持有", "top holders", "team allocation" | `tokenomist_allocations_summary` | `tokenomist_allocations` |
+| Allocation raw | "full breakdown", "raw allocation", "complete allocation data" | `tokenomist_allocations` | — |
+| **Unlock/Cliff** ⚡ | "unlock", "解锁", "cliff", "vesting", "lockup", "token release" | `tokenomist_unlock_events` | ⛔ `token_overview` |
+| **Unlock/Cliff** ⚡ | "unlock schedule", "解锁时间表", "解锁计划", "vesting schedule" | `tokenomist_unlock_events` | ⛔ `token_overview` |
+| **Unlock/Cliff** ⚡ | "next unlock", "when unlock", "什么时候解锁", "下一次解锁", "即将解锁" | `tokenomist_unlock_events` | ⛔ `token_overview` |
+| **Unlock/Cliff** ⚡ | "lockup expiry", "锁定到期", "代币释放时间", "upcoming unlock" | `tokenomist_unlock_events` | ⛔ `token_overview` |
+| Daily emission | "daily emission", "每日释放", "emission rate", "daily release" | `tokenomist_daily_emission` | — |
+| Token lookup | "find token", "which token id", "token id for X" | `tokenomist_resolve_token` | — |
+| Token list | "list all tokens", "what tokens tracked" | `tokenomist_token_list` | — |
+
+## ⛔ HARD LIMITS — These Rules Are Non-Negotiable
+
+1. **NEVER call `bash` after any `tokenomist_*` tool** — the tools return structured data directly. No post-processing with bash needed.
+2. **NEVER call `bash` to sum, filter, or sort emission data** — compute from the tool result in memory.
+3. **NEVER call more than 3 `tokenomist_*` tools per question** — use `tokenomist_token_overview` for broad questions.
+4. **NEVER pass symbol string directly to granular tools** — resolve first, or use tools that auto-resolve.
+5. **NEVER use `token_overview` when unlock/cliff/emission keywords present** — use the specific tool instead.
+
+---
 
 ## MISTAKES — Read Before Calling
 
@@ -85,7 +100,46 @@ Exception: `tokenomist_token_overview` and `tokenomist_allocations_summary` auto
 ✅ RIGHT: tokenomist_unlock_events(token_id="arb", start="2025-01-01")  ← YYYY-MM-DD only
 ```
 
-### ❌ MISTAKE 5: Confusing tokenomist with coingecko for supply data
+### ❌ MISTAKE 5: Calling bash after tokenomist tools
+```
+User: "ARB 本月解锁总量是多少？"
+❌ WRONG: tokenomist_daily_emission(token_id="arb") → bash("python3 -c 'import json; ...'")
+✅ RIGHT: tokenomist_daily_emission(token_id="arb")  ← sum the values directly from result, no bash
+```
+**Rule**: tokenomist tools return structured JSON. Sum/filter/sort IN YOUR HEAD. Never spawn bash to process the result.
+
+### ❌ MISTAKE 6: Using token_overview for unlock/cliff-specific questions
+
+**Any question containing unlock/cliff intent → `tokenomist_unlock_events`, never `token_overview`**
+
+```
+User: "ARB 下一个 cliff 解锁事件是什么时候？"
+❌ WRONG: tokenomist_token_overview(query="ARB")  ← ignores specific intent
+✅ RIGHT: tokenomist_resolve_token(query="ARB") → tokenomist_unlock_events(token_id=..., start="today")
+
+User: "APT 的解锁时间表"
+❌ WRONG: tokenomist_token_overview(query="APT")
+✅ RIGHT: tokenomist_resolve_token(query="APT") → tokenomist_unlock_events(token_id=...)
+
+User: "SUI 什么时候解锁？"
+❌ WRONG: tokenomist_token_overview(query="SUI")
+✅ RIGHT: tokenomist_resolve_token(query="SUI") → tokenomist_unlock_events(token_id=...)
+```
+
+Full keyword list → always triggers `tokenomist_unlock_events`:
+- English: unlock, cliff, vesting, lockup, token release, unlock schedule, next unlock, upcoming unlock, lockup expiry, when does X unlock
+- Chinese: 解锁, cliff, 解锁时间表, 解锁计划, 什么时候解锁, 下一次解锁, 即将解锁, 锁定到期, 代币释放时间
+
+> **Generalisation note**: Even if the question seems broad ("tell me about ARB unlocks"), as long as "unlock" is in the question, use `tokenomist_unlock_events` — not `token_overview`.
+
+### ❌ MISTAKE 7: Using token_overview then verifying with bash
+```
+User: "给我 ARB 的 tokenomics 概览"
+❌ WRONG: tokenomist_token_overview(query="ARB") → bash("echo checking...") → bash("python3 ...")
+✅ RIGHT: tokenomist_token_overview(query="ARB")  ← STOP. Format the result and reply. No bash verification.
+```
+
+### ❌ MISTAKE 8: Confusing tokenomist with coingecko for supply data
 ```
 User: "ARB 的 circulating supply"
 ❌ WRONG: tokenomist_*  ← Tokenomist does unlocks/emissions, not live supply

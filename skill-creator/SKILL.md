@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-version: 1.0.0
+version: 1.1.0
 description: "Create and scaffold new skills with proper frontmatter, directory structure, and validation. Use when the user asks to build a new capability, integrate a new API, or extend the system with a repeatable workflow."
 
 metadata:
@@ -101,7 +101,7 @@ Before writing, decide what goes where:
 
 ### Step 4: Write the SKILL.md
 
-Use `read_file` and `write_file` to complete the generated SKILL.md:
+Plan the content first — frontmatter trigger, body structure, freedom level. Then:
 
 1. **Frontmatter** — Update description (CRITICAL trigger), add requirements, set emoji
 2. **Body** — Write for the agent, not the user. Short paragraphs over bullet walls. Opinions over hedging.
@@ -113,19 +113,41 @@ Design patterns for the body:
 - **Reference/guidelines** — Rules and frameworks (strategy: core truths, conversation style, when to pull data)
 - **Capabilities-based** — Organized by what the skill can do (market-data: price tools / derivatives tools / social tools)
 
-### Step 5: Validate
+### Step 5: Create / Update via `skill_manage`
+
+**`skill_manage` is the primary workflow** — it validates frontmatter, runs a security scan, and auto-reloads the cache. Do NOT use `write_file` as the main path.
+
+**Creating a new skill:**
+```python
+skill_manage(action="create", name="my-skill", content="---\nname: my-skill\n...")
+```
+
+**Patching an existing skill (preferred for targeted changes):**
+```python
+# Always read_file first to get exact whitespace/content
+skill_manage(action="patch", name="my-skill", old_string="exact old text", new_string="new text")
+```
+
+**Full rewrite of existing skill:**
+```python
+skill_manage(action="edit", name="my-skill", content="---\nname: my-skill\n...")
+```
+
+⚠️ **Known gotchas:**
+- `create` errors if skill already exists → use `edit` or `patch` instead.
+- `edit`/`patch` errors if skill does NOT exist → use `create` first.
+- `patch` requires exact `old_string` match (whitespace included) → always `read_file` before patching.
+- `execute()` must accept `**kwargs` — if you see `unexpected keyword argument 'action'`, it's a bug in the tool implementation (fix: `def execute(self, **kwargs)`).
+
+**Fallback only** — if `skill_manage` is unavailable, use `write_file` + `skill_refresh()` manually.
+
+### Step 6: Validate
 
 ```bash
 python skills/skill-creator/scripts/validate_skill.py ./workspace/skills/my-new-skill
 ```
 
-### Step 6: Refresh
-
-Call the `skill_refresh` tool to make the skill available:
-
-```
-skill_refresh()
-```
+After `skill_manage`, validate is optional (auto-reloaded), but run it to catch schema issues early.
 
 ## Frontmatter Format
 

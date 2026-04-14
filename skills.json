@@ -142,7 +142,7 @@
     {
       "name": "skill-creator",
       "path": "skill-creator/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Create and scaffold new skills with proper frontmatter, directory structure, and validation. Use when the user asks to build a new capability, integrate a new API, or extend the system with a repeatable workflow."
     },
     {
@@ -196,8 +196,8 @@
     {
       "name": "wallet",
       "path": "wallet/SKILL.md",
-      "version": "3.2.0",
-      "description": "Multi-chain wallet — balances, transfers, signing, policy (EVM + Solana)"
+      "version": "3.4.0",
+      "description": "Multi-chain wallet — balances, transfers, signing, policy (EVM multi-chain + Solana)"
     },
     {
       "name": "woofi-swap",

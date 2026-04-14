@@ -4,8 +4,8 @@
     {
       "name": "1inch",
       "path": "1inch/SKILL.md",
-      "version": "2.0.0",
-      "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
+      "version": "3.1.0",
+      "description": "1inch DEX aggregator — EVM same-chain swap, SOL↔EVM cross-chain Fusion+, limit orders. Native tools, no Fly dependency, no aiohttp."
     },
     {
       "name": "aave",
@@ -172,7 +172,7 @@
     {
       "name": "tokenomist",
       "path": "tokenomist/SKILL.md",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Token unlock schedules, cliff events, daily emissions, allocation breakdowns, and supply pressure analytics via Tokenomist API"
     },
     {

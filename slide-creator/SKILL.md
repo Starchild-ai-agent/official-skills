@@ -35,9 +35,33 @@ Build slide decks as HTML, export to pixel-perfect 16:9 PDF via headless Chromiu
 
 Define slide count and content per slide. Each slide = one `<section class="slide">`.
 
+### 1.5 Art Direction (run this before building)
+
+> Run this step whenever the user hasn't provided a specific visual style.
+> Read `skills/slide-creator/references/art-direction.md` for the full style taxonomy,
+> CSS token templates, and style-brief output format.
+
+**Step A — Ask 3 questions:**
+1. 受众与场景：给谁看、什么场合（投资人/内部/公开演讲）？
+2. 情绪关键词：希望观众感受到什么（专业权威 / 创意活力 / 亲切友好 / 极客酷炫）？
+3. 品牌约束：有没有指定的品牌色、logo、字体？
+
+**Step B — Search for references:**
+Use `web_search` with patterns from art-direction.md to find 2–3 real examples.
+Search target: Dribbble, Behance, or design blogs with relevant style + industry keywords.
+
+**Step C — Present 3 style options:**
+Each option includes: style name, mood description, color swatches (bg/surface/accent), font pair, and why it fits their content.
+Show the search results as supporting references.
+
+**Step D — Generate style-brief.md:**
+Once user selects a style, write a `style-brief.md` (template in art-direction.md) in the project directory.
+All subsequent HTML/CSS work must follow this brief.
+
 ### 2. Choose a Theme
 
-Ask the user what visual style they want. If not specified, pick one that fits the content.
+If Art Direction was completed, the `style-brief.md` is the theme spec — skip this table.
+Otherwise, use as a quick fallback:
 
 | Style | Background | Accent | Font | Mood |
 |-------|-----------|--------|------|------|
@@ -110,10 +134,13 @@ for p in doc:
 ## Style Guidelines
 
 - **No default brand** — every deck gets a theme tailored to its content
+- Prefer Art Direction-first workflow (questions → references → user pick → `style-brief.md`)
 - Ask the user for preference: dark/light, accent color, font, mood
 - Each slide should have clear visual hierarchy: tag → title → content
 - Keep text concise — slides are visual, not documents
 - Use `.bg-glow` with theme-colored radial gradients for depth
+- When user asks for "美术建议/风格建议", always provide at least 3 concrete style routes with examples before coding
+- Build HTML strictly against chosen style brief, then export PDF (do not skip brief unless user explicitly opts out)
 
 ## Gotchas
 

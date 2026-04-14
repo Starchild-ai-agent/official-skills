@@ -303,15 +303,8 @@ Returns: order hash, final status, amounts"""
         if preset not in ("fast", "medium", "slow"):
             return ToolResult(success=False, error=f"Invalid preset '{preset}'. Use: fast, medium, slow")
 
-        from tools.wallet import _wallet_request, _is_fly_machine
-
-        if not _is_fly_machine():
-            return ToolResult(
-                success=False,
-                error="Not running on a Fly Machine — wallet unavailable",
-            )
-
         try:
+            from tools.wallet import wallet_sign_transaction, wallet_sign_typed_data
             client = _get_fusion_client()
             wallet_address = (await client.get_address()).lower()
             src_token = src_token.lower()
@@ -379,9 +372,9 @@ Returns: order hash, final status, amounts"""
                     return ToolResult(success=False, error="Build API returned transaction with no 'to' address")
 
                 logger.info(f"Native ETH swap: executing deposit tx to {tx_to} (value={tx_value})")
-                tx_result = await _wallet_request("POST", "/agent/transfer", {
+                tx_result = wallet_sign_transaction({
                     "to": tx_to,
-                    "amount": tx_value,
+                    "value": tx_value,
                     "chain_id": src_chain_id,
                     "data": tx_data,
                 })
@@ -393,8 +386,13 @@ Returns: order hash, final status, amounts"""
                 signature = build_signature
                 logger.info("Using pre-computed signature from build API (native ETH swap)")
             else:
-                # ── ERC-20 flow: sign typedData with wallet ──
-                sig_result = await _wallet_request("POST", "/agent/sign-typed-data", typed_data)
+                # ── ERC-20 flow: sign typedData with platform wallet ──
+                sig_result = wallet_sign_typed_data(
+                    domain=typed_data.get("domain", {}),
+                    types=typed_data.get("types", {}),
+                    primary_type=typed_data.get("primaryType", ""),
+                    message=typed_data.get("message", {}),
+                )
                 signature = sig_result.get("signature", "")
 
                 if not signature:

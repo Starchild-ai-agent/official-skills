@@ -136,6 +136,8 @@ Returns `premarket_change`, `premarket_change_percent`, `postmarket_change`, `po
 - `compact` — Last 30 data points (default, faster). Use for "最近走势".
 - `full` — Up to 5000 data points. Use for deep analysis / charting.
 
+⚠️ **Note:** The `outputsize` parameter 只接受 `"compact"` 或 `"full"` 字符串 — 传整数会报 `invalid_type` 错误。
+
 ## Proxy-Safe Usage
 
 1. **Agent tool calls**: Always prefer `twelvedata_*` tools (this skill).

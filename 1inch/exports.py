@@ -37,7 +37,7 @@ SOL_NATIVE_TOKEN = "SoNative11111111111111111111111111111111111"   # 1inch alias
 NATIVE_TOKEN = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
 ROUTER_V6 = "0x111111125421cA6dc452d289314280a0f8842A65"
 ORDERBOOK_BASE = "https://api.1inch.dev/orderbook/v4.0"
-FUSION_BASE = "https://api.1inch.dev/fusion-plus"
+FUSION_BASE = "https://api.1inch.com/fusion-plus"  # api.1inch.com is the active endpoint (api.1inch.dev deprecated for Fusion+)
 
 # Limit Order Protocol v4 — same address as Router v6
 LOP_CONTRACTS = {v: ROUTER_V6 for v in SUPPORTED_CHAINS.values()}
@@ -278,16 +278,21 @@ def oneinch_cross_chain_quote(
         return {"error": f"Same chain ({src_chain}). Use oneinch_quote for same-chain swaps."}
 
     wallet = _get_wallet_address() or "0x0000000000000000000000000000000000000000"
-    url = f"{FUSION_BASE}/quoter/v1.0/{src_id}/quote/receive"
-    resp = proxied_get(url, params={
-        "srcChainId": src_id, "dstChainId": dst_id,
-        "srcTokenAddress": src_token, "dstTokenAddress": dst_token,
-        "amount": amount, "walletAddress": wallet,
-        "enableEstimate": "true",
-    }, headers={"SC-CALLER-ID": SC_CALLER_ID})
-    if resp.status_code >= 400:
-        return {"error": f"Fusion+ API {resp.status_code}: {resp.text[:300]}"}
-    return resp.json()
+    try:
+        # Fix: use api.1inch.com domain (via _fusion_get helper) + v1.1 endpoint
+        # with correct param names srcChain/dstChain (not srcChainId/dstChainId)
+        data = _fusion_get("/quoter/v1.1/quote/receive", {
+            "srcChain": str(src_id),
+            "dstChain": str(dst_id),
+            "srcTokenAddress": src_token,
+            "dstTokenAddress": dst_token,
+            "amount": amount,
+            "walletAddress": wallet,
+            "enableEstimate": "true",
+        })
+        return data
+    except RuntimeError as e:
+        return {"error": str(e)}
 
 
 def oneinch_cross_chain_status(order_hash: str) -> dict:
@@ -298,11 +303,11 @@ def oneinch_cross_chain_status(order_hash: str) -> dict:
     """
     if not order_hash:
         return {"error": "order_hash required"}
-    url = f"{FUSION_BASE}/orders/v1.0/order/status/{order_hash}"
-    resp = proxied_get(url, headers={"SC-CALLER-ID": SC_CALLER_ID})
-    if resp.status_code >= 400:
-        return {"error": f"Fusion+ API {resp.status_code}: {resp.text[:300]}"}
-    return resp.json()
+    try:
+        # Fix: use api.1inch.com domain + v1.1 endpoint (consistent with swap polling)
+        return _fusion_get(f"/orders/v1.1/order/status/{order_hash}")
+    except RuntimeError as e:
+        return {"error": str(e)}
 
 
 # ══════════════════════════════════════════════════════════════════════════════

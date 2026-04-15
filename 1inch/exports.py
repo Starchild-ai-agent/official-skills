@@ -37,7 +37,7 @@ SOL_NATIVE_TOKEN = "SoNative11111111111111111111111111111111111"   # 1inch alias
 NATIVE_TOKEN = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
 ROUTER_V6 = "0x111111125421cA6dc452d289314280a0f8842A65"
 ORDERBOOK_BASE = "https://api.1inch.dev/orderbook/v4.0"
-FUSION_BASE = "https://api.1inch.dev/fusion-plus"
+FUSION_BASE = "https://api.1inch.com/fusion-plus"  # P0: .dev is dead, must use .com
 
 # Limit Order Protocol v4 — same address as Router v6
 LOP_CONTRACTS = {v: ROUTER_V6 for v in SUPPORTED_CHAINS.values()}
@@ -77,9 +77,12 @@ def _ob_post(chain_id: int, path: str, body: dict) -> dict:
 def _get_wallet_address() -> str:
     """Get agent EVM address from platform wallet."""
     try:
-        from tools.wallet import wallet_info
-        info = wallet_info()
-        for w in (info if isinstance(info, list) else info.get("wallets", [])):
+        import asyncio
+        import sys
+        sys.path.insert(0, '/app')
+        from tools.wallet import _wallet_request
+        data = asyncio.run(_wallet_request("GET", "/agent/wallet"))
+        for w in (data if isinstance(data, list) else data.get("wallets", [])):
             if w.get("chain_type") == "ethereum":
                 return w["wallet_address"]
     except Exception:
@@ -190,14 +193,16 @@ def oneinch_approve(chain: str, token_address: str, amount: str = "") -> dict:
     tx_data = _api(cid, "/approve/transaction", params)
 
     try:
-        from tools.wallet import wallet_sign_transaction
-        result = wallet_sign_transaction({
+        import asyncio
+        from tools.wallet import _wallet_request
+        result = asyncio.run(_wallet_request("POST", "/agent/transfer", {
             "to": tx_data["to"],
             "data": tx_data.get("data", "0x"),
             "value": tx_data.get("value", "0"),
+            "amount": "0",
             "chain_id": cid,
-        })
-        return {"status": "approval_sent", "chain": chain, "token": token_address, "tx": result}
+        }))
+        return {"status": "approval_sent", "chain": chain, "token": token_address, "tx_hash": result.get("tx_hash", ""), "tx": result}
     except Exception as e:
         return {"error": str(e), "tx_data": tx_data}
 
@@ -231,17 +236,20 @@ def oneinch_swap(chain: str, src: str, dst: str, amount: str, slippage: float = 
         return {"error": "1inch returned no transaction data", "raw": swap_data}
 
     try:
-        from tools.wallet import wallet_sign_transaction
-        result = wallet_sign_transaction({
+        import asyncio
+        from tools.wallet import _wallet_request
+        result = asyncio.run(_wallet_request("POST", "/agent/transfer", {
             "to": tx["to"],
             "data": tx.get("data", "0x"),
             "value": tx.get("value", "0"),
+            "amount": tx.get("value", "0"),
             "chain_id": cid,
-        })
+        }))
         return {
             "status": "swap_sent", "chain": chain,
             "src": src, "dst": dst,
             "srcAmount": amount, "dstAmount": swap_data.get("dstAmount"),
+            "tx_hash": result.get("tx_hash", ""),
             "tx": result,
         }
     except Exception as e:
@@ -278,9 +286,9 @@ def oneinch_cross_chain_quote(
         return {"error": f"Same chain ({src_chain}). Use oneinch_quote for same-chain swaps."}
 
     wallet = _get_wallet_address() or "0x0000000000000000000000000000000000000000"
-    url = f"{FUSION_BASE}/quoter/v1.0/{src_id}/quote/receive"
+    url = f"{FUSION_BASE}/quoter/v1.1/quote/receive"
     resp = proxied_get(url, params={
-        "srcChainId": src_id, "dstChainId": dst_id,
+        "srcChain": str(src_id), "dstChain": str(dst_id),
         "srcTokenAddress": src_token, "dstTokenAddress": dst_token,
         "amount": amount, "walletAddress": wallet,
         "enableEstimate": "true",
@@ -298,7 +306,7 @@ def oneinch_cross_chain_status(order_hash: str) -> dict:
     """
     if not order_hash:
         return {"error": "order_hash required"}
-    url = f"{FUSION_BASE}/orders/v1.0/order/status/{order_hash}"
+    url = f"{FUSION_BASE}/orders/v1.1/order/status/{order_hash}"  # P0: v1.1
     resp = proxied_get(url, headers={"SC-CALLER-ID": SC_CALLER_ID})
     if resp.status_code >= 400:
         return {"error": f"Fusion+ API {resp.status_code}: {resp.text[:300]}"}
@@ -551,18 +559,20 @@ def oneinch_create_limit_order(
         }
 
         # Step 5: EIP-712 sign
-        from tools.wallet import wallet_sign_typed_data
-        sig_result = wallet_sign_typed_data(
-            domain={
+        import asyncio
+        from tools.wallet import _wallet_request
+        sig_result = asyncio.run(_wallet_request("POST", "/agent/sign-typed-data", {
+            "chain_id": cid,
+            "domain": {
                 "name": "1inch Aggregation Router",
                 "version": "6",
                 "chainId": cid,
                 "verifyingContract": contract,
             },
-            types=ORDER_TYPES,
-            primary_type="Order",
-            message=typed_data_message,
-        )
+            "types": ORDER_TYPES,
+            "primaryType": "Order",
+            "message": typed_data_message,
+        }))
         signature = sig_result.get("signature", "")
         if not signature:
             return {"error": f"Wallet sign failed: {sig_result}"}
@@ -626,14 +636,16 @@ def oneinch_cancel_limit_order(chain: str, order_hash: str) -> dict:
         selector = bytes.fromhex("2b155166")
         calldata = selector + maker_traits.to_bytes(32, "big") + order_hash_bytes
 
-        from tools.wallet import wallet_sign_transaction
-        result = wallet_sign_transaction({
+        import asyncio
+        from tools.wallet import _wallet_request
+        result = asyncio.run(_wallet_request("POST", "/agent/transfer", {
             "to": contract,
             "data": "0x" + calldata.hex(),
             "value": "0",
+            "amount": "0",
             "chain_id": cid,
-        })
-        return {"status": "cancel_sent", "order_hash": order_hash, "tx": result}
+        }))
+        return {"status": "cancel_sent", "order_hash": order_hash, "tx_hash": result.get("tx_hash", ""), "tx": result}
     except Exception as e:
         return {"error": str(e)}
 
@@ -758,27 +770,29 @@ def oneinch_cross_chain_swap(
             return {"error": "Build API returned no typedData", "build_keys": list(build_result.keys())}
 
         # 4. Sign
+        import asyncio
+        from tools.wallet import _wallet_request
         if build_tx:
-            # Native ETH flow: execute deposit tx, use pre-computed signature
-            from tools.wallet import wallet_sign_transaction
-            tx_result = wallet_sign_transaction({
+            # Native ETH flow: broadcast deposit tx, use pre-computed signature
+            asyncio.run(_wallet_request("POST", "/agent/transfer", {
                 "to": build_tx.get("to", ""),
                 "value": str(build_tx.get("value", "0")),
+                "amount": str(build_tx.get("value", "0")),
                 "chain_id": src_id,
                 "data": build_tx.get("data", ""),
-            })
+            }))
             if not build_signature:
                 return {"error": "Build API returned transaction but no pre-computed signature"}
             signature = build_signature
         else:
             # ERC-20 flow: sign EIP-712 typed data
-            from tools.wallet import wallet_sign_typed_data
-            sig_result = wallet_sign_typed_data(
-                domain=typed_data.get("domain", {}),
-                types=typed_data.get("types", {}),
-                primary_type=typed_data.get("primaryType", ""),
-                message=typed_data.get("message", {}),
-            )
+            sig_result = asyncio.run(_wallet_request("POST", "/agent/sign-typed-data", {
+                "chain_id": src_id,
+                "domain": typed_data.get("domain", {}),
+                "types": typed_data.get("types", {}),
+                "primaryType": typed_data.get("primaryType", ""),
+                "message": typed_data.get("message", {}),
+            }))
             signature = sig_result.get("signature", "")
             if not signature:
                 return {"error": f"Wallet returned no signature: {sig_result}"}
@@ -868,9 +882,12 @@ def oneinch_cross_chain_swap(
 def _get_sol_wallet_address() -> str:
     """Get agent Solana address from platform wallet."""
     try:
-        from tools.wallet import wallet_info
-        info = wallet_info()
-        for w in (info if isinstance(info, list) else info.get("wallets", [])):
+        import asyncio
+        import sys
+        sys.path.insert(0, '/app')
+        from tools.wallet import _wallet_request
+        data = asyncio.run(_wallet_request("GET", "/agent/wallet"))
+        for w in (data if isinstance(data, list) else data.get("wallets", [])):
             if w.get("chain_type") == "solana":
                 return w["wallet_address"]
     except Exception:

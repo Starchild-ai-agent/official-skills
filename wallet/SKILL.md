@@ -1,6 +1,6 @@
 ---
 name: wallet
-version: 3.4.0
+version: 3.5.0
 description: "Multi-chain wallet — balances, transfers, signing, policy (EVM multi-chain + Solana)"
 author: starchild
 tags: [wallet, evm, solana, transfer, sign, policy, debank, birdeye]
@@ -35,7 +35,7 @@ Multi-chain wallet for EVM (DeBank-supported chains) + Solana. Balances, transfe
 | `wallet_balance` | EVM balance on a chain (DeBank) |
 | `wallet_sol_balance` | Solana balance (Birdeye) |
 | `wallet_get_all_balances` | All chains at once |
-| `wallet_transfer` | **Broadcast** EVM tx (gas sponsored) |
+| `wallet_transfer` | **Broadcast** EVM tx (gas sponsored by default, user-paid fallback) |
 | `wallet_sign_transaction` | Sign EVM tx (no broadcast) |
 | `wallet_sign` | EIP-191 message signing |
 | `wallet_sign_typed_data` | EIP-712 typed data signing |
@@ -49,7 +49,7 @@ Multi-chain wallet for EVM (DeBank-supported chains) + Solana. Balances, transfe
 
 ## Key Facts
 
-- **Gas is sponsored** on EVM chains — user doesn't need ETH for gas
+- **Gas is sponsored by default** on EVM chains — user doesn't need native tokens for gas. Falls back to user-paid if sponsorship is unavailable. Use `sponsor=false` in wallet_transfer to explicitly pay gas from wallet balance.
 - **Policy default: OFF** (allow-all). Only when user enables policy do transactions need UI confirmation
 - **Supported EVM chains**: All DeBank-supported chains. Common names auto-mapped to DeBank chain IDs (e.g. `avalanche` → `avax`, `bsc` → `bsc`, `zksync` → `era`). For full chain list call `db_chain_list()` from the debank skill. The 16 common chains (ethereum, base, arbitrum, optimism, polygon, linea, bsc, avalanche, fantom, gnosis, zksync, scroll, blast, mantle, celo, aurora) have built-in fallback mapping.
 - **Balance sources**: DeBank (EVM), Birdeye (Solana), wallet-service (fallback)

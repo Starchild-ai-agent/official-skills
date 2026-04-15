@@ -273,7 +273,7 @@ class WalletTransferTool(BaseTool):
     @property
     def name(self): return "wallet_transfer"
     @property
-    def description(self): return """Sign and BROADCAST an EVM transaction. Gas is sponsored.
+    def description(self): return """Sign and BROADCAST an EVM transaction. Gas is sponsored by default (falls back to user-paid if unavailable). Set sponsor=false to pay gas from wallet balance.
 Use '0' amount for contract calls. Policy-gated if enabled."""
     @property
     def parameters(self): return {
@@ -286,13 +286,14 @@ Use '0' amount for contract calls. Policy-gated if enabled."""
             "gas_limit": {"type": "string"}, "gas_price": {"type": "string"},
             "max_fee_per_gas": {"type": "string"}, "max_priority_fee_per_gas": {"type": "string"},
             "nonce": {"type": "string"}, "tx_type": {"type": "integer", "description": "0=legacy, 2=EIP-1559"},
+            "sponsor": {"type": "boolean", "description": "Gas sponsorship: true=platform pays gas, false=user pays gas from wallet. Omit for auto (try sponsor, fallback to user-paid)."},
         },
         "required": ["to", "amount"],
     }
 
     async def execute(self, ctx: ToolContext, to="", amount="", chain_id=1, data="",
                       gas_limit="", gas_price="", max_fee_per_gas="", max_priority_fee_per_gas="",
-                      nonce="", tx_type=None, **kw) -> ToolResult:
+                      nonce="", tx_type=None, sponsor=None, **kw) -> ToolResult:
         if err := _fly_check(): return err
         if not to or not amount:
             return ToolResult(success=False, error="'to' and 'amount' required")
@@ -304,6 +305,7 @@ Use '0' amount for contract calls. Policy-gated if enabled."""
         if max_priority_fee_per_gas: body["max_priority_fee_per_gas"] = max_priority_fee_per_gas
         if nonce: body["nonce"] = nonce
         if tx_type is not None: body["tx_type"] = tx_type
+        if sponsor is not None: body["sponsor"] = sponsor
         try:
             return ToolResult(success=True, output=await _wallet_request("POST", "/agent/transfer", body))
         except Exception as e:
@@ -438,7 +440,7 @@ class WalletSolTransferTool(BaseTool):
     @property
     def name(self): return "wallet_sol_transfer"
     @property
-    def description(self): return "Sign and BROADCAST a Solana transaction. Gas sponsored. Policy-gated if enabled."
+    def description(self): return "Sign and BROADCAST a Solana transaction. User pays gas (SOL required for fees). Policy-gated if enabled."
     @property
     def parameters(self): return {
         "type": "object",

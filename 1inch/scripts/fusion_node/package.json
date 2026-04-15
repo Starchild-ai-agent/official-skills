@@ -1,0 +1,14 @@
+{
+  "name": "1inch-fusion-builder",
+  "version": "1.0.0",
+  "description": "Build 1inch Fusion orders for gasless same-chain swaps",
+  "main": "build_order.js",
+  "dependencies": {
+    "@1inch/byte-utils": "^3.1.0",
+    "@1inch/fusion-sdk": "2.4.7",
+    "@1inch/limit-order-sdk": "5.2.4",
+    "assert": "^2.1.0",
+    "axios": "^1.15.0",
+    "ethers": "6.16.0"
+  }
+}

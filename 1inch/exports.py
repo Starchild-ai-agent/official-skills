@@ -37,7 +37,7 @@ SOL_NATIVE_TOKEN = "SoNative11111111111111111111111111111111111"   # 1inch alias
 NATIVE_TOKEN = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
 ROUTER_V6 = "0x111111125421cA6dc452d289314280a0f8842A65"
 ORDERBOOK_BASE = "https://api.1inch.dev/orderbook/v4.0"
-FUSION_BASE = "https://api.1inch.com/fusion-plus"  # api.1inch.com is the active endpoint (api.1inch.dev deprecated for Fusion+)
+FUSION_BASE = "https://api.1inch.com/fusion-plus"  # P0: .dev is dead, must use .com
 
 # Limit Order Protocol v4 — same address as Router v6
 LOP_CONTRACTS = {v: ROUTER_V6 for v in SUPPORTED_CHAINS.values()}
@@ -77,9 +77,12 @@ def _ob_post(chain_id: int, path: str, body: dict) -> dict:
 def _get_wallet_address() -> str:
     """Get agent EVM address from platform wallet."""
     try:
-        from tools.wallet import wallet_info
-        info = wallet_info()
-        for w in (info if isinstance(info, list) else info.get("wallets", [])):
+        import asyncio
+        import sys
+        sys.path.insert(0, '/app')
+        from tools.wallet import _wallet_request
+        data = asyncio.run(_wallet_request("GET", "/agent/wallet"))
+        for w in (data if isinstance(data, list) else data.get("wallets", [])):
             if w.get("chain_type") == "ethereum":
                 return w["wallet_address"]
     except Exception:
@@ -190,14 +193,16 @@ def oneinch_approve(chain: str, token_address: str, amount: str = "") -> dict:
     tx_data = _api(cid, "/approve/transaction", params)
 
     try:
-        from tools.wallet import wallet_sign_transaction
-        result = wallet_sign_transaction({
+        import asyncio
+        from tools.wallet import _wallet_request
+        result = asyncio.run(_wallet_request("POST", "/agent/transfer", {
             "to": tx_data["to"],
             "data": tx_data.get("data", "0x"),
             "value": tx_data.get("value", "0"),
+            "amount": "0",
             "chain_id": cid,
-        })
-        return {"status": "approval_sent", "chain": chain, "token": token_address, "tx": result}
+        }))
+        return {"status": "approval_sent", "chain": chain, "token": token_address, "tx_hash": result.get("tx_hash", ""), "tx": result}
     except Exception as e:
         return {"error": str(e), "tx_data": tx_data}
 
@@ -231,17 +236,20 @@ def oneinch_swap(chain: str, src: str, dst: str, amount: str, slippage: float = 
         return {"error": "1inch returned no transaction data", "raw": swap_data}
 
     try:
-        from tools.wallet import wallet_sign_transaction
-        result = wallet_sign_transaction({
+        import asyncio
+        from tools.wallet import _wallet_request
+        result = asyncio.run(_wallet_request("POST", "/agent/transfer", {
             "to": tx["to"],
             "data": tx.get("data", "0x"),
             "value": tx.get("value", "0"),
+            "amount": tx.get("value", "0"),
             "chain_id": cid,
-        })
+        }))
         return {
             "status": "swap_sent", "chain": chain,
             "src": src, "dst": dst,
             "srcAmount": amount, "dstAmount": swap_data.get("dstAmount"),
+            "tx_hash": result.get("tx_hash", ""),
             "tx": result,
         }
     except Exception as e:
@@ -278,21 +286,16 @@ def oneinch_cross_chain_quote(
         return {"error": f"Same chain ({src_chain}). Use oneinch_quote for same-chain swaps."}
 
     wallet = _get_wallet_address() or "0x0000000000000000000000000000000000000000"
-    try:
-        # Fix: use api.1inch.com domain (via _fusion_get helper) + v1.1 endpoint
-        # with correct param names srcChain/dstChain (not srcChainId/dstChainId)
-        data = _fusion_get("/quoter/v1.1/quote/receive", {
-            "srcChain": str(src_id),
-            "dstChain": str(dst_id),
-            "srcTokenAddress": src_token,
-            "dstTokenAddress": dst_token,
-            "amount": amount,
-            "walletAddress": wallet,
-            "enableEstimate": "true",
-        })
-        return data
-    except RuntimeError as e:
-        return {"error": str(e)}
+    url = f"{FUSION_BASE}/quoter/v1.1/quote/receive"
+    resp = proxied_get(url, params={
+        "srcChain": str(src_id), "dstChain": str(dst_id),
+        "srcTokenAddress": src_token, "dstTokenAddress": dst_token,
+        "amount": amount, "walletAddress": wallet,
+        "enableEstimate": "true",
+    }, headers={"SC-CALLER-ID": SC_CALLER_ID})
+    if resp.status_code >= 400:
+        return {"error": f"Fusion+ API {resp.status_code}: {resp.text[:300]}"}
+    return resp.json()
 
 
 def oneinch_cross_chain_status(order_hash: str) -> dict:
@@ -303,11 +306,11 @@ def oneinch_cross_chain_status(order_hash: str) -> dict:
     """
     if not order_hash:
         return {"error": "order_hash required"}
-    try:
-        # Fix: use api.1inch.com domain + v1.1 endpoint (consistent with swap polling)
-        return _fusion_get(f"/orders/v1.1/order/status/{order_hash}")
-    except RuntimeError as e:
-        return {"error": str(e)}
+    url = f"{FUSION_BASE}/orders/v1.1/order/status/{order_hash}"  # P0: v1.1
+    resp = proxied_get(url, headers={"SC-CALLER-ID": SC_CALLER_ID})
+    if resp.status_code >= 400:
+        return {"error": f"Fusion+ API {resp.status_code}: {resp.text[:300]}"}
+    return resp.json()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -556,18 +559,20 @@ def oneinch_create_limit_order(
         }
 
         # Step 5: EIP-712 sign
-        from tools.wallet import wallet_sign_typed_data
-        sig_result = wallet_sign_typed_data(
-            domain={
+        import asyncio
+        from tools.wallet import _wallet_request
+        sig_result = asyncio.run(_wallet_request("POST", "/agent/sign-typed-data", {
+            "chain_id": cid,
+            "domain": {
                 "name": "1inch Aggregation Router",
                 "version": "6",
                 "chainId": cid,
                 "verifyingContract": contract,
             },
-            types=ORDER_TYPES,
-            primary_type="Order",
-            message=typed_data_message,
-        )
+            "types": ORDER_TYPES,
+            "primaryType": "Order",
+            "message": typed_data_message,
+        }))
         signature = sig_result.get("signature", "")
         if not signature:
             return {"error": f"Wallet sign failed: {sig_result}"}
@@ -631,14 +636,16 @@ def oneinch_cancel_limit_order(chain: str, order_hash: str) -> dict:
         selector = bytes.fromhex("2b155166")
         calldata = selector + maker_traits.to_bytes(32, "big") + order_hash_bytes
 
-        from tools.wallet import wallet_sign_transaction
-        result = wallet_sign_transaction({
+        import asyncio
+        from tools.wallet import _wallet_request
+        result = asyncio.run(_wallet_request("POST", "/agent/transfer", {
             "to": contract,
             "data": "0x" + calldata.hex(),
             "value": "0",
+            "amount": "0",
             "chain_id": cid,
-        })
-        return {"status": "cancel_sent", "order_hash": order_hash, "tx": result}
+        }))
+        return {"status": "cancel_sent", "order_hash": order_hash, "tx_hash": result.get("tx_hash", ""), "tx": result}
     except Exception as e:
         return {"error": str(e)}
 
@@ -763,27 +770,29 @@ def oneinch_cross_chain_swap(
             return {"error": "Build API returned no typedData", "build_keys": list(build_result.keys())}
 
         # 4. Sign
+        import asyncio
+        from tools.wallet import _wallet_request
         if build_tx:
-            # Native ETH flow: execute deposit tx, use pre-computed signature
-            from tools.wallet import wallet_sign_transaction
-            tx_result = wallet_sign_transaction({
+            # Native ETH flow: broadcast deposit tx, use pre-computed signature
+            asyncio.run(_wallet_request("POST", "/agent/transfer", {
                 "to": build_tx.get("to", ""),
                 "value": str(build_tx.get("value", "0")),
+                "amount": str(build_tx.get("value", "0")),
                 "chain_id": src_id,
                 "data": build_tx.get("data", ""),
-            })
+            }))
             if not build_signature:
                 return {"error": "Build API returned transaction but no pre-computed signature"}
             signature = build_signature
         else:
             # ERC-20 flow: sign EIP-712 typed data
-            from tools.wallet import wallet_sign_typed_data
-            sig_result = wallet_sign_typed_data(
-                domain=typed_data.get("domain", {}),
-                types=typed_data.get("types", {}),
-                primary_type=typed_data.get("primaryType", ""),
-                message=typed_data.get("message", {}),
-            )
+            sig_result = asyncio.run(_wallet_request("POST", "/agent/sign-typed-data", {
+                "chain_id": src_id,
+                "domain": typed_data.get("domain", {}),
+                "types": typed_data.get("types", {}),
+                "primaryType": typed_data.get("primaryType", ""),
+                "message": typed_data.get("message", {}),
+            }))
             signature = sig_result.get("signature", "")
             if not signature:
                 return {"error": f"Wallet returned no signature: {sig_result}"}
@@ -873,9 +882,12 @@ def oneinch_cross_chain_swap(
 def _get_sol_wallet_address() -> str:
     """Get agent Solana address from platform wallet."""
     try:
-        from tools.wallet import wallet_info
-        info = wallet_info()
-        for w in (info if isinstance(info, list) else info.get("wallets", [])):
+        import asyncio
+        import sys
+        sys.path.insert(0, '/app')
+        from tools.wallet import _wallet_request
+        data = asyncio.run(_wallet_request("GET", "/agent/wallet"))
+        for w in (data if isinstance(data, list) else data.get("wallets", [])):
             if w.get("chain_type") == "solana":
                 return w["wallet_address"]
     except Exception:
@@ -1145,6 +1157,310 @@ def oneinch_sol_to_evm_swap(
             "src_amount": amount, "dst_amount_estimate": dst_amount_est,
             "message": f"Order submitted but did not confirm within {MAX_POLL}s. "
                        "Use oneinch_cross_chain_status(order_hash) to check later.",
+        }
+
+    except Exception as e:
+        err = str(e)
+        if "policy" in err.lower():
+            return {"error": f"Policy violation: {err}. Use wallet_propose_policy to allow this operation."}
+        return {"error": err}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FUSION SAME-CHAIN GASLESS SWAP (1inch Fusion Mode)
+# ══════════════════════════════════════════════════════════════════════════════
+# Resolvers pay gas on behalf of the user — no native token required.
+# Fee is deducted from swap output. Uses @1inch/fusion-sdk via Node.js subprocess.
+# Supported chains: ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
+# ══════════════════════════════════════════════════════════════════════════════
+
+import json
+import subprocess
+import os as _os
+
+_FUSION_SAME_CHAIN_BASE = "https://api.1inch.com/fusion"
+_FUSION_NODE_SCRIPT = _os.path.join(
+    _os.path.dirname(__file__), "scripts", "fusion_node", "build_order.js"
+)
+_FUSION_NODE_CWD = _os.path.join(
+    _os.path.dirname(__file__), "scripts", "fusion_node"
+)
+
+# Native token placeholder used by 1inch API
+_NATIVE = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+
+
+def _fusion1_get(chain_id: int, path: str, params: dict = None) -> dict:
+    """Fusion same-chain API GET via sc-proxy."""
+    url = f"{_FUSION_SAME_CHAIN_BASE}/{path}"
+    resp = proxied_get(url, params=params or {}, headers={"SC-CALLER-ID": SC_CALLER_ID})
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Fusion API {resp.status_code}: {resp.text[:300]}")
+    return resp.json()
+
+
+def _fusion1_post(chain_id: int, path: str, body: dict) -> dict:
+    """Fusion same-chain API POST via sc-proxy."""
+    url = f"{_FUSION_SAME_CHAIN_BASE}/{path}"
+    resp = proxied_post(url, json=body, headers={"SC-CALLER-ID": SC_CALLER_ID})
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Fusion API {resp.status_code}: {resp.text[:300]}")
+    text = resp.text.strip()
+    return resp.json() if text else {}
+
+
+def _build_fusion_order_via_node(
+    quote: dict, from_token: str, to_token: str,
+    wallet: str, chain_id: int, preset: str
+) -> dict:
+    """Use Node.js + @1inch/fusion-sdk to build FusionOrder typed data + extension.
+
+    Returns { typedData, orderStruct, extension, orderHash } or raises.
+    """
+    input_data = json.dumps({
+        "quoteJson": quote,
+        "fromTokenAddress": from_token,
+        "toTokenAddress": to_token,
+        "walletAddress": wallet,
+        "chainId": chain_id,
+        "preset": preset,
+    })
+
+    result = subprocess.run(
+        ["node", "build_order.js"],
+        input=input_data,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        cwd=_FUSION_NODE_CWD,
+    )
+
+    if result.returncode != 0 or not result.stdout.strip():
+        raise RuntimeError(
+            f"Node build_order.js failed (exit {result.returncode}): "
+            f"{result.stderr[:300] or 'no output'}"
+        )
+
+    data = json.loads(result.stdout)
+    if "error" in data:
+        raise RuntimeError(f"FusionOrder build error: {data['error']}\n{data.get('stack','')}")
+    return data
+
+
+def oneinch_fusion_quote(
+    chain: str, from_token: str, to_token: str, amount: str
+) -> dict:
+    """Get a gasless same-chain swap quote via 1inch Fusion Mode (read-only).
+
+    Fusion Mode lets users swap WITHOUT holding native gas tokens — resolvers
+    pay gas on both sides and deduct a small fee from the swap output.
+
+    No transaction executed. Use oneinch_fusion_swap to execute.
+
+    Supported chains: ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
+
+    ⚠️  For cross-chain swaps (ETH → ARB, etc.), use oneinch_cross_chain_quote instead.
+
+    Args:
+        chain: Network name — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
+        from_token: Source token address (0xEeee...EEeE for native ETH)
+        to_token: Destination token address
+        amount: Amount in wei (1 USDC = 1000000, 1 ETH = 1000000000000000000)
+
+    Returns:
+        fromAmount, toAmount (estimated output), preset options, quoteId
+    """
+    cid = _chain_id(chain)
+    wallet = _get_wallet_address() or "0x0000000000000000000000000000000000000000"
+
+    resp = proxied_get(
+        f"{_FUSION_SAME_CHAIN_BASE}/quoter/v2.0/{cid}/quote/receive",
+        params={
+            "fromTokenAddress": from_token,
+            "toTokenAddress": to_token,
+            "amount": amount,
+            "walletAddress": wallet,
+            "enableEstimate": "true",
+        },
+        headers={"SC-CALLER-ID": SC_CALLER_ID},
+    )
+    if resp.status_code >= 400:
+        return {"error": f"Fusion quoter {resp.status_code}: {resp.text[:300]}"}
+
+    data = resp.json()
+    preset_name = data.get("recommended_preset", "fast")
+    preset_info = data.get("presets", {}).get(preset_name, {})
+
+    return {
+        "chain": chain,
+        "from_token": from_token,
+        "to_token": to_token,
+        "from_amount": data.get("fromTokenAmount"),
+        "to_amount": data.get("toTokenAmount"),
+        "quote_id": data.get("quoteId"),
+        "recommended_preset": preset_name,
+        "auction_duration_sec": preset_info.get("auctionDuration"),
+        "starts_in_sec": preset_info.get("startAuctionIn"),
+        "price_impact_pct": data.get("priceImpactPercent", 0),
+        "gasless": True,
+        "note": "Fusion Mode: resolver pays gas, fee deducted from output. Use oneinch_fusion_swap to execute.",
+    }
+
+
+def oneinch_fusion_swap(
+    chain: str, from_token: str, to_token: str,
+    amount: str, preset: str = "fast"
+) -> dict:
+    """Execute a gasless same-chain swap via 1inch Fusion Mode.
+
+    Fusion Mode: resolvers pay gas on behalf of the user. No native gas token needed.
+    Fee is deducted from swap output (~0.1-0.3% friction vs standard swap).
+
+    ✅ Solves the gas chicken-and-egg problem:
+       Users holding only ERC-20 tokens (e.g. USDC) can swap WITHOUT native ETH/POL/etc.
+
+    Flow:
+      1. Quote  → Fusion quoter API
+      2. Build  → FusionOrder via @1inch/fusion-sdk (Node.js subprocess)
+      3. Sign   → EIP-712 typed data via agent wallet
+      4. Submit → Relayer API
+      5. Poll   → Wait for resolver to fill (up to 5 min)
+
+    Args:
+        chain: Network — ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis
+        from_token: Source token address (must be ERC-20; native ETH not yet supported as src)
+        to_token: Destination token address (native ETH/POL/etc. supported as dst)
+        amount: Amount in wei
+        preset: "fast" (default), "medium", or "slow"
+    """
+    cid = _chain_id(chain)
+    if preset not in ("fast", "medium", "slow"):
+        return {"error": f"Invalid preset '{preset}'. Use: fast, medium, slow"}
+
+    # Check allowance required (same as standard swap)
+    if from_token.lower() != _NATIVE:
+        alw = oneinch_check_allowance(chain, from_token)
+        if alw.get("needs_approval"):
+            return {
+                "error": "Token not approved for 1inch router",
+                "action_required": "Run oneinch_approve first, then retry oneinch_fusion_swap",
+                "token": from_token,
+                "chain": chain,
+                "needs_approval": True,
+                "hint": (
+                    "Fusion Mode is gasless for the SWAP itself, but the one-time token "
+                    "APPROVE still requires a small amount of native gas. After approving once, "
+                    "all future Fusion swaps are fully gasless."
+                ),
+            }
+
+    wallet = _get_wallet_address()
+    if not wallet:
+        return {"error": "No ethereum wallet configured"}
+
+    try:
+        # 1. Quote
+        resp = proxied_get(
+            f"{_FUSION_SAME_CHAIN_BASE}/quoter/v2.0/{cid}/quote/receive",
+            params={
+                "fromTokenAddress": from_token,
+                "toTokenAddress": to_token,
+                "amount": amount,
+                "walletAddress": wallet,
+                "enableEstimate": "true",
+            },
+            headers={"SC-CALLER-ID": SC_CALLER_ID},
+        )
+        if resp.status_code >= 400:
+            return {"error": f"Fusion quoter {resp.status_code}: {resp.text[:300]}"}
+        quote = resp.json()
+        quote_id = quote.get("quoteId", "")
+        if not quote_id:
+            return {"error": "Fusion quoter returned no quoteId"}
+
+        dst_amount_est = quote.get("toTokenAmount", "0")
+        effective_preset = preset if preset in quote.get("presets", {}) else quote.get("recommended_preset", "fast")
+
+        # 2. Build FusionOrder using Node.js SDK
+        build = _build_fusion_order_via_node(
+            quote, from_token, to_token, wallet, cid, effective_preset
+        )
+
+        typed_data = build["typedData"]
+        order_struct = build["orderStruct"]
+        extension = build["extension"]
+        order_hash = build["orderHash"]
+
+        # 3. Sign EIP-712
+        import asyncio
+        from tools.wallet import _wallet_request
+        sig_result = asyncio.run(_wallet_request("POST", "/agent/sign-typed-data", {
+            "chain_id": cid,
+            "domain": typed_data.get("domain", {}),
+            "types": typed_data.get("types", {}),
+            "primaryType": typed_data.get("primaryType", "Order"),
+            "message": typed_data.get("message", {}),
+        }))
+        signature = sig_result.get("signature", "")
+        if not signature:
+            return {"error": f"Wallet signing failed: {sig_result}"}
+        signature = _normalize_v(signature)
+
+        # 4. Submit to Fusion relayer
+        submit_url = f"{_FUSION_SAME_CHAIN_BASE}/relayer/v2.0/{cid}/order/submit"
+        submit_resp = proxied_post(submit_url, json={
+            "order": order_struct,
+            "signature": signature,
+            "quoteId": quote_id,
+            "extension": extension,
+        }, headers={"SC-CALLER-ID": SC_CALLER_ID})
+
+        if submit_resp.status_code >= 400:
+            return {"error": f"Fusion relayer submit {submit_resp.status_code}: {submit_resp.text[:300]}"}
+
+        submit_data = submit_resp.json() if submit_resp.text.strip() else {}
+        confirmed_hash = submit_data.get("orderHash", order_hash)
+
+        # 5. Poll for completion (max 5 min)
+        MAX_POLL, INTERVAL = 300, 15
+        start = time.time()
+
+        while time.time() - start < MAX_POLL:
+            try:
+                status_resp = proxied_get(
+                    f"{_FUSION_SAME_CHAIN_BASE}/orders/v2.0/{cid}/order/status/{confirmed_hash}",
+                    headers={"SC-CALLER-ID": SC_CALLER_ID},
+                )
+                if status_resp.status_code == 200:
+                    st = status_resp.json()
+                    order_status = st.get("status", "").lower()
+                    if order_status in ("executed", "expired", "refunded", "cancelled"):
+                        return {
+                            "status": order_status,
+                            "order_hash": confirmed_hash,
+                            "chain": chain,
+                            "from_token": from_token,
+                            "to_token": to_token,
+                            "from_amount": amount,
+                            "to_amount": st.get("dstAmount", dst_amount_est),
+                            "gasless": True,
+                            "elapsed_seconds": int(time.time() - start),
+                        }
+            except Exception:
+                pass
+            time.sleep(INTERVAL)
+
+        return {
+            "status": "submitted_polling_timeout",
+            "order_hash": confirmed_hash,
+            "chain": chain,
+            "from_amount": amount,
+            "to_amount_estimate": dst_amount_est,
+            "gasless": True,
+            "message": (
+                f"Order submitted but did not confirm within {MAX_POLL}s. "
+                "Resolvers are filling — check status with order_hash."
+            ),
         }
 
     except Exception as e:

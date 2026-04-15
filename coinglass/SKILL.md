@@ -1,6 +1,6 @@
 ---
 name: coinglass
-version: 3.0.4
+version: 3.0.5
 description: Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data
 tools:
   # Basic Derivatives (7 tools)

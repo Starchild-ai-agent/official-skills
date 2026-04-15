@@ -23,23 +23,36 @@ def _to_pair(symbol: str) -> str:
 def get_taker_volume_history(
     symbol: str = "BTC",
     exchange: str = "Binance",
-    interval: str = "1h"
+    interval: str = "1h",
+    limit: int = 1000,
+    start_time: int = None,
+    end_time: int = None
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Get taker buy/sell volume history for a coin.
 
     Args:
         symbol: Coin symbol.
-        interval: Time interval (h1, h4, h12, h24).
-        exchange: Optional exchange filter.
+        exchange: Exchange name.
+        interval: Time interval (1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d).
+        limit: Number of results (default 1000, max 4500).
+        start_time: Start timestamp in seconds.
+        end_time: End timestamp in seconds.
     """
+    params = {
+        "symbol": _to_pair(symbol),
+        "exchange": exchange,
+        "interval": interval,
+    }
+    if limit and limit != 1000:
+        params["limit"] = limit
+    if start_time:
+        params["startTime"] = start_time
+    if end_time:
+        params["endTime"] = end_time
     return cg_request(
         "api/futures/v2/taker-buy-sell-volume/history",
-        params={
-            "symbol": _to_pair(symbol),
-            "exchange": exchange,
-            "interval": interval,
-        }
+        params=params
     )
 
 
@@ -63,25 +76,40 @@ def get_aggregated_taker_volume(
 def get_cumulative_volume_delta(
     symbol: str = "BTC",
     exchange: str = "Binance",
-    interval: str = "1h"
+    interval: str = "1h",
+    limit: int = 1000,
+    start_time: int = None,
+    end_time: int = None
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Get cumulative volume delta (CVD) history.
 
     CVD tracks net buying vs selling pressure over time.
+    Rising CVD = accumulation (bullish).
+    Falling CVD = distribution (bearish).
 
     Args:
         symbol: Coin symbol.
-        interval: Time interval.
-        exchange: Optional exchange filter.
+        exchange: Exchange name.
+        interval: Time interval (1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d).
+        limit: Number of results (default 1000, max 4500).
+        start_time: Start timestamp in seconds.
+        end_time: End timestamp in seconds.
     """
+    params = {
+        "symbol": _to_pair(symbol),
+        "exchange": exchange,
+        "interval": interval,
+    }
+    if limit and limit != 1000:
+        params["limit"] = limit
+    if start_time:
+        params["startTime"] = start_time
+    if end_time:
+        params["endTime"] = end_time
     return cg_request(
         "api/futures/cvd/history",
-        params={
-            "symbol": _to_pair(symbol),
-            "exchange": exchange,
-            "interval": interval,
-        }
+        params=params
     )
 
 
@@ -105,23 +133,36 @@ def get_coin_netflow(
 def get_volume_ohlc_history(
     symbol: str = "BTC",
     exchange: str = "Binance",
-    interval: str = "1h"
+    interval: str = "1h",
+    limit: int = 1000,
+    start_time: int = None,
+    end_time: int = None
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Get volume-weighted OHLC history.
 
     Args:
         symbol: Coin symbol.
-        interval: Time interval.
-        exchange: Optional exchange filter.
+        exchange: Exchange name.
+        interval: Time interval (1m, 5m, 15m, 30m, 1h, 4h, 12h, 1d).
+        limit: Number of results (default 1000, max 4500).
+        start_time: Start timestamp in seconds.
+        end_time: End timestamp in seconds.
     """
+    params = {
+        "symbol": _to_pair(symbol),
+        "exchange": exchange,
+        "interval": interval,
+    }
+    if limit and limit != 1000:
+        params["limit"] = limit
+    if start_time:
+        params["startTime"] = start_time
+    if end_time:
+        params["endTime"] = end_time
     return cg_request(
         "api/futures/vol-weight-ohlc-history",
-        params={
-            "symbol": _to_pair(symbol),
-            "exchange": exchange,
-            "interval": interval,
-        }
+        params=params
     )
 
 

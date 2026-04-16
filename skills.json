@@ -46,7 +46,7 @@
     {
       "name": "chart",
       "path": "chart/SKILL.md",
-      "version": "3.0.0",
+      "version": "3.0.1",
       "description": "Interactive web-based charts for data analysis and business intelligence. Project-based output in output/chart-html/<project>/ with HTML + script + data + screenshot."
     },
     {

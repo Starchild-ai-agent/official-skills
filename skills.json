@@ -142,7 +142,7 @@
     {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
-      "version": "1.3.2",
+      "version": "1.3.3",
       "description": "End-to-end project engineering — from understanding user intent to architecture design, incremental build with verification, and systematic debugging. Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any software the user wants built. Replaces coder + preview-dev with a unified methodology."
     },
     {
@@ -166,7 +166,7 @@
     {
       "name": "slide-creator",
       "path": "slide-creator/SKILL.md",
-      "version": "2.1.2",
+      "version": "2.1.4",
       "description": "Create presentation slide decks as HTML and auto-export to 16:9 PDF. Use when the user asks to make a PPT, slide deck, presentation, or pitch deck. Final output is a PDF file — not PowerPoint format."
     },
     {

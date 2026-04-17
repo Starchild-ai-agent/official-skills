@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.3.2
+version: 1.3.3
 description: "End-to-end project engineering — from understanding user intent to architecture design, incremental build with verification, and systematic debugging. Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any software the user wants built. Replaces coder + preview-dev with a unified methodology."
 tags: [engineering, development, tasks, dashboards, preview, debugging]
 tools: [read_file, write_file, edit_file, bash, preview_serve, preview_stop, preview_check, community_publish, community_unpublish, community_list, register_task, activate_task, cancel_scheduled_task, update_scheduled_task, list_scheduled_tasks, get_scheduled_task_log]
@@ -56,6 +56,12 @@ For medium+ projects, present to user BEFORE writing code:
 2. Architecture choice and why
 3. Cost estimate — (cost/run) × frequency × 30 = monthly
 4. Known limitations
+
+**Design Gate (required, blocking):**
+After Phase 1, STOP and present a short phase plan (milestones for DESIGN/BUILD/DEBUG). Ask explicitly: **"是否按这个方案进入 Phase 2 BUILD？"**
+- If user confirms: proceed to Phase 2.
+- If user requests changes: revise design and re-confirm.
+- If no confirmation: do not write/modify code.
 
 **API cost & rate limits:**
 All external API calls go through sc-proxy, which bills per request and enforces rate limits.
@@ -153,7 +159,7 @@ CHECK LOGS → REPRODUCE → ISOLATE → DIAGNOSE → FIX → VERIFY → REGRESS
 
 ## Quick Checklists
 
-**Kickoff:** ☐ Clarified intent ☐ Proposed architecture ☐ Estimated cost ☐ User confirmed
+**Kickoff:** ☐ Clarified intent ☐ Proposed architecture ☐ Estimated cost ☐ User confirmed (**required before Phase 2**)
 
 **Build:** ☐ Each component tested ☐ Numbers match source ☐ Errors handled ☐ Preview healthy (web)
 

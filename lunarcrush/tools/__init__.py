@@ -15,6 +15,10 @@ from .topics import (
     get_topic,
     get_topic_summary,
     get_topic_posts,
+    get_topic_news,
+    get_category_posts,
+    get_category_news,
+    get_content_feed,
 )
 from .creators import (
     get_creators,
@@ -37,6 +41,10 @@ __all__ = [
     "get_topic",
     "get_topic_summary",
     "get_topic_posts",
+    "get_topic_news",
+    "get_category_posts",
+    "get_category_news",
+    "get_content_feed",
     # Creators
     "get_creators",
     "get_creator",

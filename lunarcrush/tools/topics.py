@@ -7,6 +7,7 @@ Provides social sentiment analysis for crypto-related topics.
 """
 
 import json
+import time
 import argparse
 from typing import Dict, Any
 
@@ -204,6 +205,35 @@ def get_topic_summary(topic: str) -> Dict[str, Any]:
     }
 
 
+def _slug(value: str) -> str:
+    """Normalize topic/category string to slug format used by API paths."""
+    return value.lower().strip().replace(" ", "-")
+
+
+def _format_content_items(items):
+    """Normalize news/post payload fields into a stable shape."""
+    formatted = []
+    for item in items:
+        formatted.append({
+            "id": item.get("id"),
+            "post_type": item.get("post_type"),
+            "network": item.get("network", ""),
+            "title": item.get("post_title") or item.get("title", ""),
+            "description": item.get("post_description") or item.get("description", ""),
+            "body": item.get("body", ""),
+            "url": item.get("post_link") or item.get("url", ""),
+            "image": item.get("post_image") or item.get("image", ""),
+            "author": item.get("creator_name") or item.get("author", ""),
+            "author_display_name": item.get("creator_display_name", ""),
+            "author_followers": item.get("creator_followers") or item.get("author_followers"),
+            "interactions_24h": item.get("interactions_24h"),
+            "interactions_total": item.get("interactions_total") or item.get("interactions"),
+            "sentiment": item.get("post_sentiment") if item.get("post_sentiment") is not None else item.get("sentiment"),
+            "created_at": item.get("post_created") if item.get("post_created") is not None else item.get("created_at")
+        })
+    return formatted
+
+
 def get_topic_posts(topic: str, limit: int = 20) -> Dict[str, Any]:
     """
     Get top posts for a topic.
@@ -215,35 +245,289 @@ def get_topic_posts(topic: str, limit: int = 20) -> Dict[str, Any]:
     Returns:
         Dictionary with top posts for the topic
     """
-    topic_slug = topic.lower().strip().replace(" ", "-")
-
-    params = {
-        "limit": min(limit, 100)
-    }
-
+    topic_slug = _slug(topic)
+    params = {"limit": min(limit, 100)}
     data = make_request(f"/public/topic/{topic_slug}/posts/v1", params)
 
-    posts = data.get("data", [])
-    formatted = []
-
-    for post in posts:
-        formatted.append({
-            "id": post.get("id"),
-            "network": post.get("network", ""),  # twitter, reddit, etc.
-            "body": post.get("body", ""),
-            "title": post.get("title", ""),
-            "url": post.get("url", ""),
-            "author": post.get("author", ""),
-            "author_followers": post.get("author_followers"),
-            "interactions": post.get("interactions"),
-            "sentiment": post.get("sentiment"),
-            "created_at": post.get("created_at")
-        })
+    posts = _format_content_items(data.get("data", []))[:min(limit, 100)]
 
     return {
         "topic": topic_slug,
-        "posts": formatted,
-        "count": len(formatted)
+        "posts": posts,
+        "count": len(posts)
+    }
+
+
+def get_topic_news(topic: str, limit: int = 20) -> Dict[str, Any]:
+    """
+    Get news feed for a topic.
+
+    Args:
+        topic: Topic name or slug
+        limit: Number of news items returned in output (max 100)
+
+    Returns:
+        Dictionary with topic news items
+    """
+    topic_slug = _slug(topic)
+    # API quirk: /topic/:topic/news/v1 does not accept `limit` query param.
+    data = make_request(f"/public/topic/{topic_slug}/news/v1")
+    news = _format_content_items(data.get("data", []))[:min(limit, 100)]
+
+    return {
+        "topic": topic_slug,
+        "news": news,
+        "count": len(news)
+    }
+
+
+def get_category_posts(category: str, limit: int = 20) -> Dict[str, Any]:
+    """
+    Get top social posts for a category.
+
+    Args:
+        category: Category name or slug (e.g. defi, gaming, memecoin)
+        limit: Number of posts returned in output (max 100)
+
+    Returns:
+        Dictionary with category posts
+    """
+    category_slug = _slug(category)
+    # API quirk: /category/:category/posts/v1 does not accept `limit` query param.
+    data = make_request(f"/public/category/{category_slug}/posts/v1")
+    posts = _format_content_items(data.get("data", []))[:min(limit, 100)]
+
+    return {
+        "category": category_slug,
+        "posts": posts,
+        "count": len(posts)
+    }
+
+
+def get_category_news(category: str, limit: int = 20) -> Dict[str, Any]:
+    """
+    Get news feed for a category.
+
+    Args:
+        category: Category name or slug (e.g. defi, gaming, memecoin)
+        limit: Number of news items returned in output (max 100)
+
+    Returns:
+        Dictionary with category news items
+    """
+    category_slug = _slug(category)
+    # API quirk: /category/:category/news/v1 does not accept `limit` query param.
+    data = make_request(f"/public/category/{category_slug}/news/v1")
+    news = _format_content_items(data.get("data", []))[:min(limit, 100)]
+
+    return {
+        "category": category_slug,
+        "news": news,
+        "count": len(news)
+    }
+
+
+def get_content_feed(feed_type: str, scope_type: str, scope: str, limit: int = 20) -> Dict[str, Any]:
+    """
+    Unified content feed entry point for agent use.
+
+    Args:
+        feed_type: "news" or "posts"
+        scope_type: "topic" or "category"
+        scope: Topic/category value
+        limit: Number of items (max 100)
+
+    Returns:
+        Dictionary with normalized feed output
+    """
+    feed_type = feed_type.lower().strip()
+    scope_type = scope_type.lower().strip()
+
+    if feed_type not in {"news", "posts"}:
+        raise ValueError("feed_type must be one of: news, posts")
+    if scope_type not in {"topic", "category"}:
+        raise ValueError("scope_type must be one of: topic, category")
+
+    if scope_type == "topic" and feed_type == "news":
+        data = get_topic_news(scope, limit)
+    elif scope_type == "topic" and feed_type == "posts":
+        data = get_topic_posts(scope, limit)
+    elif scope_type == "category" and feed_type == "news":
+        data = get_category_news(scope, limit)
+    else:
+        data = get_category_posts(scope, limit)
+
+    return {
+        "scope_type": scope_type,
+        "scope": _slug(scope),
+        "feed_type": feed_type,
+        "count": data.get("count", 0),
+        "items": data.get(feed_type, []) if feed_type in data else data.get("posts", [])
+    }
+
+
+def _matches_query(item: dict, query: str) -> bool:
+    """Check if a content item contains the query keyword (case-insensitive)."""
+    q = query.lower()
+    searchable = " ".join(str(v) for v in [
+        item.get("title", ""),
+        item.get("description", ""),
+        item.get("body", ""),
+        item.get("author", ""),
+        item.get("author_display_name", ""),
+    ] if v)
+    return q in searchable.lower()
+
+
+def search_content(
+    query: str = "",
+    topics: list | None = None,
+    categories: list | None = None,
+    feed_types: list | None = None,
+    time_window: str = "24h",
+    limit: int = 50,
+) -> Dict[str, Any]:
+    """
+    Cross-topic/category content search for Agent use.
+
+    Aggregates news + posts from multiple scopes, deduplicates by URL,
+    sorts by interactions (engagement), and optionally filters by keyword.
+
+    Args:
+        query: Keyword filter (empty = no filter, returns all). Searches
+               title + description + body + author fields.
+        topics: List of topic slugs to search (e.g. ["bitcoin", "defi"]).
+                Default: ["bitcoin", "ethereum", "solana"]
+        categories: List of category slugs (e.g. ["defi", "gaming"]).
+                    Default: ["defi"]
+        feed_types: Which content types: "news", "posts", or both.
+                    Default: ["news", "posts"]
+        time_window: Time scope filter placeholder (API returns recent content).
+                     Accepted values: "1h", "24h", "7d", "30d". Default: "24h"
+        limit: Max items returned (max 200). Default: 50
+
+    Returns:
+        {
+            "query": str,
+            "total_fetched": int,
+            "items": [deduplicated, sorted items],
+            "count": int,
+            "sentiment_summary": {avg, bullish_pct, bearish_pct, neutral_pct}
+        }
+    """
+    # Defaults
+    if topics is None:
+        topics = ["bitcoin", "ethereum", "solana"]
+    if categories is None:
+        categories = ["defi"]
+    if feed_types is None:
+        feed_types = ["news", "posts"]
+    if time_window not in {"1h", "24h", "7d", "30d"}:
+        time_window = "24h"
+
+    all_items: list[dict] = []
+    call_count = 0
+
+    def _fetch_with_retry(fn, retries=3, backoff=5):
+        """Fetch with retry on rate limit (429)."""
+        for attempt in range(retries + 1):
+            try:
+                result = fn()
+                return result
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str and attempt < retries:
+                    wait = backoff * (attempt + 1)
+                    time.sleep(wait)
+                else:
+                    raise
+
+    def _safe_fetch(fn):
+        """Fetch with rate-limit spacing and retry."""
+        nonlocal call_count
+        if call_count > 0:
+            time.sleep(1.0)
+        call_count += 1
+        try:
+            return _fetch_with_retry(fn)
+        except Exception:
+            return None
+
+    # Fetch from topics
+    for t in topics:
+        for ft in feed_types:
+            if ft == "news":
+                data = _safe_fetch(lambda topic=t: get_topic_news(topic, limit=100))
+                if data:
+                    all_items.extend(data.get("news", []))
+            else:
+                data = _safe_fetch(lambda topic=t: get_topic_posts(topic, limit=100))
+                if data:
+                    all_items.extend(data.get("posts", []))
+
+    # Fetch from categories
+    for c in categories:
+        for ft in feed_types:
+            if ft == "news":
+                data = _safe_fetch(lambda cat=c: get_category_news(cat, limit=100))
+                if data:
+                    all_items.extend(data.get("news", []))
+            else:
+                data = _safe_fetch(lambda cat=c: get_category_posts(cat, limit=100))
+                if data:
+                    all_items.extend(data.get("posts", []))
+
+    # Deduplicate by URL
+    seen_urls: set[str] = set()
+    deduped: list[dict] = []
+    for item in all_items:
+        url = item.get("url", "")
+        if url and url not in seen_urls:
+            seen_urls.add(url)
+            deduped.append(item)
+        elif not url:
+            deduped.append(item)
+
+    # Keyword filter
+    if query.strip():
+        deduped = [item for item in deduped if _matches_query(item, query)]
+
+    total_fetched = len(deduped)
+
+    # Sort by interactions (engagement-first)
+    deduped.sort(
+        key=lambda x: x.get("interactions_24h") or x.get("interactions_total") or 0,
+        reverse=True,
+    )
+
+    # Slice
+    result_items = deduped[:min(limit, 200)]
+
+    # Sentiment summary
+    sentiments = []
+    for item in result_items:
+        s = item.get("sentiment")
+        if s is not None:
+            sentiments.append(s)
+
+    sentiment_summary = {}
+    if sentiments:
+        avg = sum(sentiments) / len(sentiments)
+        sentiment_summary = {
+            "average_sentiment": round(avg, 3),
+            "bullish_pct": round(sum(1 for s in sentiments if s > 0) / len(sentiments) * 100, 1),
+            "bearish_pct": round(sum(1 for s in sentiments if s < 0) / len(sentiments) * 100, 1),
+            "neutral_pct": round(sum(1 for s in sentiments if s == 0) / len(sentiments) * 100, 1),
+            "sample_count": len(sentiments),
+        }
+
+    return {
+        "query": query,
+        "time_window": time_window,
+        "total_fetched": total_fetched,
+        "items": result_items,
+        "count": len(result_items),
+        "sentiment_summary": sentiment_summary,
     }
 
 

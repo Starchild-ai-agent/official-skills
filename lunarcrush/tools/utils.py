@@ -9,6 +9,7 @@ Shared utilities for LunarCrush API tools including:
 """
 
 import os
+import time
 import requests
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
@@ -36,7 +37,9 @@ def get_api_key() -> str:
 def make_request(
     endpoint: str,
     params: Optional[Dict[str, Any]] = None,
-    timeout: int = 30
+    timeout: int = 30,
+    retries: int = 2,
+    backoff_seconds: float = 1.2,
 ) -> Dict[str, Any]:
     """
     Make authenticated request to LunarCrush API.
@@ -61,25 +64,37 @@ def make_request(
         "Accept": "application/json"
     }
 
-    try:
-        response = proxied_get(
-            url,
-            headers=headers,
-            params=params,
-            timeout=timeout
-        )
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.Timeout:
-        raise requests.RequestException("Request timeout - LunarCrush API may be slow")
-    except requests.exceptions.ConnectionError:
-        raise requests.RequestException("Connection error - check internet connection")
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 401:
-            raise ValueError("Invalid LUNARCRUSH_API_KEY - check your API key")
-        elif e.response.status_code == 429:
-            raise requests.RequestException("Rate limit exceeded - please wait before retrying")
-        raise requests.RequestException(f"API request failed: {e}")
+    for attempt in range(retries + 1):
+        try:
+            response = proxied_get(
+                url,
+                headers=headers,
+                params=params,
+                timeout=timeout
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.Timeout:
+            if attempt < retries:
+                time.sleep(backoff_seconds * (attempt + 1))
+                continue
+            raise requests.RequestException("Request timeout - LunarCrush API may be slow")
+        except requests.exceptions.ConnectionError:
+            if attempt < retries:
+                time.sleep(backoff_seconds * (attempt + 1))
+                continue
+            raise requests.RequestException("Connection error - check internet connection")
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 401:
+                raise ValueError("Invalid LUNARCRUSH_API_KEY - check your API key")
+            elif e.response.status_code == 429:
+                if attempt < retries:
+                    time.sleep(backoff_seconds * (attempt + 1))
+                    continue
+                raise requests.RequestException("Rate limit exceeded - please wait before retrying")
+            raise requests.RequestException(f"API request failed: {e}")
+
+    raise requests.RequestException("API request failed after retries")
 
 
 def format_galaxy_score(score: Optional[float]) -> str:

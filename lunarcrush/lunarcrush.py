@@ -24,6 +24,11 @@ try:
     from .tools.topics import (
         get_topic,
         get_topic_posts,
+        get_topic_news,
+        get_category_posts,
+        get_category_news,
+        get_content_feed,
+        search_content,
     )
     from .tools.creators import (
         get_creator,
@@ -82,6 +87,287 @@ Examples:
 
         try:
             result = await asyncio.to_thread(get_coin, coin)
+            return ToolResult(success=True, output=result)
+        except Exception as e:
+            return ToolResult(success=False, output=None, error=str(e))
+
+
+# ==================== Content Search ====================
+
+class LunarContentFeedTool(BaseTool):
+    """Unified content feed: topic/category × news/posts."""
+
+    @property
+    def name(self) -> str:
+        return "lunar_content_feed"
+
+    @property
+    def description(self) -> str:
+        return """Unified content feed — one call, any scope.
+
+Examples:
+- Topic news: lunar_content_feed(feed_type="news", scope_type="topic", scope="bitcoin")
+- Category posts: lunar_content_feed(feed_type="posts", scope_type="category", scope="defi")"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "feed_type": {
+                    "type": "string",
+                    "description": "Content type: news or posts",
+                    "enum": ["news", "posts"]
+                },
+                "scope_type": {
+                    "type": "string",
+                    "description": "Scope: topic or category",
+                    "enum": ["topic", "category"]
+                },
+                "scope": {
+                    "type": "string",
+                    "description": "Topic or category value (e.g. bitcoin, defi, gaming)"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max items (max 100)",
+                    "default": 20
+                }
+            },
+            "required": ["feed_type", "scope_type", "scope"]
+        }
+
+    async def execute(
+        self,
+        ctx: ToolContext,
+        feed_type: str,
+        scope_type: str,
+        scope: str,
+        limit: int = 20
+    ) -> ToolResult:
+        if not LUNARCRUSH_AVAILABLE:
+            return ToolResult(success=False, output=None, error="LunarCrush tools not available.")
+        try:
+            result = await asyncio.to_thread(get_content_feed, feed_type, scope_type, scope, limit)
+            return ToolResult(success=True, output=result)
+        except Exception as e:
+            return ToolResult(success=False, output=None, error=str(e))
+
+
+class LunarTopicNewsTool(BaseTool):
+    """Get news feed for a specific topic."""
+
+    @property
+    def name(self) -> str:
+        return "lunar_topic_news"
+
+    @property
+    def description(self) -> str:
+        return """Get news articles for a topic.
+
+Examples:
+- Get Bitcoin news: lunar_topic_news(topic="bitcoin", limit=10)
+- Get DeFi news: lunar_topic_news(topic="defi")"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "topic": {
+                    "type": "string",
+                    "description": "Topic slug (bitcoin, defi, nft, etc.)"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max items (max 100)",
+                    "default": 20
+                }
+            },
+            "required": ["topic"]
+        }
+
+    async def execute(
+        self,
+        ctx: ToolContext,
+        topic: str,
+        limit: int = 20
+    ) -> ToolResult:
+        if not LUNARCRUSH_AVAILABLE:
+            return ToolResult(success=False, output=None, error="LunarCrush tools not available.")
+        try:
+            result = await asyncio.to_thread(get_topic_news, topic, limit)
+            return ToolResult(success=True, output=result)
+        except Exception as e:
+            return ToolResult(success=False, output=None, error=str(e))
+
+
+class LunarCategoryPostsTool(BaseTool):
+    """Get social posts for a category."""
+
+    @property
+    def name(self) -> str:
+        return "lunar_category_posts"
+
+    @property
+    def description(self) -> str:
+        return """Get social posts for a category.
+
+Examples:
+- Get gaming posts: lunar_category_posts(category="gaming", limit=10)
+- Get memecoin posts: lunar_category_posts(category="memecoin")"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": "Category slug (defi, gaming, memecoin, etc.)"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max items (max 100)",
+                    "default": 20
+                }
+            },
+            "required": ["category"]
+        }
+
+    async def execute(
+        self,
+        ctx: ToolContext,
+        category: str,
+        limit: int = 20
+    ) -> ToolResult:
+        if not LUNARCRUSH_AVAILABLE:
+            return ToolResult(success=False, output=None, error="LunarCrush tools not available.")
+        try:
+            result = await asyncio.to_thread(get_category_posts, category, limit)
+            return ToolResult(success=True, output=result)
+        except Exception as e:
+            return ToolResult(success=False, output=None, error=str(e))
+
+
+class LunarCategoryNewsTool(BaseTool):
+    """Get news feed for a category."""
+
+    @property
+    def name(self) -> str:
+        return "lunar_category_news"
+
+    @property
+    def description(self) -> str:
+        return """Get news articles for a category.
+
+Examples:
+- Get DeFi news: lunar_category_news(category="defi", limit=10)
+- Get gaming news: lunar_category_news(category="gaming")"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "description": "Category slug (defi, gaming, memecoin, etc.)"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max items (max 100)",
+                    "default": 20
+                }
+            },
+            "required": ["category"]
+        }
+
+    async def execute(
+        self,
+        ctx: ToolContext,
+        category: str,
+        limit: int = 20
+    ) -> ToolResult:
+        if not LUNARCRUSH_AVAILABLE:
+            return ToolResult(success=False, output=None, error="LunarCrush tools not available.")
+        try:
+            result = await asyncio.to_thread(get_category_news, category, limit)
+            return ToolResult(success=True, output=result)
+        except Exception as e:
+            return ToolResult(success=False, output=None, error=str(e))
+
+
+class LunarSearchContentTool(BaseTool):
+    """Cross-scope content search + sentiment summary."""
+
+    @property
+    def name(self) -> str:
+        return "lunar_search_content"
+
+    @property
+    def description(self) -> str:
+        return """Crypto content search engine — searches news + posts across topics/categories.
+
+Aggregates, deduplicates, sorts by engagement, and provides sentiment summary.
+
+Examples:
+- Search "ETF" across default scopes: lunar_search_content(query="ETF")
+- Search "halving" in bitcoin+solana topics: lunar_search_content(query="halving", topics=["bitcoin","solana"])
+- Get all recent DeFi news+posts: lunar_search_content(topics=["defi"], feed_types=["news","posts"])
+- Search with time window: lunar_search_content(query="regulation", time_window="7d", limit=30)"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Keyword to filter by (title, description, body, author). Empty = no filter."
+                },
+                "topics": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Topic slugs to search. Default: [bitcoin, ethereum, solana]"
+                },
+                "categories": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Category slugs to search. Default: [defi]"
+                },
+                "feed_types": {
+                    "type": "array",
+                    "items": {"type": "string", "enum": ["news", "posts"]},
+                    "description": "Content types. Default: [news, posts]"
+                },
+                "time_window": {
+                    "type": "string",
+                    "description": "Time scope: 1h, 24h, 7d, 30d. Default: 24h"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max items returned (max 200). Default: 50"
+                }
+            }
+        }
+
+    async def execute(
+        self,
+        ctx: ToolContext,
+        query: str = "",
+        topics: list | None = None,
+        categories: list | None = None,
+        feed_types: list | None = None,
+        time_window: str = "24h",
+        limit: int = 50
+    ) -> ToolResult:
+        if not LUNARCRUSH_AVAILABLE:
+            return ToolResult(success=False, output=None, error="LunarCrush tools not available.")
+        try:
+            result = await asyncio.to_thread(
+                search_content, query, topics, categories, feed_types, time_window, limit
+            )
             return ToolResult(success=True, output=result)
         except Exception as e:
             return ToolResult(success=False, output=None, error=str(e))

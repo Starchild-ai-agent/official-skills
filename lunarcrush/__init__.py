@@ -52,6 +52,11 @@ def register(api) -> List[str]:
             LunarCoinMetaTool,
             LunarTopicTool,
             LunarTopicPostsTool,
+            LunarTopicNewsTool,
+            LunarCategoryPostsTool,
+            LunarCategoryNewsTool,
+            LunarContentFeedTool,
+            LunarSearchContentTool,
             LunarCreatorTool,
         )
         api.register_tool(LunarCoinTool())
@@ -59,6 +64,11 @@ def register(api) -> List[str]:
         api.register_tool(LunarCoinMetaTool())
         api.register_tool(LunarTopicTool())
         api.register_tool(LunarTopicPostsTool())
+        api.register_tool(LunarTopicNewsTool())
+        api.register_tool(LunarCategoryPostsTool())
+        api.register_tool(LunarCategoryNewsTool())
+        api.register_tool(LunarContentFeedTool())
+        api.register_tool(LunarSearchContentTool())
         api.register_tool(LunarCreatorTool())
         registered.extend([
             "lunar_coin",
@@ -66,9 +76,14 @@ def register(api) -> List[str]:
             "lunar_coin_meta",
             "lunar_topic",
             "lunar_topic_posts",
+            "lunar_topic_news",
+            "lunar_category_posts",
+            "lunar_category_news",
+            "lunar_content_feed",
+            "lunar_search_content",
             "lunar_creator",
         ])
-        logger.info("Registered LunarCrush tools (6 tools)")
+        logger.info("Registered LunarCrush tools (11 tools)")
     except Exception as e:
         logger.warning(f"Failed to load LunarCrush tools: {e}")
 
@@ -78,14 +93,19 @@ def register(api) -> List[str]:
 # Extension metadata
 EXTENSION_INFO = {
     "name": "lunarcrush",
-    "version": "1.0.0",
-    "description": "LunarCrush social intelligence and sentiment data",
+    "version": "1.2.0",
+    "description": "LunarCrush social intelligence, news aggregation, and content search",
     "tools": [
         "lunar_coin",
         "lunar_coin_time_series",
         "lunar_coin_meta",
         "lunar_topic",
         "lunar_topic_posts",
+        "lunar_topic_news",
+        "lunar_category_posts",
+        "lunar_category_news",
+        "lunar_content_feed",
+        "lunar_search_content",
         "lunar_creator",
     ],
     "env_vars": [

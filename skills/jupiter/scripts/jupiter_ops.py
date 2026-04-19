@@ -58,10 +58,10 @@ try:
     CALLER = {"SC-CALLER-ID": "skill:jupiter"}
 
     def _get(url, params=None):
-        return proxied_get(url, params=params, headers=CALLER)
+        return proxied_get(url, params=params, headers=CALLER).json()
 
     def _post(url, payload):
-        return proxied_post(url, json=payload, headers=CALLER)
+        return proxied_post(url, json=payload, headers=CALLER).json()
 
 except ImportError:
     # local dev fallback

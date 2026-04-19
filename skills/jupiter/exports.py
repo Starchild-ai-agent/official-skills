@@ -51,12 +51,12 @@ def _fmt(raw_amount: str | int, mint: str) -> str:
 
 def _get(url, params=None):
     from core.http_client import proxied_get
-    return proxied_get(url, params=params, headers=CALLER)
+    return proxied_get(url, params=params, headers=CALLER).json()
 
 
 def _post(url, payload):
     from core.http_client import proxied_post
-    return proxied_post(url, json=payload, headers=CALLER)
+    return proxied_post(url, json=payload, headers=CALLER).json()
 
 
 # ────────────────────────────────────────────────────────────────────────────

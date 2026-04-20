@@ -67,7 +67,7 @@ metadata:
     skillKey: coinglass
     plan: professional
     api_version: v4
-    version: 3.0.1
+    version: 3.0.5
     total_tools: 37
     requires:
       env:

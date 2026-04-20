@@ -118,7 +118,7 @@
     {
       "name": "jupiter",
       "path": "jupiter/SKILL.md",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "description": "Jupiter DEX aggregator on Solana — token swaps, limit orders, DCA. Use when user mentions Jupiter, Solana swap, SOL/USDC swap, or Solana DEX aggregator."
     },
     {

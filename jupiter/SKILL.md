@@ -1,6 +1,6 @@
 ---
 name: jupiter
-version: 1.1.0
+version: 1.2.0
 description: "Jupiter DEX aggregator on Solana — token swaps, limit orders, DCA. Use when user mentions Jupiter, Solana swap, SOL/USDC swap, or Solana DEX aggregator."
 
 metadata:
@@ -15,169 +15,183 @@ user-invocable: true
 
 Jupiter routes swaps across all Solana DEXes (Raydium, Orca, Phoenix…) for best price.
 
+## ⛽ Gas & Cost — Read This First
+
+- **Gas is always paid from wallet SOL balance.** No gas sponsorship on Solana.
+- `wallet_sol_transfer` does NOT work for Jupiter — it's for send-SOL only.
+- Swaps cost ~0.0002–0.001 SOL in fees (priority fee + rent deposit for new token accounts).
+- Limit orders cost ~0.002 SOL to create (on-chain account rent).
+- Always call `wallet_sol_balance()` before operating to confirm SOL > 0.01.
+
 ## ⛔ HARD RULES
 
-- **ALWAYS use `ultra/v1/order`** — NOT `swap/v1/quote` + `swap/v1/swap` (deprecated two-step)
-- **NEVER pass numeric `makingAmount`/`takingAmount`** — must be strings or API returns ZodError
-- **NEVER mention DCA** — lite-api does not support it
+- **ALWAYS use `ultra/v1/order`** — NOT `swap/v1/quote` + `swap/v1/swap` (deprecated)
+- **Pass wallet pubkey to `jupiter_swap` only when intending to execute** — omitting it returns a quote-only result (no transaction), which is correct for price checks
+- **NEVER pass numeric `makingAmount`/`takingAmount`** — must be strings or API returns ZodError 400
+- **NEVER use `/ultra/v1/execute` for limit orders** — limit orders MUST go through `jupiter_broadcast_tx()` (Solana RPC)
 - **NEVER omit user confirmation** before executing a swap or limit order
-- **HARD LIMIT: max 6 tool calls** per user request
 - **ALWAYS call `wallet_sol_balance()`** after swap to verify balances changed
+- **NEVER mention DCA** — lite-api does not support it
 
 ## Prerequisites — Wallet Policy
 
-Before any on-chain operation, load the **wallet-policy** skill and propose the standard wildcard Solana policy (deny key export + allow `*`).
+Before any on-chain operation, load the **wallet** skill and propose the standard wildcard Solana policy (deny key export + allow `*`).
 
 ## Key Token Addresses (Solana)
 
-| Token | Mint Address |
-|-------|-------------|
-| SOL (wrapped) | `So11111111111111111111111111111111111111112` |
-| USDC | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
-| USDT | `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB` |
-| JUP  | `JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN` |
-| BONK | `DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263` |
-| WIF  | `EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm` |
+| Token | Mint Address | Decimals |
+|-------|-------------|---------|
+| SOL   | `So11111111111111111111111111111111111111112` | 9 |
+| USDC | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` | 6 |
+| USDT | `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB` | 6 |
+| JUP  | `JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN` | 6 |
+| BONK | `DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263` | 5 |
+| WIF  | `EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm` | 6 |
+| JTO  | `jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL` | 6 (NOT 9) |
 
 For unlisted tokens: ask user for mint address directly — token search API is deprecated.
 
-## API Overview
+## Available Tools (from exports.py)
 
-**Base URL**: `https://lite-api.jup.ag` (free, no API key)
-
-### Swap — Ultra API (primary, always use this)
-
-```
-GET /ultra/v1/order?inputMint=<>&outputMint=<>&amount=<lamports>
-```
-
-Returns in ONE call: `inAmount`, `outAmount`, `inUsdValue`, `outUsdValue`,
-`priceImpactPct`, `transaction` (base64), `requestId`.
-
-After signing, execute via:
-```
-POST /ultra/v1/execute
-{ "signedTransaction": "<base64>", "requestId": "<id>" }
-```
-
-### Limit Orders — Trigger API
-
-```
-POST /trigger/v1/createOrder
-{
-  "inputMint": "<>", "outputMint": "<>",
-  "maker": "<wallet>", "payer": "<wallet>",
-  "params": {
-    "makingAmount": "10000000",   ← STRING, not number
-    "takingAmount": "90000000"    ← STRING, not number
-  },
-  "computeUnitPrice": "auto"
-}
-```
-
-```
-GET  /trigger/v1/openOrders?wallet=<>
-GET  /trigger/v1/orderHistory?wallet=<>
-POST /trigger/v1/cancelOrder  { "order": "<pubkey>", "maker": "<>", "computeUnitPrice": "auto" }
-```
-
-**Gotchas (verified live)**:
-- `makingAmount`/`takingAmount` → must be strings (int → ZodError 400)
-- `expiredAt` → omit entirely if not set (do NOT pass `null`)
-- `feeBps` → omit entirely if not set (do NOT pass `0`)
-
-## Tool Routing — IF/THEN
-
-```
-IF "SOL price" / "how much is X"         → jupiter_price(token)
-IF "quote" / "how much can I get"         → jupiter_quote(in, out, amount)
-IF "swap" / "exchange" / "convert"        → jupiter_quote → confirm → jupiter_swap
-IF "limit order" / "buy when price hits"  → jupiter_limit_create(...)
-IF "my orders" / "open orders"            → jupiter_limit_orders(wallet)
-IF "cancel order"                         → jupiter_limit_orders → jupiter_limit_cancel
-IF token not in KNOWN_TOKENS              → ask user for mint address
-```
+| Tool | What it does |
+|------|-------------|
+| `jupiter_price(token)` | USD price of any token |
+| `jupiter_swap(in, out, amount, wallet?)` | Quote only (no wallet) or quote + tx (wallet provided) |
+| `jupiter_execute_swap(signed_tx, request_id, in_mint?, out_mint?)` | Broadcast swap via `/ultra/v1/execute` ← swap only |
+| `jupiter_broadcast_tx(signed_tx)` | Broadcast via Solana RPC ← limit orders + cancel |
+| `jupiter_limit_create(in, out, making, taking, maker)` | Create limit order |
+| `jupiter_limit_orders(wallet, history=False)` | List open or historical orders |
+| `jupiter_limit_cancel(order_pubkey, maker)` | Cancel an open order |
 
 ## Swap Workflow (End-to-End)
 
 ```
-1. jupiter_quote(input, output, amount)         ← ultra/v1/order
-2. Show user: out_amount, in_usd, out_usd, price_impact_pct
-3. Wait for confirmation
-4. wallet_sol_sign_transaction(tx=quote["transaction"])
-5. POST /ultra/v1/execute { signedTransaction, requestId }
-6. wallet_sol_balance()                          ← verify
+1. quote = jupiter_swap("SOL", "USDC", 0.01, wallet_pubkey)
+   └─ returns: in_amount, out_amount, in_usd, out_usd, transaction, request_id
+
+2. Show user: amount in/out, USD values, price_impact_pct — wait for confirm
+
+3. signed = wallet_sol_sign_transaction(quote["transaction"])
+
+4. result = jupiter_execute_swap(signed["signed_transaction"], quote["request_id"])
+   └─ returns: status ("Success"), signature, in_amount, out_amount
+
+5. wallet_sol_balance()  ← verify balances changed
 ```
+
+**Key facts:**
+- `jupiter_execute_swap` → POST `/ultra/v1/execute` — only for Ultra swaps
+- `transaction` is `null` if wallet pubkey is missing/invalid — retry step 1 with a valid wallet
+- Swap is atomic: if it fails, nothing is deducted (except gas fee)
 
 ## Limit Order Workflow (End-to-End)
 
 ```
-1. jupiter_limit_create(in, out, making, taking, maker)
-2. Show user: order details, implied price
-3. Wait for confirmation
-4. wallet_sol_sign_transaction(tx=result["transaction"])
-5. Broadcast signed tx
-6. jupiter_limit_orders(wallet)                  ← confirm order appears
+1. order = jupiter_limit_create(
+       input_token="SOL",    # selling
+       output_token="USDC",  # buying
+       making_amount=0.06,   # 0.06 SOL to sell
+       taking_amount=3.0,    # want at least 3 USDC (sets target price)
+       maker=wallet_pubkey
+   )
+   └─ returns: order_pubkey, transaction, implied_price, next_step
+
+2. Show user: implied price, amounts — wait for confirm
+
+3. signed = wallet_sol_sign_transaction(order["transaction"])
+   ⚠️  Sign and broadcast within ~90 seconds — blockhash expires.
+
+4. result = jupiter_broadcast_tx(signed["signed_transaction"])
+   └─ returns: {"success": True, "signature": "..."} or {"success": False, "error": "..."}
+   ⚠️  Use jupiter_broadcast_tx, NOT jupiter_execute_swap — different endpoints!
+
+5. jupiter_limit_orders(wallet_pubkey)  ← confirm order_pubkey appears
+   Note: if order fills instantly (implied price ≤ market), check orderHistory instead
 ```
+
+**Key facts:**
+- Min order size: ~$5 USD — smaller returns `{"error": "Order size must be at least 5 USD"}`
+- Keepers may fill the order instantly if your implied price is favorable (≤ market)
+- `orderKey` field in API response is the order pubkey (not `publicKey`)
+- `makingAmount` / `takingAmount` in openOrders are already human-readable (e.g. "0.06"), not raw lamports
+- `expiredAt` and `feeBps` must be omitted entirely if not used (don't pass null or 0)
+
+## Cancel Order Workflow
+
+```
+1. orders = jupiter_limit_orders(wallet_pubkey)
+2. Pick order_pubkey from orders["orders"][n]["order_pubkey"]
+3. cancel = jupiter_limit_cancel(order_pubkey, wallet_pubkey)
+4. signed = wallet_sol_sign_transaction(cancel["transaction"])
+5. jupiter_broadcast_tx(signed["signed_transaction"])
+```
+
+## Tool Routing — IF/THEN
+
+```
+IF "price" / "how much is X"             → jupiter_price(token)
+IF "quote" / "how much can I get"        → jupiter_swap(in, out, amount)  [wallet omitted = quote-only, no tx]
+IF "swap" / "exchange" / "convert"       → jupiter_swap(in, out, amount, wallet) → confirm → sign → jupiter_execute_swap(in_mint, out_mint)
+IF "limit order" / "buy when price hits" → jupiter_limit_create → sign → jupiter_broadcast_tx
+IF "my orders" / "open orders"           → jupiter_limit_orders(wallet)
+IF "cancel order"                        → jupiter_limit_orders → jupiter_limit_cancel → sign → jupiter_broadcast_tx
+IF token not in KNOWN_TOKENS             → ask user for mint address
+```
+
 
 ## Few-Shot Examples
 
 **JUP-01 — "SOL price?"**
-```
-jupiter_price("SOL") → {"price_usd": 148.32, ...}
-Reply: "SOL is currently $148.32."
-```
-
-**JUP-02 — "Quote: 1 SOL → USDC"**
-```
-jupiter_quote("SOL", "USDC", 1.0)
-→ in_amount=1 SOL (~$148.32), out_amount=148.07 USDC, impact=0.02%
-Reply: "1 SOL → ~148.07 USDC (impact 0.02%). Swap?"
+```python
+jupiter_price("SOL")
+# -> {"price_usd": 84.2, ...}
 ```
 
-**JUP-03 — "Swap 0.5 SOL → USDC"**
-```
-jupiter_quote("SOL","USDC",0.5) → show quote → confirm
-jupiter_swap("SOL","USDC",0.5,wallet_pubkey)
-wallet_sol_sign_transaction(tx) → execute → wallet_sol_balance()
-```
-
-**JUP-04 — "Buy SOL when it hits $120, spend 100 USDC"**
-```
-# 100 USDC → X SOL at $120/SOL = 0.833 SOL
-jupiter_limit_create("USDC","SOL", making=100, taking=0.833, maker=wallet)
-→ sign → broadcast → jupiter_limit_orders(wallet) to confirm
+**JUP-01b — "How much USDC would I get for 0.5 SOL?" (quote only, no trade)**
+```python
+jupiter_swap("SOL", "USDC", 0.5)   # wallet_pubkey omitted
+# -> {quote_only: True, in_amount: "0.50", out_amount: "42.10",
+#     in_usd: "42.1", transaction: None}
+# Stop here — show user the rate, no signing needed.
 ```
 
-**JUP-05 — "My open orders"**
-```
-jupiter_limit_orders(wallet) → display table
-```
-
-**JUP-06 — "Cancel my latest order"**
-```
-jupiter_limit_orders(wallet) → pick most recent pubkey
-jupiter_limit_cancel(order_pubkey, maker)
-→ sign → broadcast
-```
-
-**JUP-07 — "Swap 10 USDC → JUP" (English)**
-```
-jupiter_quote("USDC","JUP",10.0) → confirm → jupiter_swap(...)
+**JUP-02 — "Swap 0.01 SOL to USDC"**
+```python
+quote  = jupiter_swap("SOL", "USDC", 0.01, wallet_pubkey)
+# → show: 0.01 SOL → ~0.84 USDC, impact <0.01%
+signed = wallet_sol_sign_transaction(quote["transaction"])
+result = jupiter_execute_swap(
+    signed["signed_transaction"],
+    quote["request_id"],
+    in_mint=quote["in_mint"],
+    out_mint=quote["out_mint"],
+)
+# → {"status": "Success", "signature": "yUKn...", "in_amount_fmt": "0.01", "out_amount_fmt": "0.84"}
+wallet_sol_balance()
 ```
 
-**JUP-08 — "WIF mint address?"**
-```
-Reply directly: EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm
+**JUP-03 — "Set limit: sell 0.06 SOL when USDC price hits $50/SOL"**
+```python
+# makingAmount=0.06 SOL, takingAmount=3 USDC (= 0.06 * 50)
+order  = jupiter_limit_create("SOL", "USDC", 0.06, 3.0, wallet_pubkey)
+# → implied_price: "1 USDC = 0.0200 SOL" (i.e. $50/SOL)
+signed = wallet_sol_sign_transaction(order["transaction"])  # do this immediately!
+result = jupiter_broadcast_tx(signed["signed_transaction"])
+# → {"success": True, "signature": "53bp..."}
+jupiter_limit_orders(wallet_pubkey)  # or check history if filled instantly
 ```
 
-## Amount Conversion Reference
+**JUP-04 — "My open orders"**
+```python
+jupiter_limit_orders(wallet_pubkey)
+# → {"count": 1, "orders": [{"order_pubkey": "...", "making_amount": "0.06", ...}]}
+```
 
-| Token | Decimals | 1 unit in lamports |
-|-------|----------|--------------------|
-| SOL   | 9        | 1_000_000_000      |
-| USDC  | 6        | 1_000_000          |
-| USDT  | 6        | 1_000_000          |
-| JUP   | 6        | 1_000_000          |
-| BONK  | 5        | 100_000            |
-| WIF   | 6        | 1_000_000          |
+**JUP-05 — "Cancel my order"**
+```python
+orders = jupiter_limit_orders(wallet_pubkey)
+pubkey = orders["orders"][0]["order_pubkey"]
+cancel = jupiter_limit_cancel(pubkey, wallet_pubkey)
+signed = wallet_sol_sign_transaction(cancel["transaction"])
+jupiter_broadcast_tx(signed["signed_transaction"])
+```

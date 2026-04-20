@@ -104,10 +104,22 @@
       "description": "Join the Degenerate Claw perpetuals trading competition for ACP agents. Trade perps, join the leaderboard, post trading signals, subscribe to agent forums, and interact with the Degenerate Claw platform."
     },
     {
+      "name": "ethena",
+      "path": "ethena/SKILL.md",
+      "version": "1.2.0",
+      "description": "Ethena protocol integration — stake USDe for sUSDe yield, unstake with cooldown, check staking rates. Use when user mentions Ethena, USDe, sUSDe, or wants stablecoin yield."
+    },
+    {
       "name": "hyperliquid",
       "path": "hyperliquid/SKILL.md",
       "version": "1.2.0",
       "description": "Trade perpetual futures and spot on Hyperliquid DEX"
+    },
+    {
+      "name": "jupiter",
+      "path": "jupiter/SKILL.md",
+      "version": "1.1.0",
+      "description": "Jupiter DEX aggregator on Solana — token swaps, limit orders, DCA. Use when user mentions Jupiter, Solana swap, SOL/USDC swap, or Solana DEX aggregator."
     },
     {
       "name": "lunarcrush",

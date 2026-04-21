@@ -8,6 +8,8 @@ description: >
   reading specific articles, browsing columns / series / community topics,
   industry events & conferences, event calendar, platform hot searches and editorial picks,
   latest smart money boards, board highlights, and board comparisons.
+author: Seven Du
+tags: [news, crypto, blockchain, panews, polymarket, smart-money, leaderboard]
 metadata:
   starchild:
     emoji: "📰"

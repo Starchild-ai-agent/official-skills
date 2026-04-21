@@ -1,13 +1,7 @@
 ---
 name: panews
 version: 1.0.0
-description: >
-  Entry point for reading PANews cryptocurrency / blockchain news, market narratives,
-  and Polymarket smart money leaderboards.
-  Triggers: today's headlines, breaking news, trending rankings, article search,
-  reading specific articles, browsing columns / series / community topics,
-  industry events & conferences, event calendar, platform hot searches and editorial picks,
-  latest smart money boards, board highlights, and board comparisons.
+description: PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards
 author: Seven Du
 tags: [news, crypto, blockchain, panews, polymarket, smart-money, leaderboard]
 metadata:
@@ -22,9 +16,9 @@ user-invocable: false
 disable-model-invocation: false
 ---
 
-This is the core PANews reading skill for users who want to follow cryptocurrency and blockchain news through PANews coverage and public Polymarket smart money leaderboard snapshots. Use it for market-moving headlines, project and token updates, rankings, deep dives, topics, columns, series, events, editorial picks, and structured leaderboard discovery.
+# PANews
 
-It is best suited for structured news discovery, explanation, and leaderboard reading. The skill should help users understand what is happening, why it matters, where to keep reading, and how the latest public board snapshots changed, while staying accessible to readers who may not be technical.
+PANews is one of China's leading crypto and blockchain media outlets. This skill provides structured access to PANews coverage — breaking news, daily briefings, trending rankings, article search, columns, series, events, editorial picks, and Polymarket smart money leaderboards.
 
 ## Common User Phrases
 

@@ -8,6 +8,12 @@
       "description": "1inch DEX aggregator — EVM same-chain swap, SOL↔EVM cross-chain Fusion+, limit orders. Native tools, no Fly dependency, no aiohttp."
     },
     {
+      "name": "PANews",
+      "path": "PANews/SKILL.md",
+      "version": "1.0.0",
+      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
+    },
+    {
       "name": "aave",
       "path": "aave/SKILL.md",
       "version": "1.0.0",
@@ -144,12 +150,6 @@
       "path": "orderly-onboarding/SKILL.md",
       "version": "1.0.0",
       "description": "Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart"
-    },
-    {
-      "name": "PANews",
-      "path": "panews/SKILL.md",
-      "version": "1.0.0",
-      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
     },
     {
       "name": "polymarket",

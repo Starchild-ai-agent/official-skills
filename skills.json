@@ -146,6 +146,12 @@
       "description": "Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart"
     },
     {
+      "name": "panews",
+      "path": "panews/SKILL.md",
+      "version": "1.0.0",
+      "description": ">"
+    },
+    {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "5.0.0",

@@ -1,5 +1,5 @@
 ---
-name: panews
+name: PANews
 version: 1.0.0
 description: PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards
 author: Seven Du

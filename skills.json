@@ -14,18 +14,6 @@
       "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
     },
     {
-      "name": "agent-export",
-      "path": "agent-export/SKILL.md",
-      "version": "1.0.0",
-      "description": "Export agent data into a Starchild migration bundle. For use by ANY agent (OpenClaw, Claude Code, Cursor, etc.) to migrate into Starchild."
-    },
-    {
-      "name": "agent-import",
-      "path": "agent-import/SKILL.md",
-      "version": "1.0.0",
-      "description": "Import a migration bundle into Starchild. Downloads from relay, validates, and loads all components using native tools."
-    },
-    {
       "name": "aave",
       "path": "aave/SKILL.md",
       "version": "1.0.0",
@@ -36,6 +24,18 @@
       "path": "abstract/SKILL.md",
       "version": "1.0.2",
       "description": "Abstract L2 — Master skill hub for all Abstract blockchain capabilities. Provides a directory of 7 specialized skills for building on Abstract: connecting, deploying contracts, wallet integration, agent wallets, multisig, prediction markets, and onchain agent identity. Use when the user wants to build on Abstract, deploy contracts, set up wallets, create multisigs, integrate prediction markets, register agents onchain, or any Abstract L2 development task."
+    },
+    {
+      "name": "agent-export",
+      "path": "agent-export/SKILL.md",
+      "version": "1.0.0",
+      "description": "Export agent data into a Starchild migration bundle. For use by ANY agent (OpenClaw, Claude Code, Cursor, etc.) to migrate into Starchild."
+    },
+    {
+      "name": "agent-import",
+      "path": "agent-import/SKILL.md",
+      "version": "1.1.0",
+      "description": "Import a migration bundle into Starchild. Downloads from relay, validates, and loads all components using native tools."
     },
     {
       "name": "backtest",

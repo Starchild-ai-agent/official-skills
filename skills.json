@@ -232,7 +232,7 @@
     {
       "name": "twitter",
       "path": "twitter/SKILL.md",
-      "version": "1.4.0",
+      "version": "1.4.2",
       "description": "Twitter/X (x.com) data lookup \\u2014 fetch tweets by URL or ID, search\\"
     },
     {

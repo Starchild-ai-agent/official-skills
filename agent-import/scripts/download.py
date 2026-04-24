@@ -18,7 +18,7 @@ from pathlib import Path
 
 # Relay download is internal-only. Requests must originate from Fly internal
 # IPv6 (fdaa::/16), otherwise relay returns 403.
-RELAY_INTERNAL = "http://sc-agent-migration.fly.internal:8080"
+RELAY_INTERNAL = "http://sc-agent-migration.internal:8080"
 WORKSPACE = Path("/data/workspace")
 EXTRACT_DIR = WORKSPACE / "migration"
 
@@ -41,7 +41,7 @@ def download_bundle(code: str, download_token: str) -> bytes:
     """Download bundle from relay using the download token.
 
     Internal-only mode: relay accepts download requests from Fly internal
-    network only. The request must reach `sc-agent-migration.fly.internal`.
+    network only. The request must reach `sc-agent-migration.internal`.
     """
     internal_url = f"{RELAY_INTERNAL}/paste/{code}"
 

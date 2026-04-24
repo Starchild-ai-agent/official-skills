@@ -28,7 +28,7 @@ The user will provide two values from the source agent: a **CODE** (8 chars) and
 python3 skills/agent-import/scripts/download.py <CODE> <DOWNLOAD_TOKEN>
 ```
 
-The script downloads through the **Fly internal network only** (`sc-agent-migration.fly.internal`). Public download is forbidden by relay policy. If the internal network is unreachable, import fails and must be retried from a Fly machine. The download token authorizes the download; it is single-use and expires with the code (1 hour TTL).
+The script downloads through the **Fly internal network only** (`sc-agent-migration.internal`). Public download is forbidden by relay policy. If the internal network is unreachable, import fails and must be retried from a Fly machine. The download token authorizes the download; it is single-use and expires with the code (1 hour TTL).
 
 On success the script extracts the bundle to `migration/` and prints a summary of what's included.
 

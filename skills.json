@@ -130,7 +130,7 @@
     {
       "name": "hyperliquid",
       "path": "hyperliquid/SKILL.md",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "description": "Trade perpetual futures and spot on Hyperliquid DEX"
     },
     {

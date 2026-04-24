@@ -1,6 +1,6 @@
 ---
 name: twitter
-version: 1.4.0
+version: 1.4.2
 description: "Twitter/X (x.com) data lookup \u2014 fetch tweets by URL or ID, search\
   \ tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
 tools:
@@ -27,6 +27,21 @@ metadata:
 user-invocable: false
 disable-model-invocation: false
 ---
+
+## 🔴 Routing Rule — Composio vs Native Twitter Tools
+
+**If the user has connected Twitter via Composio (OAuth), use Composio for account actions on their own profile:**
+
+| User intent | Use |
+|-------------|-----|
+| **Post a tweet / 发推** | Composio `TWITTER_CREATION_OF_A_POST` |
+| **Query own profile / 查自己的资料** | Composio `TWITTER_USER_LOOKUP_ME` |
+| **Delete own tweet / 删自己的推** | Composio `TWITTER_POST_DELETE_BY_POST_ID` |
+| Lookup someone else's profile or tweets | This skill (`twitter_user_info`, `twitter_user_tweets`) |
+| Search tweets about a topic | This skill (`twitter_search_tweets`) |
+| Fetch tweets by URL or ID | This skill (`twitter_get_tweets`) |
+
+Rationale: Composio uses the user's **own OAuth-connected Twitter account**, so it can post, delete, and access self-endpoints. This skill uses a separate API key that is **read-only** and cannot act on the user's behalf.
 
 ## 🔴 HARD LIMITS — READ FIRST
 > **⛔ CALL AT MOST 3 TWITTER TOOLS PER RESPONSE. STOP AFTER 3 CALLS.**
@@ -200,6 +215,7 @@ Most endpoints support cursor-based pagination. When a response includes a curso
 ## Notes
 - **API key required**: Set `TWITTER_API_KEY` environment variable. Tools will error without it.
 - **Read-only**: These tools only retrieve data. No posting, liking, or following.
+- **For posting, deleting, or accessing the user's own Twitter account**: use the **composio** skill (see `TWITTER_CREATION_OF_A_POST`, `TWITTER_USER_LOOKUP_ME`, `TWITTER_POST_DELETE_BY_POST_ID`). This skill cannot act on the user's behalf.
 - **Usernames**: Always pass without the `@` prefix (e.g. `"elonmusk"` not `"@elonmusk"`).
 - **Tweet IDs**: Use string format for tweet IDs to avoid integer overflow issues.
 - **Rate limits**: The API has rate limits. If you get rate-limited, wait before retrying.

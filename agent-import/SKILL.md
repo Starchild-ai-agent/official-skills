@@ -28,7 +28,7 @@ The user will provide two values from the source agent: a **CODE** (8 chars) and
 python3 sc-agent-migration/skills/agent-import/scripts/download.py <CODE> <DOWNLOAD_TOKEN>
 ```
 
-This downloads from the relay over the **public internet** — no special network required. The download token authorizes the download; it is single-use and expires with the code (1 hour TTL).
+The script first tries the **Fly internal network** (`sc-agent-migration.fly.internal`) so the relay records the machine's internal IPv6 — this is required for the migration reward. If the internal network is unreachable (e.g. running outside Fly), it automatically falls back to the public URL and prints a notice. The download token authorizes the download; it is single-use and expires with the code (1 hour TTL).
 
 On success the script extracts the bundle to `migration/` and prints a summary of what's included.
 

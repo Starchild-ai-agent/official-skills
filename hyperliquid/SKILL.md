@@ -1,6 +1,6 @@
 ---
 name: hyperliquid
-version: 1.2.0
+version: 1.3.0
 description: Trade perpetual futures and spot on Hyperliquid DEX
 tools:
   - hl_account
@@ -221,6 +221,26 @@ Returns balances array with coin, hold, total for USDC and all spot tokens.
 hl_market()                  # All mid prices
 hl_market(coin="BTC")        # BTC price + metadata (maxLeverage, szDecimals)
 ```
+
+### Side Parameter Convention (read this first)
+
+All order tools (`hl_order`, `hl_spot_order`, `hl_tpsl_order`, `hl_modify`)
+use the same `side` parameter. **Use `"buy"` or `"sell"`** — these are the
+documented values and should be your default.
+
+For safety, the tools also accept these aliases so a model guess doesn't
+reverse direction on a leveraged order:
+
+- Buy family:  `"buy"`, `"B"`, `"bid"`, `"long"`, `"L"`, `1`, `true`
+- Sell family: `"sell"`, `"S"`, `"A"`, `"ask"`, `"short"`, `0`, `false`
+
+**An unrecognized value will fail the call with a clear error** — the tool
+never defaults to sell (or buy) when `side` is ambiguous. This is intentional:
+silently reversing direction on a leveraged position is the worst failure mode.
+
+Note: Hyperliquid's L1 wire protocol uses `"B"` and `"A"` internally, but the
+tool interface here is `buy`/`sell`. Stick to `buy`/`sell` in your calls and
+you will never be surprised.
 
 ### Place a Perp Limit Order
 
@@ -689,3 +709,4 @@ hl_tpsl_order(coin="BTC", side="buy", size=0.1, trigger_px=92000, tpsl="tp")
 | "Minimum deposit is 5 USDC" | Hyperliquid requires at least $5 per deposit |
 | "Policy violation" | Load wallet-policy skill and propose wildcard policy |
 | "Action disabled when unified account is active" | Transfers blocked in unified mode (default). Just place orders directly |
+| "'side' must be one of: buy/sell ..." | You passed an unrecognized direction. Use `"buy"` or `"sell"`. See **Side Parameter Convention** above |

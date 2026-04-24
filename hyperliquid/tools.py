@@ -96,6 +96,72 @@ def _coerce_bool(value, field_name: str):
     raise ValueError(f"'{field_name}' must be a boolean")
 
 
+# Accepted aliases for the `side` parameter across all Hyperliquid order tools.
+# Some models emit Hyperliquid's L1 wire codes (B/A) or natural-language
+# directions (long/short, 做多/做空) instead of the documented buy/sell.
+# Normalizing here is safer than silently falling back to sell when the input
+# doesn't match the literal "buy" — accidental direction reversal on a
+# leveraged order is the worst failure mode we can produce.
+_SIDE_BUY_ALIASES = frozenset({
+    "buy", "b", "bid", "long", "l", "做多",
+    "1", "true",  # some models stringify booleans when unsure
+})
+_SIDE_SELL_ALIASES = frozenset({
+    "sell", "s", "a", "ask", "short", "做空",
+    "0", "false",
+})
+
+
+def _coerce_side(value, field_name: str = "side") -> bool:
+    """Normalize a `side` parameter into a boolean ``is_buy``.
+
+    Accepts the documented ``buy``/``sell`` plus common aliases that models
+    reach for when they guess:
+
+      - Buy family:  buy, B, bid, long, L, 做多, 1, true
+      - Sell family: sell, S, A, ask, short, 做空, 0, false
+
+    Also accepts a real ``bool`` (True → buy, False → sell) — some tool
+    runtimes pre-coerce boolean-looking strings.
+
+    Raises ``ValueError`` for anything else. NEVER falls back to a default —
+    on a leveraged order, guessing the wrong direction is catastrophic.
+    """
+    # Pre-coerced boolean from the tool runtime or an explicit caller.
+    if isinstance(value, bool):
+        return value
+
+    if value is None:
+        raise ValueError(f"'{field_name}' is required (one of: buy, sell)")
+
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if value == 1:
+            return True
+        if value == 0:
+            return False
+        raise ValueError(
+            f"'{field_name}' numeric must be 1 (buy) or 0 (sell); got {value!r}"
+        )
+
+    if isinstance(value, str):
+        s = value.strip().lower()
+        if not s:
+            raise ValueError(f"'{field_name}' is required (one of: buy, sell)")
+        if s in _SIDE_BUY_ALIASES:
+            return True
+        if s in _SIDE_SELL_ALIASES:
+            return False
+        raise ValueError(
+            f"'{field_name}' must be one of: buy/sell (also accepted: "
+            f"B/A, long/short, 做多/做空); got {value!r}"
+        )
+
+    raise ValueError(
+        f"'{field_name}' must be a string like 'buy' or 'sell'; "
+        f"got {type(value).__name__}"
+    )
+
+
 # ── Info Tools ───────────────────────────────────────────────────────────────
 
 
@@ -693,7 +759,11 @@ class HLOrderTool(BaseTool):
 
 Parameters:
 - coin: Asset name (required, e.g. "BTC", "ETH", "xyz:NVDA")
-- side: "buy" or "sell" (required)
+- side: Direction. **Use "buy" or "sell"** — these are the documented values.
+        Aliases are also accepted as a safety net (B/A, long/short, 做多/做空)
+        but "buy"/"sell" is strongly preferred for clarity and auditability.
+        An unrecognized value will FAIL the call rather than default, to
+        prevent accidental direction reversal on leveraged orders.
 - size: Order size in base asset (required, e.g. 0.01 for 0.01 BTC)
 - price: Limit price (optional — omit for market order)
 - order_type: "limit" (GTC, default), "ioc" (fill-or-kill), "alo" (post-only)
@@ -769,8 +839,14 @@ Returns: order status with oid, filled size, price"""
             if order_type not in {"limit", "ioc", "alo"}:
                 return ToolResult(success=False, error="'order_type' must be one of: limit, ioc, alo")
 
+            is_buy = _coerce_side(side)
+            logger.info(
+                "hl_order: coin=%s side_raw=%r → is_buy=%s size=%s price=%s "
+                "order_type=%s reduce_only=%s",
+                coin, side, is_buy, size, price, order_type, reduce_only,
+            )
+
             client = _get_client()
-            is_buy = side.lower() == "buy"
             data = await client.place_order(
                 coin=coin,
                 is_buy=is_buy,
@@ -799,7 +875,9 @@ class HLSpotOrderTool(BaseTool):
 
 Parameters:
 - coin: Token name (required, e.g. "PURR", "HYPE")
-- side: "buy" or "sell" (required)
+- side: Direction. **Use "buy" or "sell"** — these are the documented values.
+        Aliases accepted (B/A, long/short, 做多/做空) but "buy"/"sell" is
+        preferred. Unknown values FAIL rather than default.
 - size: Order size in base token (required)
 - price: Limit price (optional — omit for market order)
 - order_type: "limit" (GTC, default), "ioc" (fill-or-kill), "alo" (post-only)
@@ -867,8 +945,14 @@ Returns: order status with oid, filled size, price"""
             if order_type not in {"limit", "ioc", "alo"}:
                 return ToolResult(success=False, error="'order_type' must be one of: limit, ioc, alo")
 
+            is_buy = _coerce_side(side)
+            logger.info(
+                "hl_spot_order: coin=%s side_raw=%r → is_buy=%s size=%s price=%s "
+                "order_type=%s",
+                coin, side, is_buy, size, price, order_type,
+            )
+
             client = _get_client()
-            is_buy = side.lower() == "buy"
             data = await client.place_order(
                 coin=coin,
                 is_buy=is_buy,
@@ -903,7 +987,10 @@ class HLTPSLOrderTool(BaseTool):
 
 Parameters:
 - coin: Asset name (required, e.g. "BTC", "ETH", "xyz:NVDA")
-- side: "buy" or "sell" (required) - direction to close the position
+- side: Direction to close the position. **Use "buy" or "sell"** — these are
+        the documented values. For a long position, use "sell" to close; for a
+        short, use "buy". Aliases accepted (B/A, long/short, 做多/做空) but
+        "buy"/"sell" is preferred. Unknown values FAIL rather than default.
 - size: Order size in base asset (required, e.g. 0.01 for 0.01 BTC)
 - trigger_px: Price that triggers the order (required)
 - tpsl: "tp" for take profit, "sl" for stop loss (required)
@@ -1011,14 +1098,20 @@ Returns: order status with oid, trigger details"""
                 if limit_px <= 0:
                     return ToolResult(success=False, error="'limit_px' must be positive when provided")
 
-            client = _get_client()
-            is_buy = side.lower() == "buy"
+            is_buy = _coerce_side(side)
 
             # For trigger orders: always pass a limit price
             # - For market triggers: use the trigger price as limit (matches SDK)
             # - For limit triggers: use the specified limit price
             price = trigger_px if is_market else (limit_px or trigger_px)
 
+            logger.info(
+                "hl_tpsl_order: coin=%s side_raw=%r → is_buy=%s tpsl=%s "
+                "size=%s trigger_px=%s is_market=%s reduce_only=%s",
+                coin, side, is_buy, tpsl, size, trigger_px, is_market, reduce_only,
+            )
+
+            client = _get_client()
             data = await client.place_order(
                 coin=coin,
                 is_buy=is_buy,
@@ -1146,7 +1239,9 @@ class HLModifyTool(BaseTool):
 Parameters:
 - order_id: Order ID to modify (required)
 - coin: Asset name (required, e.g. "BTC", "xyz:NVDA")
-- side: "buy" or "sell" (required)
+- side: Direction. **Use "buy" or "sell"** — these are the documented values.
+        Aliases accepted (B/A, long/short, 做多/做空) but "buy"/"sell" is
+        preferred. Unknown values FAIL rather than default.
 - size: New size (required)
 - price: New price (required)
 
@@ -1209,8 +1304,14 @@ Returns: modified order confirmation"""
             if price <= 0:
                 return ToolResult(success=False, error="'price' must be positive")
 
+            is_buy = _coerce_side(side)
+            logger.info(
+                "hl_modify: order_id=%s coin=%s side_raw=%r → is_buy=%s "
+                "size=%s price=%s",
+                order_id, coin, side, is_buy, size, price,
+            )
+
             client = _get_client()
-            is_buy = side.lower() == "buy"
             data = await client.modify_order(
                 oid=order_id,
                 coin=coin,

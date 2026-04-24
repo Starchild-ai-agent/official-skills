@@ -25,10 +25,10 @@ When user provides a migration code and download token:
 The user will provide two values from the source agent: a **CODE** (8 chars) and a **DOWNLOAD_TOKEN**.
 
 ```bash
-python3 sc-agent-migration/skills/agent-import/scripts/download.py <CODE> <DOWNLOAD_TOKEN>
+python3 skills/agent-import/scripts/download.py <CODE> <DOWNLOAD_TOKEN>
 ```
 
-The script first tries the **Fly internal network** (`sc-agent-migration.fly.internal`) so the relay records the machine's internal IPv6 — this is required for the migration reward. If the internal network is unreachable (e.g. running outside Fly), it automatically falls back to the public URL and prints a notice. The download token authorizes the download; it is single-use and expires with the code (1 hour TTL).
+The script downloads through the **Fly internal network only** (`sc-agent-migration.fly.internal`). Public download is forbidden by relay policy. If the internal network is unreachable, import fails and must be retried from a Fly machine. The download token authorizes the download; it is single-use and expires with the code (1 hour TTL).
 
 On success the script extracts the bundle to `migration/` and prints a summary of what's included.
 
@@ -152,6 +152,7 @@ rm -rf migration/ migration-bundle.tar.gz
 | `401 unauthorized` | Wrong or missing download token | Re-check the token from the source agent output |
 | `404 not found` | Code already used or never existed | Ask source agent to re-export |
 | `410 expired` | Code older than 1 hour | Ask source agent to re-export |
+| `403 internal_only` | Download attempted from non-Fly-internal network | Run import from a Fly machine / internal network |
 | `429 rate limited` | Too many failed attempts | Wait 1 hour |
 | Invalid tar.gz | Corrupted upload | Re-export from source agent |
 | No manifest.json | Invalid bundle structure | Bundle must have manifest.json at root |

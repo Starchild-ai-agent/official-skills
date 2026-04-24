@@ -5,7 +5,7 @@ Usage:
     python3 download.py <CODE> <DOWNLOAD_TOKEN>
 
 Both CODE and DOWNLOAD_TOKEN are printed by the source agent after export.
-The relay is reached over the public internet — no Fly network required.
+Download is internal-only: relay accepts requests from Fly internal network only.
 """
 
 import json
@@ -16,15 +16,9 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-# Internal URL is tried first so the download is recorded under the machine's
-# Fly-internal IPv6 (fdaa::/16).  This is required for the migration reward
-# system: credit-api looks up completion by the machine's internal IPv6, and
-# the relay only records the downloader's actual client IP.
-# If running outside the Fly network the internal URL will fail; we fall back
-# to the public URL automatically (reward not grantable in that case, but the
-# bundle is still delivered).
+# Relay download is internal-only. Requests must originate from Fly internal
+# IPv6 (fdaa::/16), otherwise relay returns 403.
 RELAY_INTERNAL = "http://sc-agent-migration.fly.internal:8080"
-RELAY_PUBLIC = "https://sc-agent-migration.fly.dev"
 WORKSPACE = Path("/data/workspace")
 EXTRACT_DIR = WORKSPACE / "migration"
 
@@ -46,25 +40,15 @@ def _do_request(url: str, download_token: str, timeout: int) -> bytes:
 def download_bundle(code: str, download_token: str) -> bytes:
     """Download bundle from relay using the download token.
 
-    Tries the Fly-internal URL first (so the relay records the machine's
-    internal IPv6, which is required for the migration reward).  Falls back
-    to the public URL if the internal endpoint is unreachable (e.g. when
-    running outside the Fly network).
+    Internal-only mode: relay accepts download requests from Fly internal
+    network only. The request must reach `sc-agent-migration.fly.internal`.
     """
     internal_url = f"{RELAY_INTERNAL}/paste/{code}"
-    public_url = f"{RELAY_PUBLIC}/paste/{code}"
 
-    # --- attempt internal (short timeout: if not on Fly it will fail fast) ---
     try:
-        data = _do_request(internal_url, download_token, timeout=10)
-        print("(downloaded via Fly internal network — migration reward eligible)")
-        if len(data) > MAX_SIZE:
-            print(f"ERROR: Bundle too large ({len(data)} bytes, max {MAX_SIZE}).", file=sys.stderr)
-            sys.exit(1)
-        return data
+        data = _do_request(internal_url, download_token, timeout=20)
+        print("(downloaded via Fly internal network)")
     except urllib.error.HTTPError as e:
-        # HTTP errors from the relay are authoritative — don't fall back,
-        # surface the error directly.
         body = e.read().decode(errors="replace")
         try:
             msg = json.loads(body).get("message", body)
@@ -72,6 +56,8 @@ def download_bundle(code: str, download_token: str) -> bytes:
             msg = body
         if e.code == 401:
             print(f"ERROR: Invalid download token — {msg}", file=sys.stderr)
+        elif e.code == 403:
+            print("ERROR: Relay is internal-only. Run import from a Fly machine.", file=sys.stderr)
         elif e.code == 404:
             print(f"ERROR: Code not found — expired or already used.", file=sys.stderr)
         elif e.code == 410:
@@ -81,32 +67,13 @@ def download_bundle(code: str, download_token: str) -> bytes:
         else:
             print(f"ERROR: HTTP {e.code}: {msg}", file=sys.stderr)
         sys.exit(1)
-    except (urllib.error.URLError, OSError):
-        # Internal network unreachable — fall back to public URL.
-        print("(internal network unreachable, falling back to public URL — migration reward will not be granted)")
-
-    # --- fallback: public URL ---
-    try:
-        data = _do_request(public_url, download_token, timeout=60)
-    except urllib.error.HTTPError as e:
-        body = e.read().decode(errors="replace")
-        try:
-            msg = json.loads(body).get("message", body)
-        except Exception:
-            msg = body
-        if e.code == 401:
-            print(f"ERROR: Invalid download token — {msg}", file=sys.stderr)
-        elif e.code == 404:
-            print(f"ERROR: Code not found — expired or already used.", file=sys.stderr)
-        elif e.code == 410:
-            print(f"ERROR: Code expired — ask the source agent for a new export.", file=sys.stderr)
-        elif e.code == 429:
-            print(f"ERROR: Rate limited — too many failed attempts.", file=sys.stderr)
-        else:
-            print(f"ERROR: HTTP {e.code}: {msg}", file=sys.stderr)
-        sys.exit(1)
-    except urllib.error.URLError as e:
-        print(f"ERROR: Cannot reach relay: {e.reason}", file=sys.stderr)
+    except (urllib.error.URLError, OSError) as e:
+        print(
+            "ERROR: Cannot reach Fly internal relay endpoint. "
+            "Run import inside a Fly machine network.",
+            file=sys.stderr,
+        )
+        print(f"DETAIL: {e}", file=sys.stderr)
         sys.exit(1)
 
     if len(data) > MAX_SIZE:

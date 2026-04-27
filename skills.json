@@ -224,6 +224,12 @@
       "description": "Thinking partner for developing trading theses — from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, \"what do you think about\", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill)."
     },
     {
+      "name": "truenorth",
+      "path": "truenorth/SKILL.md",
+      "version": "1.0.0",
+      "description": "TrueNorth crypto market intelligence: technical analysis (RSI, MACD, Bollinger Bands), derivatives (funding rates, open interest), DeFi (TVL, fees), token performance, events, liquidation risk, token unlock, and more."
+    },
+    {
       "name": "twelvedata",
       "path": "twelvedata/SKILL.md",
       "version": "1.2.0",

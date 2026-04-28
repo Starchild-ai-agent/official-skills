@@ -227,7 +227,7 @@
       "name": "truenorth",
       "path": "truenorth/SKILL.md",
       "version": "1.0.0",
-      "description": "TrueNorth crypto market intelligence: technical analysis (RSI, MACD, Bollinger Bands), derivatives (funding rates, open interest), DeFi (TVL, fees), token performance, events, liquidation risk, token unlock, and more."
+      "description": "TrueNorth market intelligence for crypto, top 300 US equities, and commodities: technical analysis (RSI, MACD, Bollinger Bands), derivatives (funding rates, open interest), DeFi (TVL, fees), token performance, events, liquidation risk, token unlock, stock prices, financial statements, analyst estimates, commodity prices (gold, oil, gas), and more."
     },
     {
       "name": "twelvedata",

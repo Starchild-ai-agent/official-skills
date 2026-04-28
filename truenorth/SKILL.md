@@ -1,7 +1,7 @@
 ---
 name: truenorth
 version: 1.0.0
-description: "TrueNorth crypto market intelligence: technical analysis (RSI, MACD, Bollinger Bands), derivatives (funding rates, open interest), DeFi (TVL, fees), token performance, events, liquidation risk, token unlock, and more."
+description: "TrueNorth market intelligence for crypto, top 300 US equities, and commodities: technical analysis (RSI, MACD, Bollinger Bands), derivatives (funding rates, open interest), DeFi (TVL, fees), token performance, events, liquidation risk, token unlock, stock prices, financial statements, analyst estimates, commodity prices (gold, oil, gas), and more."
 metadata:
   starchild:
     emoji: "📈"
@@ -18,7 +18,7 @@ metadata:
 user-invocable: false
 ---
 
-# TrueNorth — crypto market intelligence
+# TrueNorth — crypto & equities market intelligence
 
 **Website:** [app.true-north.xyz](https://app.true-north.xyz/) | **CLI:** [@truenorth-ai/cli](https://www.npmjs.com/package/@truenorth-ai/cli) | **Source:** [GitHub](https://github.com/Advent-AI/truenorth-cli)
 
@@ -47,6 +47,9 @@ Users can ask about:
 - **Performance** — Top gainers, losers, performance rankings.
 - **Token Unlock** — Vesting schedules, upcoming unlocks.
 - **DeFi** — Protocol TVL, chain comparisons, fees, growth metrics.
+- **US Equities (Top 300)** — Real-time stock prices, OHLCV history, company profiles (FMP + SEC EDGAR), financial statements (income, balance sheet, cash flow, key stats), and analyst estimates (EPS/revenue consensus, price targets, buy/hold/sell ratings).
+- **Commodities** — OHLCV price history for gold, silver, platinum, palladium, oil (WTI/Brent), natural gas, copper, and heating oil.
+- **Market Indices** — VIX, S&P 500, NASDAQ, NDX, DJI, FTSE, DAX, N225, HSI, 10Y Treasury (TNX), DXY.
 
 Read-only intelligence — no trading, no wallets, no transfers.
 
@@ -60,6 +63,14 @@ Read-only intelligence — no trading, no wallets, no transfers.
 - Compare DeFi chain fees
 - Latest SOL news
 - What's my liq risk if I long BTC at 95k?
+- What's Apple's stock price right now?
+- Show me TSLA's price history for the last month
+- Give me MSFT's financial statements
+- What are analysts saying about NVDA?
+- Tell me about Google as a company
+- How's the S&P 500 doing today?
+- What's the price of gold this week?
+- Show me oil price history
 
 ## Execution reference
 

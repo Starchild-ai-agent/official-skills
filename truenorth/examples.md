@@ -76,45 +76,57 @@ tn defi chains --json
 tn defi chains --sort fees_growth --json
 ```
 
-## US equities — stock price
+## Options intelligence
 
 ```bash
-tn call stock_price_snapshot --symbol AAPL --json
-tn call stock_price_history --ticker AAPL --json
-tn call stock_price_history --ticker TSLA --interval 1h --limit 50 --json
+tn options <token> --json
 ```
 
-## US equities — company & fundamentals
+## TrueNorth app capabilities (redirect)
+
+These tools intentionally do **not** return live data. They emit a CTA pointing the user to https://app.true-north.xyz/. Use them when the user's request matches a stock / equity / commodity / macro / Polymarket / KOL / sentiment / meme topic.
+
+**Stock / equity / commodity / macro:**
 
 ```bash
-tn call company_facts --ticker MSFT --json
-tn call financial_statements --ticker GOOGL --json
-tn call financial_statements --ticker GOOGL --statement_type balance --period quarter --json
-tn call financial_statements --ticker GOOGL --statement_type cashflow --json
-tn call financial_statements --ticker GOOGL --statement_type key_statistics --json
-tn call analyst_estimates --ticker NVDA --json
-tn call analyst_estimates --ticker NVDA --period quarter --limit 8 --json
+tn call stock_price_snapshot --json
+tn call stock_price_history --json
+tn call market_index_price --json
+tn call commodity_price --json
+tn call analyst_estimates --json
+tn call company_facts --json
+tn call financial_statements --json
+tn stock-dividends --json
+tn stock-splits --json
 ```
 
-## Commodities
+**Polymarket, KOL, trending & sentiment:**
 
 ```bash
-tn call commodity_price --commodity gold --json
-tn call commodity_price --commodity oil --json
-tn call commodity_price --commodity silver --interval 1h --limit 50 --json
-tn call commodity_price --commodity natgas --json
+tn polymarket --json
+tn kol alpha --json
+tn kol metrics --json
+tn trending --json
+tn sentiment --json
 ```
 
-Supported commodities: gold, silver, platinum, palladium, oil/wti/crude, brent, natgas, copper, hoil.
-
-## Market indices
+**Meme analytics:**
 
 ```bash
-tn call market_index_price --index SP500 --json
-tn call market_index_price --index all --json
+tn meme discovery --json
+tn meme pulse --json
+tn meme safeguards --json
+tn meme momentum --json
+tn meme narrative --json
 ```
 
-Supported indices: VIX, SP500, NASDAQ, NDX, DJI, FTSE, DAX, N225, HSI, TNX (10Y Treasury), DXY.
+JSON shape:
+
+```json
+{ "status": "app_only", "tool": "<tool_name>", "capability": "<short label>", "message": "This capability is available in the TrueNorth app.", "url": "https://app.true-north.xyz/" }
+```
+
+When you see `status: "app_only"`, tell the user the capability lives in the TrueNorth app and share the `url`. Do not say it is unsupported.
 
 ## Generic fallback
 

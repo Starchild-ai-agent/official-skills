@@ -242,6 +242,12 @@
       "description": "Twitter/X (x.com) data lookup \\u2014 fetch tweets by URL or ID, search\\"
     },
     {
+      "name": "video",
+      "path": "video/SKILL.md",
+      "version": "3.0.0",
+      "description": "End-to-end video generation via fal.ai through Starchild paid proxy. Covers text-to-video, image-to-video, video-to-video, model selection, billing, polling, and serving local reference assets via a public preview."
+    },
+    {
       "name": "wallet",
       "path": "wallet/SKILL.md",
       "version": "3.5.0",

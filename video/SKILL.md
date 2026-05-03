@@ -1,6 +1,6 @@
 ---
 name: video
-version: 3.0.0
+version: 3.1.0
 description: "End-to-end video generation via fal.ai through Starchild paid proxy. Covers text-to-video, image-to-video, video-to-video, model selection, billing, polling, and serving local reference assets via a public preview."
 metadata:
   starchild:
@@ -33,6 +33,32 @@ result = generate_video(
 ```
 
 `generate_video` automatically: submits → polls → fetches result → downloads mp4 to `output/videos/`.
+
+### Delivering the result to the user — IMPORTANT
+
+**Never hand the user the raw `video_url` (e.g. `https://*.fal.media/.../*.mp4`).** fal serves these files with `Content-Security-Policy: sandbox; default-src 'none'`, which means:
+
+- Opening the link in a browser shows a **blank page** (no inline player triggered).
+- Embedding via `<video>` / `<iframe>` is blocked by CSP.
+- There is no `Content-Disposition: attachment` header, so the browser does not auto-download either.
+- URL-side tweaks (query params, `?download=1`, etc.) **cannot fix this** — only a server-side header change would, and we don't control fal's CDN.
+
+The only reliable user-facing delivery path is the **already-downloaded local file**:
+
+1. Use `result["local_path"]` (e.g. `output/videos/xxx.mp4`) — `generate_video` always downloads on success.
+2. Tell the user the file is saved to `output/videos/<filename>` and is viewable in the workspace file panel / file browser.
+3. On Web channel, also embed it inline so the user can preview it in chat:
+   ```markdown
+   ![video](output/videos/<filename>.mp4)
+   ```
+   (or link as `[video](output/videos/<filename>.mp4)` — the workspace serves these directly with the right headers).
+4. On Telegram / WeChat: send the file via `send_to_telegram(file_path="output/videos/...", message_type="video")` or `send_to_wechat(file_path="output/videos/...", message_type="video")`.
+
+If the download somehow failed (`local_path` missing) — re-fetch with:
+```bash
+curl -L -o output/videos/<filename>.mp4 "<video_url>"
+```
+Then deliver the local path. Still **do not** give the user the raw fal URL as the primary deliverable.
 
 ---
 
@@ -155,6 +181,7 @@ Use this when an earlier `generate_video` call timed out or you only have a `req
 | `HTTP 403 endpoint_not_allowed` | sc-proxy only allows approved fal video endpoints; pick one from the model table |
 | Generation `FAILED` upstream | Shorten prompt, drop unusual tokens, retry once before changing model |
 | Job stuck `IN_PROGRESS` >15 min | Save `request_id`, resume later with `poll_status.py` |
+| User reports the fal.media link "shows nothing" / "blank page" | Expected — fal serves with `CSP: sandbox; default-src 'none'`. Deliver the local file at `result["local_path"]` instead of the raw URL (see §1). |
 
 ---
 

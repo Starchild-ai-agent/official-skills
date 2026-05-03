@@ -8,12 +8,6 @@
       "description": "1inch DEX aggregator — EVM same-chain swap, SOL↔EVM cross-chain Fusion+, limit orders. Native tools, no Fly dependency, no aiohttp."
     },
     {
-      "name": "PANews",
-      "path": "PANews/SKILL.md",
-      "version": "1.0.0",
-      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
-    },
-    {
       "name": "aave",
       "path": "aave/SKILL.md",
       "version": "1.0.0",
@@ -164,6 +158,12 @@
       "description": "Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart"
     },
     {
+      "name": "PANews",
+      "path": "PANews/SKILL.md",
+      "version": "1.0.0",
+      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
+    },
+    {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "5.0.0",
@@ -244,7 +244,7 @@
     {
       "name": "video",
       "path": "video/SKILL.md",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "description": "End-to-end video generation via fal.ai through Starchild paid proxy. Covers text-to-video, image-to-video, video-to-video, model selection, billing, polling, and serving local reference assets via a public preview."
     },
     {

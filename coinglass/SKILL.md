@@ -1,81 +1,53 @@
 ---
 name: coinglass
-version: 3.0.5
-description: Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data
-tools:
-  # Basic Derivatives (7 tools)
-  - funding_rate
-  - long_short_ratio
-  - cg_open_interest
-  - cg_liquidations
-  - cg_liquidation_analysis
-  - cg_supported_coins
-  - cg_supported_exchanges
-
-  # Advanced Long/Short Ratios (6 tools)
-  - cg_global_account_ratio
-  - cg_top_account_ratio
-  - cg_top_position_ratio
-  - cg_taker_exchanges
-  - cg_net_position
-  - cg_net_position_v2
-
-  # Advanced Liquidations (4 tools)
-  - cg_coin_liquidation_history
-  - cg_pair_liquidation_history
-  - cg_liquidation_coin_list
-  - cg_liquidation_orders
-
-  # Hyperliquid Whale Tracking (4 tools)
-  - cg_hyperliquid_whale_alerts
-  - cg_hyperliquid_whale_positions
-  - cg_hyperliquid_positions_by_coin
-  - cg_hyperliquid_position_distribution
-
-  # Futures Market Data (5 tools)
-  - cg_coins_market_data
-  - cg_pair_market_data
-  - cg_ohlc_history
-  - cg_taker_volume_history
-  - cg_aggregated_taker_volume
-
-  # Volume & Flow Analysis (4 tools)
-  - cg_cumulative_volume_delta
-  - cg_coin_netflow
-  - cg_whale_transfers
-
-  # Bitcoin ETF Data (5 tools)
-  - cg_btc_etf_flows
-  - cg_btc_etf_premium_discount
-  - cg_btc_etf_history
-  - cg_btc_etf_list
-  - cg_hk_btc_etf_flows
-
-  # Other ETF Data (8 tools)
-  - cg_eth_etf_flows
-  - cg_eth_etf_list
-  - cg_eth_etf_premium_discount
-  - cg_sol_etf_flows
-  - cg_sol_etf_list
-  - cg_xrp_etf_flows
-  - cg_xrp_etf_list
-  - cg_hk_eth_etf_flows
-
+version: 2.0.0
+description: Comprehensive crypto derivatives data - funding rates, open interest,
+  liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF
+  flows, futures market data
+delivery: script
+protected: true
 metadata:
   starchild:
-    emoji: "📈"
+    emoji: 📈
     skillKey: coinglass
     plan: professional
     api_version: v4
-    version: 3.0.5
+    version: 3.0.1
     total_tools: 37
     requires:
       env:
-        - COINGLASS_API_KEY
-
+      - COINGLASS_API_KEY
 user-invocable: false
 disable-model-invocation: false
 ---
+
+## Script Usage
+
+Script-mode skill — read this file, then invoke from a `bash` block:
+
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/coinglass")
+from exports import funding_rate, cg_open_interest, cg_liquidations
+
+print(funding_rate(symbol="BTC"))
+print(cg_open_interest(symbol="BTC"))
+EOF
+```
+
+Read `exports.py` for the full list of available functions and exact
+signatures. Common ones: `funding_rate`, `long_short_ratio`,
+`cg_open_interest`, `cg_liquidations`, `cg_liquidation_analysis`,
+`cg_global_account_ratio`, `cg_top_account_ratio`, `cg_top_position_ratio`,
+`cg_taker_exchanges`, `cg_net_position`, `cg_supported_coins`,
+`cg_supported_exchanges`, `cg_coins_market_data`, `cg_pair_market_data`,
+`cg_ohlc_history`, `cg_hyperliquid_whale_alerts`,
+`cg_hyperliquid_whale_positions`, `cg_taker_volume_history`,
+`cg_aggregated_taker_volume`, `cg_cumulative_volume_delta`,
+`cg_coin_netflow`, `cg_whale_transfers`, `cg_btc_etf_flows`,
+`cg_eth_etf_flows`, `cg_sol_etf_flows`.
+
 
 # Coinglass
 

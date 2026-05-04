@@ -200,6 +200,12 @@
       "description": "Create presentation slide decks as HTML and auto-export to 16:9 PDF. Use when the user asks to make a PPT, slide deck, presentation, or pitch deck. Final output is a PDF file — not PowerPoint format."
     },
     {
+      "name": "solana-dev",
+      "path": "solana-dev/SKILL.md",
+      "version": "1.1.0",
+      "description": "Use when user asks to build a Solana dapp, write an Anchor program, create a token, debug Solana errors, set up wallet connection, test my Solana program, deploy to devnet, or explain Solana concepts (rent, accounts, PDAs, CPIs, etc.). End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, LiteSVM/Mollusk/Surfpool testing, and security checklists. Integrates with the Solana MCP server for live documentation search. Prefers framework-kit (@solana/client + @solana/react-hooks) for UI, wallet-standard-first connection (incl. ConnectorKit), @solana/kit for client/RPC code, and @solana/web3-compat for legacy boundaries."
+    },
+    {
       "name": "taapi",
       "path": "taapi/SKILL.md",
       "version": "2.0.1",

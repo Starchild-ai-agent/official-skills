@@ -4,8 +4,8 @@
     {
       "name": "1inch",
       "path": "1inch/SKILL.md",
-      "version": "4.2.1",
-      "description": "1inch DEX aggregator — EVM same-chain swap, SOL↔EVM cross-chain Fusion+, limit orders. Native tools, no Fly dependency, no aiohttp."
+      "version": "2.1.0",
+      "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
     },
     {
       "name": "PANews",
@@ -238,8 +238,8 @@
     {
       "name": "twitter",
       "path": "twitter/SKILL.md",
-      "version": "1.4.2",
-      "description": "Twitter/X (x.com) data lookup \\u2014 fetch tweets by URL or ID, search\\"
+      "version": "2.0.0",
+      "description": "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
     },
     {
       "name": "video",

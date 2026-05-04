@@ -1,6 +1,6 @@
 ---
 name: taapi
-version: 2.0.0
+version: 2.0.1
 description: Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators
 delivery: script
 protected: true
@@ -44,6 +44,21 @@ Read `exports.py` directly for exact signatures.
 # TaAPI
 
 TaAPI provides technical analysis indicators including RSI, MACD, Bollinger Bands, support/resistance, and 200+ pre-calculated indicators. No local computation needed.
+
+
+## Function Reference (signatures)
+
+All functions are in `exports.py`. `exchange` defaults to `binance`.
+`symbol` uses slash format like `BTC/USDT`. `interval` accepts `1m` /
+`5m` / `15m` / `30m` / `1h` / `2h` / `4h` / `1d` / `1w`.
+
+| Function | Description |
+|---|---|
+| `indicator(name, symbol, interval, exchange='binance', backtrack=0, backtracks=None)` | Get a technical indicator. `name` = `rsi` / `macd` / `bbands` / `ema` / `sma` / `adx` / `stoch` / `atr` / `vwap` / etc (200+ supported). Returns dict like `{value: 67.78}` for single-output indicators or `{macd, signal, histogram}` for multi-output. |
+| `support_resistance(symbol, interval, exchange='binance', indicator_type='pivots')` | Compute support/resistance levels. `indicator_type` = `pivots` / `fibonacciretracement` / `donchianchannels` / etc. |
+
+`backtrack` returns a single historical bar N candles back.
+`backtracks` (int) returns an array of the last N candles.
 
 ## When to Use TaAPI
 

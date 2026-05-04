@@ -1,6 +1,6 @@
 ---
 name: twelvedata
-version: 2.0.0
+version: 2.0.1
 description: "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
 delivery: script
 protected: true
@@ -46,6 +46,26 @@ Available functions in `exports.py`: `twelvedata_price`, `twelvedata_quote`,
 `twelvedata_price_batch`, `twelvedata_search`, `twelvedata_stocks`,
 `twelvedata_forex_pairs`, `twelvedata_exchanges`. Read `exports.py`
 directly when you need exact signatures.
+
+
+## Function Reference (signatures)
+
+All functions are in `exports.py`. Symbols use TwelveData format (e.g. `AAPL`,
+`EUR/USD`, `XAU/USD`). Use `prepost=True` for pre/post-market data on
+US stocks.
+
+| Function | Description |
+|---|---|
+| `twelvedata_price(symbol, prepost=False)` | Current price for one symbol. |
+| `twelvedata_price_batch(symbols, prepost=False)` | Prices for multiple symbols (`symbols` = comma-separated string). |
+| `twelvedata_quote(symbol, prepost=False)` | Detailed quote: price, volume, 52w high/low, change %. |
+| `twelvedata_quote_batch(symbols, prepost=False)` | Detailed quotes for multiple symbols. |
+| `twelvedata_time_series(symbol, interval='1day', outputsize=30, start_date=None, end_date=None, prepost=False)` | OHLCV bars. `interval` = `1min`/`5min`/`15min`/`30min`/`1h`/`2h`/`4h`/`1day`/`1week`/`1month`. |
+| `twelvedata_eod(symbol, date=None, prepost=False)` | End-of-day price for a date (default: latest). |
+| `twelvedata_search(query)` | Search symbols by name or ticker. |
+| `twelvedata_stocks(exchange=None, country=None)` | List supported stocks (filterable). |
+| `twelvedata_forex_pairs()` | List all supported forex pairs. |
+| `twelvedata_exchanges()` | List supported exchanges. |
 
 ## Keyword → Tool Lookup
 

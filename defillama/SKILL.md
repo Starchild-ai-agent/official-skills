@@ -1,7 +1,7 @@
 ---
 name: defillama
 description: DefiLlama API integration for DeFi analytics - TVL, stablecoin yields, vault/APY ranking, protocol revenue, fees, DEX volume, chain flows, bridges, and treasury data. Best for DeFi research, stablecoin farming, yield strategy screening, and protocol/chain market intelligence.
-version: 2.2.0
+version: 2.2.1
 delivery: script
 protected: true
 ---
@@ -40,6 +40,54 @@ signatures.
 **Color**: #4A90D9 (Cold blue, 210°)
 
 Comprehensive DeFi data from DefiLlama's API ecosystem.
+
+
+## Function Reference (signatures)
+
+All functions are in `exports.py`. Call from a `bash` block after
+`sys.path.insert(0, "/data/workspace/skills/defillama")`.
+
+### Protocols & TVL
+| Function | Description |
+|---|---|
+| `protocols()` | List all protocols with current TVL, chain breakdown, category. Returns list of dicts. |
+| `protocol(slug)` | Detailed history for one protocol (slug from `protocols()`). |
+| `chains()` | All supported chains with current TVL. |
+| `chain_tvl_history(chain)` | Daily TVL series for one chain. |
+| `global_tvl_history()` | Global daily TVL series. |
+
+### Stablecoins
+| Function | Description |
+|---|---|
+| `stablecoins(include_prices=True)` | All stablecoins with circulating supply per chain. |
+| `stablecoin_chains()` | Per-chain stablecoin totals. |
+
+### Yields
+| Function | Description |
+|---|---|
+| `yield_pools()` | All yield pools with APY, TVL, project, chain. |
+| `yield_chart(pool_id)` | Historical APY/TVL for one pool (pool_id from `yield_pools()`). |
+
+### Volume / Fees / Revenue
+| Function | Description |
+|---|---|
+| `dex_overview(exclude_chart=True)` | Aggregated DEX volume across all chains. |
+| `dex_overview_chain(chain, exclude_chart=True)` | DEX volume for one chain. |
+| `fees_overview(exclude_chart=True)` | Aggregated fees+revenue across all protocols. |
+| `fees_overview_chain(chain, exclude_chart=True)` | Per-chain fees breakdown. |
+
+### Bridges
+| Function | Description |
+|---|---|
+| `bridges()` | List all bridges with volume stats. |
+| `bridge_chain_volume(chain)` | Bridge volume by chain. |
+| `bridge_volume(bridge_id, start_timestamp=None, end_timestamp=None)` | Time series for one bridge. |
+
+### Prices
+| Function | Description |
+|---|---|
+| `current_prices(coins)` | Current prices. `coins` = list/string like `"ethereum:0x...,coingecko:bitcoin"`. |
+| `historical_prices(coins, timestamp)` | Prices at a specific unix timestamp. |
 
 ## Matching Keywords (intent triggers)
 

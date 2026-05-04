@@ -1,6 +1,6 @@
 ---
 name: lunarcrush
-version: 2.0.0
+version: 2.0.1
 description: Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity
 delivery: script
 protected: true
@@ -45,6 +45,21 @@ Read `exports.py` directly for exact signatures.
 # LunarCrush
 
 LunarCrush provides social intelligence and sentiment data including Galaxy Score, AltRank, social volume, influencer activity, and trending topics. This is the crowd-mood layer.
+
+
+## Function Reference (signatures)
+
+All functions are in `exports.py`. Coin symbols are uppercase (`BTC`,
+`ETH`, `SOL`).
+
+| Function | Description |
+|---|---|
+| `lunar_coin(coin)` | Current social metrics: `galaxy_score`, `alt_rank`, `social_volume`, `social_dominance`, price, market_cap. Returns dict (not wrapped in `{data: ...}`). |
+| `lunar_coin_time_series(coin, bucket='day', interval='1m')` | Historical timeseries. `bucket` = `hour`/`day`/`week`. `interval` = `1d`/`1w`/`1m`/`3m`/`6m`/`1y`. |
+| `lunar_coin_meta(coin)` | Coin metadata (description, links, categories). |
+| `lunar_topic(topic)` | Social metrics for a topic/keyword (e.g. `bitcoin`, `defi`). |
+| `lunar_topic_posts(topic, limit=20)` | Recent posts mentioning the topic, sorted by engagement. |
+| `lunar_creator(network, id)` | Creator/influencer data. `network` = `twitter` / `youtube` / `reddit` / `tiktok`. `id` = handle without `@`. |
 
 ## When to Use LunarCrush
 

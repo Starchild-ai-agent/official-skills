@@ -1,11 +1,9 @@
 ---
 name: birdeye
-version: 1.0.1
+version: 2.0.0
 description: Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis.
-tools:
-  - birdeye_token_security
-  - birdeye_token_overview
-  - birdeye_wallet_networth
+delivery: script
+protected: true
 
 metadata:
   starchild:
@@ -17,6 +15,27 @@ metadata:
 user-invocable: false
 disable-model-invocation: false
 ---
+
+## Script Usage
+
+Script-mode skill — read this file, then invoke from a `bash` block:
+
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/birdeye")
+from exports import birdeye_token_overview, birdeye_token_security, birdeye_wallet_networth
+
+# SOL overview
+sol = birdeye_token_overview(address="So11111111111111111111111111111111111111112", chain="solana")
+print(json.dumps(sol, indent=2))
+EOF
+```
+
+Available functions in `exports.py`: `birdeye_token_security`,
+`birdeye_token_overview`, `birdeye_wallet_networth`. Read `exports.py`
+directly for exact signatures.
+
 
 # Birdeye
 

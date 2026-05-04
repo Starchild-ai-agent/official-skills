@@ -1,49 +1,41 @@
 ---
 name: coingecko
-version: 1.0.2
+version: 2.0.0
 description: CoinGecko crypto price data, charts, market discovery, and global stats
-tools:
-  - coin_price
-  - coin_ohlc
-  - coin_chart
-  - cg_trending
-  - cg_top_gainers_losers
-  - cg_new_coins
-  - cg_global
-  - cg_global_defi
-  - cg_categories
-  - cg_derivatives
-  - cg_derivatives_exchanges
-  - cg_coins_list
-  - cg_coins_markets
-  - cg_coin_data
-  - cg_coin_tickers
-  - cg_exchanges
-  - cg_exchange
-  - cg_exchange_tickers
-  - cg_exchange_volume_chart
-  - cg_nfts_list
-  - cg_nft
-  - cg_nft_by_contract
-  - cg_asset_platforms
-  - cg_exchange_rates
-  - cg_vs_currencies
-  - cg_categories_list
-  - cg_search
-  - cg_token_price
-  - cg_coin_by_contract
-
+delivery: script
+protected: true
 metadata:
   starchild:
-    emoji: "🦎"
+    emoji: 🦎
     skillKey: coingecko
     requires:
       env:
-        - COINGECKO_API_KEY
-
+      - COINGECKO_API_KEY
 user-invocable: false
 disable-model-invocation: false
 ---
+
+## Script Usage
+
+Script-mode skill — read this file, then invoke from a `bash` block:
+
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/coingecko")
+from exports import coin_price, cg_trending, cg_global
+
+print(coin_price(coin_ids="bitcoin,ethereum"))
+print(cg_trending())
+EOF
+```
+
+Read `exports.py` for the full list of available functions. Common ones:
+`coin_price`, `coin_ohlc`, `coin_chart`, `cg_trending`,
+`cg_top_gainers_losers`, `cg_new_coins`, `cg_global`, `cg_global_defi`,
+`cg_categories`, `cg_derivatives`, `cg_coins_markets`, `cg_coin_data`,
+`cg_coin_tickers`, `cg_search`, `cg_token_price`, `cg_coin_by_contract`.
+
 
 # CoinGecko Skill
 

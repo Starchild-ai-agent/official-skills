@@ -46,7 +46,7 @@
     {
       "name": "birdeye",
       "path": "birdeye/SKILL.md",
-      "version": "1.0.1",
+      "version": "2.0.0",
       "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis."
     },
     {
@@ -142,8 +142,8 @@
     {
       "name": "lunarcrush",
       "path": "lunarcrush/SKILL.md",
-      "version": "1.3.0",
-      "description": "Crypto non-structured data expert — social sentiment, news aggregation, content search, influencer tracking, and topic/category intelligence"
+      "version": "2.0.0",
+      "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity"
     },
     {
       "name": "mantle",
@@ -202,8 +202,8 @@
     {
       "name": "taapi",
       "path": "taapi/SKILL.md",
-      "version": "1.2.0",
-      "description": "Technical analysis indicators — RSI, MACD, Bollinger Bands, ADX, support/resistance, and 200+ pre-calculated indicators. Use when the user asks about ANY technical indicator for crypto."
+      "version": "2.0.0",
+      "description": "Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators"
     },
     {
       "name": "tg-bot-binding",

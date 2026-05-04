@@ -1,54 +1,42 @@
 ---
 name: debank
-version: 1.0.2
-description: DeBank blockchain data API - user portfolios, token balances, transaction history, and DeFi protocol positions
-tools:
-  - db_chain_list
-  - db_chain
-  - db_token
-  - db_token_history_price
-  - db_token_list_by_ids
-  - db_gas_market
-  - db_user_total_balance
-  - db_user_token_list
-  - db_user_all_token_list
-  - db_user_history_list
-  - db_user_all_history_list
-  - db_user_simple_protocol_list
-  - db_user_all_simple_protocol_list
-  - db_user_complex_protocol_list
-  - db_user_all_complex_protocol_list
-  - db_user_complex_app_list
-  - db_user_nft_list
-  - db_user_all_nft_list
-  - db_user_chain_balance
-  - db_user_token
-  - db_user_protocol
-  - db_user_used_chain_list
-  - db_user_token_authorized_list
-  - db_user_nft_authorized_list
-  - db_user_chain_net_curve
-  - db_user_total_net_curve
-  - db_protocol
-  - db_protocol_list
-  - db_protocol_all_list
-  - db_app_protocol_list
-  - db_pool
-  - db_token_top_holders
-  - db_pre_exec_tx
-  - db_explain_tx
-
+version: 2.0.0
+description: DeBank blockchain data API - user portfolios, token balances, transaction
+  history, and DeFi protocol positions
+delivery: script
+protected: true
 metadata:
   starchild:
-    emoji: "🏦"
+    emoji: 🏦
     skillKey: debank
     requires:
       env:
-        - DEBANK_API_KEY
-
+      - DEBANK_API_KEY
 user-invocable: false
 disable-model-invocation: false
 ---
+
+## Script Usage
+
+Script-mode skill — read this file, then invoke from a `bash` block:
+
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/debank")
+from exports import db_chain_list, db_user_total_balance, db_user_all_token_list
+
+print(db_chain_list()[:3])
+print(db_user_total_balance(user_addr="0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"))
+EOF
+```
+
+Read `exports.py` for the full list of `db_*` functions and exact
+signatures. Common ones: `db_chain_list`, `db_chain`, `db_token`,
+`db_user_total_balance`, `db_user_all_token_list`,
+`db_user_all_simple_protocol_list`, `db_user_all_complex_protocol_list`,
+`db_user_history_list`, `db_protocol`, `db_pre_exec_tx`, `db_explain_tx`.
+
 
 # DeBank
 

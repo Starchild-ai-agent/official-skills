@@ -43,12 +43,32 @@ def coin_price(coin_ids, timestamps=None, vs_currency="usd"):
     )
 
 def coin_ohlc(coin_id, days=30, vs_currency="usd"):
-    """Get OHLC candlestick data."""
-    return get_coin_ohlc_range_by_id(coin_id, days, vs_currency)
+    """Get OHLC candlestick data for the last N days.
+
+    Wraps get_coin_ohlc_range_by_id which expects unix timestamps.
+    """
+    import time as _time
+    to_ts = int(_time.time())
+    from_ts = to_ts - int(days) * 86400
+    return get_coin_ohlc_range_by_id(
+        coin_id, from_timestamp=from_ts, to_timestamp=to_ts
+    )
+
 
 def coin_chart(coin_id, days=30, vs_currency="usd"):
-    """Get price chart data (timestamp + price points)."""
-    return get_coin_historical_chart_range_by_id(coin_id, days, vs_currency)
+    """Get historical price chart for the last N days (timestamp + price points).
+
+    Wraps get_coin_historical_chart_range_by_id which expects unix timestamps.
+    """
+    import time as _time
+    to_ts = int(_time.time())
+    from_ts = to_ts - int(days) * 86400
+    return get_coin_historical_chart_range_by_id(
+        coin_id,
+        vs_currency=vs_currency,
+        from_timestamp=from_ts,
+        to_timestamp=to_ts,
+    )
 
 
 # ── Discovery tools ──

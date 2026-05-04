@@ -46,7 +46,7 @@
     {
       "name": "birdeye",
       "path": "birdeye/SKILL.md",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis."
     },
     {
@@ -76,7 +76,7 @@
     {
       "name": "coingecko",
       "path": "coingecko/SKILL.md",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "description": "CoinGecko crypto price data, charts, market discovery, and global stats"
     },
     {
@@ -106,13 +106,13 @@
     {
       "name": "debank",
       "path": "debank/SKILL.md",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "description": "DeBank blockchain data API - user portfolios, token balances, transaction"
     },
     {
       "name": "defillama",
       "path": "defillama/SKILL.md",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "description": "DefiLlama API integration for DeFi analytics - TVL, stablecoin yields, vault/APY ranking, protocol revenue, fees, DEX volume, chain flows, bridges, and treasury data. Best for DeFi research, stablecoin farming, yield strategy screening, and protocol/chain market intelligence."
     },
     {
@@ -142,7 +142,7 @@
     {
       "name": "lunarcrush",
       "path": "lunarcrush/SKILL.md",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity"
     },
     {
@@ -202,7 +202,7 @@
     {
       "name": "taapi",
       "path": "taapi/SKILL.md",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "description": "Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators"
     },
     {
@@ -232,7 +232,7 @@
     {
       "name": "twelvedata",
       "path": "twelvedata/SKILL.md",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "description": "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
     },
     {

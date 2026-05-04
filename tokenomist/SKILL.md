@@ -1,6 +1,6 @@
 ---
 name: tokenomist
-version: 2.0.0
+version: 2.0.1
 description: Tokenomist unlock/emission/allocation API skill. Use when users ask token unlock schedules, cliff unlock events, daily emissions, allocation breakdowns, or tokenomics supply pressure analytics.
 delivery: script
 protected: true
@@ -51,6 +51,117 @@ Read `exports.py` directly for exact signatures.
 # Tokenomist (Tokenomist API)
 
 Use this skill for token unlock timeline analysis.
+
+## Function Reference (full signatures + return shapes)
+
+All functions live in `exports.py`.
+
+### ⚠️ Field naming convention (READ THIS FIRST)
+
+**All Tokenomist response fields use camelCase, not snake_case.** The most
+common mistake: looking for `allocation_percentage` when the field is
+actually `trackedAllocationPercentage`. Always inspect the dict before
+scripting.
+
+### Function Signatures
+
+| Function | Signature |
+|---|---|
+| `tokenomist_token_list()` | List all supported tokens (id + symbol + name) |
+| `tokenomist_resolve_token(query)` | dict — `{match_type, token: {id, symbol, name, marketCap, ...}, candidates}`. Use this to convert a symbol like "ARB" into the canonical id "arbitrum" before other calls (most other endpoints accept either). |
+| `tokenomist_allocations(query)` | Full raw allocation data (granular, includes per-recipient breakdown when known) |
+| `tokenomist_allocations_summary(query)` | Aggregated allocation summary — recommended for analysis/charts |
+| `tokenomist_daily_emission(query, start=None, end=None)` | Daily emission schedule (date + amount) |
+| `tokenomist_unlock_events(query, start=None, end=None)` | Cliff unlock events list |
+| `tokenomist_token_overview(query, start=None, end=None, include_allocations=True, include_emission=True, include_events=True)` | Composite call — bundles overview + allocations + emission + events into one response. Use this for "give me everything about token X". |
+
+`start` / `end` accept ISO 8601 dates (`"2026-01-01"`) or unix
+timestamps. Omit both for "all available history".
+
+### Response Schemas
+
+`tokenomist_allocations_summary(query="ARB")`:
+```json
+{
+  "metadata": {"queryDate": "2026-05-04T..."},
+  "status": true,
+  "data": {
+    "name": "Arbitrum",
+    "symbol": "ARB",
+    "listedMethod": "INTERNAL",
+    "maxSupply": 10000000000,
+    "lastUpdatedDate": "2025-06-11T10:31:15Z",
+    "totalUnlockedAmount": 5410170736.76,
+    "totalLockedAmount": 1186004337.54,
+    "totalUntrackedAmount": 0,
+    "totalTBDLockedAmount": 3403750000,
+    "allocations": [
+      {
+        "allocationName": "Arbitrum DAO Treasury",
+        "allocationType": "TBD",
+        "standardAllocationName": "Reserve",
+        "allocationUnlockedAmount": 0,
+        "allocationLockedAmount": 3403750000,
+        "allocationAmount": 3403750000,
+        "trackedAllocationPercentage": 34.0375
+      },
+      ...
+    ]
+  }
+}
+```
+
+Common pitfalls in `allocations` items:
+- Percentage field: `trackedAllocationPercentage` (NOT `allocation_percentage` / `percentage` / `pct`)
+- Three separate amount fields: `allocationAmount` (total), `allocationUnlockedAmount`, `allocationLockedAmount`
+- Type field: `allocationType` — string values like `"TBD"`, `"Scheduled"`, `"Vested"`
+- Standard category name: `standardAllocationName` (e.g. "Reserve", "Founder / Team", "Private Investors")
+
+`tokenomist_unlock_events(query="ARB")`:
+```json
+{
+  "data": [
+    {
+      "eventDate": "2026-...",
+      "tokenAmount": ...,
+      "tokenAmountUSD": ...,
+      "allocationName": "Investors",
+      "allocationType": "Scheduled"
+    }
+  ]
+}
+```
+
+`tokenomist_daily_emission(query="ARB")`:
+```json
+{
+  "data": [
+    {"date": "2026-...", "amountEmitted": ..., "amountEmittedUSD": ...}
+  ]
+}
+```
+
+`tokenomist_resolve_token(query="ARB")`:
+```json
+{
+  "match_type": "exact_symbol",
+  "token": {
+    "id": "arbitrum",
+    "name": "Arbitrum",
+    "symbol": "ARB",
+    "listedMethod": "INTERNAL",
+    "marketCap": 721937871,
+    "circulatingSupply": 6150718438,
+    "maxSupply": 10000000000
+  },
+  "candidates": []
+}
+```
+
+`match_type` can be: `"exact_symbol"`, `"exact_id"`, `"exact_name"`,
+`"fuzzy"`, or `"none"`. When fuzzy, `candidates` lists alternative tokens
+to disambiguate.
+
 
 ## Version Policy (hard rule)
 

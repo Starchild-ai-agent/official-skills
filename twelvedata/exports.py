@@ -1,16 +1,29 @@
 """
-TwelveData skill exports — tool names match SKILL.md frontmatter.
+TwelveData skill exports — script-mode skill.
 
-Uses sync requests (proxied_get) instead of the async aiohttp client,
-so these work reliably in standalone task scripts.
+Usage from a bash block:
+    python3 - <<'EOF'
+    import sys
+    sys.path.insert(0, "/data/workspace/skills/twelvedata")
+    from exports import twelvedata_price, twelvedata_time_series
+    print(twelvedata_price(symbol="AAPL"))
+    EOF
 
-Usage in task scripts:
-    from core.skill_tools import twelvedata
-    aapl = twelvedata.twelvedata_price(symbol="AAPL")
-    series = twelvedata.twelvedata_time_series(symbol="AAPL", interval="1day", outputsize=30)
+Imports from sidecar.proxy_client (NOT core.http_client) so this skill
+stays runnable without the agent platform's core/* modules on PYTHONPATH.
 """
 import os
-from core.http_client import proxied_get
+
+# Make sidecar/ importable when the script is invoked directly via
+# `python3 -c` from the agent's bash tool. /app is already on PYTHONPATH
+# inside the container (set by entrypoint.sh), so `from sidecar...` works
+# in production. The fallback covers local-dev runs from outside /app.
+try:
+    from sidecar.proxy_client import proxied_get
+except ImportError:
+    # Local dev / running outside the deployed image: fall back to
+    # core.http_client which is identical. Skill still works either way.
+    from core.http_client import proxied_get
 
 API_KEY = os.environ.get("TWELVEDATA_API_KEY", "")
 BASE = "https://api.twelvedata.com"

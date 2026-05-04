@@ -1,18 +1,9 @@
 ---
 name: twelvedata
-version: 1.2.0
+version: 2.0.0
 description: "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
-tools:
-  - twelvedata_time_series
-  - twelvedata_price
-  - twelvedata_eod
-  - twelvedata_quote
-  - twelvedata_quote_batch
-  - twelvedata_price_batch
-  - twelvedata_search
-  - twelvedata_stocks
-  - twelvedata_forex_pairs
-  - twelvedata_exchanges
+delivery: script
+protected: true
 
 metadata:
   starchild:
@@ -29,6 +20,32 @@ disable-model-invocation: false
 # Twelve Data
 
 Stocks, forex, and commodities price data. **Traditional markets only — not for crypto.**
+
+## Script Usage
+
+This skill ships a single `exports.py` with all functions. Call it from a
+`bash` block:
+
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/twelvedata")
+from exports import twelvedata_price, twelvedata_quote, twelvedata_time_series
+
+# Single quote
+print(twelvedata_quote(symbol="AAPL"))
+
+# Time series (last 30 daily candles)
+series = twelvedata_time_series(symbol="AAPL", interval="1day", outputsize=30)
+print(json.dumps(series.get("values", [])[:3], indent=2))
+EOF
+```
+
+Available functions in `exports.py`: `twelvedata_price`, `twelvedata_quote`,
+`twelvedata_time_series`, `twelvedata_eod`, `twelvedata_quote_batch`,
+`twelvedata_price_batch`, `twelvedata_search`, `twelvedata_stocks`,
+`twelvedata_forex_pairs`, `twelvedata_exchanges`. Read `exports.py`
+directly when you need exact signatures.
 
 ## Keyword → Tool Lookup
 
@@ -135,8 +152,6 @@ Returns `premarket_change`, `premarket_change_percent`, `postmarket_change`, `po
 
 - `compact` — Last 30 data points (default, faster). Use for "最近走势".
 - `full` — Up to 5000 data points. Use for deep analysis / charting.
-
-⚠️ **Note:** The `outputsize` parameter 只接受 `"compact"` 或 `"full"` 字符串 — 传整数会报 `invalid_type` 错误。
 
 ## Proxy-Safe Usage
 

@@ -1,16 +1,30 @@
 """
 DefiLlama skill exports — common DeFi analytics endpoints.
 
-Usage in task scripts:
-    from core.skill_tools import defillama
-    protocols = defillama.protocols()
-    chains = defillama.chains()
-    yields = defillama.yield_pools()
-    dex = defillama.dex_overview()
-    fees = defillama.fees_overview()
+Usage from a bash block (script-mode skill):
+    python3 - <<'EOF'
+    import sys
+    sys.path.insert(0, "/data/workspace/skills/defillama")
+    from exports import protocols, yield_pools
+    print(protocols()[:3])
+    EOF
+
+Imports from sidecar.proxy_client (NOT core.http_client) so this skill
+stays runnable without the agent platform's core/* modules on PYTHONPATH.
 """
 import os
-from core.http_client import proxied_get
+import sys
+
+# Make sidecar/ importable when the script is invoked directly via
+# `python3 -c` from the agent's bash tool. /app is already on PYTHONPATH
+# inside the container (set by entrypoint.sh), so `from sidecar...` works
+# in production. The fallback covers local-dev runs from outside /app.
+try:
+    from sidecar.proxy_client import proxied_get
+except ImportError:
+    # Local dev / running outside the deployed image: fall back to
+    # core.http_client which is identical. Skill still works either way.
+    from core.http_client import proxied_get
 
 FREE_BASE = "https://api.llama.fi"
 BRIDGE_BASE = "https://bridges.llama.fi"

@@ -4,8 +4,8 @@
     {
       "name": "1inch",
       "path": "1inch/SKILL.md",
-      "version": "4.2.1",
-      "description": "1inch DEX aggregator — EVM same-chain swap, SOL↔EVM cross-chain Fusion+, limit orders. Native tools, no Fly dependency, no aiohttp."
+      "version": "2.1.0",
+      "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
     },
     {
       "name": "PANews",
@@ -46,7 +46,7 @@
     {
       "name": "birdeye",
       "path": "birdeye/SKILL.md",
-      "version": "1.0.1",
+      "version": "2.0.2",
       "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis."
     },
     {
@@ -76,14 +76,14 @@
     {
       "name": "coingecko",
       "path": "coingecko/SKILL.md",
-      "version": "1.0.2",
+      "version": "2.0.2",
       "description": "CoinGecko crypto price data, charts, market discovery, and global stats"
     },
     {
       "name": "coinglass",
       "path": "coinglass/SKILL.md",
-      "version": "3.0.5",
-      "description": "Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data"
+      "version": "3.0.1",
+      "description": "Comprehensive crypto derivatives data - funding rates, open interest,"
     },
     {
       "name": "composio",
@@ -106,13 +106,13 @@
     {
       "name": "debank",
       "path": "debank/SKILL.md",
-      "version": "1.0.2",
-      "description": "DeBank blockchain data API - user portfolios, token balances, transaction history, and DeFi protocol positions"
+      "version": "2.0.1",
+      "description": "DeBank blockchain data API - user portfolios, token balances, transaction"
     },
     {
       "name": "defillama",
       "path": "defillama/SKILL.md",
-      "version": "2.1.2",
+      "version": "2.2.1",
       "description": "DefiLlama API integration for DeFi analytics - TVL, stablecoin yields, vault/APY ranking, protocol revenue, fees, DEX volume, chain flows, bridges, and treasury data. Best for DeFi research, stablecoin farming, yield strategy screening, and protocol/chain market intelligence."
     },
     {
@@ -142,8 +142,8 @@
     {
       "name": "lunarcrush",
       "path": "lunarcrush/SKILL.md",
-      "version": "1.3.0",
-      "description": "Crypto non-structured data expert — social sentiment, news aggregation, content search, influencer tracking, and topic/category intelligence"
+      "version": "2.0.1",
+      "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity"
     },
     {
       "name": "mantle",
@@ -202,8 +202,8 @@
     {
       "name": "taapi",
       "path": "taapi/SKILL.md",
-      "version": "1.2.0",
-      "description": "Technical analysis indicators — RSI, MACD, Bollinger Bands, ADX, support/resistance, and 200+ pre-calculated indicators. Use when the user asks about ANY technical indicator for crypto."
+      "version": "2.0.1",
+      "description": "Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators"
     },
     {
       "name": "tg-bot-binding",
@@ -214,8 +214,8 @@
     {
       "name": "tokenomist",
       "path": "tokenomist/SKILL.md",
-      "version": "1.2.0",
-      "description": "Token unlock schedules, cliff events, daily emissions, allocation breakdowns, and supply pressure analytics via Tokenomist API"
+      "version": "2.0.1",
+      "description": "Tokenomist unlock/emission/allocation API skill. Use when users ask token unlock schedules, cliff unlock events, daily emissions, allocation breakdowns, or tokenomics supply pressure analytics."
     },
     {
       "name": "trading-strategy",
@@ -232,14 +232,20 @@
     {
       "name": "twelvedata",
       "path": "twelvedata/SKILL.md",
-      "version": "1.2.0",
+      "version": "2.0.1",
       "description": "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
     },
     {
       "name": "twitter",
       "path": "twitter/SKILL.md",
-      "version": "1.4.2",
-      "description": "Twitter/X (x.com) data lookup \\u2014 fetch tweets by URL or ID, search\\"
+      "version": "2.0.0",
+      "description": "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
+    },
+    {
+      "name": "video",
+      "path": "video/SKILL.md",
+      "version": "3.1.0",
+      "description": "End-to-end video generation via fal.ai through Starchild paid proxy. Covers text-to-video, image-to-video, video-to-video, model selection, billing, polling, and serving local reference assets via a public preview."
     },
     {
       "name": "wallet",

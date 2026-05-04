@@ -1,18 +1,65 @@
 """
-DeBank skill exports — tool names match SKILL.md frontmatter.
+DeBank skill exports — script-mode skill.
 
-Usage in task scripts:
-    from core.skill_tools import debank
-    balance = debank.db_user_total_balance(user_addr="0x...")
-    tokens = debank.db_user_all_token_list(user_addr="0x...")
-    chains = debank.db_chain_list()
+Usage from a bash block:
+    python3 - <<'EOF'
+    import sys
+    sys.path.insert(0, "/data/workspace/skills/debank")
+    from exports import db_chain_list, db_user_total_balance
+    print(db_chain_list())
+    EOF
+
+IMPORTANT NOTE on imports:
+This skill's tools/ contains files named token.py, chain.py, wallet.py,
+user.py — several would shadow Python stdlib modules if we naively put
+tools/ on sys.path. Specifically `import token` triggers a circular
+import via stdlib `tokenize`.
+
+Strategy: load tools/utils.py manually first (so its symbols are
+discoverable), then load each module by file path via importlib. This
+fully bypasses sys.path-based `import` resolution and avoids stdlib
+shadowing entirely.
+
+For tools/*.py that internally do `from utils import ...`, we register
+the loaded utils module under sys.modules['utils'] BEFORE loading any
+other tool, so their bare `from utils import ...` resolves to our copy
+rather than failing or hitting some other utils on the path.
 """
-from utils import debank_api_request, validate_chain_id
-import chain as _chain
-import token as _token
-import user as _user
-import protocol as _protocol
-import wallet as _wallet
+import os
+import sys
+import importlib.util
+
+_TOOLS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools")
+
+
+def _load(modname, register_as=None):
+    """Load tools/<modname>.py and optionally register in sys.modules."""
+    path = os.path.join(_TOOLS_DIR, f"{modname}.py")
+    spec = importlib.util.spec_from_file_location(
+        register_as or f"_debank_{modname}", path
+    )
+    mod = importlib.util.module_from_spec(spec)
+    if register_as:
+        # Register first so `from <register_as> import ...` works even
+        # while this module is still being executed (avoids cycles).
+        sys.modules[register_as] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# Step 1: load utils first and register under bare name 'utils' so the
+# subsequent tools/*.py files can do `from utils import debank_api_request`.
+_utils = _load("utils", register_as="utils")
+debank_api_request = _utils.debank_api_request
+validate_chain_id = _utils.validate_chain_id
+
+# Step 2: load each tool module. `_debank_*` namespace prevents stdlib
+# `token` from being shadowed.
+_chain = _load("chain")
+_token = _load("token")
+_user = _load("user")
+_protocol = _load("protocol")
+_wallet = _load("wallet")
 
 # --- Chain ---
 def db_chain_list():

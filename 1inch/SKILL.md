@@ -1,273 +1,243 @@
 ---
 name: 1inch
-version: 4.2.1
-description: 1inch DEX aggregator — EVM same-chain swap, SOL↔EVM cross-chain Fusion+, limit orders. Native tools, no Fly dependency, no aiohttp.
+version: 2.1.0
+description: Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service.
+delivery: script
+protected: true
 author: starchild
-tags: [1inch, dex, swap, evm, solana, limit-order, cross-chain]
-tools:
-  - oneinch_quote
-  - oneinch_tokens
-  - oneinch_check_allowance
-  - oneinch_approve
-  - oneinch_swap
-  - oneinch_cross_chain_quote
-  - oneinch_cross_chain_status
-  - oneinch_cross_chain_swap
-  - oneinch_sol_cross_chain_quote
-  - oneinch_sol_to_evm_swap
-  - oneinch_fusion_quote
-  - oneinch_fusion_swap
-  - oneinch_get_orders
-  - oneinch_get_order
-  - oneinch_create_limit_order
-  - oneinch_cancel_limit_order
+tags: [1inch, dex, swap, evm, script-first]
 metadata:
   starchild:
     emoji: "🦄"
     skillKey: 1inch
+    requires:
+      env: [ONEINCH_API_KEY, WALLET_SERVICE_URL]
 user-invocable: true
 disable-model-invocation: false
 ---
 
-# 🦄 1inch Skill v4.2.1
+# 1inch (Script-First, Install-and-Use)
 
-Same-chain swap · Fusion Mode (gasless, no native gas) · Cross-chain Fusion+ (EVM↔EVM + SOL↔EVM) · Limit Orders
+This skill is designed for your architecture: **do not rely on platform-injected tools**.
 
-## 🔑 Gas Chicken-and-Egg Problem — Solved
-
-> **Problem:** Standard swap requires native gas (ETH/POL). Users holding only USDC can't swap because they need ETH to pay for the approve+swap, but need to swap to get ETH.
-
-> **Solution — Fusion Mode:** `oneinch_fusion_quote` + `oneinch_fusion_swap`
-> Resolvers pay gas on both sides. Fee (~0.1–0.3%) is deducted from swap output. **No native token needed for the swap itself.**
->
-> ⚠️ **One-time caveat:** The first-ever ERC-20 approve still needs a tiny amount of native gas.
-> **Cheapest path:** Polygon — get 0.01 POL free from faucet → `oneinch_approve` once → all future Fusion swaps fully gasless.
-> Faucets: https://faucet.polygon.technology / https://faucets.chain.link/polygon
-
-**Architecture:** All tools are native functions in `exports.py`. `__init__.py` BaseTool/`register()` path is NOT used by the platform — platform skill-loader only reads `exports.py` top-level functions.  
-**Signing:** `_wallet_request("POST", "/agent/transfer", {...})` via platform internal API (broadcasts tx). Do NOT use `wallet_sign_transaction` (sign-only, never broadcasts).  
-**API:** All calls via sc-proxy (credentials auto-injected, zero user config).
+- ✅ Uses only skill-local scripts under `skills/1inch/scripts/`
+- ✅ Agent executes scripts via `bash` (`python3 ...`)
+- ✅ No `oneinch_*` tool calls required
 
 ---
 
-## ⛔ ROUTING RULES — READ FIRST
+## Why this version fixes “tool not found”
 
-```
-IF user asks: swap / 兑换 / 换币 / buy / sell (same chain)
-  AND user has native gas (ETH/POL/BNB etc.)
-  → oneinch_quote (preview) → oneinch_swap (execute)
+Old design depended on runtime tool registration (`oneinch_quote`, `oneinch_swap`, ...).
+If tool injection fails, agent is blocked.
 
-IF user asks: gasless swap / 无gas兑换 / no gas / only USDC no ETH
-  OR user has no native gas token (鸡蛋问题 / chicken-and-egg)
-  → oneinch_fusion_quote (preview) → oneinch_fusion_swap (execute)
-  ⚠️  One-time ERC-20 approve still needs gas. After that: fully gasless forever.
-  💡  On Polygon: get 0.01 POL free from faucet → approve once → Fusion gasless forever.
+New design uses deterministic local scripts:
 
-IF user asks: cross-chain / 跨链 / bridge swap (EVM↔EVM)
-  → oneinch_cross_chain_quote → oneinch_cross_chain_swap
+1. call 1inch HTTP API directly
+2. call wallet service directly (OIDC via `/.fly/api`)
+3. print JSON result
 
-IF user asks: SOL → EVM cross-chain / Solana 跨链到 ETH/ARB/BASE
-  → oneinch_sol_cross_chain_quote → oneinch_sol_to_evm_swap
-
-IF user asks: EVM → SOL cross-chain / 跨链到 Solana
-  → oneinch_cross_chain_quote(dst_chain="solana") → oneinch_cross_chain_swap
-
-⛔ IF user asks: Solana 内部 swap / SOL→USDC / Solana token swap (SAME CHAIN)
-  → DO NOT use 1inch. Use Jupiter skill instead.
-  → 1inch has NO Solana-internal swap API (no Router contract on Solana)
-
-IF user asks: limit order / 限价单 / 挂单 / 目标价格买卖
-  → oneinch_create_limit_order
-
-IF user asks: check my orders / 我的订单 / 挂单状态
-  → oneinch_get_orders / oneinch_get_order
-
-IF user asks: cancel order / 取消限价单
-  → oneinch_cancel_limit_order
-
-NEVER call bash or python3 scripts/ — use native tools only
-NEVER use wallet_transfer directly for swaps — always oneinch_swap
-```
+So after install, the agent always has a runnable path.
 
 ---
 
-## Tools
+## Files
 
-### Same-Chain Swap — Standard (5 tools, requires native gas)
-
-| Tool | Type | Purpose |
-|------|------|---------|
-| `oneinch_tokens` | READ | Search token addresses on a chain |
-| `oneinch_quote` | READ | Get swap quote (no tx) |
-| `oneinch_check_allowance` | READ | Check ERC-20 approval status |
-| `oneinch_approve` | WRITE | Approve token for router |
-| `oneinch_swap` | WRITE | Execute swap (best route across 200+ DEXes) |
-
-### Same-Chain Swap — Fusion Mode (2 tools, no native gas needed)
-
-| Tool | Type | Purpose |
-|------|------|---------|
-| `oneinch_fusion_quote` | READ | Gasless quote — resolver pays gas, fee from output |
-| `oneinch_fusion_swap` | WRITE | Gasless swap — no ETH/POL/BNB required |
-
-### Cross-Chain Fusion+ EVM↔EVM / EVM→SOL (3 tools)
-
-| Tool | Type | Purpose |
-|------|------|---------|
-| `oneinch_cross_chain_quote` | READ | Quote EVM↔EVM or EVM→Solana |
-| `oneinch_cross_chain_status` | READ | Check Fusion+ order status |
-| `oneinch_cross_chain_swap` | WRITE | Execute EVM↔EVM or EVM→SOL swap (~4-10min) |
-
-### Cross-Chain Fusion+ SOL→EVM (2 tools)
-
-| Tool | Type | Purpose |
-|------|------|---------|
-| `oneinch_sol_cross_chain_quote` | READ | Quote for Solana → EVM chain |
-| `oneinch_sol_to_evm_swap` | WRITE | Execute SOL→EVM swap, returns signed_tx for broadcast |
-
-### Limit Orders / Orderbook (4 tools)
-
-| Tool | Type | Purpose |
-|------|------|---------|
-| `oneinch_get_orders` | READ | List open limit orders for a wallet |
-| `oneinch_get_order` | READ | Get specific order by hash |
-| `oneinch_create_limit_order` | WRITE | Create & submit EIP-712 signed limit order |
-| `oneinch_cancel_limit_order` | WRITE | Cancel order on-chain |
+- `scripts/_oneinch_lib.py` — shared client + wallet/OIDC helpers
+- `scripts/tokens.py` — token search/list
+- `scripts/quote.py` — quote only
+- `scripts/check_allowance.py` — allowance check
+- `scripts/approve.py` — approve tx broadcast
+- `scripts/swap.py` — swap execution (optional auto-approve)
+- `scripts/run_swap_flow.py` — one-command flow (quote + optional approve + swap + post-trade balance verification)
 
 ---
 
-## Supported Chains
+## Environment
 
-`ethereum` · `arbitrum` · `base` · `optimism` · `polygon` · `bsc` · `avalanche` · `gnosis`
+Required:
+- `ONEINCH_API_KEY`
+- `WALLET_SERVICE_URL` (default fallback exists)
+- **sc-proxy connectivity** for 1inch API (**mandatory**)
 
-**Cross-chain also supports Solana** (chain_id=`501`, name=`"solana"`)  
-Solana internal swap is NOT supported — use **Jupiter skill** instead.
+Assumptions:
+- Running on Fly Machine with `/.fly/api` unix socket for OIDC token minting.
+
+### sc-proxy requirement (critical)
+
+This skill enforces 1inch calls through sc-proxy.
+
+- It reads proxy from `HTTP_PROXY/HTTPS_PROXY` first, else falls back to `PROXY_HOST` + `PROXY_PORT`.
+- If no proxy env is found, scripts fail fast with a clear error instead of silently direct-connecting.
 
 ---
 
-## Standard Swap Flow
+## Supported chains
 
+`ethereum, arbitrum, base, optimism, polygon, bsc, avalanche, gnosis`
+
+---
+
+## Agent execution rules (IMPORTANT)
+
+When user asks for 1inch actions, follow this exact pattern:
+
+1. **Never call `oneinch_*` tools**
+2. Run local scripts with `bash` + `python3 skills/1inch/scripts/<script>.py ...`
+3. Parse JSON output and respond with concise summary
+4. For write actions, always do post-check using wallet balance tools (if available) or rerun script-based checks
+
+### Canonical mapping
+
+- “查 token 地址 / 列 token” → `tokens.py`
+- “先报价 / 看能换多少” → `quote.py`
+- “检查授权” → `check_allowance.py`
+- “授权” → `approve.py`
+- “执行兑换” → `swap.py`
+
+---
+
+## Command examples
+
+### 1) Search token
+
+```bash
+python3 skills/1inch/scripts/tokens.py --chain polygon --search POL --limit 10
 ```
-1. oneinch_tokens(chain, search="USDC")     # find token address
-2. oneinch_check_allowance(chain, token)    # check if approved
-3. oneinch_approve(chain, token)            # approve if needed
-4. oneinch_quote(chain, src, dst, amount)   # preview rate
-5. oneinch_swap(chain, src, dst, amount)    # execute
+
+### 2) Quote: 1 USDC -> POL
+
+```bash
+python3 skills/1inch/scripts/quote.py --chain polygon --from USDC --to POL --amount 1
 ```
 
-## Limit Order Flow
+### 3) Check allowance (USDC)
 
-```
-1. oneinch_check_allowance(chain, maker_asset)   # check approval
-2. oneinch_approve(chain, maker_asset)            # approve if needed
-3. oneinch_create_limit_order(                    # submit order
-     chain, maker_asset, taker_asset,
-     making_amount, taking_amount,
-     expiry_seconds=86400
-   )
-4. oneinch_get_orders(chain)                      # check status later
-5. oneinch_cancel_limit_order(chain, order_hash)  # cancel if needed
+```bash
+python3 skills/1inch/scripts/check_allowance.py --chain polygon --token USDC
 ```
 
-## Cross-Chain Flow (EVM↔EVM or EVM→SOL)
+### 4) Approve USDC (unlimited)
 
+```bash
+python3 skills/1inch/scripts/approve.py --chain polygon --token USDC
 ```
-1. oneinch_approve(src_chain, src_token)              # 首次必须，每条链单独执行
-2. oneinch_cross_chain_quote(src_chain, dst_chain, src_token, dst_token, amount)
-3. oneinch_cross_chain_swap(...)   # 主会话直接调用，勿用 sessions_spawn（子任务无钱包）
-4. oneinch_cross_chain_status(order_hash)  # 查询状态
 
-# EVM → Solana: dst_chain="solana", receiver=<SOL base58 address>
-# Solana → EVM:
-1. oneinch_sol_cross_chain_quote(src_token, dst_chain, dst_token, amount)
-2. oneinch_sol_to_evm_swap(...)  # returns {order_hash, signed_tx_b64}
-   # broadcast signed_tx_b64 to Solana mainnet
+### 5) Swap: 1 USDC -> POL (auto-approve if needed)
+
+```bash
+python3 skills/1inch/scripts/swap.py --chain polygon --from USDC --to POL --amount 1 --slippage 1.0 --auto-approve
+```
+
+### 6) One-command full flow (recommended)
+
+```bash
+python3 skills/1inch/scripts/run_swap_flow.py --chain polygon --from USDC --to POL --amount 1 --slippage 1.0 --auto-approve
+```
+
+Tune retries when needed:
+
+```bash
+python3 skills/1inch/scripts/run_swap_flow.py --chain polygon --from USDC --to POL --amount 1 --slippage 1.0 --auto-approve --swap-retries 3 --swap-retry-backoff 2
 ```
 
 ---
 
-## Amount Units
+## Default workflow for “买 X USDC 的 POL”
 
-All amounts in **wei** (smallest unit):
-- 1 USDC = `1000000` (6 decimals)
-- 1 ETH/WETH = `1000000000000000000` (18 decimals)
-- Use `oneinch_tokens` to get decimals for any token
+Preferred deterministic sequence:
 
----
+1. `run_swap_flow.py --auto-approve`
+2. Read JSON result and report quote, tx submission result, and verification deltas
 
-## Error Handling
+Fallback manual sequence (if user asks step-by-step):
+1. `quote.py` (confirm expected output)
+2. `swap.py --auto-approve`
+3. Verify with fresh balances (before/after)
 
-| Error | Action |
-|-------|--------|
-| `Unknown chain` | Use supported chain name |
-| `needs_approval: true` | Run `oneinch_approve` first (approve each chain separately — ARB/BASE USDC need their own approve) |
-| `Policy violation` | Load `wallet-policy` skill, propose wildcard policy |
-| `1inch API 4xx` | Show raw error; check token address and chain |
-| `No transaction data` | Check src/dst address validity |
-| Cross-chain timeout | Use `oneinch_cross_chain_status(order_hash)` to poll later |
-| `No ethereum wallet configured` | `_get_wallet_address()` failed — check `/app/tools/wallet.py` `_wallet_request("GET", "/agent/wallet")` is reachable |
-| 429 Rate limit (cross-chain concurrent) | Add 20s delay between parallel swap launches; `_fusion_get/_fusion_post` should include backoff retry (P2) |
+If swap returns wallet policy rejection:
+- load `wallet-policy` skill
+- propose wildcard baseline (`DENY exportPrivateKey`, `ALLOW *`)
+- after user confirms, rerun swap command
 
 ---
 
-## ⚠️ Known Architecture Constraints
+## Error handling
 
-### 1. Platform只走 `exports.py`
-```
-✅ exports.py 顶层函数  →  native tool 注册成功
-❌ __init__.py register() / BaseTool  →  平台不走这条路径，工具 not found
-```
-**规则：** 所有新工具必须在 `exports.py` 定义顶层函数。`__init__.py` 的 `register()` 只保留 stub、不写业务逻辑。
-
-### 2. Tx 广播必须用 `/agent/transfer`，不能用 `/agent/sign-transaction`
-```python
-# ✅ 正确 — 签名 + 广播
-asyncio.run(_wallet_request("POST", "/agent/transfer", {
-    "to": ..., "data": ..., "value": ..., "amount": "0", "chain_id": cid
-}))
-
-# ❌ 错误 — 只签名，tx 从未发出，allowance 永远不更新
-asyncio.run(_wallet_request("POST", "/agent/sign-transaction", {...}))
-```
-
-### 3. Fusion+ API 域名必须用 `.com`
-```python
-FUSION_BASE = "https://api.1inch.com/fusion-plus"   # ✅
-# "https://api.1inch.dev/fusion-plus"               # ❌ 死域名
-```
-
-### 4. Fusion+ Quoter 必须用 v1.1
-```
-/quoter/v1.1/quote/receive   ✅
-/quoter/v1.0/quote/receive   ❌ 旧版，返回 404 或错误格式
-```
-
-### 5. `sessions_spawn` 子任务无法访问钱包签名
-跨链 swap 需要 `_wallet_request` 签名，子会话中无钱包实例。  
-**规则：** 跨链 swap 必须在主会话中直接调用工具，不能 `sessions_spawn`。
-
-### 6. 每条链 USDC 需单独 Approve
-ARB/BASE 的 USDC approve 独立于 ETH 主网，初次跨链前必须对每条链分别执行 `oneinch_approve`。
+- `Unknown chain` → ask user to choose supported chain
+- `1inch API 4xx/5xx` → show raw error; `run_swap_flow.py` automatically retries transient `/swap` 5xx (default: 2 retries with exponential backoff)
+- `Not enough <token> balance` from 1inch → likely symbol mapped to a different token variant (e.g. USDC.e vs USDC); rerun with explicit token address from `tokens.py`
+- `Wallet API 4xx/5xx` → show raw error, do not fabricate tx hash
+- `insufficient allowance` (without auto-approve) → rerun with `--auto-approve` or run `approve.py`
+- `policy` rejection → propose policy update then retry
 
 ---
 
-## 实测数据（ETH/ARB/BASE 两两双向，2025）
+## Notes
 
-| 方向 | 发送 | 到账 | 滑点 | 结算时间 |
-|------|------|------|------|---------|
-| ETH → ARB | 2 USDC | 1.871 USDC | 6.4% | 125s |
-| ARB → ETH | 2 USDC | 1.872 USDC | 6.4% | 92s |
-| ETH → BASE | 2 USDC | 1.856 USDC | 7.2% | 123s |
-| BASE → ETH | 2 USDC | 1.906 USDC | 4.7% | 110s |
-| ARB → BASE | 2 USDC | 1.944 USDC | 2.8% | 47s |
-| BASE → ARB | 2 USDC | 1.964 USDC | 1.8% | 79s |
-
-平均滑点：~4.9%（含跨链结算费）  
-平均结算：~96s
+- Amount input is **human units** (e.g. `--amount 1` = 1 USDC), script handles decimal conversion.
+- Token symbol resolution comes from 1inch `/tokens` on the selected chain.
+- If a symbol has multiple variants on a chain (e.g., `USDC` / `USDC.e`), prefer passing **token contract address** explicitly to avoid ambiguity.
+- For native token input, use `native` / `ETH`.
 
 ---
 
-## Key Addresses
+## Quick smoke test
 
-- 1inch Router v6 / LOP v4: `0x111111125421cA6dc452d289314280a0f8842A65`
-- Native ETH: `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`
+```bash
+python3 skills/1inch/scripts/quote.py --chain polygon --from USDC --to POL --amount 1
+```
+
+If this works, the skill is operational in script mode.
+
+---
+
+## Script Reference (CLI args)
+
+This skill exposes scripts (not Python functions). Run them via `bash` +
+`python3 skills/1inch/scripts/<name>.py <args>`. All scripts emit JSON on
+stdout — parse with `json.loads(...)` or just print the output.
+
+### Common arguments
+
+| Arg | Required | Notes |
+|---|---|---|
+| `--chain` | yes | One of `ethereum`, `arbitrum`, `base`, `optimism`, `polygon`, `bsc`, `avalanche`, `gnosis` |
+| `--from`, `--to` | yes (swap/quote) | Token symbol (`USDC`, `POL`, etc.) or contract address. Use `native` / `ETH` for native gas token. |
+| `--amount` | yes (swap/quote) | Human units (e.g. `1` = 1 USDC, decimal conversion handled internally) |
+| `--slippage` | optional | Percent (default `1.0`) |
+| `--token` | yes (allowance/approve) | Token symbol or address |
+| `--auto-approve` | optional flag | swap/run_swap_flow only — auto-broadcasts approve if allowance insufficient |
+| `--swap-retries` | optional | run_swap_flow only — retries on `/swap` 5xx (default `2`) |
+| `--swap-retry-backoff` | optional | run_swap_flow only — backoff seconds (default `1`) |
+
+### Scripts
+
+| Script | Purpose | Required args |
+|---|---|---|
+| `tokens.py` | List or search tokens on a chain | `--chain` + `--search SYM` and/or `--limit N` |
+| `quote.py` | Get quote (no broadcast) | `--chain --from --to --amount` |
+| `check_allowance.py` | Check ERC-20 allowance to 1inch router | `--chain --token` |
+| `approve.py` | Broadcast approve tx (unlimited) | `--chain --token` |
+| `swap.py` | Execute swap | `--chain --from --to --amount` (+ optional `--slippage`, `--auto-approve`) |
+| `run_swap_flow.py` | One-command quote + (auto-approve) + swap + post-trade balance check | Same as `swap.py` (+ optional retry args) |
+
+### Recommended flow
+
+For ANY user "swap X for Y" request, default to `run_swap_flow.py
+--auto-approve`. It handles the full chain end-to-end and verifies via
+wallet balance read after broadcast.
+
+If user asks "just quote, don't execute" → `quote.py` only.
+
+### Output schema (run_swap_flow.py)
+
+JSON with these top-level keys:
+- `quote` — `{fromToken, toToken, fromAmount, toAmount, estimatedGas, ...}`
+- `approve` — `{required, txHash, success}` (only if `--auto-approve`)
+- `swap` — `{txHash, success, error?}`
+- `verification` — `{from_balance_before, from_balance_after, to_balance_before, to_balance_after, delta_in, delta_out}`
+
+If wallet returns a policy rejection, `swap.success = false` and
+`swap.error` will mention `policy`. Load the `wallet-policy` skill,
+propose a wildcard baseline, then rerun.

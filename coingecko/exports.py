@@ -1,12 +1,21 @@
 """
-CoinGecko skill exports — tool names and signatures match SKILL.md / agent tools.
+CoinGecko skill exports — script-mode skill.
 
-Usage in task scripts:
-    from core.skill_tools import coingecko
-    prices = coingecko.coin_price(coin_ids="bitcoin,ethereum,solana")
-    ohlc = coingecko.coin_ohlc(coin_id="bitcoin", days=30)
-    trending = coingecko.cg_trending()
+Usage from a bash block:
+    python3 - <<'EOF'
+    import sys
+    sys.path.insert(0, "/data/workspace/skills/coingecko")
+    from exports import coin_price, cg_trending
+    print(coin_price(coin_ids="bitcoin,ethereum"))
+    EOF
 """
+import os, sys
+
+# tools/ contains all sub-modules; make them importable regardless of cwd.
+_TOOLS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools")
+if _TOOLS_DIR not in sys.path:
+    sys.path.insert(0, _TOOLS_DIR)
+
 from coin_prices import get_coin_prices_at_timestamps
 from coin_ohlc_range_by_id import get_coin_ohlc_range_by_id
 from coin_historical_chart_range_by_id import get_coin_historical_chart_range_by_id
@@ -34,12 +43,32 @@ def coin_price(coin_ids, timestamps=None, vs_currency="usd"):
     )
 
 def coin_ohlc(coin_id, days=30, vs_currency="usd"):
-    """Get OHLC candlestick data."""
-    return get_coin_ohlc_range_by_id(coin_id, days, vs_currency)
+    """Get OHLC candlestick data for the last N days.
+
+    Wraps get_coin_ohlc_range_by_id which expects unix timestamps.
+    """
+    import time as _time
+    to_ts = int(_time.time())
+    from_ts = to_ts - int(days) * 86400
+    return get_coin_ohlc_range_by_id(
+        coin_id, from_timestamp=from_ts, to_timestamp=to_ts
+    )
+
 
 def coin_chart(coin_id, days=30, vs_currency="usd"):
-    """Get price chart data (timestamp + price points)."""
-    return get_coin_historical_chart_range_by_id(coin_id, days, vs_currency)
+    """Get historical price chart for the last N days (timestamp + price points).
+
+    Wraps get_coin_historical_chart_range_by_id which expects unix timestamps.
+    """
+    import time as _time
+    to_ts = int(_time.time())
+    from_ts = to_ts - int(days) * 86400
+    return get_coin_historical_chart_range_by_id(
+        coin_id,
+        vs_currency=vs_currency,
+        from_timestamp=from_ts,
+        to_timestamp=to_ts,
+    )
 
 
 # ── Discovery tools ──

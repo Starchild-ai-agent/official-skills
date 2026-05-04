@@ -1,81 +1,53 @@
 ---
 name: coinglass
-version: 3.0.5
-description: Comprehensive crypto derivatives data - funding rates, open interest, liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF flows, futures market data
-tools:
-  # Basic Derivatives (7 tools)
-  - funding_rate
-  - long_short_ratio
-  - cg_open_interest
-  - cg_liquidations
-  - cg_liquidation_analysis
-  - cg_supported_coins
-  - cg_supported_exchanges
-
-  # Advanced Long/Short Ratios (6 tools)
-  - cg_global_account_ratio
-  - cg_top_account_ratio
-  - cg_top_position_ratio
-  - cg_taker_exchanges
-  - cg_net_position
-  - cg_net_position_v2
-
-  # Advanced Liquidations (4 tools)
-  - cg_coin_liquidation_history
-  - cg_pair_liquidation_history
-  - cg_liquidation_coin_list
-  - cg_liquidation_orders
-
-  # Hyperliquid Whale Tracking (4 tools)
-  - cg_hyperliquid_whale_alerts
-  - cg_hyperliquid_whale_positions
-  - cg_hyperliquid_positions_by_coin
-  - cg_hyperliquid_position_distribution
-
-  # Futures Market Data (5 tools)
-  - cg_coins_market_data
-  - cg_pair_market_data
-  - cg_ohlc_history
-  - cg_taker_volume_history
-  - cg_aggregated_taker_volume
-
-  # Volume & Flow Analysis (4 tools)
-  - cg_cumulative_volume_delta
-  - cg_coin_netflow
-  - cg_whale_transfers
-
-  # Bitcoin ETF Data (5 tools)
-  - cg_btc_etf_flows
-  - cg_btc_etf_premium_discount
-  - cg_btc_etf_history
-  - cg_btc_etf_list
-  - cg_hk_btc_etf_flows
-
-  # Other ETF Data (8 tools)
-  - cg_eth_etf_flows
-  - cg_eth_etf_list
-  - cg_eth_etf_premium_discount
-  - cg_sol_etf_flows
-  - cg_sol_etf_list
-  - cg_xrp_etf_flows
-  - cg_xrp_etf_list
-  - cg_hk_eth_etf_flows
-
+version: 2.0.1
+description: Comprehensive crypto derivatives data - funding rates, open interest,
+  liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF
+  flows, futures market data
+delivery: script
+protected: true
 metadata:
   starchild:
-    emoji: "📈"
+    emoji: 📈
     skillKey: coinglass
     plan: professional
     api_version: v4
-    version: 3.0.5
+    version: 3.0.1
     total_tools: 37
     requires:
       env:
-        - COINGLASS_API_KEY
-
+      - COINGLASS_API_KEY
 user-invocable: false
 disable-model-invocation: false
 ---
+
+## Script Usage
+
+Script-mode skill — read this file, then invoke from a `bash` block:
+
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/coinglass")
+from exports import funding_rate, cg_open_interest, cg_liquidations
+
+print(funding_rate(symbol="BTC"))
+print(cg_open_interest(symbol="BTC"))
+EOF
+```
+
+Read `exports.py` for the full list of available functions and exact
+signatures. Common ones: `funding_rate`, `long_short_ratio`,
+`cg_open_interest`, `cg_liquidations`, `cg_liquidation_analysis`,
+`cg_global_account_ratio`, `cg_top_account_ratio`, `cg_top_position_ratio`,
+`cg_taker_exchanges`, `cg_net_position`, `cg_supported_coins`,
+`cg_supported_exchanges`, `cg_coins_market_data`, `cg_pair_market_data`,
+`cg_ohlc_history`, `cg_hyperliquid_whale_alerts`,
+`cg_hyperliquid_whale_positions`, `cg_taker_volume_history`,
+`cg_aggregated_taker_volume`, `cg_cumulative_volume_delta`,
+`cg_coin_netflow`, `cg_whale_transfers`, `cg_btc_etf_flows`,
+`cg_eth_etf_flows`, `cg_sol_etf_flows`.
+
 
 # Coinglass
 
@@ -85,6 +57,146 @@ Coinglass provides the most comprehensive crypto derivatives and institutional d
 **Rate Limit**: 6000 requests/minute
 **API Version**: V4 (with V2 backward compatibility)
 **Total Tools**: 37 across 8 categories
+
+
+## Function Reference (full signatures + return shapes)
+
+All functions live in `exports.py`. Most return `Optional[List[Dict]]` or
+`Optional[Dict]`. None means the upstream call failed or returned empty —
+always check before indexing.
+
+### ⚠️ Field naming convention (READ THIS FIRST)
+
+CoinGlass v4 API uses **camelCase** for almost all data fields, with a few
+legacy snake_case exceptions in liquidation endpoints. Don't assume
+snake_case — `inspect` the dict before scripting.
+
+- camelCase: `openInterest`, `volUsd`, `longRate`, `shortVolUsd`,
+  `exchangeName`, `nextFundingTime`, `fundingIntervalHours`,
+  `oichangePercent`, `h4OIChangePercent`, `avgFundingRateBySymbol`,
+  `tokenAmount`, `liquidationUsd` (in some endpoints)
+- snake_case (legacy, only in `cg_liquidations`): `liquidation_usd`,
+  `longLiquidation_usd`, `shortLiquidation_usd`
+- `rate` fields (funding) are STRINGS with "+" / "-" / "%" — parse with
+  `float(r.rstrip('%').lstrip('+'))` to compare numerically
+- timestamps are millisecond unix epoch (e.g. `1777881600000`)
+
+### Funding & Open Interest
+
+| Function | Signature |
+|---|---|
+| `funding_rate(symbol, exchange=None)` | dict — keys: `symbol`, `exchange`, `rate` (str), `num_exchanges`, `exchanges_data` (list of {`exchangeName`, `rate`, `nextFundingTime`, `fundingIntervalHours`, `status`}) |
+| `cg_open_interest(symbol='BTC', interval='0')` | LIST of dicts (one per exchange) — keys: `symbol`, `openInterest`, `volUsd`, `oichangePercent`, `h4OIChangePercent`, `h24VolChangePercent`, `volChangePercent7d`, `avgFundingRateBySymbol`, `exchangeName`, `exchangeLogo` |
+
+### Long/Short Ratios
+
+| Function | Signature |
+|---|---|
+| `long_short_ratio(symbol='BTC', interval='h4')` | LIST — top item is aggregated; `list` field inside has per-exchange breakdown. Keys: `longRate`, `shortRate`, `longVolUsd`, `shortVolUsd`, `totalVolUsd`, `list` |
+| `cg_global_account_ratio(symbol='BTC', exchange='Binance', interval='1h')` | list of historical bars |
+| `cg_top_account_ratio(symbol='BTC', exchange='Binance', interval='1h')` | list — top trader account-count ratio |
+| `cg_top_position_ratio(symbol='BTC', exchange='Binance', interval='1h')` | list — top trader position-size ratio |
+| `cg_taker_exchanges(symbol='BTC', range_type='4h')` | list — taker buy/sell across exchanges |
+| `cg_net_position(symbol='BTC', exchange='Binance', interval='1h')` | list — net long-short USD over time |
+
+### Liquidations
+
+| Function | Signature |
+|---|---|
+| `cg_liquidations(symbol='BTC', time_type='h24')` | LIST of dicts (one per exchange + an `'All'` row first). Keys: `exchange`, `liquidation_usd`, `longLiquidation_usd`, `shortLiquidation_usd` (NOTE: snake_case legacy fields) |
+| `cg_liquidation_analysis(symbol='BTC', time_type='h24')` | dict — aggregated network-wide stats |
+| `cg_coin_liquidation_history(symbol='BTC', interval='h4')` | list — historical liq bars |
+| `cg_pair_liquidation_history(symbol='BTC', exchange='Binance', interval='h4')` | list — historical liq for one pair on one exchange |
+| `cg_liquidation_coin_list(symbol=None)` | list of all coins with liq summary |
+| `cg_liquidation_orders(symbol='BTC', exchange=None)` | list — recent individual liq orders |
+
+### Futures Market Data
+
+| Function | Signature |
+|---|---|
+| `cg_supported_coins()` | List[str] — symbols supported by CoinGlass |
+| `cg_supported_exchanges()` | list of exchange info dicts |
+| `cg_coins_market_data(symbol=None)` | list — current snapshot for all coins (or one if symbol given) |
+| `cg_pair_market_data(symbol='BTC', exchange=None)` | list — pair-level snapshot |
+| `cg_ohlc_history(symbol='BTC', interval='h4', exchange=None)` | list of OHLCV bars |
+
+### Hyperliquid Whale Tracking
+
+| Function | Signature |
+|---|---|
+| `cg_hyperliquid_whale_alerts()` | list — recent large-position alerts |
+| `cg_hyperliquid_whale_positions()` | list — current open whale positions |
+| `cg_hyperliquid_positions_by_coin(symbol='BTC')` | list — whales holding a specific coin |
+| `cg_hyperliquid_position_distribution(symbol='BTC')` | dict — long/short position-size distribution |
+
+### Volume / Flow
+
+| Function | Signature |
+|---|---|
+| `cg_taker_volume_history(symbol='BTC', exchange='Binance', interval='1h', limit=1000, start_time=None, end_time=None)` | list — taker buy/sell volume bars |
+| `cg_aggregated_taker_volume(symbol='BTC', interval='h4')` | list — aggregated across all exchanges |
+| `cg_cumulative_volume_delta(symbol='BTC', exchange='Binance', interval='1h', limit=1000, start_time=None, end_time=None)` | list — CVD bars |
+| `cg_coin_netflow(symbol=None)` | list — net inflow/outflow per coin |
+| `cg_whale_transfers()` | dict — recent on-chain large transfers |
+
+### ETF Flows
+
+| Function | Signature |
+|---|---|
+| `cg_btc_etf_flows()` | list — daily flows per US BTC ETF |
+| `cg_btc_etf_history(etf_ticker=None)` | list — historical AUM/flows |
+| `cg_btc_etf_list()` | list of BTC ETF tickers + AUM |
+| `cg_btc_etf_premium_discount()` | list — premium/discount % vs NAV |
+| `cg_hk_btc_etf_flows()` | list — Hong Kong BTC ETF flows |
+| `cg_eth_etf_flows()` / `cg_eth_etf_list()` / `cg_eth_etf_premium_discount()` / `cg_hk_eth_etf_flows()` | ETH ETF equivalents |
+| `cg_sol_etf_flows()` / `cg_sol_etf_list()` | SOL ETF data |
+| `cg_xrp_etf_flows()` / `cg_xrp_etf_list()` | XRP ETF data |
+
+### Sample responses (most-used functions)
+
+`funding_rate(symbol="BTC")`:
+```json
+{
+  "symbol": "BTC",
+  "exchange": "average",
+  "rate": "-0.0016%",
+  "num_exchanges": 21,
+  "exchanges_data": [
+    {"exchangeName": "Binance", "rate": "+0.0050%",
+     "nextFundingTime": 1777881600000, "fundingIntervalHours": 8, "status": 1}
+  ]
+}
+```
+
+`cg_liquidations(symbol="BTC", time_type="h24")`:
+```json
+[
+  {"exchange": "All", "liquidation_usd": 170497688.16,
+   "longLiquidation_usd": 8179073.80, "shortLiquidation_usd": 162318614.36},
+  {"exchange": "Bybit", "liquidation_usd": 40454694.98, ...}
+]
+```
+
+`cg_open_interest(symbol="BTC")`:
+```json
+[
+  {"symbol": "BTC", "openInterest": 61395303653.62, "volUsd": 56349328748.42,
+   "oichangePercent": 7.17, "h4OIChangePercent": 5.33,
+   "avgFundingRateBySymbol": -0.001874, "exchangeName": "Binance"}
+]
+```
+
+`long_short_ratio(symbol="BTC", interval="h4")`:
+```json
+[{
+  "symbol": "BTC", "longRate": 53.65, "shortRate": 46.35,
+  "longVolUsd": 12558668895.91, "shortVolUsd": 10848776476.99,
+  "totalVolUsd": 23407445372.91,
+  "list": [
+    {"exchangeName": "Binance", "longRate": 55.75, "shortRate": 44.25, ...}
+  ]
+}]
+```
 
 
 ## Tool Selection Guide

@@ -1,11 +1,9 @@
 ---
 name: birdeye
-version: 1.0.1
+version: 2.0.2
 description: Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis.
-tools:
-  - birdeye_token_security
-  - birdeye_token_overview
-  - birdeye_wallet_networth
+delivery: script
+protected: true
 
 metadata:
   starchild:
@@ -18,9 +16,48 @@ user-invocable: false
 disable-model-invocation: false
 ---
 
+## Script Usage
+
+Script-mode skill — read this file, then invoke from a `bash` block:
+
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/birdeye")
+from exports import birdeye_token_overview, birdeye_token_security, birdeye_wallet_networth
+
+# SOL overview
+sol = birdeye_token_overview(address="So11111111111111111111111111111111111111112", chain="solana")
+print(json.dumps(sol, indent=2))
+EOF
+```
+
+Available functions in `exports.py`: `birdeye_token_security`,
+`birdeye_token_overview`, `birdeye_wallet_networth`. Read `exports.py`
+directly for exact signatures.
+
+
 # Birdeye
 
 Multi-chain data provider for token intelligence and wallet analytics. Covers Solana + EVM chains (Ethereum, Arbitrum, Base, etc.). Focus on Birdeye's unique capabilities for security analysis and portfolio tracking.
+
+
+## Function Reference (signatures)
+
+All functions are in `exports.py`. `chain` defaults to `solana`. EVM
+chains supported: `ethereum`, `bsc`, `polygon`, `arbitrum`, `optimism`,
+`base`, `avalanche`, `zksync`, `sui`. Token `address` for Solana is
+the mint address (e.g. SOL = `So11111111111111111111111111111111111111112`).
+
+| Function | Description |
+|---|---|
+| `birdeye_token_overview(address, chain='solana')` | Comprehensive token data: price, marketCap, fdv, supply, holders, liquidity, 24h volume, social links. Returns `{data: {...}}` wrapper. |
+| `birdeye_token_security(address, chain='solana')` | Security audit: ownership, mintability, freezable, top holders concentration, mutable metadata, rug-pull indicators. |
+| `birdeye_wallet_networth(wallet, chain='solana')` | Wallet net worth + token breakdown. `wallet` = wallet address. |
+
+Birdeye uses camelCase fields (`marketCap`, `priceChange24h`, etc.).
+All responses are wrapped in a `{data: {...}}` envelope — extract via
+`result.get('data', {})`.
 
 ## Available Tools (3)
 

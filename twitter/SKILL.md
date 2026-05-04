@@ -1,221 +1,109 @@
 ---
 name: twitter
-version: 1.4.2
-description: "Twitter/X (x.com) data lookup \u2014 fetch tweets by URL or ID, search\
-  \ tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
-tools:
-- twitter_search_tweets
-- twitter_get_tweets
-- twitter_user_info
-- twitter_user_tweets
-- twitter_user_followers
-- twitter_user_followings
-- twitter_tweet_replies
-- twitter_tweet_retweeters
-- twitter_search_users
-- twitter_get_article
-- twitter_tweet_thread_context
-- twitter_tweet_quote
-- twitter_get_trends
+version: 2.0.0
+description: "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
+delivery: script
+protected: true
+
 metadata:
   starchild:
-    emoji: "\U0001F426"
+    emoji: "🐦"
     skillKey: twitter
     requires:
       env:
-      - TWITTER_API_KEY
+        - TWITTER_API_KEY
+
 user-invocable: false
 disable-model-invocation: false
 ---
 
-## 🔴 Routing Rule — Composio vs Native Twitter Tools
+# Twitter / X (script-mode)
 
-**If the user has connected Twitter via Composio (OAuth), use Composio for account actions on their own profile:**
+Read-only access to twitterapi.io endpoints. 13 functions covering tweets,
+users, followers, replies, threads, quotes, articles, and trends.
 
-| User intent | Use |
-|-------------|-----|
-| **Post a tweet / 发推** | Composio `TWITTER_CREATION_OF_A_POST` |
-| **Query own profile / 查自己的资料** | Composio `TWITTER_USER_LOOKUP_ME` |
-| **Delete own tweet / 删自己的推** | Composio `TWITTER_POST_DELETE_BY_POST_ID` |
-| Lookup someone else's profile or tweets | This skill (`twitter_user_info`, `twitter_user_tweets`) |
-| Search tweets about a topic | This skill (`twitter_search_tweets`) |
-| Fetch tweets by URL or ID | This skill (`twitter_get_tweets`) |
+All requests go through sc-proxy via `core.http_client.proxied_get`. The
+`TWITTER_API_KEY` env var is auto-injected server-side, no local key needed
+on the agent machine.
 
-Rationale: Composio uses the user's **own OAuth-connected Twitter account**, so it can post, delete, and access self-endpoints. This skill uses a separate API key that is **read-only** and cannot act on the user's behalf.
+## Script Usage
 
-## 🔴 HARD LIMITS — READ FIRST
-> **⛔ CALL AT MOST 3 TWITTER TOOLS PER RESPONSE. STOP AFTER 3 CALLS.**
-> After each tool call, check: "Do I have enough data to answer?" If yes → STOP AND REPLY.
-> **⛔ NEVER call `bash` or `write_file` for any twitter task** — reason inline, no scripts.
-> **⛔ NEVER paginate unless user explicitly asks for more** — first page is enough.
-> **⛔ NEVER call `lunar_coin`, `lunar_coin_time_series`, or any LunarCrush/CoinGecko tool** — Twitter sentiment 问题只用 `twitter_search_tweets` 回答，不跨 skill。
-> **⛔ NEVER call `coin_price`, `cg_trending`, `cg_coins_markets`** — 价格数据超出 Twitter skill 范围。
+Standard invocation pattern:
 
-## 🔗 URL Handling — x.com / twitter.com
-> **⛔ NEVER use `web_fetch` for x.com or twitter.com URLs** — Twitter blocks scraping, you'll only get a login wall.
-> **✅ ALWAYS extract the tweet ID from the URL and use `twitter_get_tweets`.**
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/twitter")
+from exports import twitter_user_info, twitter_user_tweets
 
-| URL pattern | Extract | Tool call |
-|-------------|---------|-----------|
-| `x.com/{user}/status/{id}` | tweet ID = `{id}` | `twitter_get_tweets(tweet_ids=["{id}"])` |
-| `twitter.com/{user}/status/{id}` | tweet ID = `{id}` | `twitter_get_tweets(tweet_ids=["{id}"])` |
-| `x.com/{user}` | username = `{user}` | `twitter_user_info(username="{user}")` |
+profile = twitter_user_info(username="vitalikbuterin")
+print(json.dumps(profile, indent=2))
 
-**Example:** User sends `https://x.com/zerohedge/status/2042670029548794219`
-→ Extract ID: `2042670029548794219`
-→ Call: `twitter_get_tweets(tweet_ids=["2042670029548794219"])`
-→ Never: `web_fetch("https://x.com/...")`
+recent = twitter_user_tweets(username="vitalikbuterin")
+print(f"got {len(recent.get('tweets', []))} tweets")
+EOF
+```
 
-## 💡 Few-Shot Examples
-**Q: 找 3 个关于 BTC ETF 的高赞推文，只要 ID 和点赞数**
-→ PLAN: 1 call `twitter_search_tweets("BTC ETF min_faves:100")` → pick top 3 from results → reply JSON
-→ STOP after 1 call. Total tools: 1
+Tweet ID extraction from URL: the last path segment of any
+`x.com/{user}/status/{id}` or `twitter.com/{user}/status/{id}` URL is the
+tweet ID. Pass it as a string (Python int will lose precision on long IDs).
 
-**Q: @elonmusk 最近发的推文哪条点赞最多？只要数字**
-→ PLAN: 1 call `twitter_user_tweets("elonmusk")` → find max likes in results → reply number
-→ STOP after 1 call. Total tools: 1
+## Function Reference (signatures)
 
-**Q: 搜索 solana 推文，找点赞最多那条的作者**
-→ PLAN: 1 call `twitter_search_tweets("solana")` → find tweet with most likes → extract username
-→ STOP after 1 call. Total tools: 1
+All 13 functions live in `exports.py`. Returns are dicts straight from
+twitterapi.io — keys vary per endpoint, inspect once before scripting.
 
-**Q: 对比 @A 和 @B 谁粉丝多，再看粉丝多的最新推文**
-→ PLAN: call `twitter_user_info("A")` + `twitter_user_info("B")` → determine winner → call `twitter_user_tweets(winner)`
-→ Total tools: 3. STOP.
+### Tweet endpoints
 
-## ⚡ FAST PATHS (act immediately, no clarification needed)
-| Trigger keywords | Action |
-|-----------------|--------|
-| x.com or twitter.com URL with `/status/{id}` | Extract tweet ID → `twitter_get_tweets(tweet_ids=["{id}"])` — **never web_fetch** |
-| x.com or twitter.com URL with `/{username}` only | Extract username → `twitter_user_info(username="{username}")` |
-| crypto sentiment / 情绪扫描 / market mood / BTC ETH SOL 讨论 | Call `twitter_search_tweets` once per coin: `"$BTC"`, `"$ETH"`, `"$SOL"` — summarize tone, **no user profile lookups** |
-| search tweets about X | Call `twitter_search_tweets` with the topic |
-| who is @username | Call `twitter_user_info` |
-| what did @username post | Call `twitter_user_tweets` |
+| Function | Description |
+|---|---|
+| `twitter_search_tweets(query, cursor=None)` | Advanced search. Operators: `from:user`, `to:user`, `#tag`, `$cashtag`, `lang:en`, `has:media`, `has:links`, `is:reply`, `min_faves:N`, `since:YYYY-MM-DD`, `until:YYYY-MM-DD`. |
+| `twitter_get_tweets(tweet_ids)` | Fetch one or more tweets by ID. `tweet_ids` = list of strings (also accepts comma-string). |
+| `twitter_tweet_replies(tweet_id, cursor=None)` | Replies to a tweet. |
+| `twitter_tweet_retweeters(tweet_id, cursor=None)` | Users who retweeted. |
+| `twitter_tweet_thread_context(tweet_id)` | Full thread context (parents + direct replies). |
+| `twitter_tweet_quote(tweet_id, cursor=None)` | Quote tweets. |
+| `twitter_get_article(tweet_id)` | Long-form X article body. |
+| `twitter_get_trends(woeid=None, country=None, category=None, limit=None)` | Trending topics; all filters optional. |
 
-## Tool Decision Tree
-**"Search for tweets about a topic"** → `twitter_search_tweets`
-Advanced query with operators: keywords, from:user, #hashtag, $cashtag, min_faves, date ranges.
+### User endpoints
 
-**"Look up a specific tweet or set of tweets"** → `twitter_get_tweets`
-Pass one or more tweet IDs directly.
+| Function | Description |
+|---|---|
+| `twitter_user_info(username)` | Profile: bio, follower/following counts, tweet count, verified. |
+| `twitter_user_tweets(username, cursor=None)` | User's recent tweets. |
+| `twitter_user_followers(username, cursor=None)` | Follower list. |
+| `twitter_user_followings(username, cursor=None)` | Accounts followed. |
+| `twitter_search_users(query, cursor=None)` | Search users by name/keyword. |
 
-**"Who is this Twitter account?"** → `twitter_user_info`
-Profile data: bio, follower count, tweet count, verification.
+`username` is the handle WITHOUT `@` (e.g. `"elonmusk"`, not `"@elonmusk"`).
+Pagination: when a response includes `next_cursor`, pass it back as `cursor`
+on the next call.
 
-**"What has this account been posting?"** → `twitter_user_tweets`
-Recent tweets from a specific user.
+## When to use this skill
 
-**"Who follows this account?"** → `twitter_user_followers`
-List of followers for a user.
+- ANY `x.com/...` or `twitter.com/...` URL → start here, NOT `web_fetch`
+  (Twitter blocks scrapers).
+- Single tweet detail → `twitter_get_tweets([tweet_id])`.
+- "What's @user been posting?" → `twitter_user_tweets`.
+- KOL discovery / cashtag mentions → `twitter_search_tweets("$SOL min_faves:50")`.
+- Trending topics → `twitter_get_trends`.
 
-**"Who does this account follow?"** → `twitter_user_followings`
-List of accounts a user follows.
+## Error handling
 
-**"What are people saying in reply to this tweet?"** → `twitter_tweet_replies`
-Replies to a specific tweet by ID.
+- `402 Credits is not enough` → upstream proxy credits exhausted; tell user
+  to top up. Don't retry.
+- `429` → rate limited; surface to user, don't auto-retry.
+- `404 user not found` → suggest verifying the handle spelling.
 
-**"Who retweeted this?"** → `twitter_tweet_retweeters`
-Users who retweeted a specific tweet.
+## Version Policy (hard rule)
 
-**"Find accounts related to a topic"** → `twitter_search_users`
-Search users by name or keyword.
+This skill is **script-mode** (`delivery: script`). It does NOT register
+runtime tools — agent must `read_file` SKILL.md and call functions via
+`bash` + `python3`. The legacy `tools.py` / `__init__.py` files are kept
+for backward compatibility but are no longer the preferred entry point.
 
-**"Read a long X article"** → `twitter_get_article`
-Pass the article tweet ID. Returns title, preview, cover, and content blocks.
-
-**"Get full thread context"** → `twitter_tweet_thread_context`
-One call returns parent chain + direct replies for the target tweet.
-
-**"Who quoted this tweet?"** → `twitter_tweet_quote`
-Get quote tweets for a specific tweet ID.
-
-**"What is trending now?"** → `twitter_get_trends`
-Get trends with optional `woeid`, `country`, `category`, `limit`.
-
-**"Crypto sentiment scan / 情绪扫描 / market mood"** → `twitter_search_tweets` (call once per coin)
-For BTC/ETH/SOL sentiment: search `"$BTC"`, `"$ETH"`, `"$SOL"` separately, then summarize tone inline.
-⛔ NEVER call `twitter_user_info`, `twitter_user_followers`, or `twitter_user_tweets` during a sentiment scan — text analysis only.
-
-## Available Tools
-| Tool | Description | Key Params |
-|------|-------------|------------|
-| `twitter_search_tweets` | Advanced tweet search | `query` (required), `cursor` |
-| `twitter_get_tweets` | Get tweets by ID | `tweet_ids` (array, required) |
-| `twitter_user_info` | User profile lookup | `username` (required) |
-| `twitter_user_tweets` | User's recent tweets | `username` (required), `cursor` |
-| `twitter_user_followers` | User's followers | `username` (required), `cursor` |
-| `twitter_user_followings` | User's followings | `username` (required), `cursor` |
-| `twitter_tweet_replies` | Replies to a tweet | `tweet_id` (required), `cursor` |
-| `twitter_tweet_retweeters` | Who retweeted | `tweet_id` (required), `cursor` |
-| `twitter_search_users` | Search for users | `query` (required), `cursor` |
-| `twitter_get_article` | Get long-form article | `tweet_id` (required) |
-| `twitter_tweet_thread_context` | Get full thread context | `tweet_id` (required) |
-| `twitter_tweet_quote` | Get quote tweets | `tweet_id` (required), `cursor` |
-| `twitter_get_trends` | Get trends | `woeid`, `country`, `category`, `limit` |
-
-## Usage Patterns
-### ⚠️ Token Budget Rules
-- Sentiment scan: max **3 `twitter_search_tweets` calls** (one per coin), then summarize. Stop.
-- Account research: max **2 tool calls total** unless user asks for more depth.
-- Never chain more than 5 Twitter tool calls in one response.
-
-### Research an account
-1. `twitter_user_info` — get profile, follower count, bio
-2. `twitter_user_tweets` — see what they've been posting
-3. `twitter_user_followings` — who they follow (reveals interests)
-
-### Track a topic or token
-1. `twitter_search_tweets` with query like `"$SOL min_faves:50"` — find popular tweets
-2. `twitter_search_users` with the topic — find relevant accounts
-
-## Output Constraints (IMPORTANT for small models)
-- **Max 1 `twitter_search_tweets` call per coin/topic** — do not repeat searches for same query. First result set is sufficient.
-- **Max 3 `twitter_user_info` calls per response** — only look up the most relevant accounts.
-- **Never call `bash` or `write_file` for Twitter data** — reason inline directly from tool results.
-- **Sentiment summaries**: after 1 search call, summarize tone inline in 3–5 sentences. Done.
-- **Pagination**: only fetch next page if user explicitly asks for more results.
-- **After getting search results: sort/filter in your head, do not call bash to sort.**
-
-### Analyze engagement on a tweet
-1. `twitter_get_tweets` — get the tweet and its metrics
-2. `twitter_tweet_replies` — see the conversation
-3. `twitter_tweet_retweeters` — see who amplified it
-
-### Find influencers in a space
-1. `twitter_search_users` with keyword (e.g. "DeFi analyst")
-2. `twitter_user_info` on top results to compare follower counts
-3. `twitter_user_tweets` to check content quality
-
-## Search Query Operators
-The `twitter_search_tweets` tool supports advanced operators:
-
-| Operator | Example | Description |
-|----------|---------|-------------|
-| keyword | `bitcoin` | Tweets containing the word |
-| exact phrase | `"ethereum merge"` | Exact phrase match |
-| `from:` | `from:elonmusk` | Tweets by a specific user |
-| `to:` | `to:elonmusk` | Tweets replying to a user |
-| `#hashtag` | `#crypto` | Tweets with hashtag |
-| `$cashtag` | `$BTC` | Tweets with cashtag |
-| `lang:` | `lang:en` | Filter by language |
-| `has:media` | `has:media` | Tweets with images/video |
-| `has:links` | `has:links` | Tweets with URLs |
-| `is:reply` | `is:reply` | Only replies |
-| `min_faves:` | `min_faves:100` | Minimum likes |
-| `min_retweets:` | `min_retweets:50` | Minimum retweets |
-| `since:` | `since:2024-01-01` | Tweets after date |
-| `until:` | `until:2024-12-31` | Tweets before date |
-
-Combine operators: `from:VitalikButerin $ETH min_faves:100 since:2024-01-01`
-
-## Pagination
-Most endpoints support cursor-based pagination. When a response includes a cursor value, pass it as the `cursor` parameter to get the next page. If no cursor is returned, you've reached the end.
-
-## Notes
-- **API key required**: Set `TWITTER_API_KEY` environment variable. Tools will error without it.
-- **Read-only**: These tools only retrieve data. No posting, liking, or following.
-- **For posting, deleting, or accessing the user's own Twitter account**: use the **composio** skill (see `TWITTER_CREATION_OF_A_POST`, `TWITTER_USER_LOOKUP_ME`, `TWITTER_POST_DELETE_BY_POST_ID`). This skill cannot act on the user's behalf.
-- **Usernames**: Always pass without the `@` prefix (e.g. `"elonmusk"` not `"@elonmusk"`).
-- **Tweet IDs**: Use string format for tweet IDs to avoid integer overflow issues.
-- **Rate limits**: The API has rate limits. If you get rate-limited, wait before retrying.
+Bump rules:
+- Any signature change, env-var change, or sc-proxy contract change → MAJOR
+- New function added, response schema clarified → MINOR
+- Bug fix or doc-only change → PATCH

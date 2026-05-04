@@ -1,51 +1,103 @@
 ---
 name: coingecko
-version: 1.0.2
+version: 2.0.2
 description: CoinGecko crypto price data, charts, market discovery, and global stats
-tools:
-  - coin_price
-  - coin_ohlc
-  - coin_chart
-  - cg_trending
-  - cg_top_gainers_losers
-  - cg_new_coins
-  - cg_global
-  - cg_global_defi
-  - cg_categories
-  - cg_derivatives
-  - cg_derivatives_exchanges
-  - cg_coins_list
-  - cg_coins_markets
-  - cg_coin_data
-  - cg_coin_tickers
-  - cg_exchanges
-  - cg_exchange
-  - cg_exchange_tickers
-  - cg_exchange_volume_chart
-  - cg_nfts_list
-  - cg_nft
-  - cg_nft_by_contract
-  - cg_asset_platforms
-  - cg_exchange_rates
-  - cg_vs_currencies
-  - cg_categories_list
-  - cg_search
-  - cg_token_price
-  - cg_coin_by_contract
-
+delivery: script
+protected: true
 metadata:
   starchild:
-    emoji: "🦎"
+    emoji: 🦎
     skillKey: coingecko
     requires:
       env:
-        - COINGECKO_API_KEY
-
+      - COINGECKO_API_KEY
 user-invocable: false
 disable-model-invocation: false
 ---
 
+## Script Usage
+
+Script-mode skill — read this file, then invoke from a `bash` block:
+
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/coingecko")
+from exports import coin_price, cg_trending, cg_global
+
+print(coin_price(coin_ids="bitcoin,ethereum"))
+print(cg_trending())
+EOF
+```
+
+Read `exports.py` for the full list of available functions. Common ones:
+`coin_price`, `coin_ohlc`, `coin_chart`, `cg_trending`,
+`cg_top_gainers_losers`, `cg_new_coins`, `cg_global`, `cg_global_defi`,
+`cg_categories`, `cg_derivatives`, `cg_coins_markets`, `cg_coin_data`,
+`cg_coin_tickers`, `cg_search`, `cg_token_price`, `cg_coin_by_contract`.
+
+
 # CoinGecko Skill
+
+
+## Function Reference (signatures)
+
+All public functions are in `exports.py`. `coin_id` is the CoinGecko id
+(e.g. `bitcoin`, `ethereum`) — use `cg_search(query)` first if unsure.
+`vs_currency` defaults to `usd`.
+
+### Prices & Charts
+| Function | Description |
+|---|---|
+| `coin_price(coin_ids, timestamps=None, vs_currency='usd')` | Current or historical price. `coin_ids` = comma-string like `"bitcoin,ethereum"`. `timestamps` = list of unix ts for historical (default: now). |
+| `coin_ohlc(coin_id, days=30, vs_currency='usd')` | OHLC bars for last N days. Returns list of `[ts, o, h, l, c]`. Granularity auto-selected: 1d=30min, 7-30d=4h, 30d+=4h. |
+| `coin_chart(coin_id, days=30, vs_currency='usd')` | Price + market_cap + total_volume timeseries. Returns `{prices, market_caps, total_volumes}` (each list of `[ts, val]`). |
+
+### Discovery
+| Function | Description |
+|---|---|
+| `cg_trending()` | Trending coins, NFTs, categories (last 24h). |
+| `cg_top_gainers_losers(vs_currency='usd', duration='24h')` | Top gainers/losers. `duration` = `1h`/`24h`/`7d`/`14d`/`30d`/`60d`/`1y`. |
+| `cg_new_coins()` | Recently listed coins. |
+| `cg_search(query)` | Search coins/exchanges/categories by name. |
+
+### Market Data
+| Function | Description |
+|---|---|
+| `cg_global()` | Global crypto market: total market_cap, volume, dominance. |
+| `cg_global_defi()` | Global DeFi: TVL, dominance, top protocols. |
+| `cg_coins_markets(vs_currency='usd', order='market_cap_desc', per_page=100, page=1, sparkline=False, price_change_percentage='24h', category=None, ids=None)` | Top coins with full market data. |
+| `cg_coin_data(coin_id, localization=False, tickers=False, market_data=True, community_data=False, developer_data=False, sparkline=False)` | Detailed data for one coin. |
+| `cg_coin_tickers(coin_id, exchange_ids=None, include_exchange_logo=False, page=1, order='volume_desc', depth=False)` | Where a coin trades + volumes. |
+| `cg_coins_list(include_platform=False)` | All coin ids/symbols (for resolving). |
+
+### Categories / Derivatives / NFTs
+| Function | Description |
+|---|---|
+| `cg_categories(order='market_cap_desc')` | Top categories with market_cap and volume. |
+| `cg_categories_list()` | Just category ids/names. |
+| `cg_derivatives(include_tickers='unexpired')` | Derivatives tickers across exchanges. |
+| `cg_derivatives_exchanges(order='open_interest_btc_desc', per_page=50)` | Derivatives exchange rankings. |
+| `cg_nfts_list(order='market_cap_usd_desc', per_page=100, page=1)` | Top NFT collections. |
+| `cg_nft(nft_id)` | NFT collection detail. |
+| `cg_nft_by_contract(asset_platform, contract_address)` | NFT by contract address. |
+
+### Exchanges
+| Function | Description |
+|---|---|
+| `cg_exchanges(per_page=100, page=1)` | Exchange rankings. |
+| `cg_exchange(exchange_id)` | One exchange's detail. |
+| `cg_exchange_tickers(exchange_id, ...)` | Tickers on an exchange. |
+| `cg_exchange_volume_chart(exchange_id, days=30)` | Exchange volume history. |
+
+### Contracts / Tokens (by platform)
+| Function | Description |
+|---|---|
+| `cg_token_price(platform, contract_addresses, vs_currencies='usd', include_market_cap=False, include_24hr_vol=False, include_24hr_change=False, include_last_updated_at=False)` | Price by contract address on a platform. |
+| `cg_coin_by_contract(platform, contract_address)` | Coin metadata by contract. |
+| `cg_asset_platforms(filter=None)` | Supported chains. |
+| `cg_vs_currencies()` | Supported quote currencies. |
+| `cg_exchange_rates()` | BTC-denominated rates for fiat/major coins. |
 
 ## 🚫 CRITICAL: STOP — READ THIS BEFORE CALLING ANY TOOL
 

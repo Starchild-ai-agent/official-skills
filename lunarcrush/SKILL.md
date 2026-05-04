@@ -1,21 +1,9 @@
 ---
 name: lunarcrush
-version: 1.3.0
-description: Crypto non-structured data expert — social sentiment, news aggregation, content search, influencer tracking, and topic/category intelligence
-author: Radar
-tags: [crypto, sentiment, news, social, lunarcrush, analytics]
-tools:
-  - lunar_coin
-  - lunar_coin_time_series
-  - lunar_coin_meta
-  - lunar_topic
-  - lunar_topic_posts
-  - lunar_topic_news
-  - lunar_category_posts
-  - lunar_category_news
-  - lunar_content_feed
-  - lunar_search_content
-  - lunar_creator
+version: 2.0.0
+description: Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity
+delivery: script
+protected: true
 
 metadata:
   starchild:
@@ -29,30 +17,44 @@ user-invocable: false
 disable-model-invocation: false
 ---
 
+## Script Usage
+
+Script-mode skill — read this file, then invoke from a `bash` block:
+
+```bash
+python3 - <<'EOF'
+import sys, json
+sys.path.insert(0, "/data/workspace/skills/lunarcrush")
+from exports import lunar_coin, lunar_coin_time_series, lunar_topic
+
+# BTC social metrics
+btc = lunar_coin(coin="BTC")
+print(json.dumps(btc, indent=2))
+
+# 30-day BTC galaxy_score timeseries
+ts = lunar_coin_time_series(coin="BTC", bucket="day", interval="1m")
+print(json.dumps(ts.get("data", [])[:3], indent=2))
+EOF
+```
+
+Available functions in `exports.py`: `lunar_coin`, `lunar_coin_time_series`,
+`lunar_coin_meta`, `lunar_topic`, `lunar_topic_posts`, `lunar_creator`.
+Read `exports.py` directly for exact signatures.
+
+
 # LunarCrush
 
 LunarCrush provides social intelligence and sentiment data including Galaxy Score, AltRank, social volume, influencer activity, and trending topics. This is the crowd-mood layer.
 
-## What LunarCrush Does vs Other Data Sources
-
-| Provider | Data Type | What It's Good At |
-|----------|-----------|-------------------|
-| **LunarCrush** | Non-structured | News, posts, sentiment, social volume, narrative tracking |
-| **CoinGecko** | Structured | Prices, market cap, volume, trending coins |
-| **CoinGlass** | Structured | Funding rates, OI, liquidations, long/short ratios |
-| **DefiLlama** | Structured | TVL, protocol revenue, yield data, chain flows |
-
-LunarCrush = "what's people saying and feeling"
-Others = "what are the numbers"
-
 ## When to Use LunarCrush
 
 Use LunarCrush for:
-- **Social sentiment** — Galaxy Score, AltRank, social volume
-- **News aggregation** — Topic and category level news feeds
-- **Content search** — Cross-scope keyword search with sentiment summary
-- **Narrative tracking** — What topics/categories are gaining attention
-- **Influencer activity** — What key voices are saying
+- **Social sentiment** - What is the crowd saying?
+- **Galaxy Score** - Overall social momentum (0-100)
+- **AltRank** - Social ranking (lower is better)
+- **Social volume** - Number of social mentions
+- **Influencer activity** - What are key voices saying?
+- **Trending topics** - What's gaining attention?
 
 ## Common Workflows
 
@@ -64,22 +66,10 @@ lunar_coin_time_series(symbol="SOL", interval="1d", bucket="day")  # Historical
 lunar_coin_meta(symbol="BTC")  # Metadata and links
 ```
 
-### Topic & Category Content Analysis
+### Topic Analysis
 ```
 lunar_topic(topic="defi")  # DeFi topic metrics
-lunar_topic_posts(topic="nft")  # Social posts about NFTs
-lunar_topic_news(topic="bitcoin", limit=10)  # Topic-level news feed
-lunar_category_news(category="defi", limit=10)  # Category-level news feed
-lunar_category_posts(category="gaming", limit=10)  # Category social posts
-lunar_content_feed(feed_type="news", scope_type="topic", scope="solana", limit=20)  # Unified feed
-lunar_search_content(query="ETF approval", topics=["bitcoin","ethereum"], limit=30)  # Cross-scope search
-```
-
-### Content Search Engine
-```
-lunar_search_content(query="halving")                    # Keyword search across defaults
-lunar_search_content(query="regulation", time_window="7d")  # Time-filtered
-lunar_search_content(topics=["defi"], feed_types=["news","posts"])  # All DeFi content
+lunar_topic_posts(topic="nft")  # Recent posts about NFTs
 ```
 
 ### Creator/Influencer

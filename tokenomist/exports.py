@@ -1,13 +1,23 @@
 """
-Tokenomist skill exports — tool names match SKILL.md frontmatter.
+Tokenomist skill exports — script-mode skill.
 
-Usage in task scripts:
-    from core.skill_tools import tokenomist
-    tokens = tokenomist.tokenomist_token_list()
-    resolved = tokenomist.tokenomist_resolve_token(query="ARB")
-    allocs = tokenomist.tokenomist_allocations(query="ARB")
-    overview = tokenomist.tokenomist_token_overview(query="ARB")
+Usage from a bash block:
+    python3 - <<'EOF'
+    import sys
+    sys.path.insert(0, "/data/workspace/skills/tokenomist")
+    from exports import tokenomist_resolve_token, tokenomist_token_overview
+    print(tokenomist_token_overview(query="ARB"))
+    EOF
 """
+import os
+import sys
+
+# tools/client.py contains TokenomistClient + helpers; make it importable
+# regardless of caller cwd. This only affects this module's import resolution.
+_TOOLS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tools")
+if _TOOLS_DIR not in sys.path:
+    sys.path.insert(0, _TOOLS_DIR)
+
 from client import TokenomistClient, normalize_token_index, resolve_token_id
 
 _client_singleton = None

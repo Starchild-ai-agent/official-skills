@@ -39,7 +39,7 @@ def register(api) -> List[str]:
 
     # Token Intelligence Tools (2)
     try:
-        from .token import (
+        from ._legacy_token import (
             BirdeyeTokenSecurityTool,
             BirdeyeTokenOverviewTool
         )
@@ -58,7 +58,7 @@ def register(api) -> List[str]:
 
     # Wallet Analytics Tools (1)
     try:
-        from .wallet import (
+        from ._legacy_wallet import (
             BirdeyeWalletNetworthTool
         )
 

@@ -1,6 +1,6 @@
 ---
 name: birdeye
-version: 2.0.0
+version: 2.0.1
 description: Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis.
 delivery: script
 protected: true

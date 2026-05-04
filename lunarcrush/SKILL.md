@@ -1,10 +1,8 @@
 ---
 name: lunarcrush
-version: 2.0.1
+version: 2.0.2
 description: Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity
 delivery: script
-protected: true
-
 metadata:
   starchild:
     emoji: "🌙"

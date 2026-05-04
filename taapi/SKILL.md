@@ -1,10 +1,8 @@
 ---
 name: taapi
-version: 2.0.1
+version: 2.0.2
 description: Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators
 delivery: script
-protected: true
-
 metadata:
   starchild:
     emoji: "📉"

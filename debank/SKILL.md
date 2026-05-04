@@ -1,10 +1,9 @@
 ---
 name: debank
-version: 2.0.1
+version: 2.0.2
 description: DeBank blockchain data API - user portfolios, token balances, transaction
   history, and DeFi protocol positions
 delivery: script
-protected: true
 metadata:
   starchild:
     emoji: 🏦

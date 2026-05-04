@@ -1,9 +1,8 @@
 ---
 name: coingecko
-version: 2.0.2
+version: 2.0.3
 description: CoinGecko crypto price data, charts, market discovery, and global stats
 delivery: script
-protected: true
 metadata:
   starchild:
     emoji: 🦎

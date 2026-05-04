@@ -1,11 +1,10 @@
 ---
 name: coinglass
-version: 2.0.1
+version: 3.0.2
 description: Comprehensive crypto derivatives data - funding rates, open interest,
   liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF
   flows, futures market data
 delivery: script
-protected: true
 metadata:
   starchild:
     emoji: 📈

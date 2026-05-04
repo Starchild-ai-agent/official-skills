@@ -1,10 +1,8 @@
 ---
 name: twitter
-version: 2.0.0
+version: 2.0.1
 description: "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
 delivery: script
-protected: true
-
 metadata:
   starchild:
     emoji: "🐦"

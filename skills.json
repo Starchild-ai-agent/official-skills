@@ -4,7 +4,7 @@
     {
       "name": "1inch",
       "path": "1inch/SKILL.md",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
     },
     {
@@ -46,7 +46,7 @@
     {
       "name": "birdeye",
       "path": "birdeye/SKILL.md",
-      "version": "2.0.2",
+      "version": "2.0.3",
       "description": "Token intelligence and wallet analytics for Solana and EVM chains. Use for token security checks, comprehensive token data, and wallet portfolio analysis."
     },
     {
@@ -76,13 +76,13 @@
     {
       "name": "coingecko",
       "path": "coingecko/SKILL.md",
-      "version": "2.0.2",
+      "version": "2.0.3",
       "description": "CoinGecko crypto price data, charts, market discovery, and global stats"
     },
     {
       "name": "coinglass",
       "path": "coinglass/SKILL.md",
-      "version": "3.0.1",
+      "version": "3.0.2",
       "description": "Comprehensive crypto derivatives data - funding rates, open interest,"
     },
     {
@@ -106,13 +106,13 @@
     {
       "name": "debank",
       "path": "debank/SKILL.md",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "description": "DeBank blockchain data API - user portfolios, token balances, transaction"
     },
     {
       "name": "defillama",
       "path": "defillama/SKILL.md",
-      "version": "2.2.1",
+      "version": "2.2.2",
       "description": "DefiLlama API integration for DeFi analytics - TVL, stablecoin yields, vault/APY ranking, protocol revenue, fees, DEX volume, chain flows, bridges, and treasury data. Best for DeFi research, stablecoin farming, yield strategy screening, and protocol/chain market intelligence."
     },
     {
@@ -142,7 +142,7 @@
     {
       "name": "lunarcrush",
       "path": "lunarcrush/SKILL.md",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "description": "Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity"
     },
     {
@@ -208,7 +208,7 @@
     {
       "name": "taapi",
       "path": "taapi/SKILL.md",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "description": "Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators"
     },
     {
@@ -220,7 +220,7 @@
     {
       "name": "tokenomist",
       "path": "tokenomist/SKILL.md",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "description": "Tokenomist unlock/emission/allocation API skill. Use when users ask token unlock schedules, cliff unlock events, daily emissions, allocation breakdowns, or tokenomics supply pressure analytics."
     },
     {
@@ -238,13 +238,13 @@
     {
       "name": "twelvedata",
       "path": "twelvedata/SKILL.md",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "description": "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
     },
     {
       "name": "twitter",
       "path": "twitter/SKILL.md",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "description": "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
     },
     {

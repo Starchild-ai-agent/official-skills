@@ -1,6 +1,6 @@
 ---
 name: sc-vpn
-version: 1.0.0
+version: 1.0.1
 description: Route outbound HTTP traffic through SC-VPN Gateway for geo-restricted access. Use when a script or request is blocked by region restrictions and needs to appear from a specific country. Do NOT set global proxy — use per-request proxy only.
 keywords: vpn, proxy, geo, region, ip, country, blocked, restricted, geo-restricted
 triggers:
@@ -19,7 +19,7 @@ triggers:
 
 # SC-VPN Gateway
 
-Internal VPN service for the Starchild platform. Provides exit nodes in **10 fixed countries** — accessible only from within the Starchild internal network. No credentials or setup needed.
+Internal VPN service for the Starchild platform. Provides exit nodes in **18 fixed countries** — accessible only from within the Starchild internal network. No credentials or setup needed.
 
 ## ⚠️ When to Use
 
@@ -46,8 +46,16 @@ Use SC-VPN **only** when:
 | 🇿🇦 South Africa | `za` | Johannesburg |
 | 🇧🇷 Brazil | `br` | São Paulo, Fortaleza |
 | 🇦🇷 Argentina | `ar` | Buenos Aires |
+| 🇸🇬 Singapore | `sg` | Singapore |
+| 🇭🇰 Hong Kong | `hk` | Hong Kong |
+| 🇬🇧 United Kingdom | `gb` | London, Manchester |
+| 🇳🇱 Netherlands | `nl` | Amsterdam |
+| 🇫🇷 France | `fr` | Paris, Marseille |
+| 🇸🇪 Sweden | `se` | Stockholm, Malmö |
+| 🇪🇸 Spain | `es` | Madrid |
+| 🇮🇹 Italy | `it` | Milan, Rome |
 
-**Only these 10 countries.** Requests for other regions are rejected (502). The specific server per country is auto-selected daily based on latency.
+**Only these 18 countries.** Requests for other regions are rejected (502). The specific server per country is auto-selected daily based on latency.
 
 ## Quick Start
 
@@ -104,6 +112,14 @@ The **username** in the proxy URL selects the exit country:
 | `mx` or `mexico` | Mexico |
 | `my` or `malaysia` | Malaysia |
 | `za` or `south_africa` | South Africa |
+| `sg` or `singapore` | Singapore |
+| `hk` or `hong_kong` | Hong Kong |
+| `gb` or `uk` or `united_kingdom` | United Kingdom |
+| `nl` or `netherlands` | Netherlands |
+| `fr` or `france` | France |
+| `se` or `sweden` | Sweden |
+| `es` or `spain` | Spain |
+| `it` or `italy` | Italy |
 
 ## REST API
 
@@ -111,7 +127,7 @@ Base URL: `http://sc-vpn.internal:8081`
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/tunnels` | Status of all 10 tunnels (region, latency, uptime) |
+| `GET /api/tunnels` | Status of all 18 tunnels (region, latency, uptime) |
 | `GET /api/status` | Gateway overview |
 | `GET /api/usage` | Your traffic stats (identified by source IP) |
 | `GET /health` | Health check |
@@ -140,7 +156,7 @@ curl -x "http://jp:x@sc-vpn.internal:8080" https://ifconfig.me
 
 | Problem | Fix |
 |---------|-----|
-| `502 Bad Gateway: Unknown region` | Use one of: au, ch, de, jp, my, mx, th, za, br, ar |
+| `502 Bad Gateway: Unknown region` | Use one of: au, ch, de, jp, my, mx, th, za, br, ar, sg, hk, gb, nl, fr, se, es, it |
 | `502 Bad Gateway: Tunnel not active` | Gateway may need restart — check `/api/status` |
 | `400 Bad Request: No region specified` | Add username to proxy URL: `http://jp:x@sc-vpn.internal:8080` |
 | DNS failure for `sc-vpn.internal` | Only accessible from Starchild internal network |

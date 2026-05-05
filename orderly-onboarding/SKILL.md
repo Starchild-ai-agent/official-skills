@@ -1,6 +1,6 @@
 ---
 name: orderly-onboarding
-version: 1.0.0
+version: 1.0.1
 description: Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart
 ---
 
@@ -226,6 +226,17 @@ npx skills add OrderlyNetwork/skills --all --agent claude-code -g
 
 Build custom trading interfaces using Orderly's React SDK v2.
 
+### Fastest Way to Get Started
+
+Fork the **[DEX Template](https://github.com/OrderlyNetwork/dex-template)** to get a working DEX in minutes.
+
+1. Fork the repository to your GitHub account
+2. Configure `.env` with your broker ID and name
+3. Customize your theme with **orderly-sdk-theming** (CSS variables and color tokens)
+4. Deploy to your preferred hosting platform
+
+This template uses the **components SDK** — pre-built page components that work out of the box with less customization. For full control over individual components, use the MCP server and load SDK skills (especially **orderly-sdk-react-hooks** and **orderly-sdk-ui-components**) for hooks-level development.
+
 **Core SDK Packages:**
 
 ```bash
@@ -317,6 +328,29 @@ Examples: `PERP_ETH_USDC`, `PERP_BTC_USDC`, `PERP_SOL_USDC`
 - **orderly-positions-tpsl** - Position management
 - **orderly-websocket-streaming** - Real-time data
 
+## Orderly CLI
+
+A terminal trading tool (`@orderly.network/cli`) wrapping the full Orderly REST API. **AI-safe**: keys in OS keychain, signing internal, agents only see results. `orderly --help` covers everything.
+
+**Install & Quick Start (Testnet):**
+
+```bash
+npm install -g @orderly.network/cli
+orderly wallet-create --type EVM --network testnet
+orderly wallet-register --broker-id demo --network testnet
+orderly faucet-usdc <address> --chain-id 421614 --network testnet
+orderly wallet-add-key --network testnet
+orderly auth-list --network testnet
+orderly order-place PERP_ETH_USDC BUY MARKET 0.01 --account <id> --network testnet
+```
+
+**Note:** `--account` is required for authenticated commands (get IDs via `auth-list`). Hex IDs must be shell-quoted. Default network is testnet — pass `--network mainnet` for production. Linux requires `libsecret`.
+
+### Broker IDs
+
+- **`demo`** — For testing, development, and personal use. No setup required.
+- **Custom** — Go to [dex.orderly.network](https://dex.orderly.network), select **"Custom API integration"**. Costs **$10**, requires manual browser interaction (cannot be done via CLI or agent).
+
 ## Supported Chains
 
 Orderly supports multiple EVM and non-EVM chains. To get the current list of supported networks with their chain IDs, vault addresses, and RPC endpoints:
@@ -350,14 +384,16 @@ For full tokenomics details, visit: https://orderly.network/docs/introduction/to
 
 ## Key Links
 
-| Resource         | URL                                                       |
-| ---------------- | --------------------------------------------------------- |
-| Documentation    | https://orderly.network/docs                              |
-| SDK Repository   | https://github.com/orderlynetwork/js-sdk                  |
-| Example DEX      | https://github.com/orderlynetwork/example-dex             |
+| Resource              | URL                                                                    | Notes                                          |
+| --------------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| Documentation         | https://orderly.network/docs                                           |                                                |
+| SDK Repository        | https://github.com/orderlynetwork/js-sdk                               |                                                |
+| DEX Template  | https://github.com/OrderlyNetwork/dex-template       | Fastest start, uses components SDK             |
 | MCP Server (npm) | https://www.npmjs.com/package/@orderly.network/mcp-server |
+| CLI (npm)        | https://www.npmjs.com/package/@orderly.network/cli        |
 | Skills (npm)     | https://www.npmjs.com/package/@orderly.network/skills     |
-| Skills.sh        | https://skills.sh                                         |
+| Skills.sh        | https://skills.sh                                          |
+| DEX Dashboard    | https://dex.orderly.network                               |
 | Orderly App      | https://app.orderly.network                               |
 | Discord          | https://discord.gg/OrderlyNetwork                         |
 | Twitter          | https://twitter.com/OrderlyNetwork                        |
@@ -366,16 +402,24 @@ For full tokenomics details, visit: https://orderly.network/docs/introduction/to
 
 **If you're building a DEX:**
 
-1. Load **orderly-sdk-install-dependency** and **orderly-sdk-dex-architecture**
+1. Fork the **[DEX Template](https://github.com/OrderlyNetwork/dex-template)** for the fastest start
 2. Install MCP server: `npx @orderly.network/mcp-server init`
-3. Set up wallet connection with **orderly-sdk-wallet-connection**
-4. Build your UI with **orderly-ui-components**
+3. Configure your broker settings in `.env` and customize your theme
+4. For more control, load **orderly-sdk-install-dependency** and **orderly-sdk-dex-architecture** to build from scratch
+5. Set up wallet connection with **orderly-sdk-wallet-connection**
 
 **If you're building trading bots or API integrations:**
 
 1. Load **orderly-api-authentication** first
 2. Install MCP server for API reference
 3. Load **orderly-trading-orders** and **orderly-websocket-streaming**
+
+**If you want to trade from the terminal or use the CLI:**
+
+1. Install the CLI: `npm install -g @orderly.network/cli`
+2. Run `orderly --help` to see all commands
+3. Follow the testnet quick start (6 commands, see Orderly CLI section above)
+4. Use `--broker-id demo` for testing, or get a custom broker ID at [dex.orderly.network](https://dex.orderly.network) ($10, manual browser interaction required)
 
 **If you're launching a white-label DEX:**
 
@@ -398,7 +442,9 @@ For full tokenomics details, visit: https://orderly.network/docs/introduction/to
 
 ### "Where do I start building?"
 
-Install the MCP server first: `npx @orderly.network/mcp-server init --client <your-client>`
+**For a quick DEX**: Fork the [DEX Template](https://github.com/OrderlyNetwork/dex-template), configure `.env`, and deploy. Uses pre-built components — fastest path.
+
+**For more control**: Install the MCP server first: `npx @orderly.network/mcp-server init --client <your-client>`, then load SDK skills like **orderly-sdk-react-hooks** and **orderly-sdk-dex-architecture** to build with the hooks SDK.
 
 Then ask: "How do I connect to Orderly Network?" or load **orderly-sdk-wallet-connection**.
 
@@ -420,6 +466,10 @@ Use the Testnet environment:
 ### "Do I need to handle authentication manually?"
 
 The SDK handles authentication automatically. For API-only integration, load **orderly-api-authentication** for the complete auth flow.
+
+### "How do I get a custom broker ID?"
+
+Go to [dex.orderly.network](https://dex.orderly.network), select the **"Custom API integration"** option, and follow the steps. It costs **$10**. This requires manual browser interaction and cannot be done via CLI or agent. For testing and development, use `--broker-id demo` — no setup needed.
 
 ## Related Skills
 

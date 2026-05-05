@@ -1,7 +1,7 @@
 ---
 name: okx
-version: 1.0.0
-description: OKX OnChainOS - Complete on-chain operations suite with 11 specialized skills for trading, analytics, security, and wallet management across 20+ blockchains
+version: 1.0.1
+description: OKX OnChainOS - Complete on-chain operations suite with 17 specialized skills for trading, analytics, security, DeFi, bridging, and wallet management across 20+ blockchains
 metadata:
   starchild:
     emoji: "⛓️"
@@ -16,7 +16,7 @@ disable-model-invocation: false
 
 # OKX OnChainOS Skills Directory
 
-OKX OnChainOS is a comprehensive suite of 11 specialized skills that provide on-chain trading, analytics, security, and wallet management capabilities across 20+ blockchains including Ethereum, Solana, Base, BSC, Arbitrum, Polygon, XLayer, and TRON.
+OKX OnChainOS is a comprehensive suite of 17 specialized skills that provide on-chain trading, analytics, security, DeFi investment, cross-chain bridging, and wallet management capabilities across 20+ blockchains including Ethereum, Solana, Base, BSC, Arbitrum, Polygon, XLayer, and TRON.
 
 ## Overview
 

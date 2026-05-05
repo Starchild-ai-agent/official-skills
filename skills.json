@@ -178,7 +178,7 @@
     {
       "name": "sc-vpn",
       "path": "sc-vpn/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Route outbound HTTP traffic through SC-VPN Gateway for geo-restricted access. Use when a script or request is blocked by region restrictions and needs to appear from a specific country. Do NOT set global proxy — use per-request proxy only."
     },
     {
@@ -228,6 +228,12 @@
       "path": "trading-strategy/SKILL.md",
       "version": "1.0.0",
       "description": "Thinking partner for developing trading theses — from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, \"what do you think about\", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill)."
+    },
+    {
+      "name": "transparent-proxy-maintenance",
+      "path": "transparent-proxy-maintenance/SKILL.md",
+      "version": "1.0.1",
+      "description": "Maintain and evolve transparent-proxy paid API plugins. Use when changing pricing/rate limits, switching billing model, adding/removing paid APIs, then validating and deploying to Fly."
     },
     {
       "name": "truenorth",

@@ -212,6 +212,12 @@
       "description": "Use when user asks to build a Solana dapp, write an Anchor program, create a token, debug Solana errors, set up wallet connection, test my Solana program, deploy to devnet, or explain Solana concepts (rent, accounts, PDAs, CPIs, etc.). End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, LiteSVM/Mollusk/Surfpool testing, and security checklists. Integrates with the Solana MCP server for live documentation search. Prefers framework-kit (@solana/client + @solana/react-hooks) for UI, wallet-standard-first connection (incl. ConnectorKit), @solana/kit for client/RPC code, and @solana/web3-compat for legacy boundaries."
     },
     {
+      "name": "sp3nd",
+      "path": "sp3nd/SKILL.md",
+      "version": "1.0.0",
+      "description": "Autonomously buy Amazon/eBay products with USDC on Solana via SP3ND x402 payments. Covers registration, cart creation, order placement, transaction construction, payment, and order confirmation."
+    },
+    {
       "name": "taapi",
       "path": "taapi/SKILL.md",
       "version": "2.0.2",

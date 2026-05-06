@@ -7,8 +7,6 @@ metadata:
   starchild:
     emoji: "🛒"
     skillKey: sp3nd
-    requires:
-      env: [SP3ND_API_KEY, SP3ND_API_SECRET]
 user-invocable: false
 disable-model-invocation: false
 ---

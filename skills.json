@@ -284,6 +284,12 @@
       "description": "Multi-chain wallet — balances, transfers, signing, policy (EVM multi-chain + Solana)"
     },
     {
+      "name": "web-crawler",
+      "path": "web-crawler/SKILL.md",
+      "version": "1.0.1",
+      "description": "Use when normal web_fetch cannot read a page, when a site blocks basic fetching, or when the user needs YouTube content in AI-ready form. Guides fallback use of Firecrawl for single-page web scraping and SerpApi for YouTube search/video metadata/transcripts only."
+    },
+    {
       "name": "woofi-swap",
       "path": "woofi-swap/SKILL.md",
       "version": "8.2.0",

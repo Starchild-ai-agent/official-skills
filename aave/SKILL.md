@@ -2,6 +2,7 @@
 name: aave
 version: 1.0.0
 description: Supply and withdraw tokens on Aave V3 lending pools
+delivery: script
 tools:
   - aave_supply
   - aave_withdraw

@@ -274,8 +274,8 @@
     {
       "name": "user-onboarding",
       "path": "user-onboarding/SKILL.md",
-      "version": "1.1.0",
-      "description": "Guide first-time Starchild users through onboarding with assistant/intern positioning, quick wins, discovery questions, and game-style feedback. Use for fresh sessions, vague starts, what-can-you-do questions, or users who don't know where to begin."
+      "version": "1.2.1",
+      "description": "Guide first-time Starchild users through onboarding with assistant/intern"
     },
     {
       "name": "video",

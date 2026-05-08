@@ -1,6 +1,6 @@
 ---
 name: hyperliquid
-version: 1.3.0
+version: 1.3.1
 description: Trade perpetual futures and spot on Hyperliquid DEX
 delivery: script
 tools:

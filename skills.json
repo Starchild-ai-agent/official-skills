@@ -274,7 +274,7 @@
     {
       "name": "user-onboarding",
       "path": "user-onboarding/SKILL.md",
-      "version": "1.2.1",
+      "version": "1.2.2",
       "description": "Guide first-time Starchild users through onboarding with assistant/intern"
     },
     {

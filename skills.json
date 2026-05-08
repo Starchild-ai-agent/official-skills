@@ -158,6 +158,12 @@
       "description": "OKX OnChainOS - Complete on-chain operations suite with 17 specialized skills for trading, analytics, security, DeFi, bridging, and wallet management across 20+ blockchains"
     },
     {
+      "name": "openocean",
+      "path": "openocean/SKILL.md",
+      "version": "1.0.0",
+      "description": "OpenOcean DEX aggregator adapter for Starchild wallet (quote, approval, and swap execution with balance-delta verification)"
+    },
+    {
       "name": "orderly-onboarding",
       "path": "orderly-onboarding/SKILL.md",
       "version": "1.0.1",

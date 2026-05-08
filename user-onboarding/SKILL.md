@@ -271,6 +271,6 @@ If users ask for a deeper tour, pick **1-2** topics that fit them and demo live:
 
 Never dump all topics in one message. This section is optional and secondary to quick wins.
 
-Reference: [The 5-Minute Guide to Getting the Most Out of Starchild](https://www.linkedin.com/pulse/5-minute-guide-getting-most-out-starchild-starchildai-pynjc).
+Reference notes are stored locally in `REFERENCE_5_MINUTE_GUIDE.md` (same folder) to avoid external fetch dependency during onboarding.
 
 If users report missing features or persistent issues, direct them to [t.me/starchild_beta](https://t.me/starchild_beta).

@@ -1,6 +1,6 @@
 ---
 name: 1inch
-version: 2.1.1
+version: 2.2.0
 description: Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service.
 delivery: script
 author: starchild

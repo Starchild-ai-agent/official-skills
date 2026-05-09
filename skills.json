@@ -74,6 +74,12 @@
       "description": "Generate TradingView-style candlestick charts with indicators. Use when the user wants a visual chart, price visualization, or technical analysis plot."
     },
     {
+      "name": "cloudflare-tunnel-publish",
+      "path": "cloudflare-tunnel-publish/SKILL.md",
+      "version": "1.0.0",
+      "description": "Publish a local service (Starchild preview, dev server, dashboard) to a user-owned custom domain via Cloudflare Tunnel. Beginner-friendly — walks the user from Cloudflare account / domain purchase / API token creation through automated tunnel + DNS + SSL setup, with built-in handling for container restarts so the public URL survives Starchild auto-updates."
+    },
+    {
       "name": "coingecko",
       "path": "coingecko/SKILL.md",
       "version": "2.0.3",

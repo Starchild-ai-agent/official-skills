@@ -1,7 +1,27 @@
 ---
 name: cloudflare-tunnel-publish
-version: 1.0.0
-description: "Publish a local service (Starchild preview, dev server, dashboard) to a user-owned custom domain via Cloudflare Tunnel. Beginner-friendly — walks the user from Cloudflare account / domain purchase / API token creation through automated tunnel + DNS + SSL setup, with built-in handling for container restarts so the public URL survives Starchild auto-updates."
+version: 1.1.0
+description: "Publish a local service (preview, dev server, dashboard, API) to a user-owned custom domain or subdomain via Cloudflare Tunnel — no public IP, no port forwarding, free SSL. Beginner-friendly: walks the user from Cloudflare account, domain purchase, API token creation through automated tunnel + DNS + SSL setup, with auto-restart on container reboot so the public URL survives Starchild updates. Use when the user wants their own domain (e.g. app.mydomain.com) instead of community.iamstarchild.com, asks how to bind / publish / host a service on a custom domain or subdomain, or hits ERR_SSL_VERSION_OR_CIPHER_MISMATCH / 502 / 521 / 530 on a custom domain."
+keywords: cloudflare, tunnel, cloudflared, custom domain, subdomain, hostname, DNS, SSL, TLS, publish, host, bind, expose, 自定义域名, 自己的域名, 绑定域名, 子域名, 二级域名, 域名解析, 上线, 发布, 部署, ERR_SSL_VERSION_OR_CIPHER_MISMATCH, 502, 521, 530
+triggers:
+  - 想用我自己的域名
+  - 把服务发布到我的域名
+  - 把网站绑定到我的域名
+  - 绑定我买的域名
+  - 自定义域名
+  - 自己的子域名
+  - 不要 community.iamstarchild.com
+  - hello.example.com 这种地址
+  - cloudflare tunnel
+  - publish to my own domain
+  - bind a custom domain
+  - host on my domain
+  - subdomain pointing to localhost
+  - expose localhost on a domain
+  - point my domain at this service
+  - ERR_SSL_VERSION_OR_CIPHER_MISMATCH
+  - 530 cloudflare
+  - 521 web server is down
 metadata:
   starchild:
     emoji: "🌐"

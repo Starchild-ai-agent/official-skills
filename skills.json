@@ -44,6 +44,12 @@
       "description": "Build and run backtests against real historical data. Use when a strategy needs validation, the user wants performance numbers, or before committing to a trade approach."
     },
     {
+      "name": "backup",
+      "path": "backup/SKILL.md",
+      "version": "1.0.0",
+      "description": "Manage this agent's state backups on sc-agent-backup storage — take snapshots, list prior backups, and restore the agent from any of them. Identity-bound; 5 backups per user, cap enforced on upload."
+    },
+    {
       "name": "birdeye",
       "path": "birdeye/SKILL.md",
       "version": "2.0.3",
@@ -62,10 +68,28 @@
       "description": "Preview panel knowledge — the iframe-based Preview tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, 白屏, 页面挂了, tab 不见了, preview not loading, or asks about running services."
     },
     {
+      "name": "byo-proxy",
+      "path": "byo-proxy/SKILL.md",
+      "version": "0.1.0",
+      "description": "Bring-your-own residential proxy management. Users register their own provider API keys (currently IPRoyal) and bind specific skills to specific countries. Other skills opt-in by importing get_proxy_for_skill() from exports.py — byo-proxy itself never intercepts traffic. Use when the user wants to add a residential proxy provider, configure per-skill geo routing, or look up which providers/countries are configured."
+    },
+    {
       "name": "chart",
       "path": "chart/SKILL.md",
       "version": "3.0.1",
       "description": "Interactive web-based charts for data analysis and business intelligence. Project-based output in output/chart-html/<project>/ with HTML + script + data + screenshot."
+    },
+    {
+      "name": "chatroom",
+      "path": "chatroom/SKILL.md",
+      "version": "0.1.4",
+      "description": "Join and participate in sc-chatroom group chats. Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync."
+    },
+    {
+      "name": "cli-bridge",
+      "path": "cli-bridge/SKILL.md",
+      "version": "0.1.3",
+      "description": "Mint, list, and revoke short-code bundles that authorize the user's `starchild` CLI to talk to this agent's clawd via sc-chatroom's 1:1 SSE bridge. The bundle carries an opaque sc_… code; the underlying AKM key (chat:bridge:cli scope) and Fly machine id stay server-side."
     },
     {
       "name": "cloudflare-tunnel-publish",
@@ -294,6 +318,12 @@
       "path": "web-crawler/SKILL.md",
       "version": "1.0.1",
       "description": "Use when normal web_fetch cannot read a page, when a site blocks basic fetching, or when the user needs YouTube content in AI-ready form. Guides fallback use of Firecrawl for single-page web scraping and SerpApi for YouTube search/video metadata/transcripts only."
+    },
+    {
+      "name": "where-is-my-ip",
+      "path": "where-is-my-ip/SKILL.md",
+      "version": "0.1.0",
+      "description": "Look up the current outbound exit IP and its geolocation (country, city, ISP, ASN). Compare what you look like with the proxy on vs. off — useful for confirming a residential proxy is actually routing through the country you think it is. Use when the user asks 'what's my IP', 'where am I appearing from', 'is my proxy working', 'check my exit', or wants to verify a byo-proxy binding before scraping."
     },
     {
       "name": "woofi-swap",

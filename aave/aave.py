@@ -15,7 +15,7 @@ Positions flow (read-only):
 1. getUserAccountData(wallet) via eth_call → 6 × uint256
 
 No new dependencies — uses eth_utils.keccak (already in requirements) + manual ABI encoding.
-Reuses _wallet_request and _is_fly_machine from tools/wallet.py.
+Wallet access is script-runtime only via core.wallet_runtime.
 """
 
 import logging
@@ -23,8 +23,8 @@ import os
 
 import aiohttp
 from eth_utils import keccak
-
-from tools.wallet import _wallet_request, _is_fly_machine
+from core.wallet_runtime import wallet_request as _wallet_request
+from core.wallet_runtime import is_fly_machine as _is_fly_machine
 
 logger = logging.getLogger(__name__)
 

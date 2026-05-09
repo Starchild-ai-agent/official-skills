@@ -4,7 +4,7 @@
     {
       "name": "1inch",
       "path": "1inch/SKILL.md",
-      "version": "2.1.1",
+      "version": "2.2.0",
       "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
     },
     {
@@ -130,7 +130,7 @@
     {
       "name": "hyperliquid",
       "path": "hyperliquid/SKILL.md",
-      "version": "1.3.1",
+      "version": "1.4.0",
       "description": "Trade perpetual futures and spot on Hyperliquid DEX"
     },
     {
@@ -160,7 +160,7 @@
     {
       "name": "openocean",
       "path": "openocean/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "OpenOcean DEX aggregator adapter for Starchild wallet (quote, approval, and swap execution with balance-delta verification)"
     },
     {

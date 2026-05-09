@@ -119,8 +119,7 @@ class FusionPlusClient:
         if self._cached_address:
             return self._cached_address
 
-        from tools.wallet import _wallet_request
-
+        from core.wallet_runtime import wallet_request as _wallet_request
         data = await _wallet_request("GET", "/agent/wallet")
         wallets = data if isinstance(data, list) else data.get("wallets", [])
         for w in wallets:

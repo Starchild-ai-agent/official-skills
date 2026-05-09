@@ -211,7 +211,7 @@ Returns: list of open orders with hash, status, maker/taker assets, amounts, exp
         try:
             chain_id = resolve_chain(chain)
             if not wallet_address:
-                from tools.wallet import _wallet_request
+                from core.wallet_runtime import wallet_request as _wallet_request
                 info = asyncio.run(_wallet_request("GET", "/agent/wallet"))
                 for w in (info if isinstance(info, list) else info.get("wallets", [])):
                     if w.get("chain_type") == "ethereum":
@@ -332,7 +332,7 @@ Returns: order_hash, order details"""
             return ToolResult(success=False, error="maker_asset, taker_asset, making_amount, taking_amount all required")
 
         try:
-            from tools.wallet import _wallet_request
+            from core.wallet_runtime import wallet_request as _wallet_request
             chain_id = resolve_chain(chain)
             contract = LOP_CONTRACTS.get(chain_id)
             if not contract:
@@ -536,7 +536,7 @@ Returns: transaction hash"""
             return ToolResult(success=False, error="'order_hash' is required")
 
         try:
-            from tools.wallet import _wallet_request
+            from core.wallet_runtime import wallet_request as _wallet_request
             chain_id = resolve_chain(chain)
             contract = LOP_CONTRACTS.get(chain_id)
             if not contract:

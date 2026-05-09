@@ -78,7 +78,7 @@ def _normalize_v(signature: str) -> str:
 
 async def _get_wallet_address() -> str:
     try:
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         data = await _wallet_request("GET", "/agent/wallet")
         wallets = data if isinstance(data, list) else data.get("wallets", [])
         for w in wallets:
@@ -332,7 +332,7 @@ Returns: order hash, final status, amounts"""
             # 4. Sign
             if build_tx:
                 # Native ETH: execute deposit tx, use pre-computed signature
-                from tools.wallet import _wallet_request
+                from core.wallet_runtime import wallet_request as _wallet_request
                 asyncio.run(_wallet_request("POST", "/agent/send-transaction", {
                     "to": build_tx.get("to", ""),
                     "value": str(build_tx.get("value", "0")),
@@ -344,7 +344,7 @@ Returns: order hash, final status, amounts"""
                 signature = build_signature
             else:
                 # ERC-20: sign EIP-712 typed data via _wallet_request
-                from tools.wallet import _wallet_request
+                from core.wallet_runtime import wallet_request as _wallet_request
                 sig_result = await _wallet_request("POST", "/agent/sign-typed-data", {
                     "domain": typed_data.get("domain", {}),
                     "types": typed_data.get("types", {}),
@@ -462,7 +462,7 @@ SOL_NATIVE_TOKEN = "SoNative11111111111111111111111111111111111"
 def _get_sol_wallet_address() -> str:
     """Get agent Solana wallet address."""
     try:
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         info = asyncio.run(_wallet_request("GET", "/agent/wallet"))
         for w in (info if isinstance(info, list) else info.get("wallets", [])):
             if w.get("chain_type") == "solana":
@@ -656,7 +656,7 @@ Parameters:
                                   output={"build_keys": list(build_result.keys())})
 
             # 4. Sign Solana transaction
-            from tools.wallet import _wallet_request
+            from core.wallet_runtime import wallet_request as _wallet_request
             sign_result = asyncio.run(_wallet_request("POST", "/agent/sol/sign-transaction", {
                 "transaction": solana_tx,
             }))

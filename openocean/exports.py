@@ -22,7 +22,7 @@ from decimal import Decimal, getcontext
 from typing import Any, Dict
 
 from core.http_client import proxied_get
-from tools.wallet import _wallet_request, DEBANK_CHAIN_MAP
+from core.wallet_runtime import wallet_request as _wallet_request
 
 getcontext().prec = 50
 
@@ -41,6 +41,18 @@ CHAIN_MAP = {
     "polygon": 137,
     "optimism": 10,
     "avalanche": 43114,
+}
+
+# DeBank chain key mapping (only the chains openocean uses).
+# Localized to remove dependency on tools.wallet.
+DEBANK_CHAIN_MAP = {
+    "ethereum": "eth",
+    "bsc": "bsc",
+    "arbitrum": "arb",
+    "base": "base",
+    "polygon": "matic",
+    "optimism": "op",
+    "avalanche": "avax",
 }
 
 

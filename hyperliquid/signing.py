@@ -21,7 +21,7 @@ from typing import Optional
 import msgpack
 from eth_utils import keccak
 
-from tools.wallet import _wallet_request
+from core.wallet_runtime import wallet_request as _wallet_request
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ async def _get_wallet_address() -> Optional[str]:
         return _cached_wallet_address
 
     try:
-        from tools.wallet import _is_fly_machine
+        from core.wallet_runtime import is_fly_machine as _is_fly_machine
         if not _is_fly_machine():
             return None
 

@@ -1226,8 +1226,7 @@ class HyperliquidClient:
             amount: USDC amount to deposit (minimum 5)
         """
         from eth_utils import keccak
-        from tools.wallet import _wallet_request, _is_fly_machine
-
+        from core.wallet_runtime import wallet_request as _wallet_request, is_fly_machine as _is_fly_machine
         if not _is_fly_machine():
             raise RuntimeError("Not running on a Fly Machine — wallet unavailable")
 
@@ -1284,8 +1283,7 @@ class HyperliquidClient:
         if self._cached_address:
             return self._cached_address
 
-        from tools.wallet import _wallet_request, _is_fly_machine
-
+        from core.wallet_runtime import wallet_request as _wallet_request, is_fly_machine as _is_fly_machine
         if not _is_fly_machine():
             raise RuntimeError("Not running on Fly — wallet unavailable")
 

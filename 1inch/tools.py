@@ -29,8 +29,7 @@ def _get_client(chain: str) -> OneInchClient:
 
 async def _get_address() -> str:
     """Get agent EVM address from wallet service."""
-    from tools.wallet import _wallet_request
-
+    from core.wallet_runtime import wallet_request as _wallet_request
     data = await _wallet_request("GET", "/agent/wallet")
     wallets = data if isinstance(data, list) else data.get("wallets", [])
     for w in wallets:
@@ -219,8 +218,7 @@ Returns: transaction hash"""
             return ToolResult(success=False, error="chain and token_address are required")
         try:
             import asyncio
-            from tools.wallet import _wallet_request
-
+            from core.wallet_runtime import wallet_request as _wallet_request
             client = _get_client(chain)
             tx_data = await client.get_approve_transaction(token_address, amount=amount if amount else None)
 
@@ -284,8 +282,7 @@ Returns: transaction hash, estimated output amount"""
             return ToolResult(success=False, error="chain, src, dst, amount are all required")
         try:
             import asyncio
-            from tools.wallet import _wallet_request
-
+            from core.wallet_runtime import wallet_request as _wallet_request
             client = _get_client(chain)
             address = await client._get_address()
 

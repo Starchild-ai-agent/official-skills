@@ -81,7 +81,7 @@ def _get_wallet_address() -> str:
         import asyncio
         import sys
         sys.path.insert(0, '/app')
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         data = asyncio.run(_wallet_request("GET", "/agent/wallet"))
         for w in (data if isinstance(data, list) else data.get("wallets", [])):
             if w.get("chain_type") == "ethereum":
@@ -195,7 +195,7 @@ def oneinch_approve(chain: str, token_address: str, amount: str = "") -> dict:
 
     try:
         import asyncio
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         result = asyncio.run(_wallet_request("POST", "/agent/transfer", {
             "to": tx_data["to"],
             "data": tx_data.get("data", "0x"),
@@ -238,7 +238,7 @@ def oneinch_swap(chain: str, src: str, dst: str, amount: str, slippage: float = 
 
     try:
         import asyncio
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         result = asyncio.run(_wallet_request("POST", "/agent/transfer", {
             "to": tx["to"],
             "data": tx.get("data", "0x"),
@@ -561,7 +561,7 @@ def oneinch_create_limit_order(
 
         # Step 5: EIP-712 sign
         import asyncio
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         sig_result = asyncio.run(_wallet_request("POST", "/agent/sign-typed-data", {
             "chain_id": cid,
             "domain": {
@@ -638,7 +638,7 @@ def oneinch_cancel_limit_order(chain: str, order_hash: str) -> dict:
         calldata = selector + maker_traits.to_bytes(32, "big") + order_hash_bytes
 
         import asyncio
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         result = asyncio.run(_wallet_request("POST", "/agent/transfer", {
             "to": contract,
             "data": "0x" + calldata.hex(),
@@ -772,7 +772,7 @@ def oneinch_cross_chain_swap(
 
         # 4. Sign
         import asyncio
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         if build_tx:
             # Native ETH flow: broadcast deposit tx, use pre-computed signature
             asyncio.run(_wallet_request("POST", "/agent/transfer", {
@@ -886,7 +886,7 @@ def _get_sol_wallet_address() -> str:
         import asyncio
         import sys
         sys.path.insert(0, '/app')
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         data = asyncio.run(_wallet_request("GET", "/agent/wallet"))
         for w in (data if isinstance(data, list) else data.get("wallets", [])):
             if w.get("chain_type") == "solana":
@@ -1072,7 +1072,7 @@ def oneinch_sol_to_evm_swap(
         # 1inch returns tx message in base58; Privy requires full versioned tx in base64
         tx_b64_for_privy = _b58_to_solana_tx_b64(solana_tx)
         import asyncio
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         sign_result = asyncio.run(_wallet_request("POST", "/agent/sol/sign-transaction", {
             "transaction": tx_b64_for_privy,
         }))
@@ -1394,7 +1394,7 @@ def oneinch_fusion_swap(
 
         # 3. Sign EIP-712
         import asyncio
-        from tools.wallet import _wallet_request
+        from core.wallet_runtime import wallet_request as _wallet_request
         sig_result = asyncio.run(_wallet_request("POST", "/agent/sign-typed-data", {
             "chain_id": cid,
             "domain": typed_data.get("domain", {}),

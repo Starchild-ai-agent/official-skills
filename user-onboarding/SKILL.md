@@ -1,6 +1,6 @@
 ---
 name: user-onboarding
-version: 1.2.2
+version: 1.2.3
 description: Guide first-time Starchild users through onboarding with assistant/intern
   positioning, quick wins, discovery questions, and game-style feedback. Use for fresh
   sessions, vague starts, what-can-you-do questions, or users who don't know where

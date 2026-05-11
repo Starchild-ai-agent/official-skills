@@ -1,23 +1,36 @@
 #!/usr/bin/env python3
-"""Poll existing video by request_id"""
+"""Poll existing video by request_id
+
+Cost tracking: status polls and result fetches return zero cost from
+sc-proxy (they're free for already-submitted jobs), so the
+record_response helper silently no-ops here. We still attach SC-CALLER-ID
+via caller_headers so any future billing change is correctly attributed.
+"""
 
 import requests
 import time
 import os
+import sys
 from datetime import datetime
 import urllib3
 urllib3.disable_warnings()
 
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+from _cost_track import caller_headers, record_response  # noqa: E402
+
+
 def poll_video(request_id, download=True):
     """Poll video status and download if completed"""
-    
+
     # Try common URL patterns
     patterns = [
         f"https://queue.fal.run/requests/{request_id}",
         f"https://queue.fal.run/alibaba/happy-horse/requests/{request_id}",
     ]
-    
-    headers = {'Authorization': 'Key fake-falai-key-12345'}
+
+    headers = caller_headers({'Authorization': 'Key fake-falai-key-12345'}, tool_default='video')
     proxies = {'http': 'http://sc-proxy.internal:8080', 'https': 'http://sc-proxy.internal:8080'}
     
     status_url = None
@@ -53,6 +66,7 @@ def poll_video(request_id, download=True):
     
     # Download result
     result_resp = requests.get(result_url, headers=headers, proxies=proxies, verify=False, timeout=60)
+    record_response(result_resp, request_url=result_url)
     video_url = result_resp.json()['video']['url']
     
     os.makedirs('output/videos', exist_ok=True)

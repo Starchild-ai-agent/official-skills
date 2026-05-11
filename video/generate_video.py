@@ -1,27 +1,46 @@
 #!/usr/bin/env python3
-"""Video generation script - one-stop submit → poll → download"""
+"""Video generation script - one-stop submit → poll → download
+
+Cost tracking: this script runs as a `bash` subprocess of the agent. The
+agent injects `STARCHILD_TOOL_CALLER_ID` and `STARCHILD_USER_TURN_ID` into
+the subprocess env. We pass them through to sc-proxy via the SC-CALLER-ID
+header (caller_headers helper) and, after each paid call, write a ledger
+row (record_response helper) so the agent can fold this skill's cost into
+the per-user-turn `cost_summary` SSE event and persist it under the
+assistant message's `metadata.cost_summary`.
+
+Status polls and CDN downloads return zero cost from sc-proxy, so the
+helper silently no-ops on them. Only the actual submit gets billed and
+recorded.
+"""
 
 import requests
 import json
 import time
 import os
+import sys
 from datetime import datetime
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+# Make _cost_track importable when this script is invoked from any CWD
+# (e.g. python -c "from skills.video.generate_video import generate_video").
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+from _cost_track import caller_headers, record_response  # noqa: E402
 
 PROXY_URL = 'http://sc-proxy.internal:8080'
 PROXIES = {'http': PROXY_URL, 'https': PROXY_URL}
 
 def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5, resolution="720p", image_url=None):
     """Generate video end-to-end. Returns dict with success/error/paths."""
-    
-    caller_id = f"video:{int(time.time())}"
-    headers = {
+
+    headers = caller_headers({
         'Authorization': 'Key fake-falai-key-12345',
         'Content-Type': 'application/json',
-        'SC-CALLER-ID': caller_id
-    }
-    
+    }, tool_default='video')
+
     body = {'prompt': prompt, 'duration': duration, 'aspect_ratio': "16:9"}
     if 'happy-horse' in model or 'kling' in model:
         body['resolution'] = resolution
@@ -38,7 +57,10 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
     # Submit
     submit_url = f'https://queue.fal.run/{model}'
     response = requests.post(submit_url, headers=headers, json=body, proxies=PROXIES, verify=False, timeout=90)
-    
+    # Record the paid submit call to the cost ledger so the agent's
+    # per-turn cost_summary picks up this video's cost (no-op if 0).
+    record_response(response, request_url=submit_url, request_payload=body)
+
     if response.status_code != 200:
         return {"success": False, "error": f"Submit failed: {response.status_code} - {response.text[:200]}"}
     

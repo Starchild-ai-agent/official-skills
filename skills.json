@@ -26,6 +26,12 @@
       "description": "Abstract L2 — Master skill hub for all Abstract blockchain capabilities. Provides a directory of 7 specialized skills for building on Abstract: connecting, deploying contracts, wallet integration, agent wallets, multisig, prediction markets, and onchain agent identity. Use when the user wants to build on Abstract, deploy contracts, set up wallets, create multisigs, integrate prediction markets, register agents onchain, or any Abstract L2 development task."
     },
     {
+      "name": "agent-builder",
+      "path": "agent-builder/SKILL.md",
+      "version": "2.0.0",
+      "description": "Create and manage focused micro-agents that do 1-2 things very well. Use when the user wants to build, run, or manage specialized agents with names, tasks, due dates, and schedules."
+    },
+    {
       "name": "agent-export",
       "path": "agent-export/SKILL.md",
       "version": "1.0.0",

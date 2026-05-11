@@ -1,6 +1,6 @@
 ---
 name: composio
-version: 1.2.0
+version: 1.2.1
 description: "Universal tool gateway via Composio — connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration."
 
 metadata:
@@ -124,11 +124,19 @@ curl -s -X POST $GATEWAY/internal/execute \
 }
 ```
 
-### 4. List User's Connections
+### 4. List User's Connections (and confirm OAuth completion)
 
 ```bash
-curl -s $GATEWAY/internal/connections
+# Optional toolkit filter: oauth_completed_active only turns true
+# when that toolkit status is ACTIVE.
+curl -s "$GATEWAY/internal/connections?toolkit=gmail"
 ```
+
+Response includes:
+- `connections`: current deduplicated connection list
+- `oauth_completed_active`: boolean, true only when OAuth completion is observed as `ACTIVE`
+
+Cache invalidation is triggered only after ACTIVE is observed, and it targets the user's instance (`fly-force-instance-id=<user container_id from user_mapping>`), not composio-gateway's own instance.
 
 ### 5. Initiate New Connection
 
@@ -145,6 +153,163 @@ Returns `connect_url` for the user to complete OAuth.
 ```bash
 curl -s -X DELETE $GATEWAY/api/connections/{connection_id}
 ```
+
+### Browserbase — Hybrid Workflow (Session Management + Playwright CDP)
+
+**Composio's Browserbase tools ONLY manage session lifecycle (open/close/list). They do NOT control web pages.**
+
+To actually operate a browser (navigate, click, fill forms, scrape data), use **Playwright `connect_over_cdp`** to connect to the session's WebSocket URL.
+
+#### Step 1: Create a Browserbase Session via Composio
+
+```bash
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "BROWSERBASE_TOOL_SESSIONS_CREATE", "arguments": {"projectId": "YOUR_PROJECT_ID"}}'
+```
+
+Response includes `id` (session_id), `status`, and timestamps.
+
+#### Step 2: Build the CDP WebSocket URL
+
+```python
+import os
+session_id = "<session_id from step 1>"
+api_key = os.environ.get("BROWSERBASE_API_KEY")  # stored in workspace/.env
+cdp_url = f"wss://connect.browserbase.com?apiKey={api_key}&sessionId={session_id}"
+```
+
+#### Step 3: Control the Browser with Playwright
+
+```python
+from playwright.async_api import async_playwright
+
+async with async_playwright() as p:
+    browser = await p.chromium.connect_over_cdp(cdp_url)
+    page = await browser.new_page()
+    await page.goto("https://example.com")
+
+    # Click, fill, screenshot — full Playwright API
+    await page.click("button.submit")
+    await page.fill("input[name='email']", "user@test.com")
+    await page.screenshot(path="result.png")
+
+    content = await page.content()
+```
+
+#### Step 4: Delete the Session (IMPORTANT — stops billing)
+
+```bash
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "BROWSERBASE_TOOL_SESSIONS_DELETE", "arguments": {"id": "YOUR_SESSION_ID"}}'
+```
+
+#### Key Concepts
+
+| Aspect | Detail |
+|--------|--------|
+| **Composio role** | Session lifecycle only — create, list, delete sessions |
+| **Playwright role** | Page control — navigate, click, fill, scrape, screenshot |
+| **Memory cost** | ~30-50MB locally (Playwright client only); Chromium runs on Browserbase servers |
+| **Anti-detection** | Browserbase handles it server-side — fingerprint masking, captcha solving, Cloudflare bypass. Playwright client does nothing special. |
+| **Billing** | Per-minute (rounded up). Always delete sessions when done. |
+
+#### Full Example Script (Create → Control → Delete)
+
+```python
+#!/usr/bin/env python3
+"""Browserbase: create session → control with Playwright → clean up."""
+import asyncio, os, requests
+from playwright.async_api import async_playwright
+
+GATEWAY = "http://composio-gateway.flycast"
+PROJECT_ID = os.environ.get("BROWSERBASE_PROJECT_ID")
+
+async def main():
+    # 1. Create session via Composio
+    resp = requests.post(f"{GATEWAY}/internal/execute", json={
+        "tool": "BROWSERBASE_TOOL_SESSIONS_CREATE",
+        "arguments": {"projectId": PROJECT_ID}
+    }).json()
+    session_id = resp["data"]["id"]
+    print(f"Session created: {session_id}")
+
+    try:
+        # 2. Connect via CDP
+        api_key = os.environ["BROWSERBASE_API_KEY"]
+        cdp_url = f"wss://connect.browserbase.com?apiKey={api_key}&sessionId={session_id}"
+
+        async with async_playwright() as p:
+            browser = await p.chromium.connect_over_cdp(cdp_url)
+            page = await browser.new_page()
+            await page.goto("https://example.com")
+            title = await page.title()
+            print(f"Page title: {title}")
+            await browser.close()
+
+    finally:
+        # 3. Always delete session to stop billing
+        requests.post(f"{GATEWAY}/internal/execute", json={
+            "tool": "BROWSERBASE_TOOL_SESSIONS_DELETE",
+            "arguments": {"id": session_id}
+        })
+        print("Session deleted")
+
+asyncio.run(main())
+```
+
+#### Available Browserbase Tools via Composio
+
+| Tool Slug | Purpose | Key Arguments |
+|-----------|---------|---------------|
+| `BROWSERBASE_TOOL_SESSIONS_CREATE` | Create a browser session | `projectId` |
+| `BROWSERBASE_TOOL_SESSIONS_DELETE` | Delete a session | `id` |
+| `BROWSERBASE_TOOL_SESSIONS_GET` | Get session info | `id` |
+| `BROWSERBASE_TOOL_SESSIONS_LIST` | List all sessions | (none) |
+| `BROWSERBASE_TOOL_SESSIONS_GET_DEBUG_INFO` | Get debug info | `id` |
+| `BROWSERBASE_TOOL_SESSIONS_STOP` | Stop a session | `id` |
+| `BROWSERBASE_TOOL_CONTEXTS_CREATE` | Create persistent context | `projectId` |
+| `BROWSERBASE_TOOL_CONTEXTS_DELETE` | Delete context | `id` |
+| `BROWSERBASE_TOOL_CONTEXTS_GET` | Get context info | `id` |
+| `BROWSERBASE_TOOL_CONTEXTS_LIST` | List contexts | (none) |
+| `BROWSERBASE_TOOL_CONTEXTS_UPDATE` | Update context labels | `id`, `labels` |
+| `BROWSERBASE_TOOL_UPLOADS_CREATE` | Upload file to session | `projectId`, file data |
+| `BROWSERBASE_TOOL_UPLOADS_GET` | Get upload info | `id` |
+| `BROWSERBASE_TOOL_UPLOADS_LIST` | List uploads | (none) |
+| `BROWSERBASE_TOOL_UPLOADS_DELETE` | Delete upload | `id` |
+| `BROWSERBASE_TOOL_DOWNLOADS_LIST` | List downloads | `sessionId` |
+| `BROWSERBASE_TOOL_DOWNLOADS_GET` | Get download | `downloadId` |
+| `BROWSERBASE_TOOL_DOWNLOADS_GET_STREAM` | Stream download | `downloadId` |
+| `BROWSERBASE_TOOL_KB_GET_KNOWLEDGE` | Get KB article | `id` |
+
+### Browserbase / Browser Tool troubleshooting
+
+If Browserbase is connected but execution fails, check naming mismatches across **connection toolkit** vs **tool slug**:
+
+- Connection may appear as toolkit `browserbase_tool`
+- Search may return tool slugs like `BROWSER_TOOL_CREATE_TASK`
+- Execute may still reject that slug (`Tool ... not found`) and only resolve legacy slugs under toolkit `browserbase`
+
+Quick diagnosis:
+
+```bash
+# 1) Health + active connections
+curl -s $GATEWAY/health
+curl -s $GATEWAY/internal/connections
+
+# 2) Search browser tool slugs
+curl -s -X POST $GATEWAY/internal/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"browserbase create task"}'
+
+# 3) Try execute and inspect exact error
+curl -s -X POST $GATEWAY/internal/execute \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"BROWSER_TOOL_CREATE_TASK","arguments":{"task":"open https://example.com"}}'
+```
+
+If error says **No active connection found for toolkit 'browserbase'**, gateway should normalize Browserbase aliases server-side (`browser`/`browserbase`/`browserbase_tool`) and normalize execute slug variants (`BROWSERBASE_TOOL_*` ↔ `BROWSER_TOOL_*`) so both old/new clients work with a `browserbase_tool` active connection.
 
 ## Optimal Workflow (minimize tool calls)
 
@@ -248,6 +413,72 @@ curl -s -X POST $GATEWAY/internal/execute \
 ```
 
 **Twitter Response Structure:** Post/create returns `data.data.data` (3-level nesting), contains `id`, `text`, `edit_history_tweet_ids`.
+
+#### Twitter — Post with Image (FileUploadable flow)
+
+**Key constraint:** the gateway's `/internal/execute` is a thin wrapper over Composio v2 `actions/{slug}/execute` — it does NOT support `version` pinning or `FileUploadable` synthesis. Twitter media upload tools (`TWITTER_UPLOAD_MEDIA`, `TWITTER_UPLOAD_LARGE_MEDIA`) require **both**, so they MUST be called via the `composio_client` Python SDK directly, not via gateway.
+
+The gateway is intentionally generic — keep all per-tool flows (like this one) here in the skill.
+
+**3-step flow (proven working):**
+
+```python
+import hashlib, httpx, json
+from pathlib import Path
+from composio_client import Composio
+
+# COMPOSIO_API_KEY: read from /data/workspace/composio-gateway/.env
+# (gateway owns the key; for skill scripts, source it the same way)
+client = Composio(api_key=COMPOSIO_API_KEY)
+
+USER_ID = f"starchild-{user_id}"   # NOTE: hyphen, not underscore
+img = Path("output/images/foo.jpg")
+
+# 1. Get presigned S3 upload URL
+md5 = hashlib.md5(img.read_bytes()).hexdigest()
+presigned = client.files.create_presigned_url(
+    filename=img.name, md5=md5, mimetype="image/jpeg",
+    tool_slug="TWITTER_UPLOAD_MEDIA", toolkit_slug="twitter",
+)
+# presigned.type == "new" → file is new, must PUT
+# presigned.type == "existing" → cached, skip PUT
+if presigned.type == "new":
+    httpx.put(presigned.new_presigned_url, content=img.read_bytes(),
+              headers={"Content-Type": "image/jpeg"}, timeout=60).raise_for_status()
+
+# 2. Execute upload tool — MUST pass version="20260501_00" (or current latest)
+#    media is a FileUploadable dict, NOT base64
+upload_resp = client.tools.execute(
+    tool_slug="TWITTER_UPLOAD_MEDIA",
+    user_id=USER_ID,
+    version="20260501_00",
+    arguments={
+        "media": {"name": img.name, "mimetype": "image/jpeg", "s3key": presigned.key},
+        "media_type": "image/jpeg",
+        "media_category": "tweet_image",   # or "dm_image", "subtitles"
+    },
+)
+result = upload_resp.model_dump()
+assert result["successful"], result["error"]
+# Response nesting: data.data.id (NOT data.id, NOT data.media_id_string)
+media_id = result["data"]["data"]["id"]
+
+# 3. Create tweet with media_media_ids — this one is fine via gateway too
+tweet_resp = client.tools.execute(
+    tool_slug="TWITTER_CREATION_OF_A_POST",
+    user_id=USER_ID,
+    arguments={"text": "your tweet text", "media_media_ids": [str(media_id)]},
+)
+tweet_id = tweet_resp.model_dump()["data"]["data"]["id"]
+url = f"https://x.com/i/web/status/{tweet_id}"
+```
+
+**Why this works (debugging notes — don't lose this knowledge):**
+- `GET /api/v3/tools/TWITTER_UPLOAD_MEDIA` returns 404 without a version because it lives in toolkit version `20260501_00+`, not the default `00000000_00`.
+- `client.tools.execute(version=...)` routes through `/api/v3/tools/execute/{slug}` which IS version-aware.
+- Gateway uses v2 `/api/v2/actions/{slug}/execute` for execute — v2 has no version routing, so it can never reach versioned tools. Don't try to "fix" the gateway for this — adding version + FileUploadable would bloat it. Keep it thin.
+- The `media` param expects `{name, mimetype, s3key}` (FileUploadable schema), NOT base64. Passing base64 returns: "Input should be a valid dictionary or instance of FileUploadable on parameter `media`".
+- File size limit for `TWITTER_UPLOAD_MEDIA` is ~5 MB. For larger files / videos / GIFs, use `TWITTER_UPLOAD_LARGE_MEDIA` (chunked, same flow but additional segment params).
 
 **⚠️ Twitter Limitations & Fallback:**
 - `TWITTER_RECENT_SEARCH` only covers **last 7 days**, older tweets won't appear
@@ -406,6 +637,14 @@ curl -s -X POST $GATEWAY/internal/execute \
 - **Native tool fallback**: When Composio tools have limitations (e.g., Twitter search only 7 days), prefer platform built-in native tools (e.g., `twitter_user_tweets`)
 
 ## Common Issues
+
+### Browserbase connection name mismatch
+
+If `/internal/connections` shows toolkit `browserbase_tool` as ACTIVE, but executing `BROWSER_TOOL_*` returns "No active connection found for toolkit 'browser'", this is a gateway-side toolkit alias mismatch (`browserbase_tool` vs `browser`).
+
+**What to do:**
+1. For session management tools (`SESSIONS_*`, `CONTEXTS_*`, `UPLOADS_*`, etc.), the gateway should normalize Browserbase aliases server-side. If it doesn't, try both `BROWSER_TOOL_*` and `BROWSERBASE_TOOL_*` slugs.
+2. For **actual browser control** (navigate, click, fill, scrape), **do NOT use Composio execute** — use Playwright `connect_over_cdp` as described in the Browserbase section above. Composio tools only manage sessions, not page interactions.
 
 ### Gmail Nested JSON Parsing
 

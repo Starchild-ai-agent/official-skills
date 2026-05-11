@@ -67,7 +67,23 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
     
     # Get result & download
     result_resp = requests.get(result_url, headers={'Authorization': 'Key fake-falai-key-12345'}, proxies=PROXIES, verify=False, timeout=90)
-    video_url = result_resp.json()['video']['url']
+    try:
+        result_json = result_resp.json()
+    except Exception:
+        return {"success": False, "request_id": request_id, "cost": cost,
+                "error": f"Result endpoint returned non-JSON (HTTP {result_resp.status_code}): {result_resp.text[:200]}",
+                "polls": poll_count}
+
+    # fal model response shapes vary. Try known shapes; if none match,
+    # surface the actual top-level keys so the caller can see why parsing
+    # failed (instead of a raw KeyError 200 lines deep).
+    video_url = _extract_video_url(result_json)
+    if not video_url:
+        return {"success": False, "request_id": request_id, "cost": cost,
+                "error": (f"Could not locate video URL in fal response. "
+                          f"Top-level keys: {list(result_json.keys())}. "
+                          f"Sample: {str(result_json)[:300]}"),
+                "polls": poll_count}
     
     os.makedirs('output/videos', exist_ok=True)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -85,6 +101,45 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
         "local_path": local_path,
         "file_size_mb": len(video_data) / 1024 / 1024
     }
+
+def _extract_video_url(result_json):
+    """Recover the video URL from fal's response across model variants.
+
+    Known shapes (as of 2026-05):
+      - happy-horse / kling / seedance:   {"video":  {"url": "..."}}
+      - wan / some pipelines:             {"videos": [{"url": "..."}]}
+      - some upscale/pipeline outputs:    {"output": [{"url": "..."}]}
+      - voiceover/audio variants:         {"output_video": {"url": "..."}}
+
+    Returns the URL string, or None if no recognised shape matches.
+    """
+    if not isinstance(result_json, dict):
+        return None
+
+    # Single-video object shapes
+    for key in ("video", "output_video"):
+        node = result_json.get(key)
+        if isinstance(node, dict) and isinstance(node.get("url"), str):
+            return node["url"]
+        if isinstance(node, str) and node.startswith("http"):
+            return node
+
+    # Array shapes
+    for key in ("videos", "output", "outputs"):
+        arr = result_json.get(key)
+        if isinstance(arr, list) and arr:
+            first = arr[0]
+            if isinstance(first, dict) and isinstance(first.get("url"), str):
+                return first["url"]
+            if isinstance(first, str) and first.startswith("http"):
+                return first
+
+    # Last resort: anything in top-level that looks like {"url": "...mp4"}
+    for v in result_json.values():
+        if isinstance(v, dict) and isinstance(v.get("url"), str) and ".mp4" in v["url"]:
+            return v["url"]
+    return None
+
 
 def estimate_cost(model, duration, resolution="720p"):
     """Estimate generation cost in USD"""
@@ -105,9 +160,13 @@ def estimate_cost(model, duration, resolution="720p"):
     
     return round(unit_price * duration, 4)
 
+# NOTE 2026-05-11: 'fal-ai/wan/v2.5/text-to-video' was removed from the
+# fal proxy allowlist (returns 404). Until a cheap replacement is curated,
+# 'budget' falls back to happy-horse (same as 'balanced'). Cost is still
+# ~$0.14/s instead of $0.05/s — budget tier is effectively unavailable.
 QUICK_MODELS = {
-    "budget": "fal-ai/wan/v2.5/text-to-video",
-    "balanced": "alibaba/happy-horse/text-to-video", 
+    "budget": "alibaba/happy-horse/text-to-video",
+    "balanced": "alibaba/happy-horse/text-to-video",
     "premium": "bytedance/seedance-2.0/fast/text-to-video"
 }
 

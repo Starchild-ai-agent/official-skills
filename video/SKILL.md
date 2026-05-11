@@ -1,6 +1,6 @@
 ---
 name: video
-version: 3.2.0
+version: 3.3.0
 description: "End-to-end video generation via fal.ai through Starchild paid proxy. Covers text-to-video, image-to-video, video-to-video, model selection, billing, polling, and serving local reference assets via a public preview."
 metadata:
   starchild:

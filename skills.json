@@ -316,8 +316,8 @@
     {
       "name": "web-crawler",
       "path": "web-crawler/SKILL.md",
-      "version": "1.0.1",
-      "description": "Use when normal web_fetch cannot read a page, when a site blocks basic fetching, or when the user needs YouTube content in AI-ready form. Guides fallback use of Firecrawl for single-page web scraping and SerpApi for YouTube search/video metadata/transcripts only."
+      "version": "2.0.0",
+      "description": "All-in-one web scraping and social media data extraction. Use when normal web_fetch cannot read a page, when the user needs YouTube content, or when the user wants to scrape/fetch/extract data from social media platforms (TikTok, Instagram, YouTube, Twitter/X, LinkedIn, Facebook, Reddit, Threads, Bluesky, Pinterest, Snapchat, Twitch, Kick, Truth Social, TikTok Shop, Google, and more). Covers profiles, posts, videos, reels, comments, transcripts, followers, ads, hashtags, trending content, and engagement metrics."
     },
     {
       "name": "where-is-my-ip",

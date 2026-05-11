@@ -1,6 +1,6 @@
 ---
 name: rootdata
-version: 1.0.0
+version: 1.1.0
 description: RootData Web3 intelligence API for crypto projects, investors, funding rounds, trending rankings, and personnel job changes. Use for project/investor research and dealflow tracking.
 delivery: script
 metadata:

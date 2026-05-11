@@ -12,7 +12,18 @@ Usage:
 """
 
 import os
+import sys
+from pathlib import Path
+
 import requests
+
+# Make _cost_track importable when this script is invoked from any CWD
+# (mirrors the pattern from the video skill).
+_HERE = Path(__file__).resolve().parent
+if str(_HERE) not in sys.path:
+    sys.path.insert(0, str(_HERE))
+
+from _cost_track import caller_headers, record_response  # noqa: E402
 
 BASE = "https://api.rootdata.com/open/skill"
 TIMEOUT = 30
@@ -24,20 +35,26 @@ def _headers(language: str = "en"):
         raise RuntimeError(
             "ROOTDATA_SKILL_KEY is not set. Call rd_init_key() and persist the returned api_key first."
         )
-    return {
+    base = {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
         "language": language,
     }
+    # Wrap with SC-CALLER-ID so paid calls are attributed to the user turn.
+    return caller_headers(base, tool_default="rootdata")
 
 
 def _post(path: str, body: dict, language: str = "en"):
+    url = f"{BASE}/{path}"
     r = requests.post(
-        f"{BASE}/{path}",
+        url,
         headers=_headers(language=language),
         json=body,
         timeout=TIMEOUT,
     )
+    # Record cost ledger row before raising — even error responses may have
+    # been billed by the proxy. record_response() silently no-ops on non-paid.
+    record_response(r, request_url=url, request_payload=body)
     r.raise_for_status()
     data = r.json()
     if isinstance(data, dict) and data.get("result") != 200:

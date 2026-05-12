@@ -1,6 +1,6 @@
 ---
 name: community-project-publish
-version: 0.1.0
+version: 0.2.0
 description: Publish runnable code projects (tasks, previews, services, scripts) to the Starchild community-projects repo, or fork someone else's project into your workspace. Use when the user wants to share their built project, install/fork a project from the community catalog, or browse/search published projects.
 delivery: script
 metadata:
@@ -20,6 +20,23 @@ Skill-side client for the **community-projects** ecosystem. Backed by:
 - Install target: `output/projects/{slug}/`
 
 **Project ≠ Skill.** Skills are workflow instructions (this thing). Projects are runnable code (what this thing publishes/forks).
+
+## ⚠️ Not the same as the preview registry
+
+There are **two completely separate "community" surfaces** on this platform. Don't mix them when reporting counts or listing entries to the user:
+
+| Surface | This skill | The OLD preview registry |
+|---|---|---|
+| Tool | `community-project-publish` skill (`list_projects`, `fork_project`, `publish_project`) | `projects` tool (`action='explore'`, `'mine'`, `'favorites'`) + `community_publish` main-process tool |
+| What it stores | **Source code** for runnable projects (4 types: task / preview / service / script) | **Live HTTP slugs** that reverse-proxy to a running preview container |
+| Data source | GitHub repo `Starchild-ai-agent/community-projects` | Postgres table `project_listings` on sc-community-gateway |
+| Public URL | `https://github.com/Starchild-ai-agent/community-projects/tree/main/...` | `https://community.iamstarchild.com/{user_id}-{slug}` |
+| Forkable? | ✅ Yes — `fork_project()` downloads + installs locally | ❌ No — it's just a URL, code stays in the publisher's container |
+| Survives container restart? | ✅ Yes — code lives in GitHub | ⚠️ Slug yes, content only while the container is up |
+
+**When the user asks "how many projects are on the community?":** specify which list. Most people mean the visible/explorable previews (the 44-entry list from `projects(action='explore')`), not the GitHub-backed code projects from this skill. If unsure, ask once.
+
+**When you publish via this skill with `type=preview`:** you're creating a **forkable code template**, NOT a running preview. The publisher (or anyone) can `fork_project()` then `preview(action='serve')` to run it. To register a *live* HTTP slug for an already-running preview, use `community_publish` (the main-process tool), not this skill.
 
 ## When to use
 

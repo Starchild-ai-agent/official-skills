@@ -137,10 +137,21 @@ def update_project(project_dir: str, version_bump: str = "patch") -> dict[str, A
 
 def list_projects(type: str | None = None, tag: str | None = None,
                   user: str | None = None, q: str | None = None) -> dict[str, Any]:
-    """Browse the catalog. Filters: type, tag, user_id, free-text query."""
+    """Browse the GitHub-backed catalog of forkable code projects.
+
+    NOTE: This is the community-projects code repo (forkable source code),
+    NOT the preview registry (running HTTP slugs at community.iamstarchild.com).
+    For the preview registry, use the platform's `projects` tool with
+    action='explore'. See SKILL.md "Not the same as the preview registry".
+
+    Filters: type ('task'|'preview'|'service'|'script'), tag, user_id, free-text q.
+    """
     status, resp = gateway.list_(type=type, tag=tag, user_id=user, q=q)
     if status != 200:
         return {"ok": False, "error": resp.get("error", f"HTTP {status}")}
+    # Tag the source so the calling agent can't mistake it for the preview registry
+    if isinstance(resp, dict):
+        resp.setdefault("source", "community-projects (github-backed code repo)")
     return resp
 
 

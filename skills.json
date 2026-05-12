@@ -112,8 +112,14 @@
     {
       "name": "coinglass",
       "path": "coinglass/SKILL.md",
-      "version": "3.0.1",
+      "version": "3.0.3",
       "description": "Comprehensive crypto derivatives data - funding rates, open interest,"
+    },
+    {
+      "name": "community-project-publish",
+      "path": "community-project-publish/SKILL.md",
+      "version": "0.1.0",
+      "description": "Publish runnable code projects (tasks, previews, services, scripts) to the Starchild community-projects repo, or fork someone else's project into your workspace. Use when the user wants to share their built project, install/fork a project from the community catalog, or browse/search published projects."
     },
     {
       "name": "composio",
@@ -208,8 +214,8 @@
     {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
-      "version": "1.3.4",
-      "description": "End-to-end project engineering — from understanding user intent to architecture design, incremental build with verification, and systematic debugging. Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any software the user wants built. Replaces coder + preview-dev with a unified methodology."
+      "version": "1.4.0",
+      "description": "End-to-end project engineering \\u2014 from understanding user intent\\"
     },
     {
       "name": "rootdata",
@@ -306,6 +312,12 @@
       "path": "user-onboarding/SKILL.md",
       "version": "1.2.4",
       "description": "Guide first-time Starchild users through onboarding with assistant/intern"
+    },
+    {
+      "name": "venice",
+      "path": "venice/SKILL.md",
+      "version": "1.0.4",
+      "description": "Venice AI — privacy-first uncensored AI platform. Image generation/edit/upscale, TTS, speech-to-text, embeddings, video generation/transcription, model catalog, character personas, and the BYOK onboarding guide for Venice chat. Use when the user mentions Venice, wants uncensored / private / TEE / E2EE inference, needs Venice-specific features (venice_parameters, character_slug, web_search citations), or wants to register Venice as a chat model."
     },
     {
       "name": "video",

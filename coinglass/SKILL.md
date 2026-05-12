@@ -1,6 +1,6 @@
 ---
 name: coinglass
-version: 3.0.2
+version: 3.0.3
 description: Comprehensive crypto derivatives data - funding rates, open interest,
   liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF
   flows, futures market data
@@ -11,7 +11,7 @@ metadata:
     skillKey: coinglass
     plan: professional
     api_version: v4
-    version: 3.0.1
+    version: 3.0.3
     total_tools: 37
     requires:
       env:
@@ -19,6 +19,39 @@ metadata:
 user-invocable: false
 disable-model-invocation: false
 ---
+
+## Liquidation Heatmap（真正的价格区间清算压力）
+
+`cg_liquidation_analysis` 返回全0，不可用。正确做法是直接调 API：
+
+```python
+from tools._api import cg_request
+
+# 全市场聚合热力图（推荐，无需指定交易所）
+# range 支持: 12h, 24h, 3d, 7d, 30d, 90d, 180d, 1y
+data = cg_request("api/futures/liquidation/aggregated-heatmap/model1",
+                  params={"symbol": "BTC", "range": "24h"})
+
+# 返回结构：
+# data["y_axis"]                   → 价格档位列表（从低到高）
+# data["liquidation_leverage_data"] → [[y_idx, leverage, usd_value], ...]
+# data["price_candlesticks"]        → OHLCV K线，最后一根收盘价 = 当前价
+# data["update_time"]               → 更新时间戳
+
+# 解析方法：
+from collections import defaultdict
+y_axis = data["y_axis"]
+current_price = float(data["price_candlesticks"][-1][4])
+price_liq = defaultdict(float)
+for y_idx, leverage, usd_val in data["liquidation_leverage_data"]:
+    if 0 <= y_idx < len(y_axis):
+        price_liq[y_axis[y_idx]] += usd_val
+
+longs  = {p: v for p, v in price_liq.items() if p < current_price}  # 多头清算（↓触发）
+shorts = {p: v for p, v in price_liq.items() if p > current_price}  # 空头清算（↑触发）
+```
+
+注意：单交易所版本（`heatmap/model1` 带 exchange 参数）当前会报 400 错误，改用 aggregated 版本。
 
 ## Script Usage
 

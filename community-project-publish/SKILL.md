@@ -1,6 +1,6 @@
 ---
 name: community-project-publish
-version: 0.2.0
+version: 0.3.0
 description: Publish runnable code projects (tasks, previews, services, scripts) to the Starchild community-projects repo, or fork someone else's project into your workspace. Use when the user wants to share their built project, install/fork a project from the community catalog, or browse/search published projects.
 delivery: script
 metadata:
@@ -21,22 +21,45 @@ Skill-side client for the **community-projects** ecosystem. Backed by:
 
 **Project ≠ Skill.** Skills are workflow instructions (this thing). Projects are runnable code (what this thing publishes/forks).
 
-## ⚠️ Not the same as the preview registry
+## Two stages of publishing — Public vs Open Source
 
-There are **two completely separate "community" surfaces** on this platform. Don't mix them when reporting counts or listing entries to the user:
+Sharing a user's work has **two independent, progressive stages**. They are NOT mutually exclusive — most users naturally want both. Pick the one that matches what the user wants others to be able to *do*:
 
-| Surface | This skill | The OLD preview registry |
+| Stage | What it does | Tool | Other users get |
+|---|---|---|---|
+| **① Public** (公开服务) | Exposes the running service at a public URL — others can visit/use it in their browser | `preview(action='publish')` | A live URL: `https://community.iamstarchild.com/{user_id}-{slug}` (slug stays put, content only while publisher's container is up) |
+| **② Open Source** (开源代码) | Publishes the source code to a public GitHub repo — others can fork and run their own instance | `publish_project()` (this skill) | A `fork_project()`-able folder under `Starchild-ai-agent/community-projects` — code lives in GitHub, survives any container restart |
+
+### How to read the user's "publish" request
+
+| User says | Stage | Default action |
 |---|---|---|
-| Tool | `community-project-publish` skill (`list_projects`, `fork_project`, `publish_project`) | `projects` tool (`action='explore'`, `'mine'`, `'favorites'`) + `community_publish` main-process tool |
-| What it stores | **Source code** for runnable projects (4 types: task / preview / service / script) | **Live HTTP slugs** that reverse-proxy to a running preview container |
-| Data source | GitHub repo `Starchild-ai-agent/community-projects` | Postgres table `project_listings` on sc-community-gateway |
-| Public URL | `https://github.com/Starchild-ai-agent/community-projects/tree/main/...` | `https://community.iamstarchild.com/{user_id}-{slug}` |
-| Forkable? | ✅ Yes — `fork_project()` downloads + installs locally | ❌ No — it's just a URL, code stays in the publisher's container |
-| Survives container restart? | ✅ Yes — code lives in GitHub | ⚠️ Slug yes, content only while the container is up |
+| "公开 / publish my preview / make it accessible / share the link" | ① only | `preview(action='publish')` |
+| "开源 / open source / let others fork / share the code" | ② only | `publish_project()` |
+| "发布 / publish" without qualifier | likely ① first | `preview(action='publish')`, then offer ② |
+| Truly ambiguous | ask once | "想公开访问（别人能打开链接看），还是开源代码（别人能 fork 到自己机器跑）？两个可以一起。" |
 
-**When the user asks "how many projects are on the community?":** specify which list. Most people mean the visible/explorable previews (the 44-entry list from `projects(action='explore')`), not the GitHub-backed code projects from this skill. If unsure, ask once.
+### After Stage ① — casually offer Stage ②
 
-**When you publish via this skill with `type=preview`:** you're creating a **forkable code template**, NOT a running preview. The publisher (or anyone) can `fork_project()` then `preview(action='serve')` to run it. To register a *live* HTTP slug for an already-running preview, use `community_publish` (the main-process tool), not this skill.
+After a successful `preview(action='publish')`, mention Stage ② once, don't push:
+
+> 已经公开访问 ✅。要不要顺便把代码也开源出去？这样别人不光能访问，还能 fork 一份跑在自己机器上。
+
+If the user says yes → run `publish_project()` on the same project_dir. If no, drop it.
+
+### Both stages combined (the cleanest publisher workflow)
+
+1. `preview(action='publish', slug=X)` — live URL goes up
+2. `publish_project(project_dir=Y)` — code goes to GitHub
+3. The PROJECT.md README in step 2 should mention the live URL from step 1, so anyone browsing the GitHub catalog can try the running version before forking
+
+### Don't conflate the two list endpoints
+
+When the user asks "how many community projects are there?", clarify which catalog:
+- `projects(action='explore')` lists Stage ① entries (currently 44+ live preview slugs)
+- `list_projects()` (this skill) lists Stage ② entries (GitHub-backed code repo)
+
+These are separate datasets; never quote one number to answer a question about the other.
 
 ## When to use
 

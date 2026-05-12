@@ -1,6 +1,6 @@
 ---
 name: venice
-version: 1.0.0
+version: 1.0.1
 description: Venice AI — privacy-first uncensored AI platform. Image generation/edit/upscale, TTS, speech-to-text, embeddings, video generation/transcription, model catalog, character personas, and the BYOK onboarding guide for Venice chat. Use when the user mentions Venice, wants uncensored / private / TEE / E2EE inference, needs Venice-specific features (venice_parameters, character_slug, web_search citations), or wants to register Venice as a chat model.
 delivery: script
 metadata:
@@ -226,6 +226,27 @@ The Venice response echoes a `venice_parameters` block in the body so you can ve
 ## Costs
 
 This skill talks **directly** to Venice — costs are billed against the user's Venice balance, not against platform credits. The platform's per-tool ledger does NOT track Venice spend. Tell the user to check `account_balance()` periodically. Image edit is $0.04/edit, TTS depends on chars, image generate depends on resolution + steps.
+
+`account_balance()` returns both `balance_usd` and `balance_diem` — Venice supports two parallel cost models:
+
+### Pay-as-you-go (USD top-up) — default
+
+User funds the API key with USD at <https://venice.ai/settings/api>. Each request decrements `balance_usd`. Standard SaaS billing. **This is what 99% of users want.**
+
+### DIEM staking — for high-volume / always-on users
+
+DIEM is an ERC-20 on Base. Each staked DIEM unlocks **$1 of AI compute per day, every day, no expiry** (unused daily credits do NOT roll over). Burning DIEM returns the locked VVV (Venice's native token) used to mint it.
+
+Pricing in `list_models()` shows both currencies, e.g. GLM 5.1 input is `$1.75/1M usd, 1.75/1M diem` — meaning Venice's backend auto-detects whether the wallet behind the API key has staked DIEM and routes spend to that bucket first. **No skill changes needed** to use DIEM — the API key resolves the right pool server-side.
+
+| Path | When it makes sense |
+|---|---|
+| USD top-up | Casual / variable usage. Pay only what you spend. Zero idle cost. |
+| Stake DIEM | Daily Venice spend ≥ $1 sustained, OR running 24h agent loops, OR want predictable cost ceiling. Capital is locked in DIEM, but unused daily credits = pure waste, so size to floor of your daily usage. |
+
+Break-even rule of thumb: stake $X of DIEM only if your projected daily spend is ≥ $X / (DIEM market price). At ~$360/DIEM (early 2026), staking 1 DIEM makes sense at $1/day = $30/month sustained Venice spend.
+
+Setup: `https://venice.ai/token` — connect a wallet on Base, stake there. **Never send DIEM directly to the contract address — use the staking page only.** This skill does NOT automate staking (involves wallet ops + Base chain + VVV/DIEM contracts that are out of scope for an inference skill); the user does it once on the website.
 
 ## Video
 

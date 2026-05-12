@@ -1,47 +1,51 @@
 ---
 name: project-builder
-version: 1.3.4
-description: "End-to-end project engineering — from understanding user intent to architecture design, incremental build with verification, and systematic debugging. Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any software the user wants built. Replaces coder + preview-dev with a unified methodology."
-tags: [engineering, development, tasks, dashboards, preview, debugging]
-tools: [read_file, write_file, edit_file, bash, preview_serve, preview_stop, preview_check, community_publish, community_unpublish, community_list, register_task, activate_task, cancel_scheduled_task, update_scheduled_task, list_scheduled_tasks, get_scheduled_task_log]
+version: 1.4.0
+description: "End-to-end project engineering \u2014 from understanding user intent\
+  \ to architecture design, incremental build with verification, and systematic debugging.\
+  \ Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any\
+  \ software the user wants built. Replaces coder + preview-dev with a unified methodology."
+tags:
+- engineering
+- development
+- tasks
+- dashboards
+- preview
+- debugging
+tools:
+- read_file
+- write_file
+- edit_file
+- bash
+- preview_serve
+- preview_stop
+- preview_check
+- community_publish
+- community_unpublish
+- community_list
+- register_task
+- activate_task
+- cancel_scheduled_task
+- update_scheduled_task
+- list_scheduled_tasks
+- get_scheduled_task_log
 delivery: script
 triggers:
-  - "build me"
-  - "create a dashboard"
-  - "set up monitoring"
-  - "schedule a task"
-  - "make a web app"
-  - "write a script"
-  - "something is broken"
-  - "it's not working"
-  - "debug this"
-  - "fix this"
-  - "preview"
-  - "publish"
----
-
-# Project Build
-
-Three phases, always in order: **DESIGN → BUILD → DEBUG**.
-
-**Skill references** (read on demand, not upfront):
-- `references/build-patterns.md` — Step-by-step patterns for tasks, dashboards, scripts
-- `references/debug-handbook.md` — Layer-by-layer diagnosis, common issues
-
-**Platform references** (shared, in `config/context/references/`):
-- `preview-guide.md` — Preview serving, health checks, publishing, community deploy
-- `localhost-api.md` — Scripts can call the agent via /chat/stream (decide when to think, what context to pass, which model) and push messages via /push
-- `sc-proxy.md` — Transparent proxy, API pricing & rate limits
-
-**Skill references** (in `references/`):
-- `build-patterns.md` — Detailed build recipes per project type
-- `debug-handbook.md` — Systematic diagnosis protocol
-- `dashboard-examples.md` — Code templates for Chart.js, ApexCharts, D3.js, SSE, responsive layouts, dark mode, accessibility (read when building dashboards)
-
+- build me
+- create a dashboard
+- set up monitoring
+- schedule a task
+- make a web app
+- write a script
+- something is broken
+- it's not working
+- debug this
+- fix this
+- preview
+- publish
 ---
 
 ## Phase 1: DESIGN
-
 **Translate vague requests into concrete specs.** If intent is ambiguous, ask ONE question.
 
 Architecture decision tree:
@@ -63,6 +67,52 @@ After Phase 1, STOP and present a short phase plan (milestones for DESIGN/BUILD/
 - If user confirms: proceed to Phase 2.
 - If user requests changes: revise design and re-confirm.
 - If no confirmation: do not write/modify code.
+
+---
+
+## Phase 1.5: SCAFFOLD (mandatory for shareable projects)
+
+After design is confirmed, **before writing any code**, scaffold the project under the standard layout. This makes the project shareable via `community-project-publish` skill from day one — no migration later.
+
+**Standard project location:** `output/projects/{slug}/`
+
+```
+output/projects/{slug}/
+├── project.yaml          # name, version (start 0.1.0), type, description, license, entry, env_required
+├── PROJECT.md            # 4 required sections: What / Required env / How to start / Outputs / Troubleshooting
+├── .env.example          # every env var the code reads, with placeholder values
+├── .gitignore            # at minimum: .env, *.key, *.pem, __pycache__, node_modules
+└── src/                  # all code lives here, NOT scattered
+    ├── run.py            # type=task — first line MUST be: # -*- task-system: v3 -*-
+    ├── server.py         # type=service
+    ├── main.py           # type=script
+    └── index.html / app.py + frontend  # type=preview
+```
+
+**Project type → entry mapping:**
+
+| Architecture choice | type | entry path |
+|---|---|---|
+| Scheduled Task | `task` | `src/run.py` |
+| Preview Server | `preview` | `src/index.html` (static) or `src/app.py` |
+| Background daemon | `service` | `src/server.py` |
+| One-shot tool | `script` | `src/main.py` |
+
+**Skip scaffold only when:**
+- Pure inline analysis with no persistent code
+- Modifying an existing `output/projects/...` project (keep its layout)
+- User explicitly says "just throw a script in /tmp" or similar
+
+**During Phase 2 BUILD, maintain the scaffold:**
+- Every new env var read by code → add to `.env.example` in same edit
+- Every behavioral change → update PROJECT.md
+- Never write code outside `src/` (configs, fixtures: project root or `src/data/`)
+
+**Why this matters:** Projects already in standard layout publish in one command. Projects scattered across `tasks/`, `output/scripts/`, `dashboards/`, etc. need `tidy_project()` migration before they can be shared, and the user often doesn't want to rebuild PROJECT.md from memory.
+
+**For existing scattered code:** call `community-project-publish` skill → `tidy_project(any_dir)` to reorganize before publishing.
+
+---
 
 **API cost & rate limits:**
 All external API calls go through sc-proxy, which bills per request and enforces rate limits.
@@ -90,7 +140,6 @@ Tool names = SKILL.md frontmatter `tools:` list. See `build-patterns.md § Using
 ---
 
 ## Phase 2: BUILD
-
 Every piece follows this cycle:
 ```
 Build one small piece → Run it → Verify output → ✅ Next piece / ❌ Fix first
@@ -142,7 +191,6 @@ Build one small piece → Run it → Verify output → ✅ Next piece / ❌ Fix 
 ---
 
 ## Phase 3: DEBUG
-
 ```
 CHECK LOGS → REPRODUCE → ISOLATE → DIAGNOSE → FIX → VERIFY → REGRESS
 ```
@@ -159,7 +207,6 @@ CHECK LOGS → REPRODUCE → ISOLATE → DIAGNOSE → FIX → VERIFY → REGRESS
 ---
 
 ## Quick Checklists
-
 **Kickoff:** ☐ Clarified intent ☐ Proposed architecture ☐ Estimated cost ☐ User confirmed (**required before Phase 2**)
 
 **Build:** ☐ Each component tested ☐ Numbers match source ☐ Errors handled ☐ Preview healthy (web)

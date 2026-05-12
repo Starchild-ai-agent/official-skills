@@ -1,6 +1,6 @@
 ---
 name: venice
-version: 1.0.4
+version: 1.0.5
 description: Venice AI — privacy-first uncensored AI platform. Image generation/edit/upscale, TTS, speech-to-text, embeddings, video generation/transcription, model catalog, character personas, and the BYOK onboarding guide for Venice chat. Use when the user mentions Venice, wants uncensored / private / TEE / E2EE inference, needs Venice-specific features (venice_parameters, character_slug, web_search citations), or wants to register Venice as a chat model.
 delivery: script
 metadata:
@@ -74,10 +74,12 @@ Each entry: `id, type, name, description, privacy, context_tokens, max_completio
 
 ### Image generation
 
+**Don't guess model IDs.** Venice rotates image models often (e.g. `flux-dev-uncensored` no longer exists; `flux-2-pro` does). Always confirm with `list_models(type_filter="image")` before passing a non-default `model=`. Same rule for `image_edit` and `image_upscale`.
+
 ```python
 g = image_generate(
     "neon cyberpunk cat in the rain",
-    model="venice-sd35",       # default; see list_models(type='image') for others
+    model="venice-sd35",       # default; see list_models(type_filter='image') for others
     width=1024, height=1024,   # any aspect-ratio Venice supports
     steps=20,
     style_preset="Cinematic",  # see list_image_styles() for the 76 presets
@@ -252,19 +254,23 @@ Setup: `https://venice.ai/token` — connect a wallet on Base, stake there. **Ne
 
 Video is **async** — the API returns a queue id and you poll. Use `video_generate()` for one-shot end-to-end (quote → queue → poll → download → optional cleanup), or call the four primitives directly when you need control.
 
+**Audio support is per-model, not universal.** Pass `audio=True` only after confirming via `list_models(type_filter="video")` that the chosen model exposes audio capability. `wan-2-7-text-to-video` and most text-to-video models do NOT support audio — passing `audio=True` returns `400: This model does not support audio configuration`. The `video_queue` / `video_generate` defaults default to `audio=False` for that reason; opt in only when you've checked the capability.
+
 ```python
 from exports import video_generate, video_quote, list_models
 
-# Browse video models
+# Browse video models — confirm capabilities before picking
 videos = list_models(type_filter="video")
 # Common families: seedance-2-0-text-to-video, wan-2-7-text-to-video,
 # seedance-2-0-image-to-video, seedance-2-0-reference-to-video, kling-o3-r2v.
 # Upscale models use upscale_factor instead of resolution.
+# Audio-capable models are a subset — check `capabilities` on each entry.
 
-# 1. Cheap path — quote first (free)
+# 1. Cheap path — quote first (free, no balance charge)
 q = video_quote(
     model="wan-2-7-text-to-video",
-    duration="5s", aspect_ratio="16:9", resolution="720p", audio=True,
+    duration="5s", aspect_ratio="16:9", resolution="720p",
+    # audio omitted → defaults to False (safe for wan-2-7)
 )
 # {"quote": 0.55}  — USD against your Venice balance
 
@@ -272,7 +278,7 @@ q = video_quote(
 v = video_generate(
     model="wan-2-7-text-to-video",
     prompt="A golden retriever chasing a frisbee at sunset, slow motion.",
-    duration="5s", resolution="720p", audio=True,
+    duration="5s", resolution="720p",
     save_path="retriever.mp4",                           # → output/videos/retriever.mp4
     on_progress=lambda r: print(r.get("status"),
                                   r.get("execution_duration", 0) // 1000, "s"),
@@ -299,7 +305,8 @@ v = video_generate(
 
 ```python
 queued = video_queue(model="...", prompt="...", duration="5s",
-                      resolution="720p", aspect_ratio="16:9", audio=True)
+                      resolution="720p", aspect_ratio="16:9")
+# Add audio=True only when the model's `capabilities` include audio.
 qid = queued["queue_id"]
 download_url = queued.get("download_url")  # only for VPS-backed models
 

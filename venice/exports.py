@@ -517,7 +517,7 @@ def video_quote(
     duration: str = "5s",
     aspect_ratio: str = "16:9",
     resolution: str = "720p",
-    audio: bool = True,
+    audio: bool = False,
     upscale_factor: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Get a USD price quote for a video job. No charge, no job created."""
@@ -541,7 +541,7 @@ def video_queue(
     duration: str = "5s",
     aspect_ratio: str = "16:9",
     resolution: str = "720p",
-    audio: bool = True,
+    audio: bool = False,
     negative_prompt: Optional[str] = None,
     image_url: Optional[str] = None,
     end_image_url: Optional[str] = None,
@@ -640,7 +640,7 @@ def video_generate(
     duration: str = "5s",
     aspect_ratio: str = "16:9",
     resolution: str = "720p",
-    audio: bool = True,
+    audio: bool = False,
     save_path: Optional[Union[str, Path]] = None,
     poll_interval: int = 5,
     max_wait_s: int = 900,

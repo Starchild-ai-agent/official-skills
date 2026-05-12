@@ -1,7 +1,6 @@
 ---
 name: kalshi-api
-description: >-
-  Trade and query the Kalshi prediction market exchange via REST API. Kalshi is
+description: Trade and query the Kalshi prediction market exchange via REST API. Kalshi is
   the first CFTC-regulated exchange for event contracts — binary yes/no
   contracts on real-world outcomes (politics, economics, weather, sports,
   crypto, science, tech). Covers event discovery, market data, orderbooks,

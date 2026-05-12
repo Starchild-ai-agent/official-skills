@@ -91,18 +91,28 @@ def get_liquidation_orders(
 
 def get_liquidation_heatmap(
     symbol: str = "BTC",
-    exchange: str = "Binance"
+    exchange: Optional[str] = None,
+    range: str = "24h"
 ) -> Optional[Dict[str, Any]]:
     """
     Get liquidation heatmap data (price levels with liquidation density).
 
     Args:
         symbol: Coin symbol.
-        exchange: Exchange name.
+        exchange: Exchange name. If omitted, use aggregated heatmap across exchanges.
+        range: Time range (12h, 24h, 3d, 7d, 30d, 90d, 180d, 1y).
     """
+    if exchange:
+        # Pair heatmap requires valid exchange+instrument mapping
+        return cg_request(
+            "api/futures/liquidation/heatmap/model1",
+            params={"symbol": symbol, "exchange": exchange, "range": range}
+        )
+
+    # Aggregated heatmap is more stable for symbol-level liquidation zones
     return cg_request(
-        "api/futures/liquidation/heatmap/model1",
-        params={"symbol": symbol, "exchange": exchange}
+        "api/futures/liquidation/aggregated-heatmap/model1",
+        params={"symbol": symbol, "range": range}
     )
 
 
@@ -116,7 +126,8 @@ def main():
         "orders", "heatmap"
     ])
     parser.add_argument("--symbol", "-s", default="BTC")
-    parser.add_argument("--exchange", "-e", default="Binance")
+    parser.add_argument("--exchange", "-e", default=None)
+    parser.add_argument("--range", "-r", default="24h")
     parser.add_argument("--interval", "-i", default="h4")
     args = parser.parse_args()
 
@@ -132,7 +143,9 @@ def main():
             args.symbol, args.exchange
         ),
         "heatmap": lambda: get_liquidation_heatmap(
-            args.symbol, args.exchange
+            symbol=args.symbol,
+            exchange=args.exchange,
+            range=args.range,
         ),
     }
 

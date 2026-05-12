@@ -1,6 +1,6 @@
 ---
 name: venice
-version: 1.0.3
+version: 1.0.4
 description: Venice AI — privacy-first uncensored AI platform. Image generation/edit/upscale, TTS, speech-to-text, embeddings, video generation/transcription, model catalog, character personas, and the BYOK onboarding guide for Venice chat. Use when the user mentions Venice, wants uncensored / private / TEE / E2EE inference, needs Venice-specific features (venice_parameters, character_slug, web_search citations), or wants to register Venice as a chat model.
 delivery: script
 metadata:
@@ -22,15 +22,15 @@ This skill covers everything **except** chat completions. For chat, the right pa
 
 ## Quick capability map
 
-| Surface | Function | Verified |
-|---|---|---|
-| Catalog | `list_models`, `list_model_traits`, `list_image_styles`, `list_characters` | ✓ |
-| Account | `account_balance` (balance + tier + rate-limit count) | ✓ |
-| Image | `image_generate`, `image_edit`, `image_upscale` | ✓ |
-| Audio | `tts`, `transcribe` | ✓ |
-| Embeddings | `embeddings` (default `text-embedding-bge-m3`, dim 1024) | ✓ |
-| Chat probe | `chat_with_venice_parameters` (one-shot) | ✓ |
-| Video | `video_quote`, `video_queue`, `video_retrieve`, `video_complete`, `video_generate` (full loop), `video_transcribe_youtube` | quote ✓; full loop verified against earlier `venice-video` skill |
+| Surface | Function |
+|---|---|
+| Catalog | `list_models`, `list_model_traits`, `list_image_styles`, `list_characters` |
+| Account | `account_balance` (balance + tier + rate-limit count) |
+| Image | `image_generate`, `image_edit`, `image_upscale` |
+| Audio | `tts`, `transcribe` |
+| Embeddings | `embeddings` (default `text-embedding-bge-m3`, dim 1024) |
+| Chat probe | `chat_with_venice_parameters` (one-shot) |
+| Video | `video_quote`, `video_queue`, `video_retrieve`, `video_complete`, `video_generate` (full loop), `video_transcribe_youtube` |
 
 Endpoints intentionally NOT wrapped: standalone `/tools/search/web` (Venice removed it; use `enable_web_search` via venice_parameters in chat instead), admin-scoped `/api_keys` and `/billing/usage` (require an admin key the BYOK key can't use).
 
@@ -244,7 +244,7 @@ Pricing in `list_models()` shows both currencies, e.g. GLM 5.1 input is `$1.75/1
 | USD top-up | Casual / variable usage. Pay only what you spend. Zero idle cost. |
 | Stake DIEM | Daily Venice spend ≥ $1 sustained, OR running 24h agent loops, OR want predictable cost ceiling. Capital is locked in DIEM, but unused daily credits = pure waste, so size to floor of your daily usage. |
 
-Break-even rule of thumb: stake $X of DIEM only if your projected daily spend is ≥ $X / (DIEM market price). At ~$360/DIEM (early 2026), staking 1 DIEM makes sense at $1/day = $30/month sustained Venice spend.
+Break-even rule of thumb: stake N DIEM only if your projected daily Venice spend is ≥ $N. At any DIEM market price, the math is simple: 1 DIEM costs (current market price) once, gives $1/day forever — break-even time = price / 1.
 
 Setup: `https://venice.ai/token` — connect a wallet on Base, stake there. **Never send DIEM directly to the contract address — use the staking page only.** This skill does NOT automate staking (involves wallet ops + Base chain + VVV/DIEM contracts that are out of scope for an inference skill); the user does it once on the website.
 
@@ -255,7 +255,7 @@ Video is **async** — the API returns a queue id and you poll. Use `video_gener
 ```python
 from exports import video_generate, video_quote, list_models
 
-# Browse video models — 92 of them as of 2026-05
+# Browse video models
 videos = list_models(type_filter="video")
 # Common families: seedance-2-0-text-to-video, wan-2-7-text-to-video,
 # seedance-2-0-image-to-video, seedance-2-0-reference-to-video, kling-o3-r2v.

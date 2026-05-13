@@ -118,7 +118,7 @@
     {
       "name": "community-project-publish",
       "path": "community-project-publish/SKILL.md",
-      "version": "0.1.0",
+      "version": "0.3.0",
       "description": "Publish runnable code projects (tasks, previews, services, scripts) to the Starchild community-projects repo, or fork someone else's project into your workspace. Use when the user wants to share their built project, install/fork a project from the community catalog, or browse/search published projects."
     },
     {
@@ -174,6 +174,12 @@
       "path": "jupiter/SKILL.md",
       "version": "1.2.0",
       "description": "Jupiter DEX aggregator on Solana — token swaps, limit orders, DCA. Use when user mentions Jupiter, Solana swap, SOL/USDC swap, or Solana DEX aggregator."
+    },
+    {
+      "name": "kalshi-api",
+      "path": "kalshi/SKILL.md",
+      "version": "0.1.0",
+      "description": "Trade and query the Kalshi prediction market exchange via REST API. Kalshi is"
     },
     {
       "name": "lunarcrush",
@@ -316,7 +322,7 @@
     {
       "name": "venice",
       "path": "venice/SKILL.md",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "description": "Venice AI — privacy-first uncensored AI platform. Image generation/edit/upscale, TTS, speech-to-text, embeddings, video generation/transcription, model catalog, character personas, and the BYOK onboarding guide for Venice chat. Use when the user mentions Venice, wants uncensored / private / TEE / E2EE inference, needs Venice-specific features (venice_parameters, character_slug, web_search citations), or wants to register Venice as a chat model."
     },
     {

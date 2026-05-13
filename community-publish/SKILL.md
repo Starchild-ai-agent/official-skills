@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.6.2
+version: 0.7.0
 description: Share to the Starchild community in two independent ways — publish a running preview to a public URL, or open-source any project's code to the community GitHub repo. Also handles fork/install/browse.
 delivery: script
 metadata:
@@ -80,7 +80,50 @@ For `task` / `script` / `service`: don't mention preview publish — there's not
 
 Same gateway domain, separate API paths, separate datastores. A project can live in either side, both sides, or neither. When both exist, the cross-reference is wired so the frontend renders "View Source" on preview cards and "Visit Live Demo" on code cards.
 
-**Cross-link behavior:** Gateway auto-links at `open_source` time when a matching listing already exists. If the listing is created later (e.g. you `open_source` first, then `publish_preview`), this skill calls `/api/code-projects/link-listing` automatically from both `open_source()` and `publish_preview()` to wire the link in either order. No manual step needed.
+## Cross-link behavior — IMPORTANT
+
+Both `open_source()` and `publish_preview()` automatically attempt to wire a cross-link in their return value's `link` field. There are three possible outcomes the agent must handle:
+
+### Outcome 1: `status: "linked"` — done, no action needed
+
+```python
+{"link": {"status": "linked", "listing_slug": "...", "via": "exact_match"}}
+```
+
+Slugs matched the `{user_id}-{slug}` convention. Tell the user it's linked and move on.
+
+### Outcome 2: `status: "needs_choice"` — ASK THE USER
+
+```python
+{"link": {
+    "status": "needs_choice",
+    "candidates": [
+        {"listing_slug": "2004-hello-world-preview-public", "title": "...", "similarity": 0.6},
+        {"listing_slug": "2004-other", "title": "...", "similarity": 0.3},
+    ],
+    "hint": "..."
+}}
+```
+
+The slugs don't match. The skill found candidate listings/code-projects ranked by similarity. **Show the candidates to the user and ask which one to link to** (or say "none of these" to skip):
+
+> Open-sourced! I couldn't auto-link to a preview because slug names differ. Want to wire it to one of these? `2004-hello-world-preview-public` (60% match) / `2004-other` (30% match) / none
+
+If the user picks one, call `link_to_listing(listing_slug="...", code_slug="...")` to complete the wiring.
+
+### Outcome 3: `status: "no_listings"` / `"no_code_projects"` — suggest the missing side
+
+```python
+{"link": {"status": "no_listings", "hint": "..."}}
+```
+
+User hasn't done the other side yet. Suggest the next action from `hint` or stay silent.
+
+**Note on `type`:** Cross-link is **type-agnostic**. Any open-sourced code (task / script / preview / service) can be linked to any listing the user owns. `type` only controls GitHub directory layout and frontend badge — it never blocks a link. The candidates list includes a `type` field so the agent can show it for context.
+
+### Manual wiring
+
+Use `link_to_listing(listing_slug, code_slug)` directly if the user explicitly says "link X to Y" without going through the candidates flow.
 
 ---
 

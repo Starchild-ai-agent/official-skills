@@ -51,6 +51,11 @@ def unpublish(user_id: str, slug: str, requesting_user_id: str) -> tuple[int, di
 
 
 def list_(type: str | None = None, tag: str | None = None, user_id: str | None = None, q: str | None = None) -> tuple[int, dict]:
+    """GET /api/code-projects/list — flat catalog, query param name is 'user_id'.
+
+    Note: /api/code-projects/explore uses 'user' instead. Two endpoints,
+    two param names. Source of truth: scg/src/routes/code-projects.ts.
+    """
     qs = []
     if type: qs.append(f"type={type}")
     if tag: qs.append(f"tag={tag}")

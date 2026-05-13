@@ -188,19 +188,156 @@ def open_source(project_dir: str, version_bump: str = "patch") -> dict[str, Any]
         "warnings": warnings,
     }
 
-    # Best-effort: if the matching listing exists but auto-link didn't fire
-    # (gateway's auto-link runs at publish-time but only catches the convention
-    # `{user_id}-{slug}`. If the listing was created LATER or auto-link missed,
-    # we manually wire the link here so the frontend shows "View Source").
-    link_result = _try_link_to_listing(
-        listing_slug=f"{uid}-{manifest['name']}",
-        code_user_id=uid,
-        code_slug=manifest["name"],
-        version=new_version,
-        github_url=resp.get("github_url", ""),
+    # Cross-link discovery: try to link this code project to a public preview listing.
+    # Three outcomes:
+    #   1. Exact match (slug == "{uid}-{code_slug}") → auto-link, no question needed
+    #   2. Fuzzy candidates exist → return them so the agent can ask the user
+    #   3. No listings at all → suggest publish_preview
+    code_slug = manifest["name"]
+    code_type = manifest["type"]
+    code_github_url = resp.get("github_url", "")
+    link_state = _resolve_listing_link(
+        uid=uid, code_slug=code_slug, code_type=code_type,
+        code_version=new_version, code_github_url=code_github_url,
     )
-    result["linked_listing"] = link_result
+    result["link"] = link_state
     return result
+
+
+def _resolve_listing_link(uid: str, code_slug: str, code_type: str,
+                          code_version: str, code_github_url: str) -> dict[str, Any]:
+    """Find/create a cross-link between this code project and a preview listing.
+
+    `type` is intentionally NOT a filter here. Any open-sourced code (task /
+    script / preview / service) can pair with any listing the user owns —
+    type only controls GitHub directory layout and frontend badge, not
+    whether a cross-link makes sense.
+
+    Returns one of:
+      {"status": "linked",       "listing_slug": "..."}              # exact match auto-linked
+      {"status": "needs_choice", "candidates": [...], "hint": "..."} # agent should ask user
+      {"status": "no_listings",  "hint": "..."}                      # nothing to link to
+      {"status": "error",        "error": "..."}
+    """
+    # `code_type` kept in signature for callers that still pass it, but unused.
+    _ = code_type
+    # Try the exact convention first.
+    exact_slug = f"{uid}-{code_slug}"
+    link_result = _try_link_to_listing(
+        listing_slug=exact_slug, code_user_id=uid, code_slug=code_slug,
+        version=code_version, github_url=code_github_url,
+    )
+    if link_result.get("ok"):
+        return {"status": "linked", "listing_slug": exact_slug, "via": "exact_match"}
+
+    # Exact failed → enumerate user's listings and rank by similarity.
+    try:
+        status, body = gateway.preview_list(owner_user_id=uid)
+        listings = body.get("slugs", []) if status == 200 else []
+    except Exception as e:
+        return {"status": "error", "error": f"Failed to fetch listings: {e}"}
+
+    if not listings:
+        return {
+            "status": "no_listings",
+            "hint": (
+                "You have no public preview URLs yet. To let visitors try this "
+                "project online, run preview(action='serve') first, then "
+                "publish_preview(preview_id, slug='...')."
+            ),
+        }
+
+    # Filter out listings that already point to a code project (any code project,
+    # not just this one — a listing should only link one code source).
+    available = []
+    for l in listings:
+        l_slug = l.get("slug", "")
+        l_suffix = l_slug[len(f"{uid}-"):] if l_slug.startswith(f"{uid}-") else l_slug
+        score = _similarity_score(code_slug, l_suffix)
+        available.append({
+            "listing_slug": l_slug,
+            "title": l.get("title", ""),
+            "url": l.get("url", ""),
+            "similarity": score,
+        })
+    # Highest similarity first.
+    available.sort(key=lambda x: x["similarity"], reverse=True)
+    return {
+        "status": "needs_choice",
+        "candidates": available[:5],
+        "hint": (
+            f"Code project '{code_slug}' was open-sourced but no listing slug "
+            f"matched exactly. To wire 'View Source' on the listing card, "
+            f"ask the user which preview this code corresponds to and call "
+            f"link_to_listing(listing_slug, code_slug). Or, if none of these "
+            f"are the right one, the user can publish_preview() a new one."
+        ),
+    }
+
+
+def _similarity_score(a: str, b: str) -> float:
+    """Cheap similarity score between two slugs. Returns 0.0–1.0.
+
+    Uses token overlap (split on '-') with substring bonuses.
+    """
+    if not a or not b:
+        return 0.0
+    a_l, b_l = a.lower(), b.lower()
+    if a_l == b_l:
+        return 1.0
+    a_tokens = set(t for t in a_l.split("-") if t)
+    b_tokens = set(t for t in b_l.split("-") if t)
+    if not a_tokens or not b_tokens:
+        return 0.0
+    overlap = len(a_tokens & b_tokens)
+    union = len(a_tokens | b_tokens)
+    jaccard = overlap / union if union else 0.0
+    # Substring bonus
+    if a_l in b_l or b_l in a_l:
+        jaccard = max(jaccard, 0.6)
+    return round(jaccard, 3)
+
+
+def link_to_listing(listing_slug: str, code_slug: str) -> dict[str, Any]:
+    """Manually wire a code project to a public preview listing.
+
+    Use after open_source() or publish_preview() returned status='needs_choice'
+    and the user picked a candidate.
+
+    Args:
+        listing_slug: full preview listing slug (e.g. '2004-hello-world-preview-public')
+                     User_id prefix is added if missing.
+        code_slug:   open-sourced project slug (no user_id prefix)
+
+    Returns:
+        {"ok": True, "listing_slug": ..., "code_slug": ...}
+        {"ok": False, "error": ...}
+    """
+    uid = _user_id()
+    final_listing = listing_slug if listing_slug.startswith(f"{uid}-") else f"{uid}-{listing_slug}"
+
+    # Look up the code project to get its current version + github_url.
+    code = _lookup_code_project(uid, code_slug)
+    if not code:
+        return {
+            "ok": False,
+            "error": (f"Code project '{uid}/{code_slug}' not found. "
+                      f"Open-source it first with open_source(project_dir)."),
+        }
+
+    link_result = _try_link_to_listing(
+        listing_slug=final_listing, code_user_id=uid, code_slug=code_slug,
+        version=code["latest_version"], github_url=code["github_url"],
+    )
+    if link_result.get("ok"):
+        return {
+            "ok": True,
+            "listing_slug": final_listing,
+            "code_slug": code_slug,
+            "message": f"Linked '{final_listing}' → code '{uid}/{code_slug}@{code['latest_version']}'. "
+                       f"The listing will now show 'View Source' to visitors.",
+        }
+    return {"ok": False, "error": link_result.get("error", "Unknown error")}
 
 
 def _try_link_to_listing(listing_slug: str, code_user_id: str, code_slug: str,
@@ -452,23 +589,71 @@ def publish_preview(preview_id: str, slug: str = "",
         "message": f"Published! Anyone can view at: {public_url}",
     }
 
-    # Best-effort reverse-link: if user already open-sourced a code project
-    # with the matching slug, wire the cross-reference so the frontend shows
-    # "View Source" on this listing. Gateway auto-link only fires on the
-    # open_source side at publish-time, so if the user did open_source FIRST
-    # and publish_preview SECOND, the listing wouldn't have been linked.
-    suffix_only = final_slug[len(f"{user_id}-"):]  # strip "{user_id}-" prefix
-    code_match = _lookup_code_project(user_id, suffix_only)
+    # Cross-link discovery: find code projects this listing might pair with.
+    suffix_only = final_slug[len(f"{user_id}-"):]
+    result["link"] = _resolve_code_link(uid=user_id, listing_slug=final_slug,
+                                        listing_suffix=suffix_only)
+    return result
+
+
+def _resolve_code_link(uid: str, listing_slug: str, listing_suffix: str) -> dict[str, Any]:
+    """Find/create a cross-link between this listing and an open-sourced code project.
+
+    Mirror of _resolve_listing_link, but going the other direction.
+    Returns same status set: linked / needs_choice / no_code_projects / error.
+    """
+    # Try exact match first.
+    code_match = _lookup_code_project(uid, listing_suffix)
     if code_match:
         link_result = _try_link_to_listing(
-            listing_slug=final_slug,
-            code_user_id=user_id,
-            code_slug=suffix_only,
-            version=code_match["latest_version"],
-            github_url=code_match["github_url"],
+            listing_slug=listing_slug, code_user_id=uid, code_slug=listing_suffix,
+            version=code_match["latest_version"], github_url=code_match["github_url"],
         )
-        result["linked_code"] = link_result
-    return result
+        if link_result.get("ok"):
+            return {"status": "linked", "code_slug": listing_suffix, "via": "exact_match"}
+
+    # No exact match → enumerate ALL user's open-sourced code (any type) and rank.
+    # We don't filter by type because cross-link is type-agnostic — a script
+    # or task code project can still pair with a preview listing if the user
+    # wants. Type is only a directory/UI label.
+    try:
+        status, body = gateway.list_(user_id=uid)
+        code_projects = body.get("projects", []) if status == 200 else []
+    except Exception as e:
+        return {"status": "error", "error": f"Failed to fetch code projects: {e}"}
+
+    if not code_projects:
+        return {
+            "status": "no_code_projects",
+            "hint": (
+                "You haven't open-sourced any preview code yet. To let others "
+                "fork this preview's source, run open_source(project_dir) on "
+                "the project directory."
+            ),
+        }
+
+    candidates = []
+    for cp in code_projects:
+        cp_slug = cp.get("slug", "")
+        score = _similarity_score(listing_suffix, cp_slug)
+        candidates.append({
+            "code_slug": cp_slug,
+            "type": cp.get("type", ""),
+            "version": cp.get("latest_version", ""),
+            "github_url": cp.get("github_url", ""),
+            "similarity": score,
+        })
+    candidates.sort(key=lambda x: x["similarity"], reverse=True)
+    return {
+        "status": "needs_choice",
+        "candidates": candidates[:5],
+        "hint": (
+            f"Listing '{listing_slug}' was published but no open-sourced code "
+            f"matched exactly. To wire 'View Source' on this listing card, "
+            f"ask the user which code project this preview corresponds to and "
+            f"call link_to_listing(listing_slug='{listing_slug}', code_slug=...)."
+        ),
+    }
 
 
 def _lookup_code_project(user_id: str, slug: str) -> dict | None:

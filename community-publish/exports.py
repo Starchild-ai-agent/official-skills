@@ -1,9 +1,9 @@
-"""community-project-publish skill exports.
+"""community-publish skill exports.
 
 Usage from a bash block:
     python3 - <<'EOF'
     import sys
-    sys.path.insert(0, "/data/workspace/skills/community-project-publish")
+    sys.path.insert(0, "/data/workspace/skills/community-publish")
     from exports import publish_project, fork_project, list_projects
     print(list_projects())
     EOF
@@ -292,7 +292,7 @@ def _enumerate_project_files(user_id: str, slug: str, version: str) -> list[str]
     prefix = f"projects/{type_folder}/{user_id}/{slug}/{version}/"
 
     url = f"https://api.github.com/repos/{repo}/git/trees/main?recursive=1"
-    req = urllib.request.Request(url, headers={"User-Agent": "community-project-publish-skill"})
+    req = urllib.request.Request(url, headers={"User-Agent": "community-publish-skill"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         tree = json.loads(resp.read())
     items = tree.get("tree", [])

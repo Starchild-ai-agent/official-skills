@@ -70,7 +70,7 @@ def get(user_id: str, slug: str, version: str | None = None) -> tuple[int, dict]
 def fetch_raw_file(raw_url_prefix: str, file_path: str) -> bytes:
     """Fetch a single file from raw.githubusercontent.com — no auth needed for public repo."""
     url = f"{raw_url_prefix.rstrip('/')}/{file_path.lstrip('/')}"
-    req = urllib.request.Request(url, headers={"User-Agent": "community-project-publish-skill"})
+    req = urllib.request.Request(url, headers={"User-Agent": "community-publish-skill"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read()
 

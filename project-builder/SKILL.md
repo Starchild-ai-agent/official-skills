@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.4.0
+version: 1.4.1
 description: "End-to-end project engineering \u2014 from understanding user intent\
   \ to architecture design, incremental build with verification, and systematic debugging.\
   \ Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any\
@@ -72,7 +72,7 @@ After Phase 1, STOP and present a short phase plan (milestones for DESIGN/BUILD/
 
 ## Phase 1.5: SCAFFOLD (mandatory for shareable projects)
 
-After design is confirmed, **before writing any code**, scaffold the project under the standard layout. This makes the project shareable via `community-project-publish` skill from day one — no migration later.
+After design is confirmed, **before writing any code**, scaffold the project under the standard layout. This makes the project shareable via `community-publish` skill from day one — no migration later.
 
 **Standard project location:** `output/projects/{slug}/`
 
@@ -110,7 +110,7 @@ output/projects/{slug}/
 
 **Why this matters:** Projects already in standard layout publish in one command. Projects scattered across `tasks/`, `output/scripts/`, `dashboards/`, etc. need `tidy_project()` migration before they can be shared, and the user often doesn't want to rebuild PROJECT.md from memory.
 
-**For existing scattered code:** call `community-project-publish` skill → `tidy_project(any_dir)` to reorganize before publishing.
+**For existing scattered code:** call `community-publish` skill → `tidy_project(any_dir)` to reorganize before publishing.
 
 ---
 

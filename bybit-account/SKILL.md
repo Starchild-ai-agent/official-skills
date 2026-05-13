@@ -1,6 +1,6 @@
 ---
 name: bybit-account
-version: 1.1.0
+version: 1.2.0
 description: Bybit 只读账户追踪（统一交易账户）— 余额、持仓、订单、成交、出入金、转账、交易流水、风险场景分析
 author: starchild
 tags: [bybit, account, readonly, tracking, futures, spot, unified]
@@ -24,6 +24,22 @@ user-invocable: true
 
 只读 Bybit 账户追踪技能，基于官方 `pybit` 库。
 适用于账户跟踪、日报周报、风险提醒、资金流归因。
+
+## 如何获取 Bybit API Key（只读）
+
+1. 登录 [bybit.com](https://www.bybit.com)，右上角头像 → **API**
+   - 直达链接：https://www.bybit.com/app/user/api-management
+2. **Create New Key** → **System-generated API Keys**
+3. 填表：
+   - **API key usage**：**API Transaction**
+   - **Name**：自定
+   - **Permissions**：只勾 Read-Only 下的 `Wallet`、`Positions`、`Trade (read only)`，不要勾 Withdraw 和写权限
+   - **IP whitelist**：建议留空
+4. 完成 2FA 验证 → 提交
+5. **立刻复制** `API Key` + `Secret Key`（Secret 只显示一次）
+6. 填到本 skill 的环境变量
+
+参考：[Bybit 官方教程](https://www.bybit.com/en/help-center/article/How-to-create-your-API-key)
 
 ## Prerequisites
 

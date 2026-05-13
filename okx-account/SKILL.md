@@ -1,6 +1,6 @@
 ---
 name: okx-account
-version: 1.0.0
+version: 1.1.0
 description: OKX 只读账户追踪（统一账户）— 余额、持仓、订单、成交、出入金、账单、风险场景分析
 author: starchild
 tags: [okx, account, readonly, tracking, futures, spot, swap]
@@ -25,6 +25,21 @@ user-invocable: true
 
 只读 OKX 账户追踪技能，基于官方 `python-okx` 库。
 适用于账户跟踪、日报周报、风险提醒、资金流归因。
+
+## 如何获取 OKX API Key（只读）
+
+1. 登录 [okx.com](https://www.okx.com)，右上角头像 → **API**
+   - 直达链接：https://www.okx.com/account/my-api
+2. **Create V5 API Key** → 完成 2FA 验证
+3. 填表：
+   - **API name**：自定
+   - **Passphrase**：⚠️ **自己设一个新密码**用于 API 签名，**不是登录密码**，丢了只能删 Key 重建
+   - **Permissions**：只勾 **Read**，关 Trade / Withdraw
+   - **IP whitelist**：建议留空
+4. 提交 → **立刻复制保存** 3 个值：`API Key` / `Secret Key` / `Passphrase`（Secret 只显示一次）
+5. 填到本 skill 的环境变量
+
+参考：[OKX 官方教程](https://www.okx.com/help/how-can-i-create-an-api-key)
 
 ## Prerequisites
 

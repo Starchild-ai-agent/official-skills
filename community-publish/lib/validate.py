@@ -125,8 +125,8 @@ def validate(project_dir: str, manifest: dict[str, Any]) -> tuple[list[str], lis
     # Type-specific
     if ptype == "task" and not manifest.get("schedule"):
         errors.append("manifest.schedule required for type=task (cron expression in UTC)")
-    if ptype in ("preview", "service") and not manifest.get("port"):
-        errors.append(f"manifest.port required for type={ptype}")
+    if ptype == "service" and not manifest.get("port"):
+        errors.append("manifest.port required for type=service (HTTP listening port)")
 
     # Files on disk
     files = collect_files(project_dir)

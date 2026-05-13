@@ -74,10 +74,11 @@ def get(user_id: str, slug: str, version: str | None = None) -> tuple[int, dict]
 
 def link_listing(public_slug: str, code_user_id: str, code_slug: str,
                  latest_version: str, github_url: str) -> tuple[int, dict]:
-    """Manually attach an open-sourced code project to a public-preview listing.
+    """Manual escape hatch: directly wire a code project to a listing.
 
-    Used when auto-link missed (e.g. the listing didn't exist when the code
-    was published, or slugs don't follow the {user_id}-{slug} convention).
+    Normally not needed — cross-link happens automatically via the
+    publisher: { code_slug, public_slug } binding in project.yaml. Use this
+    only for repair scenarios (e.g. relinking after a manual rename).
     """
     return _request("POST", "/api/code-projects/link-listing", {
         "public_slug": public_slug,
@@ -102,14 +103,24 @@ def fetch_raw_file(raw_url_prefix: str, file_path: str) -> bytes:
 # Distinct from /api/code-projects/* which is GitHub-backed code archive.
 
 def preview_register(slug: str, machine_id: str, port: int,
-                     owner_user_id: str, title: str = "") -> tuple[int, dict]:
-    return _request("POST", "/api/register", {
+                     owner_user_id: str, title: str = "",
+                     publisher_code_slug: str | None = None) -> tuple[int, dict]:
+    """Register a preview slug → public URL mapping.
+
+    publisher_code_slug: optional binding to a code project this listing is
+    paired with. When set, gateway either links immediately (if code exists)
+    or records a pending entry consumed when the code is open-sourced.
+    """
+    body: dict = {
         "slug": slug,
         "machine_id": machine_id,
         "port": port,
         "owner_user_id": owner_user_id,
         "title": title,
-    }, timeout=10)
+    }
+    if publisher_code_slug:
+        body["publisher"] = {"code_slug": publisher_code_slug}
+    return _request("POST", "/api/register", body, timeout=10)
 
 
 def preview_unregister(slug: str, owner_user_id: str) -> tuple[int, dict]:

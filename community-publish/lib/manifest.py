@@ -14,7 +14,7 @@ try:
 except ImportError:
     _HAS_YAML = False
 
-VALID_TYPES = ("task", "preview", "service", "script")
+VALID_TYPES = ("task", "service", "script")
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$")
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 

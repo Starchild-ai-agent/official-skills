@@ -25,19 +25,21 @@ def install_task(project_dir: str, manifest: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def install_preview(project_dir: str, manifest: dict[str, Any]) -> dict[str, Any]:
+def install_service(project_dir: str, manifest: dict[str, Any]) -> dict[str, Any]:
+    """Service = HTTP-listening project. Use preview(action='serve') to host it
+    in the container; pair with publish_preview() to expose at a public URL."""
     port = manifest.get("port")
     entry = manifest.get("entry") or "src/index.html"
     is_static = entry.endswith(".html")
     if is_static:
         return {
             "next_step": (
-                f"Preview ready. Use:\n"
+                f"Service (static) ready. Host with:\n"
                 f"  preview(action='serve', "
-                f"title={json.dumps(manifest.get('description', 'Preview'))}, "
+                f"title={json.dumps(manifest.get('description', 'Service'))}, "
                 f"dir={json.dumps(project_dir + '/' + os.path.dirname(entry))})"
             ),
-            "type": "preview", "port": port, "is_static": True,
+            "type": "service", "port": port, "is_static": True,
         }
     runtime = manifest.get("runtime") or {}
     cmd = (
@@ -47,33 +49,12 @@ def install_preview(project_dir: str, manifest: dict[str, Any]) -> dict[str, Any
     )
     return {
         "next_step": (
-            f"Preview ready. Use:\n"
+            f"Service ready. Host with:\n"
             f"  preview(action='serve', "
-            f"title={json.dumps(manifest.get('description', 'Preview'))}, "
+            f"title={json.dumps(manifest.get('description', 'Service'))}, "
             f"dir={json.dumps(project_dir)}, command={json.dumps(cmd)}, port={port})"
         ),
-        "type": "preview", "port": port, "command": cmd, "is_static": False,
-    }
-
-
-def install_service(project_dir: str, manifest: dict[str, Any]) -> dict[str, Any]:
-    entry_rel = manifest.get("entry") or "src/server.py"
-    entry_abs = os.path.join(project_dir, entry_rel)
-    runtime = manifest.get("runtime") or {}
-    cmd = (
-        f"python {entry_abs}" if runtime.get("python")
-        else f"node {entry_abs}" if runtime.get("node")
-        else entry_abs
-    )
-    port = manifest.get("port")
-    return {
-        "next_step": (
-            f"Service ready. To start in background:\n"
-            f"  bash(command={json.dumps(cmd)}, background=True)\n"
-            + (f"It will listen on port {port}.\n" if port else "")
-            + "Track via bash_process(action='list')."
-        ),
-        "type": "service", "command": cmd, "port": port,
+        "type": "service", "port": port, "command": cmd, "is_static": False,
     }
 
 
@@ -92,7 +73,7 @@ def install_script(project_dir: str, manifest: dict[str, Any]) -> dict[str, Any]
     }
 
 
-INSTALLERS = {"task": install_task, "preview": install_preview, "service": install_service, "script": install_script}
+INSTALLERS = {"task": install_task, "service": install_service, "script": install_script}
 
 
 def install(project_dir: str, manifest: dict[str, Any]) -> dict[str, Any]:

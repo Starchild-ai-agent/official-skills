@@ -118,8 +118,8 @@
     {
       "name": "community-publish",
       "path": "community-publish/SKILL.md",
-      "version": "0.7.0",
-      "description": "Share to the Starchild community in two independent ways — publish a running preview to a public URL, or open-source any project's code to the community GitHub repo. Also handles fork/install/browse."
+      "version": "0.8.0",
+      "description": "Share to the Starchild community in two independent ways — publish a running service to a public URL, or open-source any project's code to the community GitHub repo. Cross-link between them via project.yaml's `publisher` binding."
     },
     {
       "name": "composio",

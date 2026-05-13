@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.5.0
+version: 0.5.1
 description: Publish to the Starchild community — open-source code to GitHub and/or expose a running preview at a public URL. Use either independently, or combine for the full project share. Also handles fork/install/browse of others' work.
 delivery: script
 metadata:
@@ -52,26 +52,26 @@ The two actions amplify each other — visitors try the live version first, then
 
 ## Routing — what the user is asking for
 
-| User says | Action |
+| User intent | Action |
 |---|---|
-| 开源代码 / open source / let others fork / share the code | `publish_project(project_dir)` |
-| 公开访问 / share the link / make accessible / publish preview | `publish_preview(preview_id)` |
-| 发布 (no qualifier) | Ask: 是想让别人在线访问，还是开源代码让别人自己跑？两个可以一起 |
-| Fork / 拉取 / install someone's project | `fork_project(source)` |
-| Browse / 看看别人发布的 | `list_projects(...)` |
-| 取消公开 URL / unpublish URL | `unpublish_preview(slug)` |
-| 撤销开源 / take down code | `unpublish_project(slug)` |
-| 我的公开 preview 列表 | `list_published_previews()` |
+| Open source / let others fork / share the code | `publish_project(project_dir)` |
+| Share the link / make accessible / publish preview | `publish_preview(preview_id)` |
+| Publish (no qualifier) | Ask: do they want others to visit a live URL, or fork and run the code themselves? Both can be done together. |
+| Fork / install someone's project | `fork_project(source)` |
+| Browse what others published | `list_projects(...)` |
+| Unpublish the public URL | `unpublish_preview(slug)` |
+| Take down open-sourced code | `unpublish_project(slug)` |
+| List my own published preview URLs | `list_published_previews()` |
 
 ### When to mention the other action
 
 After `publish_preview()` succeeds, if the project also has source code worth sharing:
 
-> 已经公开访问 ✅。要不要顺便把代码也开源出去？这样别人不光能访问，还能 fork 一份跑在自己机器上。
+> Live URL is up ✅. Want to open-source the code too, so others can fork and run their own copy?
 
 After `publish_project()` succeeds, **only if** the project type is `preview` AND there's a running preview:
 
-> 已经开源 ✅。这个 preview 现在也跑着——要不要也公开 URL，让别人不用 fork 直接看效果？
+> Code is open-sourced ✅. The preview is still running — want to publish the live URL too, so visitors can try it without forking?
 
 For pure-code project types (`task` / `script` / `service`): no need to mention preview publish — there's nothing to expose.
 

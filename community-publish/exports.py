@@ -177,7 +177,7 @@ def open_source(project_dir: str, version_bump: str = "patch") -> dict[str, Any]
             "validation_errors": resp.get("validation_errors"),
             "http_status": status,
         }
-    return {
+    result = {
         "ok": True,
         "user_id": uid,
         "slug": manifest["name"],
@@ -187,6 +187,41 @@ def open_source(project_dir: str, version_bump: str = "patch") -> dict[str, Any]
         "commit_sha": resp.get("commit_sha"),
         "warnings": warnings,
     }
+
+    # Best-effort: if the matching listing exists but auto-link didn't fire
+    # (gateway's auto-link runs at publish-time but only catches the convention
+    # `{user_id}-{slug}`. If the listing was created LATER or auto-link missed,
+    # we manually wire the link here so the frontend shows "View Source").
+    link_result = _try_link_to_listing(
+        listing_slug=f"{uid}-{manifest['name']}",
+        code_user_id=uid,
+        code_slug=manifest["name"],
+        version=new_version,
+        github_url=resp.get("github_url", ""),
+    )
+    result["linked_listing"] = link_result
+    return result
+
+
+def _try_link_to_listing(listing_slug: str, code_user_id: str, code_slug: str,
+                         version: str, github_url: str) -> dict[str, Any]:
+    """Best-effort: link a code project to its public listing. Non-fatal."""
+    try:
+        status, body = gateway.link_listing(
+            public_slug=listing_slug,
+            code_user_id=code_user_id,
+            code_slug=code_slug,
+            latest_version=version,
+            github_url=github_url,
+        )
+        if status == 200 and body.get("ok"):
+            return {"ok": True, "listing_slug": listing_slug}
+        if status == 404:
+            return {"ok": False, "skipped": True,
+                    "reason": f"Listing {listing_slug} doesn't exist yet — publish_preview first to enable cross-link."}
+        return {"ok": False, "error": body.get("error", f"HTTP {status}")}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 def remove_open_source(slug: str) -> dict[str, Any]:
@@ -409,13 +444,42 @@ def publish_preview(preview_id: str, slug: str = "",
         return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
 
     public_url = f"{_public_url_base()}/{final_slug}"
-    return {
+    result = {
         "ok": True,
         "slug": final_slug,
         "url": public_url,
         "port": port,
         "message": f"Published! Anyone can view at: {public_url}",
     }
+
+    # Best-effort reverse-link: if user already open-sourced a code project
+    # with the matching slug, wire the cross-reference so the frontend shows
+    # "View Source" on this listing. Gateway auto-link only fires on the
+    # open_source side at publish-time, so if the user did open_source FIRST
+    # and publish_preview SECOND, the listing wouldn't have been linked.
+    suffix_only = final_slug[len(f"{user_id}-"):]  # strip "{user_id}-" prefix
+    code_match = _lookup_code_project(user_id, suffix_only)
+    if code_match:
+        link_result = _try_link_to_listing(
+            listing_slug=final_slug,
+            code_user_id=user_id,
+            code_slug=suffix_only,
+            version=code_match["latest_version"],
+            github_url=code_match["github_url"],
+        )
+        result["linked_code"] = link_result
+    return result
+
+
+def _lookup_code_project(user_id: str, slug: str) -> dict | None:
+    """Check if a code project with this user_id+slug exists. Returns None if not."""
+    try:
+        status, body = gateway.get(user_id, slug)
+        if status == 200 and body.get("ok"):
+            return body.get("project")
+    except Exception:
+        pass
+    return None
 
 
 def unpublish_preview(slug: str) -> dict[str, Any]:

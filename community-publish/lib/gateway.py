@@ -67,6 +67,22 @@ def get(user_id: str, slug: str, version: str | None = None) -> tuple[int, dict]
     return _request("GET", f"/api/code-projects/{user_id}/{slug}{qstr}")
 
 
+def link_listing(public_slug: str, code_user_id: str, code_slug: str,
+                 latest_version: str, github_url: str) -> tuple[int, dict]:
+    """Manually attach an open-sourced code project to a public-preview listing.
+
+    Used when auto-link missed (e.g. the listing didn't exist when the code
+    was published, or slugs don't follow the {user_id}-{slug} convention).
+    """
+    return _request("POST", "/api/code-projects/link-listing", {
+        "public_slug": public_slug,
+        "code_user_id": code_user_id,
+        "code_slug": code_slug,
+        "latest_version": latest_version,
+        "github_url": github_url,
+    })
+
+
 def fetch_raw_file(raw_url_prefix: str, file_path: str) -> bytes:
     """Fetch a single file from raw.githubusercontent.com — no auth needed for public repo."""
     url = f"{raw_url_prefix.rstrip('/')}/{file_path.lstrip('/')}"

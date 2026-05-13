@@ -362,15 +362,23 @@ def publish_preview(preview_id: str, slug: str = "",
             "error": f"Preview not found: {preview_id}. "
                      f"Check /data/previews.json for valid IDs.",
         }
-    if preview.get("status") != "running":
-        return {
-            "ok": False,
-            "error": f"Preview {preview_id} is not running "
-                     f"(status: {preview.get('status')}). Start it first.",
-        }
     port = preview.get("port")
     if not port:
         return {"ok": False, "error": f"Preview {preview_id} has no port recorded."}
+    # Liveness: probe the port. If the preview was stopped, the port is closed.
+    import socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(2.0)
+    try:
+        sock.connect(("127.0.0.1", int(port)))
+        sock.close()
+    except Exception:
+        return {
+            "ok": False,
+            "error": f"Preview {preview_id} is registered but port {port} "
+                     f"is not accepting connections. Restart it via "
+                     f"preview(action='serve') first.",
+        }
 
     slug_suffix = slug if slug else preview_id
     prefix = f"{user_id}-"

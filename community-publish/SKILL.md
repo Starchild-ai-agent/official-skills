@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.6.0
+version: 0.6.1
 description: Share to the Starchild community in two independent ways — publish a running preview to a public URL, or open-source any project's code to the community GitHub repo. Also handles fork/install/browse.
 delivery: script
 metadata:

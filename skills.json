@@ -118,8 +118,8 @@
     {
       "name": "community-project-publish",
       "path": "community-project-publish/SKILL.md",
-      "version": "0.3.1",
-      "description": "Publish runnable code projects (tasks, previews, services, scripts) to the Starchild community-projects repo, or fork someone else's project into your workspace. Use when the user wants to share their built project, install/fork a project from the community catalog, or browse/search published projects."
+      "version": "0.4.0",
+      "description": "Share Starchild projects with the community in two stages — Stage 1 publishes a running preview to a public URL (others can use it in their browser); Stage 2 open-sources the project's code to GitHub (others can fork and run their own instance). Stages are independent and can be combined. Also handles fork/install/browse of others' published projects."
     },
     {
       "name": "composio",

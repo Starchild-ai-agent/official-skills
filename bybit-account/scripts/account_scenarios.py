@@ -26,41 +26,54 @@ def print_json(d): print(json.dumps(d, ensure_ascii=False, indent=2))
 
 
 def scenario_portfolio_snapshot(args):
-    """Scenario 1: full portfolio snapshot (wallet + positions + open orders)"""
+    """Scenario 1: full portfolio snapshot (UNIFIED wallet + FUND + positions across categories)"""
     s = session()
-    bal = s.get_wallet_balance(accountType='UNIFIED')
 
+    # UNIFIED wallet
+    bal = s.get_wallet_balance(accountType='UNIFIED')
     wlist = bal['result']['list'][0] if bal['result'].get('list') else {}
-    coins = wlist.get('coin', [])
-    nonzero = [c for c in coins if float(c.get('walletBalance', 0) or 0) > 0]
+    coins = [c for c in wlist.get('coin', []) if float(c.get('walletBalance', 0) or 0) > 0]
+
+    # FUND account — get_wallet_balance only supports UNIFIED, must use get_coins_balance
+    fund_rows = []
+    try:
+        fr = s.get_coins_balance(accountType='FUND')
+        fund_rows = [c for c in fr.get('result', {}).get('balance', []) if float(c.get('walletBalance', 0) or 0) > 0]
+        fund_rows = sorted(fund_rows, key=lambda x: -float(x.get('walletBalance', 0) or 0))
+    except Exception:
+        pass
+
+    # Positions across linear (USDT/USDC) + inverse (BTC)
+    open_pos = []
+    for cat, sc in [('linear', 'USDT'), ('linear', 'USDC'), ('inverse', 'BTC')]:
+        try:
+            r = s.get_positions(category=cat, settleCoin=sc)
+            for p in r.get('result', {}).get('list', []):
+                if float(p.get('size', 0) or 0) != 0:
+                    p['_category'] = cat
+                    open_pos.append(p)
+        except Exception:
+            pass
 
     out = {
         'scenario': 'portfolio_snapshot',
         'timestamp_utc': datetime.now(timezone.utc).isoformat(),
-        'wallet': {
+        'unified_wallet': {
             'totalEquity':           wlist.get('totalEquity'),
             'totalWalletBalance':    wlist.get('totalWalletBalance'),
             'totalAvailableBalance': wlist.get('totalAvailableBalance'),
-            'totalMarginBalance':    wlist.get('totalMarginBalance'),
             'accountIMRate':         wlist.get('accountIMRate'),
             'accountMMRate':         wlist.get('accountMMRate'),
-            'coins_nonzero_count':   len(nonzero),
-            'coins_nonzero':         sorted(nonzero, key=lambda x: -float(x.get('usdValue', 0) or 0)),
+            'coins_nonzero_count':   len(coins),
+            'coins_nonzero':         sorted(coins, key=lambda x: -float(x.get('usdValue', 0) or 0)),
         },
+        'funding_account': {
+            'nonzero_count': len(fund_rows),
+            'balances':      fund_rows,
+        },
+        'open_positions_count': len(open_pos),
+        'open_positions': open_pos,
     }
-
-    # 持仓 — 兼顾多个 settleCoin
-    open_pos = []
-    for sc in ['USDT', 'USDC']:
-        try:
-            r = s.get_positions(category='linear', settleCoin=sc)
-            for p in r.get('result', {}).get('list', []):
-                if float(p.get('size', 0) or 0) != 0:
-                    open_pos.append(p)
-        except Exception:
-            pass
-    out['open_positions_count'] = len(open_pos)
-    out['open_positions'] = open_pos
 
     print_json(out)
 
@@ -76,11 +89,12 @@ def scenario_perp_risk(args):
 
     open_pos = []
     upl = 0.0
-    for sc in ['USDT', 'USDC']:
+    for cat, sc in [('linear', 'USDT'), ('linear', 'USDC'), ('inverse', 'BTC')]:
         try:
-            r = s.get_positions(category='linear', settleCoin=sc)
+            r = s.get_positions(category=cat, settleCoin=sc)
             for p in r.get('result', {}).get('list', []):
                 if float(p.get('size', 0) or 0) != 0:
+                    p['_category'] = cat
                     open_pos.append(p)
                     upl += float(p.get('unrealisedPnl', 0) or 0)
         except Exception:

@@ -1,6 +1,6 @@
 ---
 name: bybit-account
-version: 1.0.0
+version: 1.1.0
 description: Bybit 只读账户追踪（统一交易账户）— 余额、持仓、订单、成交、出入金、转账、交易流水、风险场景分析
 author: starchild
 tags: [bybit, account, readonly, tracking, futures, spot, unified]
@@ -51,10 +51,16 @@ python3 skills/bybit-account/scripts/bybit_account.py <action> [options]
 python3 skills/bybit-account/scripts/account_scenarios.py <scenario> [options]
 ```
 
+## Important: FUND Account is Separate
+
+`get_wallet_balance` 在 v5 **只支持 UNIFIED**，资金账户（FUND）必须用 `get_coins_balance(accountType='FUND')`。`summary` 和 `portfolio_snapshot` 已自动两边都查并合并。
+
+持仓查询：`linear` 必须按 `settleCoin` 分别拉（USDT/USDC），`inverse` 用 BTC。`summary` 和 `perp_risk` 已自动扫描三种结算币。
+
 ## Actions
 
-- `summary`: 一键汇总
-- `wallet_balance`/`coin_balance`/`account_info`/`fee_rates`/`collateral_info`
+- `summary`: 一键汇总（UNIFIED + FUND + 多结算币持仓）
+- `wallet_balance`/`coin_balance`/`funding_balance`/`account_info`/`fee_rates`/`collateral_info`
 - `positions`/`open_orders`/`order_history`/`executions`
 - `deposits`/`withdrawals`/`internal_transfers`/`universal_transfers`
 - `transaction_log`/`borrow_history`/`server_time`

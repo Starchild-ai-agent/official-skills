@@ -38,6 +38,19 @@ def coin_balance(args):
         accountType=(args.account_type or 'UNIFIED').upper(),
         coin=(args.asset or 'USDT').upper()))
 
+def funding_balance(args):
+    """资金账户（FUND）所有币种余额。
+    注意：get_wallet_balance 只支持 UNIFIED，FUND 必须用 get_coins_balance。"""
+    s = session()
+    r = s.get_coins_balance(accountType=(args.account_type or 'FUND').upper())
+    rows = r.get('result', {}).get('balance', [])
+    nonzero = [c for c in rows if float(c.get('walletBalance', 0) or 0) > 0]
+    fmt({
+        'accountType': (args.account_type or 'FUND').upper(),
+        'nonzero_count': len(nonzero),
+        'balances': sorted(nonzero, key=lambda x: -float(x.get('walletBalance', 0) or 0)),
+    })
+
 def account_info(args):
     """账户配置（统一账户模式、保证金模式等）"""
     fmt(session().get_account_info())
@@ -116,42 +129,66 @@ def server_time(args):
 
 
 def summary(args):
-    """一键汇总：钱包+持仓+挂单"""
+    """一键汇总：UNIFIED 钱包 + FUND 资金账户 + 持仓(USDT/USDC/BTC) + 挂单"""
     s = session()
-    bal = s.get_wallet_balance(accountType='UNIFIED')
-    pos = s.get_positions(category='linear', settleCoin='USDT')
-    orders = s.get_open_orders(category='linear', settleCoin='USDT')
-    spot_orders = s.get_open_orders(category='spot')
 
-    if bal.get('retCode') == 0:
-        wlist = bal['result']['list'][0] if bal['result']['list'] else {}
-        coins = wlist.get('coin', [])
-        nonzero = [c for c in coins if float(c.get('walletBalance', 0) or 0) > 0]
-        wallet_summary = {
+    # UNIFIED wallet
+    bal = s.get_wallet_balance(accountType='UNIFIED')
+    if bal.get('retCode') == 0 and bal['result'].get('list'):
+        wlist = bal['result']['list'][0]
+        coins = [c for c in wlist.get('coin', []) if float(c.get('walletBalance', 0) or 0) > 0]
+        unified = {
             'totalEquity':           wlist.get('totalEquity'),
             'totalWalletBalance':    wlist.get('totalWalletBalance'),
             'totalAvailableBalance': wlist.get('totalAvailableBalance'),
-            'totalMarginBalance':    wlist.get('totalMarginBalance'),
             'accountIMRate':         wlist.get('accountIMRate'),
             'accountMMRate':         wlist.get('accountMMRate'),
-            'coins_nonzero':         sorted(nonzero, key=lambda x: -float(x.get('usdValue', 0) or 0)),
+            'coins_nonzero':         sorted(coins, key=lambda x: -float(x.get('usdValue', 0) or 0)),
         }
     else:
-        wallet_summary = bal
+        unified = bal
 
-    out = {
-        'wallet': wallet_summary,
-        'open_positions': [p for p in pos.get('result', {}).get('list', []) if float(p.get('size', 0) or 0) != 0],
-        'open_orders_linear': orders.get('result', {}).get('list', []),
+    # FUND account (separate API)
+    fund_acct = []
+    try:
+        fr = s.get_coins_balance(accountType='FUND')
+        rows = fr.get('result', {}).get('balance', [])
+        fund_acct = sorted(
+            [c for c in rows if float(c.get('walletBalance', 0) or 0) > 0],
+            key=lambda x: -float(x.get('walletBalance', 0) or 0)
+        )
+    except Exception as e:
+        fund_acct = {'error': str(e)[:200]}
+
+    # Positions across linear (USDT/USDC) + inverse (BTC)
+    open_pos = []
+    for cat, sc in [('linear', 'USDT'), ('linear', 'USDC'), ('inverse', 'BTC')]:
+        try:
+            r = s.get_positions(category=cat, settleCoin=sc)
+            for p in r.get('result', {}).get('list', []):
+                if float(p.get('size', 0) or 0) != 0:
+                    p['_category'] = cat
+                    open_pos.append(p)
+        except Exception:
+            pass
+
+    orders_linear = s.get_open_orders(category='linear', settleCoin='USDT')
+    spot_orders   = s.get_open_orders(category='spot')
+
+    fmt({
+        'unified_wallet':     unified,
+        'funding_account':    fund_acct,
+        'open_positions':     open_pos,
+        'open_orders_linear': orders_linear.get('result', {}).get('list', []),
         'open_orders_spot':   spot_orders.get('result', {}).get('list', []),
-    }
-    fmt(out)
+    })
 
 
 ACTIONS = {
     'summary':              summary,
     'wallet_balance':       wallet_balance,
     'coin_balance':         coin_balance,
+    'funding_balance':      funding_balance,
     'account_info':         account_info,
     'fee_rates':            fee_rates,
     'collateral_info':      collateral_info,

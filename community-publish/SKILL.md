@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.8.0
+version: 0.8.1
 description: Share to the Starchild community in two independent ways — publish a running service to a public URL, or open-source any project's code to the community GitHub repo. Cross-link between them via project.yaml's `publisher` binding.
 delivery: script
 metadata:
@@ -178,13 +178,28 @@ Returns `{"ok": True, "url": "...", "publisher": {...}, "hint": "..."}`.
 
 ## `open_source()` — push code to GitHub
 
-`open_source(project_dir, version_bump="patch")`
+`open_source(project_dir, version_bump="patch", message="")`
 
 Push project source to `community-projects/projects/{type}s/{user_id}/{slug}/{version}/` on GitHub.
 
 - `project_dir`: e.g. `output/projects/my-task`
 - `version_bump`: `patch` | `minor` | `major` | `none`
+- `message`: commit message body describing what this version changed.
+  **You (the agent) should always compose this** based on the actual code
+  changes you made in this session — never leave it blank if you know
+  what changed, never ask the user to write it. Aim for one to three short
+  lines. Don't list every file; describe the user-visible change. If the
+  user explicitly said "just publish", use a one-line summary like "Initial
+  publish" or "Re-publish without changes".
 - Returns `{"ok": True, "github_url": ..., "version": ..., "publisher": {...}, "hint": "..."}`
+
+**Commit message style** — write like a normal git commit body:
+
+  ✅ "Add WebSocket reconnect on dropped connections; refactor prompt builder for shared state."
+  ✅ "Fix funding-rate sign convention; add unit test for negative-funding path."
+  ❌ "Updated 3 files" (uninformative)
+  ❌ "Modified src/index.html, src/main.py, project.yaml" (lists files instead of intent)
+  ❌ "User asked to publish" (describes the request, not the change)
 
 **Companions:**
 - `fork(source, dest_dir=None)` — install someone else's open-sourced project locally

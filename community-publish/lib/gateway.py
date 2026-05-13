@@ -39,6 +39,12 @@ def _request(method: str, path: str, body: dict | None = None, timeout: int = 60
 
 
 def publish(req_body: dict) -> tuple[int, dict]:
+    """POST /api/code-projects/publish.
+
+    req_body may include `commit_message` (free-form string). When present,
+    gateway uses it as the body of the GitHub commit; otherwise falls back
+    to an auto-generated template.
+    """
     return _request("POST", "/api/code-projects/publish", req_body)
 
 

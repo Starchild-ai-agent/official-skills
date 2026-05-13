@@ -129,10 +129,18 @@ def validate_open_source(project_dir: str) -> dict[str, Any]:
     }
 
 
-def open_source(project_dir: str, version_bump: str = "patch") -> dict[str, Any]:
+def open_source(project_dir: str, version_bump: str = "patch",
+                message: str = "") -> dict[str, Any]:
     """Validate, bump version, and push project source to the community GitHub repo.
 
-    version_bump: "patch" | "minor" | "major" | "none" (use existing version)
+    Args:
+        project_dir: path to the project (e.g. "output/projects/my-app")
+        version_bump: "patch" | "minor" | "major" | "none" (use existing version)
+        message: free-form commit message describing what this version
+                 changed. The agent should compose this based on actual
+                 code changes in the session — it becomes the body of the
+                 GitHub commit and is what people read when browsing
+                 history. If blank, gateway uses a generic template.
     """
     pd = _abspath(project_dir)
     if not os.path.isdir(pd):
@@ -176,6 +184,8 @@ def open_source(project_dir: str, version_bump: str = "patch") -> dict[str, Any]
         "manifest": manifest,
         "files": payload_files,
     }
+    if message and message.strip():
+        body["commit_message"] = message.strip()
 
     status, resp = gateway.publish(body)
     if status != 200 or not resp.get("ok"):

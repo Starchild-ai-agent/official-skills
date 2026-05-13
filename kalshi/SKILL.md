@@ -1,18 +1,7 @@
 ---
-name: kalshi-api
-version: 0.1.0
-description: Trade and query the Kalshi prediction market exchange via REST API. Kalshi is
-  the first CFTC-regulated exchange for event contracts — binary yes/no
-  contracts on real-world outcomes (politics, economics, weather, sports,
-  crypto, science, tech). Covers event discovery, market data, orderbooks,
-  candlesticks, trades, portfolio management, positions, balances, order
-  placement, cancellation, amendment, batch operations, settlements, series,
-  RFQs, subaccounts, and historical data. Use when the user asks about
-  prediction markets, event contracts, "what are the odds", "will X happen",
-  Kalshi markets, Kalshi orderbook, Kalshi positions, implied probability,
-  binary contracts, or event trading. Also use when user mentions Kalshi by
-  name. Do NOT use for perpetual futures, spot DEX trading, CoinGecko price
-  data, or sports betting platforms.
+name: kalshi
+version: 1.0.0
+description: Kalshi is a regulated U.S. prediction market platform where users trade on the outcomes of real-world events using “event contracts.” These contracts let traders speculate on whether something will happen — such as election results, inflation rates, sports outcomes, weather events, or economic indicators. Each contract settles at either $1 or $0 depending on the actual outcome.
 allowed-tools: Bash, Read, Write, WebFetch
 homepage: https://kalshi.com
 metadata:

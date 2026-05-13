@@ -176,10 +176,10 @@
       "description": "Jupiter DEX aggregator on Solana — token swaps, limit orders, DCA. Use when user mentions Jupiter, Solana swap, SOL/USDC swap, or Solana DEX aggregator."
     },
     {
-      "name": "kalshi-api",
+      "name": "kalshi",
       "path": "kalshi/SKILL.md",
-      "version": "0.1.0",
-      "description": "Trade and query the Kalshi prediction market exchange via REST API. Kalshi is"
+      "version": "1.0.0",
+      "description": "Kalshi is a regulated U.S. prediction market platform where users trade on the outcomes of real-world events using “event contracts.” These contracts let traders speculate on whether something will happen — such as election results, inflation rates, sports outcomes, weather events, or economic indicators. Each contract settles at either $1 or $0 depending on the actual outcome."
     },
     {
       "name": "lunarcrush",

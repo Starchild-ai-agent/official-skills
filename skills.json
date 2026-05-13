@@ -116,10 +116,10 @@
       "description": "Comprehensive crypto derivatives data - funding rates, open interest,"
     },
     {
-      "name": "community-project-publish",
-      "path": "community-project-publish/SKILL.md",
-      "version": "0.4.0",
-      "description": "Share Starchild projects with the community in two stages — Stage 1 publishes a running preview to a public URL (others can use it in their browser); Stage 2 open-sources the project's code to GitHub (others can fork and run their own instance). Stages are independent and can be combined. Also handles fork/install/browse of others' published projects."
+      "name": "community-publish",
+      "path": "community-publish/SKILL.md",
+      "version": "0.7.0",
+      "description": "Share to the Starchild community in two independent ways — publish a running preview to a public URL, or open-source any project's code to the community GitHub repo. Also handles fork/install/browse."
     },
     {
       "name": "composio",
@@ -220,7 +220,7 @@
     {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "description": "End-to-end project engineering \\u2014 from understanding user intent\\"
     },
     {

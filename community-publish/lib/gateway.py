@@ -51,6 +51,11 @@ def unpublish(user_id: str, slug: str, requesting_user_id: str) -> tuple[int, di
 
 
 def list_(type: str | None = None, tag: str | None = None, user_id: str | None = None, q: str | None = None) -> tuple[int, dict]:
+    """GET /api/code-projects/list — flat catalog, query param name is 'user_id'.
+
+    Note: /api/code-projects/explore uses 'user' instead. Two endpoints,
+    two param names. Source of truth: scg/src/routes/code-projects.ts.
+    """
     qs = []
     if type: qs.append(f"type={type}")
     if tag: qs.append(f"tag={tag}")
@@ -67,10 +72,26 @@ def get(user_id: str, slug: str, version: str | None = None) -> tuple[int, dict]
     return _request("GET", f"/api/code-projects/{user_id}/{slug}{qstr}")
 
 
+def link_listing(public_slug: str, code_user_id: str, code_slug: str,
+                 latest_version: str, github_url: str) -> tuple[int, dict]:
+    """Manually attach an open-sourced code project to a public-preview listing.
+
+    Used when auto-link missed (e.g. the listing didn't exist when the code
+    was published, or slugs don't follow the {user_id}-{slug} convention).
+    """
+    return _request("POST", "/api/code-projects/link-listing", {
+        "public_slug": public_slug,
+        "code_user_id": code_user_id,
+        "code_slug": code_slug,
+        "latest_version": latest_version,
+        "github_url": github_url,
+    })
+
+
 def fetch_raw_file(raw_url_prefix: str, file_path: str) -> bytes:
     """Fetch a single file from raw.githubusercontent.com — no auth needed for public repo."""
     url = f"{raw_url_prefix.rstrip('/')}/{file_path.lstrip('/')}"
-    req = urllib.request.Request(url, headers={"User-Agent": "community-project-publish-skill"})
+    req = urllib.request.Request(url, headers={"User-Agent": "community-publish-skill"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read()
 

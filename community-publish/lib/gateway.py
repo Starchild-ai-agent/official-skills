@@ -73,13 +73,17 @@ def list_(type: str | None = None, tag: str | None = None, user_id: str | None =
     return _request("GET", f"/api/code-projects/list{qstr}")
 
 
-def get(user_id: str, slug: str, version: str | None = None) -> tuple[int, dict]:
-    qstr = f"?version={version}" if version else ""
-    return _request("GET", f"/api/code-projects/{user_id}/{slug}{qstr}")
+def get(user_id: str, slug: str) -> tuple[int, dict]:
+    """Fetch the current state of an open-sourced project.
+
+    Versioned snapshots are no longer addressable — git is the version
+    control, so the gateway always serves the latest committed state.
+    """
+    return _request("GET", f"/api/code-projects/{user_id}/{slug}")
 
 
 def link_listing(public_slug: str, code_user_id: str, code_slug: str,
-                 latest_version: str, github_url: str) -> tuple[int, dict]:
+                 version: str, github_url: str) -> tuple[int, dict]:
     """Manual escape hatch: directly wire a code project to a listing.
 
     Normally not needed — cross-link happens automatically via the
@@ -90,7 +94,7 @@ def link_listing(public_slug: str, code_user_id: str, code_slug: str,
         "public_slug": public_slug,
         "code_user_id": code_user_id,
         "code_slug": code_slug,
-        "latest_version": latest_version,
+        "version": version,
         "github_url": github_url,
     })
 

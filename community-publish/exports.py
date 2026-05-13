@@ -75,16 +75,25 @@ def _abspath(p: str) -> str:
     return os.path.abspath(os.path.join("/data/workspace", p))
 
 
-def _parse_source(source: str) -> tuple[str, str, str | None]:
-    """Parse 'user_id/slug' or 'user_id/slug@version'."""
+def _parse_source(source: str) -> tuple[str, str]:
+    """Parse 'user_id/slug'.
+
+    NOTE: 'user_id/slug@version' is no longer supported — only the latest
+    state of a project lives on disk. To inspect or fork an older snapshot,
+    look at the GitHub commit history for the project directory and check
+    out the desired commit manually.
+    """
     s = source.strip()
-    version = None
     if "@" in s:
-        s, version = s.rsplit("@", 1)
+        raise ValueError(
+            f"Invalid source: {source!r} — versioned references are no longer supported. "
+            "Only the latest state of a project is published; use 'user_id/slug' and "
+            "consult GitHub history for older snapshots."
+        )
     if "/" not in s:
-        raise ValueError(f"Invalid source: {source!r} — expected 'user_id/slug[@version]'")
+        raise ValueError(f"Invalid source: {source!r} — expected 'user_id/slug'")
     user_id, slug = s.split("/", 1)
-    return user_id.strip(), slug.strip(), version
+    return user_id.strip(), slug.strip()
 
 
 def _read_preview_registry(preview_id: str) -> dict[str, Any] | None:
@@ -264,7 +273,7 @@ def link_to_listing(listing_slug: str, code_slug: str) -> dict[str, Any]:
             public_slug=final_listing,
             code_user_id=uid,
             code_slug=code_slug,
-            latest_version=project["latest_version"],
+            version=project.get("version", ""),
             github_url=project["github_url"],
         )
     except Exception as e:
@@ -275,15 +284,17 @@ def link_to_listing(listing_slug: str, code_slug: str) -> dict[str, Any]:
             "ok": True,
             "listing_slug": final_listing,
             "code_slug": code_slug,
-            "message": f"Linked '{final_listing}' → code '{uid}/{code_slug}@{project['latest_version']}'.",
+            "message": f"Linked '{final_listing}' → code '{uid}/{code_slug}'.",
         }
     return {"ok": False, "error": b.get("error", f"HTTP {st}")}
 
 
 def remove_open_source(slug: str) -> dict[str, Any]:
-    """Remove ALL versions of YOUR project from the community GitHub repo.
+    """Remove your open-sourced project from the community GitHub repo.
 
-    Cannot remove someone else's project.
+    Deletes the entire slug directory in one commit. Cannot remove someone
+    else's project. Git history of the deletion + prior versions stays in
+    the repo's commit log — only the working tree is cleaned.
     """
     uid = _user_id()
     status, resp = gateway.unpublish(uid, slug, uid)
@@ -309,10 +320,11 @@ def list_open_source(type: str | None = None, tag: str | None = None,
 def get_open_source(source: str) -> dict[str, Any]:
     """Get one open-sourced project's full detail (manifest + readme).
 
-    source: 'user_id/slug' or 'user_id/slug@version'.
+    source: 'user_id/slug'. Always returns the current state — historical
+    snapshots are not addressable through this skill (use GitHub history).
     """
-    user_id, slug, version = _parse_source(source)
-    status, resp = gateway.get(user_id, slug, version)
+    user_id, slug = _parse_source(source)
+    status, resp = gateway.get(user_id, slug)
     if status != 200:
         return {"ok": False, "error": resp.get("error", f"HTTP {status}"), "http_status": status}
     return resp
@@ -321,14 +333,15 @@ def get_open_source(source: str) -> dict[str, Any]:
 def fork(source: str, dest_dir: str | None = None) -> dict[str, Any]:
     """Fork an open-sourced project into output/projects/{slug}/.
 
-    source: 'user_id/slug' or 'user_id/slug@version' (default: latest)
+    source: 'user_id/slug' (always pulls current state — for older snapshots
+            check the GitHub commit history yourself)
     dest_dir: where to install (default: output/projects/{slug}/)
 
     Returns project metadata + missing_envs (caller should request_env_input these)
     + next_step (instructions for type-specific install).
     """
-    user_id, slug, version = _parse_source(source)
-    detail_status, detail = gateway.get(user_id, slug, version)
+    user_id, slug = _parse_source(source)
+    detail_status, detail = gateway.get(user_id, slug)
     if detail_status != 200 or not detail.get("ok"):
         return {"ok": False, "error": detail.get("error", f"HTTP {detail_status}"), "http_status": detail_status}
 
@@ -336,8 +349,7 @@ def fork(source: str, dest_dir: str | None = None) -> dict[str, Any]:
     raw_url_prefix = project["raw_url_prefix"]
     manifest_dict = project.get("manifest") or {}
 
-    target_version = project["latest_version"]
-    file_list = _enumerate_project_files(user_id, slug, target_version)
+    file_list = _enumerate_project_files(user_id, slug, project["type"])
 
     if dest_dir is None:
         dest_dir = f"output/projects/{slug}"
@@ -375,7 +387,8 @@ def fork(source: str, dest_dir: str | None = None) -> dict[str, Any]:
 
     return {
         "ok": True,
-        "source": f"{user_id}/{slug}@{target_version}",
+        "source": f"{user_id}/{slug}",
+        "version": project.get("version", ""),
         "type": project["type"],
         "installed_at": dest_abs,
         "files_downloaded": downloaded,
@@ -390,19 +403,14 @@ def fork(source: str, dest_dir: str | None = None) -> dict[str, Any]:
     }
 
 
-def _enumerate_project_files(user_id: str, slug: str, version: str) -> list[str]:
-    """Enumerate files in a project version via GitHub Trees API."""
+def _enumerate_project_files(user_id: str, slug: str, project_type: str) -> list[str]:
+    """Enumerate files in a project's current state via GitHub Trees API."""
     import urllib.request
     import json
 
     repo = "Starchild-ai-agent/community-projects"
-    status, detail = gateway.get(user_id, slug, version)
-    if status != 200 or not detail.get("ok"):
-        return ["project.yaml", "PROJECT.md", ".env.example"]
-    project_type = detail["project"]["type"]
-
     type_folder = project_type + "s"
-    prefix = f"projects/{type_folder}/{user_id}/{slug}/{version}/"
+    prefix = f"projects/{type_folder}/{user_id}/{slug}/"
 
     url = f"https://api.github.com/repos/{repo}/git/trees/main?recursive=1"
     req = urllib.request.Request(url, headers={"User-Agent": "community-publish-skill"})

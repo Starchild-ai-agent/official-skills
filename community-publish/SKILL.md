@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.8.1
+version: 0.9.0
 description: Share to the Starchild community in two independent ways — publish a running service to a public URL, or open-source any project's code to the community GitHub repo. Cross-link between them via project.yaml's `publisher` binding.
 delivery: script
 metadata:
@@ -203,12 +203,12 @@ Push project source to `community-projects/projects/{type}s/{user_id}/{slug}/{ve
 
 **Companions:**
 - `fork(source, dest_dir=None)` — install someone else's open-sourced project locally
-  - `source`: `"user_id/slug"` or `"user_id/slug@version"`
+  - `source`: `"user_id/slug"` (always pulls current state — older snapshots live in GitHub commit history)
   - For `task` type: registers as **paused**, returns `next_step` instructions
   - For `service` type: returns ready-to-serve info
 - `list_open_source(type=None, tag=None, user=None, q=None)` — browse the GitHub catalog
 - `get_open_source(source)` — fetch one project's full metadata
-- `remove_open_source(slug)` — delete from GitHub catalog (owner only, removes ALL versions)
+- `remove_open_source(slug)` — delete project directory from GitHub catalog (owner only). Git history of the deletion + previous commits is preserved in the repo's commit log.
 - `validate_open_source(project_dir)` — pre-flight check before publishing
 
 ### Project structure
@@ -280,7 +280,7 @@ EOF
 | `publish_preview`: `FLY_MACHINE_ID not set` | Running locally, not in Starchild container | URL publish only works in the production container |
 | `open_source`: `400 Validation failed: env names not in .env.example` | Listed `MY_KEY` in `env_required` but forgot `.env.example` | Add the missing key to `.env.example` |
 | `open_source`: `400 Possible secret detected` | Secret scanner found a real-looking API key | Move to env var; `.env.example` value should be `your-key-here` |
-| `open_source`: `400 Version X must be greater than current latest Y` | Same-version republish or downgrade | Bump in `project.yaml` (`version_bump="minor"`) |
+
 | `open_source`: `400 Type cannot change after publish` | Trying to switch task ↔ service ↔ script | Pick a different slug |
 | `remove_open_source`: `403 Permission denied` | Trying to remove someone else's project | Only the owner can remove |
 | Cross-link not appearing on frontend | Binding mismatch between sides | Check both sides' slugs match the `publisher:` block; or use `link_to_listing` to repair |

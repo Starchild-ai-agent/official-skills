@@ -58,8 +58,8 @@
     {
       "name": "binance-account",
       "path": "binance-account/SKILL.md",
-      "version": "1.1.0",
-      "description": "Binance 只读账户追踪（现货+U本位合约）— 余额、持仓、订单、成交、出入金、资金费、快照与风险场景分析"
+      "version": "2.0.0",
+      "description": "Read-only Binance account tracking (spot + USD-M futures) — balances, positions, orders, fills, deposits/withdrawals, funding income, snapshot, and risk scenarios."
     },
     {
       "name": "birdeye",
@@ -82,8 +82,8 @@
     {
       "name": "bybit-account",
       "path": "bybit-account/SKILL.md",
-      "version": "1.2.0",
-      "description": "Bybit 只读账户追踪（统一交易账户）— 余额、持仓、订单、成交、出入金、转账、交易流水、风险场景分析"
+      "version": "2.0.0",
+      "description": "Read-only Bybit account tracking (Unified Trading Account) — balances, positions, orders, fills, deposits/withdrawals/transfers, transaction log, and risk scenarios."
     },
     {
       "name": "byo-proxy",
@@ -214,8 +214,8 @@
     {
       "name": "okx-account",
       "path": "okx-account/SKILL.md",
-      "version": "1.1.0",
-      "description": "OKX 只读账户追踪（统一账户）— 余额、持仓、订单、成交、出入金、账单、风险场景分析"
+      "version": "2.0.0",
+      "description": "Read-only OKX account tracking (unified account) — balances, positions, orders, fills, deposits/withdrawals, bills, and risk scenarios."
     },
     {
       "name": "openocean",

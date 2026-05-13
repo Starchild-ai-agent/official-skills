@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.5.1
+version: 0.5.2
 description: Publish to the Starchild community — open-source code to GitHub and/or expose a running preview at a public URL. Use either independently, or combine for the full project share. Also handles fork/install/browse of others' work.
 delivery: script
 metadata:
@@ -101,7 +101,7 @@ For pure-code project types (`task` / `script` / `service`): no need to mention 
      publish_preview()                    publish_project()
 ```
 
-Same gateway domain, separate API paths, separate datastores. A project can live in either side, both sides, or neither — they don't reference each other.
+Same gateway domain, separate API paths, separate datastores. A project can live in either side, both sides, or neither. When both exist, the gateway tries to auto-link them so the frontend shows cross-references ("View Source" on preview cards, "Visit Live Demo" on code cards). Auto-link works for the conventional slug pattern `{user_id}-{slug}` (and a fuzzy `LIKE '%slug%'` fallback within the same owner). For non-conventional cases or out-of-order publishing, the gateway exposes `POST /api/code-projects/link-listing` (internal) for manual wiring — not yet wrapped by this skill.
 
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: bybit-account
-version: 1.2.0
-description: Bybit 只读账户追踪（统一交易账户）— 余额、持仓、订单、成交、出入金、转账、交易流水、风险场景分析
+version: 2.0.0
+description: Read-only Bybit account tracking (Unified Trading Account) — balances, positions, orders, fills, deposits/withdrawals/transfers, transaction log, and risk scenarios.
 author: starchild
 tags: [bybit, account, readonly, tracking, futures, spot, unified]
 metadata:
@@ -22,43 +22,49 @@ user-invocable: true
 
 # Bybit Account (Read-Only)
 
-只读 Bybit 账户追踪技能，基于官方 `pybit` 库。
-适用于账户跟踪、日报周报、风险提醒、资金流归因。
+Read-only Bybit account tracker built on the official `pybit` library.
+Use it for account tracking, daily/weekly reports, risk alerts, and cashflow attribution.
 
-## 如何获取 Bybit API Key（只读）
+## How to Get a Bybit API Key (Read-Only)
 
-1. 登录 [bybit.com](https://www.bybit.com)，右上角头像 → **API**
-   - 直达链接：https://www.bybit.com/app/user/api-management
+1. Sign in at [bybit.com](https://www.bybit.com), top-right avatar → **API**
+   - Direct link: https://www.bybit.com/app/user/api-management
 2. **Create New Key** → **System-generated API Keys**
-3. 填表：
-   - **API key usage**：**API Transaction**
-   - **Name**：自定
-   - **Permissions**：只勾 Read-Only 下的 `Wallet`、`Positions`、`Trade (read only)`，不要勾 Withdraw 和写权限
-   - **IP whitelist**：建议留空
-4. 完成 2FA 验证 → 提交
-5. **立刻复制** `API Key` + `Secret Key`（Secret 只显示一次）
-6. 填到本 skill 的环境变量
+3. Fill the form:
+   - **API key usage**: **API Transaction**
+   - **Name**: anything
+   - **Permissions**: under **Read-Only** tick `Wallet`, `Positions`, `Trade (read only)`. Do not enable Withdraw or any write permission
+   - **IP whitelist**: leave empty
+4. Complete 2FA → submit
+5. **Copy** `API Key` + `Secret Key` immediately (Secret is shown only once)
+6. Set them into this skill's environment variables
 
-参考：[Bybit 官方教程](https://www.bybit.com/en/help-center/article/How-to-create-your-API-key)
+Reference: [Bybit official tutorial](https://www.bybit.com/en/help-center/article/How-to-create-your-API-key)
 
 ## Prerequisites
 
-### 1) API Key
-在 Bybit API Management 创建 Key，**只勾选 Read**。
+### 1) API key
+In Bybit API Management create a key with **Read only**.
 
-### 2) 环境变量
+### 2) Environment variables
 ```
 BYBIT_RO_API_KEY=...
 BYBIT_RO_SECRET=...
 ```
 
-### 3) 地区限制（必须）
-Bybit 对服务器 IP 有地理封锁。脚本默认通过 SC 内网 HK 代理：
+### 3) Geo restriction (required)
+Bybit geo-blocks server IPs. Scripts default to the SC internal HK proxy:
 ```python
 HK_PROXY = "http://hk:x@sc-vpn.internal:8080"
 ```
-注入方式：`session.client.proxies.update({'http': HK, 'https': HK})`。
-**不要**用 `HTTP(proxies=...)` 构造（pybit 不支持）。
+Injection style: `session.client.proxies.update({'http': HK, 'https': HK})`.
+**Do not** pass `HTTP(proxies=...)` — pybit doesn't accept that constructor argument.
+
+## Important: FUND account is separate
+
+Bybit v5's `get_wallet_balance` **only supports `accountType=UNIFIED`**. The Funding (FUND) account balance must be fetched via `get_coins_balance(accountType='FUND')`. The `summary` and `portfolio_snapshot` actions automatically query both and merge.
+
+For positions, `linear` requires per-`settleCoin` queries (USDT / USDC) and `inverse` uses BTC. The `summary` and `perp_risk` actions automatically scan all three settlement coins.
 
 ## Scripts
 
@@ -67,28 +73,22 @@ python3 skills/bybit-account/scripts/bybit_account.py <action> [options]
 python3 skills/bybit-account/scripts/account_scenarios.py <scenario> [options]
 ```
 
-## Important: FUND Account is Separate
-
-`get_wallet_balance` 在 v5 **只支持 UNIFIED**，资金账户（FUND）必须用 `get_coins_balance(accountType='FUND')`。`summary` 和 `portfolio_snapshot` 已自动两边都查并合并。
-
-持仓查询：`linear` 必须按 `settleCoin` 分别拉（USDT/USDC），`inverse` 用 BTC。`summary` 和 `perp_risk` 已自动扫描三种结算币。
-
 ## Actions
 
-- `summary`: 一键汇总（UNIFIED + FUND + 多结算币持仓）
-- `wallet_balance`/`coin_balance`/`funding_balance`/`account_info`/`fee_rates`/`collateral_info`
-- `positions`/`open_orders`/`order_history`/`executions`
-- `deposits`/`withdrawals`/`internal_transfers`/`universal_transfers`
-- `transaction_log`/`borrow_history`/`server_time`
+- `summary`: one-shot summary (UNIFIED + FUND + multi-settle positions)
+- `wallet_balance` / `coin_balance` / `funding_balance` / `account_info` / `fee_rates` / `collateral_info`
+- `positions` / `open_orders` / `order_history` / `executions`
+- `deposits` / `withdrawals` / `internal_transfers` / `universal_transfers`
+- `transaction_log` / `borrow_history` / `server_time`
 
 ## Scenarios
 
-- `portfolio_snapshot`: 全账户快照（钱包+持仓）
-- `perp_risk`: 合约风险监控（IM/MM 比率 + 未实现亏损）
-- `cashflow`: 充提+转账+交易流水归集
-- `trading_activity`: 按 category 的近期成交活跃度
+- `portfolio_snapshot`: full account snapshot (wallet + positions)
+- `perp_risk`: derivatives risk monitoring (IM / MM ratio + unrealized loss)
+- `cashflow`: deposits + withdrawals + transfers + transaction log
+- `trading_activity`: recent fills activity by category
 
-## Common Usage
+## Common usage
 
 ```bash
 python3 skills/bybit-account/scripts/bybit_account.py summary
@@ -98,14 +98,14 @@ python3 skills/bybit-account/scripts/account_scenarios.py cashflow --limit 100
 python3 skills/bybit-account/scripts/account_scenarios.py trading_activity --categories spot,linear
 ```
 
-## Important Parameters
+## Important parameters
 
-- `--account-type`: UNIFIED（默认）/ CONTRACT / SPOT / FUND / INVESTMENT / OPTION
-- `--category`: spot / linear / inverse / option
-- `--settle`: linear/inverse 持仓必须指定结算币（默认 USDT）
+- `--account-type`: `UNIFIED` (default) / `CONTRACT` / `SPOT` / `FUND` / `INVESTMENT` / `OPTION`
+- `--category`: `spot` / `linear` / `inverse` / `option`
+- `--settle`: settle coin for `linear` / `inverse` positions (default `USDT`)
 
 ## Notes
 
-- pybit 的 HTTP 构造函数不接受 `proxies` 参数；必须在构造后通过 `client.proxies` 注入。
-- `linear` 持仓必须指定 `settleCoin` 或 `symbol` 之一。
-- 大额 fills 建议按时间窗口分页拉取。
+- pybit's `HTTP` constructor does not accept `proxies`; you must inject via `client.proxies` after construction.
+- `linear` positions require either `settleCoin` or `symbol`.
+- Use time-windowed pagination for high-volume fills.

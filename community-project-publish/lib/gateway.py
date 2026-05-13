@@ -73,3 +73,31 @@ def fetch_raw_file(raw_url_prefix: str, file_path: str) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": "community-project-publish-skill"})
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read()
+
+
+# ── Stage 1: Service URL Publish (preview registry on community gateway) ──
+# These hit /api/register, /api/unregister, /api/list — the in-memory
+# preview-slug ↔ machine ↔ port routing table on sc-community-gateway.
+# Distinct from /api/code-projects/* which is GitHub-backed code archive.
+
+def preview_register(slug: str, machine_id: str, port: int,
+                     owner_user_id: str, title: str = "") -> tuple[int, dict]:
+    return _request("POST", "/api/register", {
+        "slug": slug,
+        "machine_id": machine_id,
+        "port": port,
+        "owner_user_id": owner_user_id,
+        "title": title,
+    }, timeout=10)
+
+
+def preview_unregister(slug: str, owner_user_id: str) -> tuple[int, dict]:
+    return _request("POST", "/api/unregister", {
+        "slug": slug,
+        "owner_user_id": owner_user_id,
+    }, timeout=10)
+
+
+def preview_list(owner_user_id: str) -> tuple[int, dict]:
+    from urllib.parse import quote
+    return _request("GET", f"/api/list?owner_user_id={quote(owner_user_id)}", timeout=10)

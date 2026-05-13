@@ -301,3 +301,189 @@ def _enumerate_project_files(user_id: str, slug: str, version: str) -> list[str]
         if item.get("type") == "blob" and item["path"].startswith(prefix):
             files.append(item["path"][len(prefix):])
     return files
+
+
+# ════════════════════════════════════════════════════════════════════════
+# Stage 1: Service URL Publish (preview public-URL registry)
+# ════════════════════════════════════════════════════════════════════════
+# Map a running preview to https://community.iamstarchild.com/{slug}.
+# Distinct from publish_project (Stage 2) which archives source code to GitHub.
+# Both stages share the same gateway domain but use separate API paths and
+# separate datastores. See SKILL.md "Two stages" section.
+
+import re
+SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$")
+
+
+def _machine_id() -> str:
+    mid = os.environ.get("FLY_MACHINE_ID", "")
+    if not mid:
+        raise RuntimeError(
+            "FLY_MACHINE_ID not set — service URL publish only works inside "
+            "the Starchild Fly container."
+        )
+    return mid
+
+
+def _public_url_base() -> str:
+    return os.environ.get(
+        "COMMUNITY_PUBLIC_URL", "https://community.iamstarchild.com"
+    ).rstrip("/")
+
+
+def _read_preview_registry(preview_id: str) -> dict[str, Any] | None:
+    """Read /data/previews.json to find a preview's port + status."""
+    import json as _json
+    path = "/data/previews.json"
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path) as f:
+            data = _json.load(f)
+    except Exception:
+        return None
+    items = data.get("previews") if isinstance(data, dict) else data
+    if not isinstance(items, list):
+        return None
+    for p in items:
+        if p.get("id") == preview_id or p.get("preview_id") == preview_id:
+            return p
+    return None
+
+
+def publish_preview(preview_id: str, slug: str = "",
+                    title: str = "") -> dict[str, Any]:
+    """Stage 1: expose a running preview at a public URL.
+
+    Maps preview to https://community.iamstarchild.com/{user_id}-{slug}.
+    Stays online while the publisher's container is running; visitors see
+    an offline page if the container is down.
+
+    Args:
+        preview_id: ID returned by `preview(action='serve')`. Must be running.
+        slug: URL suffix (lowercase alphanumeric + hyphens, 3-50 chars).
+              Pass only the suffix — user_id prefix is added automatically.
+              If omitted, preview_id is used as fallback.
+        title: Display name for the community listing.
+
+    Returns:
+        {"ok": True, "url": ..., "slug": ..., "port": ...} on success
+        {"ok": False, "error": ...} on failure
+    """
+    user_id = _user_id()
+    try:
+        machine_id = _machine_id()
+    except RuntimeError as e:
+        return {"ok": False, "error": str(e)}
+
+    # Verify preview exists + running
+    preview = _read_preview_registry(preview_id)
+    if not preview:
+        return {
+            "ok": False,
+            "error": f"Preview not found: {preview_id}. "
+                     f"Check /data/previews.json for valid IDs.",
+        }
+    if preview.get("status") != "running":
+        return {
+            "ok": False,
+            "error": f"Preview {preview_id} is not running "
+                     f"(status: {preview.get('status')}). Start it first.",
+        }
+    port = preview.get("port")
+    if not port:
+        return {"ok": False, "error": f"Preview {preview_id} has no port recorded."}
+
+    # Build final slug; defensively strip duplicate user_id prefix.
+    slug_suffix = slug if slug else preview_id
+    prefix = f"{user_id}-"
+    if slug_suffix.startswith(prefix):
+        slug_suffix = slug_suffix[len(prefix):]
+    final_slug = f"{user_id}-{slug_suffix}"
+
+    if not SLUG_RE.match(final_slug):
+        return {
+            "ok": False,
+            "error": f"Invalid slug '{final_slug}': must be 3-50 chars, "
+                     f"lowercase alphanumeric + hyphens, "
+                     f"cannot start or end with a hyphen.",
+        }
+
+    title_final = title or preview.get("title", "")
+    try:
+        status, body = gateway.preview_register(
+            slug=final_slug, machine_id=machine_id, port=int(port),
+            owner_user_id=user_id, title=title_final,
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status == 429:
+        return {"ok": False, "error": body.get("error", "Too many published previews.")}
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    public_url = f"{_public_url_base()}/{final_slug}"
+    return {
+        "ok": True,
+        "slug": final_slug,
+        "url": public_url,
+        "port": port,
+        "message": f"Published! Anyone can view at: {public_url}",
+    }
+
+
+def unpublish_preview(slug: str) -> dict[str, Any]:
+    """Stage 1: remove a preview's public URL.
+
+    Args:
+        slug: The full slug as listed by list_published_previews()
+              (e.g. '1463-my-dashboard'). User_id prefix may be omitted —
+              it will be added if missing.
+
+    Returns:
+        {"ok": True, "message": ...} on success
+        {"ok": False, "error": ...} on failure
+    """
+    user_id = _user_id()
+    # Defensive: add prefix if missing
+    final_slug = slug if slug.startswith(f"{user_id}-") else f"{user_id}-{slug}"
+
+    try:
+        status, body = gateway.preview_unregister(
+            slug=final_slug, owner_user_id=user_id,
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status == 404:
+        return {
+            "ok": False,
+            "error": body.get("error", f"Slug '{final_slug}' not found or not owned by you."),
+        }
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    return {
+        "ok": True,
+        "slug": final_slug,
+        "message": f"Unpublished '{final_slug}'. The URL is no longer accessible.",
+    }
+
+
+def list_published_previews() -> dict[str, Any]:
+    """Stage 1: list current user's published preview URLs.
+
+    Returns:
+        {"ok": True, "previews": [...], "count": N} on success
+        {"ok": False, "error": ...} on failure
+    """
+    user_id = _user_id()
+    try:
+        status, body = gateway.preview_list(owner_user_id=user_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+    return {"ok": True, **body}

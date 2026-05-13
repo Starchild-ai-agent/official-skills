@@ -118,7 +118,7 @@
     {
       "name": "community-project-publish",
       "path": "community-project-publish/SKILL.md",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "description": "Publish runnable code projects (tasks, previews, services, scripts) to the Starchild community-projects repo, or fork someone else's project into your workspace. Use when the user wants to share their built project, install/fork a project from the community catalog, or browse/search published projects."
     },
     {

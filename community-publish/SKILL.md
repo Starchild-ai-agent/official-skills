@@ -1,7 +1,7 @@
 ---
 name: community-publish
-version: 0.5.2
-description: Publish to the Starchild community — open-source code to GitHub and/or expose a running preview at a public URL. Use either independently, or combine for the full project share. Also handles fork/install/browse of others' work.
+version: 0.6.0
+description: Share to the Starchild community in two independent ways — publish a running preview to a public URL, or open-source any project's code to the community GitHub repo. Also handles fork/install/browse.
 delivery: script
 metadata:
   starchild:
@@ -11,69 +11,46 @@ user-invocable: true
 disable-model-invocation: false
 ---
 
-## What this skill does
+## Two independent actions
 
-Two independent publish actions:
+This skill handles two completely different kinds of sharing. They are NOT the same action and NOT two stages of one action.
 
-| Action | What it does | What others can do |
+| Action | What "share" means here | Audience can | Applies to |
+|---|---|---|---|
+| `publish_preview(preview_id)` | Make a running preview visitable at `https://community.iamstarchild.com/{user_id}-{slug}` | Open the URL in a browser | type=preview only |
+| `open_source(project_dir)` | Push project source to the community GitHub repo | Fork the code and run their own copy | Any type (task, preview, service, script) |
+
+> Preview lifecycle (start / stop / health check) lives in the `preview` tool. This skill only handles the **share** side.
+
+---
+
+## Routing — read user intent carefully
+
+The word "publish" is ambiguous. Default interpretation matters.
+
+| User says | Action | Why |
 |---|---|---|
-| `publish_project(project_dir)` | Pushes source code to the community GitHub repo | Fork the code and run their own copy |
-| `publish_preview(preview_id)` | Maps a running preview to `https://community.iamstarchild.com/{user_id}-{slug}` | Visit the live URL in their browser |
+| "publish" / "share" / "make public" / "公开" / "发布" (no qualifier) | `publish_preview(preview_id)` | Default user intent for "publish" is public URL access, not source code |
+| "publish the URL" / "share the link" / "let people visit" / "公开访问" | `publish_preview(preview_id)` | Same |
+| "open source" / "open-source the code" / "share the code" / "let others fork" / "开源代码" | `open_source(project_dir)` | Explicit code-sharing intent |
+| Ambiguous after rereading | Ask one question, don't guess | "Do you want a public URL people can visit, or do you want the code on GitHub for others to fork?" |
+| "fork" / "install someone's project" | `fork(source)` | Pull from catalog |
+| "browse" / "see what others published" | `list_open_source(...)` | Catalog query |
+| "unpublish the URL" / "take down the link" | `unpublish_preview(slug)` | Inverse of publish_preview |
+| "remove the open source" / "delete from GitHub" | `remove_open_source(slug)` | Inverse of open_source |
+| "list my public URLs" | `list_published_previews()` | User's own preview side |
 
-These are **independent**. Use one, the other, or both. They share a gateway domain but otherwise don't reference each other — each has its own datastore, lifetime, and undo path.
+### Mentioning the other action
 
-> **Note:** Preview lifecycle (start / stop / health check) lives in the `preview` tool. This skill only handles the **publish** side.
+After `publish_preview()` succeeds, if the project also has source code the user might want to share:
 
----
+> Public URL is up. Want to open-source the code as well, so others can fork and run their own copy?
 
-## Two typical scenarios
+After `open_source()` succeeds, **only if** the project type is `preview` AND there's a running preview:
 
-### Scenario A — Pure code share
+> Code is open-sourced. The preview is still running — want to publish the live URL too, so visitors can try it without forking?
 
-User wants others to be able to fork and run code. There may not be any running service; the code is the artifact.
-
-**Flow:** organize the project dir → `publish_project()`. Done.
-
-Examples: a scheduled task, a one-off analysis script, a CLI tool, an SDK wrapper, a library.
-
-### Scenario B — Project share (comprehensive)
-
-User has a running thing (preview, web app, dashboard) AND wants to make it both **usable** (anyone can open the URL) and **forkable** (anyone can run their own).
-
-**Recommended flow** — also the smoothest user-facing path:
-
-1. `preview(action='serve', dir=Y, ...)` — get the preview running (preview tool, not this skill)
-2. `publish_preview(preview_id=X, slug=...)` — live URL goes up
-3. `publish_project(project_dir=Y)` — code goes to GitHub, with PROJECT.md mentioning the live URL
-
-The two actions amplify each other — visitors try the live version first, then fork if they like it. But step 2 and step 3 are still independent: skip either one, the other still works.
-
----
-
-## Routing — what the user is asking for
-
-| User intent | Action |
-|---|---|
-| Open source / let others fork / share the code | `publish_project(project_dir)` |
-| Share the link / make accessible / publish preview | `publish_preview(preview_id)` |
-| Publish (no qualifier) | Ask: do they want others to visit a live URL, or fork and run the code themselves? Both can be done together. |
-| Fork / install someone's project | `fork_project(source)` |
-| Browse what others published | `list_projects(...)` |
-| Unpublish the public URL | `unpublish_preview(slug)` |
-| Take down open-sourced code | `unpublish_project(slug)` |
-| List my own published preview URLs | `list_published_previews()` |
-
-### When to mention the other action
-
-After `publish_preview()` succeeds, if the project also has source code worth sharing:
-
-> Live URL is up ✅. Want to open-source the code too, so others can fork and run their own copy?
-
-After `publish_project()` succeeds, **only if** the project type is `preview` AND there's a running preview:
-
-> Code is open-sourced ✅. The preview is still running — want to publish the live URL too, so visitors can try it without forking?
-
-For pure-code project types (`task` / `script` / `service`): no need to mention preview publish — there's nothing to expose.
+For `task` / `script` / `service`: don't mention preview publish — there's nothing to expose.
 
 ---
 
@@ -87,7 +64,7 @@ For pure-code project types (`task` / `script` / `service`): no need to mention 
    ┌────────▼─────────┐                ┌────────▼─────────┐
    │  /api/register   │                │/api/code-projects│
    │  /api/unregister │                │ /publish, /list, │
-   │  /api/list       │                │ /unpublish, /... │
+   │  /api/list       │                │ /unpublish, ...  │
    └────────┬─────────┘                └────────┬─────────┘
             │                                   │
    ┌────────▼─────────┐                ┌────────▼─────────┐
@@ -98,34 +75,56 @@ For pure-code project types (`task` / `script` / `service`): no need to mention 
    │ Lives only while │                │                  │
    │ container is up. │                │ Permanent.       │
    └──────────────────┘                └──────────────────┘
-     publish_preview()                    publish_project()
+     publish_preview()                    open_source()
 ```
 
-Same gateway domain, separate API paths, separate datastores. A project can live in either side, both sides, or neither. When both exist, the gateway tries to auto-link them so the frontend shows cross-references ("View Source" on preview cards, "Visit Live Demo" on code cards). Auto-link works for the conventional slug pattern `{user_id}-{slug}` (and a fuzzy `LIKE '%slug%'` fallback within the same owner). For non-conventional cases or out-of-order publishing, the gateway exposes `POST /api/code-projects/link-listing` (internal) for manual wiring — not yet wrapped by this skill.
+Same gateway domain, separate API paths, separate datastores. A project can live in either side, both sides, or neither. When both exist, the gateway auto-links them so the frontend renders cross-references ("View Source" on preview cards, "Visit Live Demo" on code cards). Auto-link uses the `{user_id}-{slug}` pattern (with a fuzzy fallback within the same owner).
 
 ---
 
-## `publish_project()` — open source code
+## `publish_preview()` — public URL
 
-`publish_project(project_dir, version_bump="patch")`
+`publish_preview(preview_id, slug="", title="")`
 
-Push project source to GitHub at `community-projects/projects/{type}s/{user_id}/{slug}/{version}/`.
+Map a running preview to `https://community.iamstarchild.com/{user_id}-{slug}`.
+
+- `preview_id`: from `preview(action='serve')`. Must be `status=running`.
+- `slug`: URL suffix only (lowercase alphanumeric + hyphens, 3-50 chars). User_id prefix is added automatically — pass `'my-app'`, NOT `'1463-my-app'`.
+- `title`: display name for the listing.
+
+Returns `{"ok": True, "url": "https://community.iamstarchild.com/{user_id}-{slug}", ...}`.
+
+**Constraints:**
+- Max 20 published previews per user (gateway returns 429 over).
+- Preview must be running. Stops working when the container goes down (visitors see offline page).
+- Slug stays bound to the port — stop and re-serve the preview, the URL stays valid.
+- Only works inside the Starchild Fly container (needs `FLY_MACHINE_ID`).
+
+**Companions:**
+- `unpublish_preview(slug)` — remove the public URL. Slug accepts full `{user_id}-{suffix}` or just suffix.
+- `list_published_previews()` — all currently published preview URLs for this user.
+
+---
+
+## `open_source()` — push code to GitHub
+
+`open_source(project_dir, version_bump="patch")`
+
+Push project source to `community-projects/projects/{type}s/{user_id}/{slug}/{version}/` on GitHub.
 
 - `project_dir`: e.g. `output/projects/my-task`
-- `version_bump`: `patch` | `minor` | `major`
+- `version_bump`: `patch` | `minor` | `major` | `none`
 - Returns `{"ok": True, "github_url": ..., "version": ..., "commit_sha": ...}`
 
-**Other actions:**
-
-- `update_project(project_dir, version_bump)` — alias for re-publishing
-- `fork_project(source, dest_dir=None)` — install someone else's project locally
+**Companions:**
+- `fork(source, dest_dir=None)` — install someone else's open-sourced project locally
   - `source`: `"user_id/slug"` or `"user_id/slug@version"`
-  - For `task` type: returns `job_id` of the registered (paused) task
-  - For `preview` type: returns `preview_url`
-- `list_projects(type=None, tag=None, user=None, q=None)` — filter the GitHub catalog
-- `get_project(source)` — fetch one project's full metadata
-- `unpublish_project(slug)` — remove from GitHub catalog (owner only)
-- `validate_project(project_dir)` — pre-flight check (mirrors gateway validation)
+  - For `task` type: registers as **paused**, returns `next_step` instructions
+  - For `preview` type: returns ready-to-serve preview info
+- `list_open_source(type=None, tag=None, user=None, q=None)` — browse the GitHub catalog
+- `get_open_source(source)` — fetch one project's full metadata
+- `remove_open_source(slug)` — delete from GitHub catalog (owner only, removes ALL versions)
+- `validate_open_source(project_dir)` — pre-flight check before publishing
 
 ### Project structure
 
@@ -152,33 +151,9 @@ src/
 
 > Only `preview` type has a live URL to expose. The other types are open-source-only.
 
----
-
-## `publish_preview()` — expose live URL
-
-`publish_preview(preview_id, slug=None, title=None)`
-
-Map a running preview to a public URL.
-
-- `preview_id`: from `preview(action='serve')` output. Must be `status=running`.
-- `slug`: URL suffix only (lowercase alphanumeric + hyphens, 3-50 chars). User_id prefix is added automatically — pass `'my-app'`, NOT `'1463-my-app'`.
-- `title`: display name for the listing.
-
-Returns `{"ok": True, "url": "https://community.iamstarchild.com/{user_id}-{slug}", ...}`.
-
-**Constraints:**
-- Max 20 published previews per user (gateway rate-limit, returns 429 over).
-- Preview must be running. Stops working when the container goes down (visitors see offline page).
-- Slug stays bound to the port — you can stop and re-serve the preview, the URL stays valid.
-- Only works inside the Starchild Fly container (needs `FLY_MACHINE_ID`).
-
-**Other actions:**
-- `unpublish_preview(slug)` — remove the public URL. Slug accepts full `{user_id}-{suffix}` or just suffix.
-- `list_published_previews()` — all currently published preview URLs for this user.
-
 ### Don't conflate the two list functions
 
-`list_published_previews()` returns live URLs (preview side). `list_projects()` returns open-sourced code (project side). Different datasets — never quote one number to answer a question about the other.
+`list_published_previews()` returns live URLs (preview side). `list_open_source()` returns open-sourced code (GitHub side). Different datasets — never quote one number to answer a question about the other.
 
 ---
 
@@ -189,18 +164,18 @@ python3 - <<'EOF'
 import sys
 sys.path.insert(0, "/data/workspace/skills/community-publish")
 from exports import (
-    # Open source code (works on any project type)
-    publish_project, update_project, fork_project,
-    list_projects, get_project, unpublish_project, validate_project,
-    # Live URL (preview type only)
+    # Public URL (preview type only)
     publish_preview, unpublish_preview, list_published_previews,
+    # Open source code (any project type)
+    open_source, remove_open_source, fork,
+    list_open_source, get_open_source, validate_open_source,
 )
 
-# Open source a task (no preview involved)
-print(publish_project("output/projects/my-daily-digest", version_bump="patch"))
-
-# Expose a running preview's URL
+# Publish a running preview to a public URL
 print(publish_preview(preview_id="price-dashboard-a3f1", slug="price-dashboard"))
+
+# Open-source a task (no preview involved)
+print(open_source("output/projects/my-daily-digest", version_bump="patch"))
 EOF
 ```
 
@@ -208,13 +183,13 @@ EOF
 
 ## Behavioral rules
 
-- **Never auto-publish without showing the user the diff first** (open source). After `validate_project`, summarize what's about to be pushed (file list, version, type, tags, env_required) and ask for confirmation. Exception: explicit `publish without confirmation` or re-publish of a known good project.
+- **Show the diff before `open_source()`**. After `validate_open_source`, summarize what's about to be pushed (file list, version, type, tags, env_required) and ask for confirmation. Exception: explicit "publish without confirmation" or re-publish of a known good project.
 - **Never auto-run setup.sh on fork**. Show the command, let the user confirm.
 - **Always collect env in one batch on fork**. Read project's `env_required`, diff against `workspace/.env`, call `request_env_input` ONCE with the missing keys. Don't ask one-by-one.
 - **Slug rules**: lowercase alphanumeric + hyphens, 3-50 chars, no leading/trailing hyphen. Skill auto-strips duplicate `{user_id}-` prefix if you accidentally include it.
-- **Version rules** (open source): strict semver. Re-publishing same version is rejected. New version must be > current latest.
-- **Type immutability** (open source): once published as `task`, can't change to `preview` later. Pick a different slug.
-- **URL ≠ code**: a published preview URL going down (container off) does NOT remove the open-source code, and vice versa. They're independent.
+- **Version rules** (`open_source`): strict semver. Re-publishing same version is rejected. New version must be > current latest.
+- **Type immutability** (`open_source`): once published as `task`, can't change to `preview` later. Pick a different slug.
+- **URL ≠ code**: a public URL going down (container off) does NOT remove the open-source code, and vice versa. They're independent.
 
 ---
 
@@ -225,10 +200,10 @@ EOF
 | `publish_preview`: `Preview not found` | Wrong preview_id, or preview was stopped | Check `/data/previews.json`, restart with `preview(action='serve')` |
 | `publish_preview`: `429 Too many published previews` | Hit 20-per-user gateway cap | `unpublish_preview()` something old first |
 | `publish_preview`: `FLY_MACHINE_ID not set` | Running locally, not in Starchild container | URL publish only works in the production container |
-| `publish_project`: `400 Validation failed: env names not in .env.example` | Listed `MY_KEY` in `env_required` but forgot `.env.example` | Add the missing key to `.env.example` |
-| `publish_project`: `400 Possible secret detected` | Secret scanner found a real-looking API key | Move to env var; `.env.example` value should be `your-key-here` |
-| `publish_project`: `400 Version X must be greater than current latest Y` | Same-version republish or downgrade | Bump in `project.yaml` (`version_bump="minor"`) |
-| `publish_project`: `403 Permission denied: only owner can unpublish` | Trying to unpublish someone else's project | Ask the original author |
+| `open_source`: `400 Validation failed: env names not in .env.example` | Listed `MY_KEY` in `env_required` but forgot `.env.example` | Add the missing key to `.env.example` |
+| `open_source`: `400 Possible secret detected` | Secret scanner found a real-looking API key | Move to env var; `.env.example` value should be `your-key-here` |
+| `open_source`: `400 Version X must be greater than current latest Y` | Same-version republish or downgrade | Bump in `project.yaml` (`version_bump="minor"`) |
+| `remove_open_source`: `403 Permission denied` | Trying to remove someone else's project | Only the owner can remove |
 | Forked task doesn't run | Auto-registered as **paused** | Tell user: `scheduled_task(action='activate', job_id={id})` |
 
 ---

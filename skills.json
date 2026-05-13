@@ -56,6 +56,12 @@
       "description": "Manage this agent's state backups on sc-agent-backup storage — take snapshots, list prior backups, and restore the agent from any of them. Identity-bound; 5 backups per user, cap enforced on upload."
     },
     {
+      "name": "binance-account",
+      "path": "binance-account/SKILL.md",
+      "version": "1.0.0",
+      "description": "Binance 只读账户追踪（现货+U本位合约）— 余额、持仓、订单、成交、出入金、资金费、快照与风险场景分析"
+    },
+    {
       "name": "birdeye",
       "path": "birdeye/SKILL.md",
       "version": "2.0.3",

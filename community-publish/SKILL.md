@@ -1,7 +1,7 @@
 ---
 name: community-publish
-version: 0.10.0
-description: Share to the Starchild community in two independent ways — publish a running service to a public URL, or open-source any project's code to the community GitHub repo. Cross-link between them via project.yaml's `publisher` binding.
+version: 0.11.0
+description: Share to the Starchild community in three independent ways — publish a running service to a public URL, list it on the public Project Dashboard for discovery, or open-source the project's code to the community GitHub repo.
 delivery: script
 metadata:
   starchild:
@@ -11,14 +11,17 @@ user-invocable: true
 disable-model-invocation: false
 ---
 
-## Two independent actions
+## Three independent actions
 
-This skill handles two completely different kinds of sharing. They are NOT the same action and NOT two stages of one action.
+This skill handles three completely different kinds of sharing. They are NOT stages of one flow and NOT mutually exclusive — a project can be in any combination.
 
 | Action | What "share" means here | Audience can | Applies to |
 |---|---|---|---|
-| `publish_preview(preview_id)` | Make a running HTTP service visitable at `https://community.iamstarchild.com/{user_id}-{slug}` | Open the URL in a browser | Any running service |
+| `publish_preview(preview_id)` | Allocate a public URL `https://community.iamstarchild.com/{user_id}-{slug}` | Open the URL **if they know it** — point-to-point access | Any running service |
+| `list_in_dashboard(slug)` | Show the listing on the public Project Dashboard | **Discover and browse** to it from the gallery | A previously-published preview |
 | `open_source(project_dir)` | Push project source to the community GitHub repo | Fork the code and run their own copy | Any project (task, service, script) |
+
+**Critical: do NOT auto-list when publishing.** `publish_preview()` only allocates the URL. Listing is a separate, deliberate user decision. If the user just says "publish my preview" / "公开" without mentioning the dashboard, only call `publish_preview()`. After it succeeds, you may mention that `list_in_dashboard()` exists if they want others to discover it.
 
 > Service lifecycle (start / stop / health check) lives in the `preview` tool. This skill only handles the **share** side.
 
@@ -42,10 +45,14 @@ The word "publish" is ambiguous. Default interpretation matters.
 
 | User says | Action | Why |
 |---|---|---|
-| "publish" / "share" / "make public" / "公开" / "发布" (no qualifier) | `publish_preview(preview_id)` | Default user intent for "publish" is public URL access, not source code |
+| "publish" / "share" / "make public" / "公开" / "发布" (no qualifier) | `publish_preview(preview_id)` | Default user intent for "publish" is public URL access, not source code, not dashboard listing |
 | "publish the URL" / "share the link" / "let people visit" / "公开访问" | `publish_preview(preview_id)` | Same |
+| "list on the dashboard" / "上架" / "show on community" / "make discoverable" / "let people find this" / "发到广场" | `list_in_dashboard(slug)` | Explicit dashboard-listing intent |
+| "publish AND list" / "publish and put on dashboard" / "发布并上架" | `publish_preview()` THEN `list_in_dashboard()` | Two separate calls, in that order — preview must exist before listing |
+| "remove from dashboard" / "下架" / "unlist" / "hide from gallery" | `unlist_from_dashboard(slug)` | Inverse of list_in_dashboard |
+| "is this listed?" / "在 dashboard 上吗" / "show my listing status" | `get_listing_status(slug)` | Read-only status check |
 | "open source" / "open-source the code" / "share the code" / "let others fork" / "开源代码" | `open_source(project_dir)` | Explicit code-sharing intent |
-| Ambiguous after rereading | Ask one question, don't guess | "Do you want a public URL people can visit, or do you want the code on GitHub for others to fork?" |
+| Ambiguous after rereading | Ask one question, don't guess | "Do you want it (a) just shareable by URL, (b) also discoverable on the public dashboard, or (c) also have the code open-sourced on GitHub?" |
 | "fork" / "install someone's project" | `fork(source)` | Pull from catalog |
 | "browse" / "see what others published" | `list_open_source(...)` | Catalog query |
 | "unpublish the URL" / "take down the link" | `unpublish_preview(slug)` | Inverse of publish_preview |
@@ -173,6 +180,31 @@ Returns `{"ok": True, "url": "...", "publisher": {...}, "hint": "..."}`.
 **Companions:**
 - `unpublish_preview(slug)` — remove the public URL. Slug accepts full `{user_id}-{suffix}` or just suffix.
 - `list_published_previews()` — all currently published preview URLs for this user.
+
+---
+
+## `list_in_dashboard()` — show on Project Dashboard
+
+`list_in_dashboard(slug, name=None, description="", cover_url=None, tags=None)`
+
+Make a published preview discoverable in the public Project Dashboard at `https://community.iamstarchild.com/projects`. Without this, the preview URL works but is invisible to anyone who doesn't already know it.
+
+- `slug`: the **full** slug returned by `publish_preview()` (i.e. `{user_id}-{suffix}`). The gateway's ownership check uses this exact value.
+- `name`: dashboard card display name. Defaults to `slug`.
+- `description`: ≤500 chars.
+- `cover_url`: must be on `storage.googleapis.com`, `image.thum.io`, or `api.microlink.io`. Other domains rejected with 400. If omitted, the gateway captures a screenshot asynchronously.
+- `tags`: ≤5 tags, ≤20 chars each.
+
+Returns `{"ok": True, "listing": {...}, "url": "...", "dashboard_url": "..."}`.
+
+**Constraints:**
+- Requires `publish_preview()` to have run first for the same slug — returns 404 with a clear error otherwise.
+- Idempotent: calling again with different name/tags updates the existing listing.
+- Listings created via `publish_preview()` start as **private** (not on dashboard) — `list_in_dashboard()` is the ONLY way to make them discoverable.
+
+**Companions:**
+- `unlist_from_dashboard(slug)` — remove from dashboard, keep URL alive.
+- `get_listing_status(slug)` — read-only check: returns `{ok, exists, is_public, listing}`. Note: only public listings are observable through this — if the gateway returns 404, the listing is either nonexistent OR private (no way to distinguish).
 
 ---
 

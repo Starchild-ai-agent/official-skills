@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.9.0
+version: 0.10.0
 description: Share to the Starchild community in two independent ways — publish a running service to a public URL, or open-source any project's code to the community GitHub repo. Cross-link between them via project.yaml's `publisher` binding.
 delivery: script
 metadata:

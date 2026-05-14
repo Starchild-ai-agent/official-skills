@@ -96,6 +96,100 @@ def _parse_source(source: str) -> tuple[str, str]:
     return user_id.strip(), slug.strip()
 
 
+_LOCAL_AGENT_BASE = os.environ.get("STARCHILD_LOCAL_API_BASE", "http://127.0.0.1:8000")
+
+
+def _notify_local_publish(port: int, preview_id: str | None) -> tuple[bool, str | None]:
+    """Tell the local agent process to whitelist this port for /community/{port}/.
+
+    Calls the loopback-only /community/_internal/publish endpoint that lives in
+    the same process as CommunityRegistry. Without this call, the agent's
+    `/community/{port}/` proxy returns 403 "Port not published" until the next
+    container restart re-syncs from the gateway via populate_from_gateway.
+
+    Best-effort: returns (ok, error_message). Caller should treat failure as a
+    soft warning, not a hard publish failure (gateway DB has the slug, restart
+    will eventually self-heal).
+    """
+    import json as _json
+    import urllib.request
+    import urllib.error
+    payload = {"port": int(port)}
+    if preview_id:
+        payload["preview_id"] = preview_id
+    try:
+        req = urllib.request.Request(
+            f"{_LOCAL_AGENT_BASE}/community/_internal/publish",
+            data=_json.dumps(payload).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            body = _json.loads(resp.read())
+            return (bool(body.get("ok")), None)
+    except urllib.error.HTTPError as e:
+        try:
+            detail = _json.loads(e.read()).get("detail", "")
+        except Exception:
+            detail = ""
+        return (False, f"HTTP {e.code}: {detail}")
+    except Exception as e:
+        return (False, str(e))
+
+
+def _notify_local_unpublish(port: int) -> tuple[bool, str | None]:
+    """Tell the local agent process to remove this port from the whitelist."""
+    import json as _json
+    import urllib.request
+    import urllib.error
+    try:
+        req = urllib.request.Request(
+            f"{_LOCAL_AGENT_BASE}/community/_internal/unpublish",
+            data=_json.dumps({"port": int(port)}).encode(),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            body = _json.loads(resp.read())
+            return (bool(body.get("ok")), None)
+    except urllib.error.HTTPError as e:
+        try:
+            detail = _json.loads(e.read()).get("detail", "")
+        except Exception:
+            detail = ""
+        return (False, f"HTTP {e.code}: {detail}")
+    except Exception as e:
+        return (False, str(e))
+
+
+def _verify_public_url(url: str, attempts: int = 5, delay: float = 2.0) -> tuple[bool, int | None]:
+    """Post-flight: HEAD the public URL to confirm it actually serves traffic.
+
+    Returns (success, last_status). success=True if any attempt returns < 500.
+    """
+    import time
+    import urllib.request
+    import urllib.error
+    last_status: int | None = None
+    for i in range(max(1, attempts)):
+        try:
+            req = urllib.request.Request(url, method="HEAD")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                last_status = resp.status
+                if last_status < 500:
+                    return (True, last_status)
+        except urllib.error.HTTPError as e:
+            last_status = e.code
+            if last_status < 500 and last_status != 403:
+                # Anything that isn't a 403 (whitelist issue) or 5xx is "alive"
+                return (True, last_status)
+        except Exception:
+            last_status = None
+        if i < attempts - 1:
+            time.sleep(delay)
+    return (False, last_status)
+
+
 def _read_preview_registry(preview_id: str) -> dict[str, Any] | None:
     """Read /data/previews.json to find a preview's port + status."""
     import json as _json
@@ -512,12 +606,58 @@ def publish_preview(preview_id: str, slug: str = "",
     if status != 200:
         return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
 
+    # Gateway DB has the slug now. Two more steps must succeed for the public
+    # URL to actually serve traffic:
+    #   (1) Local agent process must whitelist this port in CommunityRegistry,
+    #       otherwise its /community/{port}/ proxy returns 403 "Port not
+    #       published" until the next container restart.
+    #   (2) The full path public URL → gateway → agent should round-trip.
+    sync_ok, sync_err = _notify_local_publish(int(port), preview_id)
+
     public_url = f"{_public_url_base()}/{final_slug}"
+
+    # Post-flight verify: HEAD the public URL with retries. Skip if local sync
+    # failed — no point waiting 10s for something we know will 403.
+    verify_ok: bool | None = None
+    verify_status: int | None = None
+    if sync_ok:
+        verify_ok, verify_status = _verify_public_url(public_url, attempts=4, delay=2.0)
+
+    # If either local sync or post-flight failed, roll back the gateway
+    # registration and surface a clear error. We DO NOT want a half-published
+    # state where the gateway points at a port the agent rejects.
+    if not sync_ok or verify_ok is False:
+        try:
+            gateway.preview_unregister(slug=final_slug, owner_user_id=user_id)
+        except Exception:
+            pass
+        if not sync_ok:
+            return {
+                "ok": False,
+                "error": (
+                    "Gateway registered the slug but the local agent process could not "
+                    "whitelist port "
+                    f"{port} (sync error: {sync_err}). Rolled back. "
+                    "If this persists, restart the container — the registry will "
+                    "re-sync from the gateway on startup."
+                ),
+            }
+        return {
+            "ok": False,
+            "error": (
+                f"Gateway registered the slug and the local agent whitelisted port {port}, "
+                f"but the public URL still returns HTTP {verify_status} after 4 attempts. "
+                "Rolled back. This usually means the gateway routing or upstream is "
+                "misconfigured — check community.iamstarchild.com health."
+            ),
+        }
+
     return {
         "ok": True,
         "slug": final_slug,
         "url": public_url,
         "port": port,
+        "verified_status": verify_status,
         "publisher": {"code_slug": binding_code_slug},
         "hint": (
             f"Cross-link binding declared (publisher.code_slug='{binding_code_slug}'). "
@@ -564,10 +704,24 @@ def unpublish_preview(slug: str) -> dict[str, Any]:
     if status != 200:
         return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
 
+    # Mirror the publish-side fix: tell the local agent process to drop the
+    # port from its in-memory CommunityRegistry too. The gateway response
+    # carries the deleted port — we reuse it instead of re-querying.
+    deleted = body.get("deleted") or {}
+    deleted_port = deleted.get("port")
+    sync_note = ""
+    if isinstance(deleted_port, int) and deleted_port > 0:
+        sync_ok, sync_err = _notify_local_unpublish(deleted_port)
+        if not sync_ok:
+            sync_note = (
+                f" (note: local registry sync failed: {sync_err}; "
+                "port will be removed from the in-process whitelist on next restart)"
+            )
+
     return {
         "ok": True,
         "slug": final_slug,
-        "message": f"Unpublished '{final_slug}'. The URL is no longer accessible.",
+        "message": f"Unpublished '{final_slug}'. The URL is no longer accessible.{sync_note}",
     }
 
 

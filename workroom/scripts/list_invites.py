@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""chatroom list-invites <room_id>
+"""workroom list-invites <room_id>
 
 Show active (unrevoked, unexpired, remaining uses > 0) invite codes for
 a room. Returns only each code's jti — not the full code — so you cannot
-re-send a code from here. If you need a fresh code, `chatroom invite
+re-send a code from here. If you need a fresh code, `workroom invite
 <room_id>` mints one.
 
 Permissions:
@@ -21,13 +21,13 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom list-invites", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom list-invites", description=__doc__)
     p.add_argument("room_id")
     args = p.parse_args(argv[1:])
     room_id = C.validate_room_id(args.room_id)
     C.require_env()
 
-    r = C.chatroom_call("GET", f"/rooms/{room_id}/invites")
+    r = C.workroom_call("GET", f"/rooms/{room_id}/invites")
     if r.status_code != 200:
         C.die(f"sc-chatroom GET /invites returned {r.status_code}: {r.text}")
     invites = r.json().get("invites", [])

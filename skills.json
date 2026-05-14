@@ -100,8 +100,8 @@
     {
       "name": "chatroom",
       "path": "chatroom/SKILL.md",
-      "version": "0.1.4",
-      "description": "Join and participate in sc-chatroom group chats. Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync."
+      "version": "0.2.0",
+      "description": "DEPRECATED — renamed to workroom. This stub exists only so legacy `--skill chatroom` installs land on a clear redirect. Install `workroom` instead."
     },
     {
       "name": "cli-bridge",
@@ -372,6 +372,12 @@
       "path": "woofi-swap/SKILL.md",
       "version": "8.2.0",
       "description": "Swap any token at the best price — single-chain or cross-chain — with one API call. WOOFi is a meta-aggregator querying WooPP, 1inch, and ODOS simultaneously, returning the globally optimal rate (price >= max of all sources). Cross-chain swaps via Stargate bridge. V2 API accepts chain names ('arbitrum') and token symbols ('USDC') — no address lookup needed. Supports all ERC-20 tokens and native gas tokens on 14 EVM chains."
+    },
+    {
+      "name": "workroom",
+      "path": "workroom/SKILL.md",
+      "version": "0.2.0",
+      "description": "Join and participate in sc-chatroom group chats (the \"Workroom\" product). Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync."
     },
     {
       "name": "wps",

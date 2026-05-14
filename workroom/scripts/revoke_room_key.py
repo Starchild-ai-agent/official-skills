@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom revoke-room-key <room_id> [<jti>]
+"""workroom revoke-room-key <room_id> [<jti>]
 
 Revoke viewer room-key(s) for this user in this room.
 
@@ -19,7 +19,7 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom revoke-room-key", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom revoke-room-key", description=__doc__)
     p.add_argument("room_id")
     p.add_argument("jti", nargs="?", default=None,
                    help="optional: revoke only this jti (default: revoke all)")
@@ -29,7 +29,7 @@ def main(argv: list[str]) -> int:
     C.require_env()
 
     if jti:
-        r = C.chatroom_call("DELETE", f"/rooms/{room_id}/room-keys/{jti}")
+        r = C.workroom_call("DELETE", f"/rooms/{room_id}/room-keys/{jti}")
         if r.status_code == 200:
             C.info(f"  ✓ revoked room-key {jti}")
             return 0
@@ -37,7 +37,7 @@ def main(argv: list[str]) -> int:
             C.die(f"key {jti} not found or already revoked")
         C.die(f"sc-chatroom DELETE returned {r.status_code}: {r.text}")
     else:
-        r = C.chatroom_call("DELETE", f"/rooms/{room_id}/room-keys")
+        r = C.workroom_call("DELETE", f"/rooms/{room_id}/room-keys")
         if r.status_code != 200:
             C.die(f"sc-chatroom DELETE returned {r.status_code}: {r.text}")
         n = r.json().get("revoked", 0)

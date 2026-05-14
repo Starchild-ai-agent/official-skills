@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom members <room_id>
+"""workroom members <room_id>
 
 Lists every member of a room: user_id, display name, role, member_kind,
 online (browser SSE active), and key_stale.
@@ -17,13 +17,13 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom members", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom members", description=__doc__)
     p.add_argument("room_id")
     args = p.parse_args(argv[1:])
     room_id = C.validate_room_id(args.room_id)
     C.require_env()
 
-    r = C.chatroom_call("GET", f"/rooms/{room_id}/members")
+    r = C.workroom_call("GET", f"/rooms/{room_id}/members")
     if r.status_code != 200:
         C.die(f"/rooms/{room_id}/members returned {r.status_code}: {r.text}")
     members = r.json().get("members", [])

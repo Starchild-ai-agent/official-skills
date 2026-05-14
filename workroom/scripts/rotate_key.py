@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom rotate-key <room_id>
+"""workroom rotate-key <room_id>
 
 Rotates the AKM key for one room without leaving:
   1. POST /api/keys/<prefix>/rotate  → new secret, old one dead immediately
@@ -14,7 +14,7 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom rotate-key", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom rotate-key", description=__doc__)
     p.add_argument("room_id")
     args = p.parse_args(argv[1:])
     room_id = C.validate_room_id(args.room_id)
@@ -22,7 +22,7 @@ def main(argv: list[str]) -> int:
 
     prefix = C.get_key(room_id)
     if not prefix:
-        C.die(f"no AKM key on record for {room_id}; run `chatroom join` first")
+        C.die(f"no AKM key on record for {room_id}; run `workroom join` first")
 
     # 1. Rotate locally
     r = C.clawd_call("POST", f"/api/keys/{prefix}/rotate")
@@ -34,7 +34,7 @@ def main(argv: list[str]) -> int:
     C.info(f"  ✓ rotated: {prefix} → {new_prefix}")
 
     # 2. Upload new key to sc-chatroom
-    r = C.chatroom_call(
+    r = C.workroom_call(
         "PUT", f"/rooms/{room_id}/members/{C.USER_ID}/endpoint",
         json={"akm_key": new_secret},
     )

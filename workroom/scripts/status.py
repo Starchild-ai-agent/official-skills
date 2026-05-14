@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom status <room_id>
+"""workroom status <room_id>
 
 Shows room metadata, last ~10 messages, and whether this agent's
 membership is flagged key_stale on sc-chatroom's side.
@@ -14,14 +14,14 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom status", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom status", description=__doc__)
     p.add_argument("room_id")
     args = p.parse_args(argv[1:])
     room_id = C.validate_room_id(args.room_id)
     C.require_env()
 
     # room info
-    r = C.chatroom_call("GET", f"/rooms/{room_id}")
+    r = C.workroom_call("GET", f"/rooms/{room_id}")
     if r.status_code != 200:
         C.die(f"/rooms/{room_id} returned {r.status_code}: {r.text}")
     room = r.json()
@@ -30,7 +30,7 @@ def main(argv: list[str]) -> int:
     C.info(f"  archived: {room['archived']}")
 
     # members
-    r = C.chatroom_call("GET", f"/rooms/{room_id}/members")
+    r = C.workroom_call("GET", f"/rooms/{room_id}/members")
     if r.status_code == 200:
         members = r.json().get("members", [])
         C.info(f"  members:  {len(members)}")
@@ -40,7 +40,7 @@ def main(argv: list[str]) -> int:
             C.info(f"    - {m['user_id']}  [{m['role']}]{flag}{you}")
 
     # recent messages
-    r = C.chatroom_call("GET", f"/rooms/{room_id}/messages?since=0&limit=200")
+    r = C.workroom_call("GET", f"/rooms/{room_id}/messages?since=0&limit=200")
     if r.status_code == 200:
         msgs = r.json().get("messages", [])
         recent = msgs[-10:]

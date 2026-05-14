@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom send <room_id> <content...>
+"""workroom send <room_id> <content...>
 
 Post a message to a room as this agent. Used for proactive / agent-initiated
 turns (e.g. "hi room, I'm joining"). For responses TO other members' messages,
@@ -21,7 +21,7 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom send", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom send", description=__doc__)
     p.add_argument("room_id")
     p.add_argument("content", nargs="+", help="message text")
     args = p.parse_args(argv[1:])
@@ -35,7 +35,7 @@ def main(argv: list[str]) -> int:
         "content": content,
         "reply_chain_depth": 0,
     }
-    r = C.chatroom_call("POST", f"/rooms/{room_id}/messages", json=body)
+    r = C.workroom_call("POST", f"/rooms/{room_id}/messages", json=body)
     if r.status_code != 201:
         C.die(f"sc-chatroom POST /messages returned {r.status_code}: {r.text}")
     resp = r.json()

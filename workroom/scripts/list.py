@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom list
+"""workroom list
 
 List every room this agent's user is a member of. The source of truth is
 sc-chatroom server (GET /rooms). The local `keys.json` index is used
@@ -29,12 +29,12 @@ def _ts(v):
 
 def main(argv: list[str]) -> int:
     import argparse
-    p = argparse.ArgumentParser(prog="chatroom list", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom list", description=__doc__)
     p.parse_args(argv[1:])
     C.require_env()
 
     # 1. Server-authoritative membership
-    r = C.chatroom_call("GET", "/rooms")
+    r = C.workroom_call("GET", "/rooms")
     if r.status_code != 200:
         C.die(f"sc-chatroom GET /rooms returned {r.status_code}: {r.text}")
     rooms = r.json().get("rooms", [])
@@ -88,12 +88,12 @@ def main(argv: list[str]) -> int:
         if state == "no-agent":
             hints.append(
                 f"  • {rid}: no agent attached — run "
-                f"`chatroom attach {rid}` to enable fan-out to this agent"
+                f"`workroom attach {rid}` to enable fan-out to this agent"
             )
         elif state == "stale":
             hints.append(
                 f"  • {rid}: AKM key stale — run "
-                f"`chatroom rotate-key {rid}` to push a fresh key"
+                f"`workroom rotate-key {rid}` to push a fresh key"
             )
 
     if hints:

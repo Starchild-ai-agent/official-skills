@@ -130,7 +130,7 @@
     {
       "name": "community-publish",
       "path": "community-publish/SKILL.md",
-      "version": "0.12.0",
+      "version": "0.13.0",
       "description": "Share to the Starchild community in three independent ways — publish a running service to a public URL, list it on the public Project Dashboard for discovery, or open-source the project's code to the community GitHub repo."
     },
     {

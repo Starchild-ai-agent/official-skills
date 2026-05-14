@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.12.0
+version: 0.13.0
 description: Share to the Starchild community in three independent ways — publish a running service to a public URL, list it on the public Project Dashboard for discovery, or open-source the project's code to the community GitHub repo.
 delivery: script
 metadata:
@@ -27,6 +27,28 @@ This skill handles three completely different kinds of sharing. They are NOT sta
 
 ---
 
+## Visibility model — read this before answering anything about who can see a project
+
+A project's "publicness" is **two orthogonal switches**, not one:
+
+| Switch | Off state | On state | Flipped by |
+|---|---|---|---|
+| **URL access** | Visiting the URL returns 404 / no service | URL works for anyone who has the link | `publish_preview` / `unpublish_preview` |
+| **Dashboard discoverability** | Listing row has `is_public=false` (or doesn't exist) — invisible in the public gallery | Listing row has `is_public=true` — appears in `/projects` | `list_in_dashboard` / `unlist_from_dashboard` |
+
+Public URL ≠ public discovery. A preview can be **URL-reachable but undiscoverable** (the default state right after `publish_preview`), or **listed but URL-down** (preview stopped after being listed), or any other combination. Never collapse these into "is it public yet".
+
+**Status questions are read-only operations.** Whenever the user asks anything like:
+
+- "is it visible / public / discoverable yet?"
+- "can other people find it?"
+- "上架了吗 / 在 dashboard 上吗 / 别人能看到吗"
+- "is the listing live?"
+
+The authoritative answer comes ONLY from a fresh `get_listing_status(slug)` call. Do NOT infer the answer from "I called publish_preview earlier so it must be visible" — that's exactly the trap (publish_preview leaves `is_public=false`). Treat your own past actions as suggestive but never authoritative for a state question.
+
+---
+
 ## Project types — three only
 
 | type | What it is | Eligible for `publish_preview()`? |
@@ -39,25 +61,35 @@ Note: there is no `preview` type. If you encounter older docs mentioning it, tre
 
 ---
 
-## Routing — read user intent carefully
+## Routing — match user intent to the right surface
 
-The word "publish" is ambiguous. Default interpretation matters.
+User requests fall into two fundamentally different categories. Mixing them up is the #1 source of wrong answers in this skill.
 
-| User says | Action | Why |
+### A. Status intents — user wants to know current state
+
+The user is asking a question about how things stand right now. The answer is data, not an action. **Always reach for a read endpoint first; never answer from memory of past actions.**
+
+| Sample phrasing | Action |
+|---|---|
+| "is it visible / public / discoverable / live for others?" | `get_listing_status(slug)` |
+| "上架了吗 / 在 dashboard 上吗 / 别人能不能看到 / 别人能搜到吗" | `get_listing_status(slug)` |
+| "what URLs do I have published?" / "我发布了哪些" | `list_published_previews()` |
+| "what's open-sourced?" / "都有哪些开源代码" | `list_open_source(...)` |
+
+### B. Action intents — user wants to change state
+
+| Sample phrasing | Action | Notes |
 |---|---|---|
-| "publish" / "share" / "make public" / "公开" / "发布" (no qualifier) | `publish_preview(preview_id)` | Default user intent for "publish" is public URL access, not source code, not dashboard listing |
-| "publish the URL" / "share the link" / "let people visit" / "公开访问" | `publish_preview(preview_id)` | Same |
-| "list on the dashboard" / "上架" / "show on community" / "make discoverable" / "let people find this" / "发到广场" | `list_in_dashboard(slug)` | Explicit dashboard-listing intent |
-| "publish AND list" / "publish and put on dashboard" / "发布并上架" | `publish_preview()` THEN `list_in_dashboard()` | Two separate calls, in that order — preview must exist before listing |
-| "remove from dashboard" / "下架" / "unlist" / "hide from gallery" | `unlist_from_dashboard(slug)` | Inverse of list_in_dashboard |
-| "is this listed?" / "在 dashboard 上吗" / "show my listing status" | `get_listing_status(slug)` | Read-only status check |
-| "open source" / "open-source the code" / "share the code" / "let others fork" / "开源代码" | `open_source(project_dir)` | Explicit code-sharing intent |
+| "publish" / "share" / "make public" / "公开" / "发布" (no qualifier) | `publish_preview(preview_id)` | Allocates the URL only. Listing is NOT auto-flipped. |
+| "publish the URL" / "share the link" / "let people visit" / "公开访问" | `publish_preview(preview_id)` | Same. |
+| "list on the dashboard" / "上架" / "show on community" / "make discoverable" / "let people find this" / "发到广场" | `list_in_dashboard(slug)` | Requires the preview to already exist. |
+| "publish AND list" / "publish and put on dashboard" / "发布并上架" | `publish_preview()` THEN `list_in_dashboard()` | Two separate calls in order. |
+| "remove from dashboard" / "下架" / "unlist" / "hide from gallery" | `unlist_from_dashboard(slug)` | Preview URL stays alive. |
+| "open source" / "open-source the code" / "share the code" / "let others fork" / "开源代码" | `open_source(project_dir)` | Explicit code-sharing intent. |
+| "unpublish the URL" / "take down the link" | `unpublish_preview(slug)` | Listing row stays. |
+| "remove the open source" / "delete from GitHub" | `remove_open_source(slug)` | |
+| "fork" / "install someone's project" | `fork(source)` | |
 | Ambiguous after rereading | Ask one question, don't guess | "Do you want it (a) just shareable by URL, (b) also discoverable on the public dashboard, or (c) also have the code open-sourced on GitHub?" |
-| "fork" / "install someone's project" | `fork(source)` | Pull from catalog |
-| "browse" / "see what others published" | `list_open_source(...)` | Catalog query |
-| "unpublish the URL" / "take down the link" | `unpublish_preview(slug)` | Inverse of publish_preview |
-| "remove the open source" / "delete from GitHub" | `remove_open_source(slug)` | Inverse of open_source |
-| "list my public URLs" | `list_published_previews()` | User's own preview side |
 
 ---
 
@@ -176,6 +208,7 @@ Returns `{"ok": True, "url": "...", "publisher": {...}, "hint": "..."}`.
 - Service must be running. Stops working when the container goes down (visitors see offline page).
 - Slug stays bound to the port — stop and re-serve, the URL stays valid.
 - Only works inside the Starchild Fly container (needs `FLY_MACHINE_ID`).
+- **Listing visibility default is `is_public=false`.** A successful `publish_preview` allocates the URL but creates the listing row in PRIVATE state — strangers cannot discover the project on the dashboard. Discovery requires a separate `list_in_dashboard()` call. Do NOT tell the user "your project is now public" after only calling `publish_preview` — say "the URL is live" and offer `list_in_dashboard` as the next step if they want it discoverable.
 
 **Companions:**
 - `unpublish_preview(slug)` — remove the public URL. Slug accepts full `{user_id}-{suffix}` or just suffix.

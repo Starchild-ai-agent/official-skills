@@ -741,3 +741,163 @@ def list_published_previews() -> dict[str, Any]:
     if status != 200:
         return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
     return {"ok": True, **body}
+
+
+# ─── Dashboard listing (third action — discoverability) ─────────────
+#
+# These are the third independent share action, distinct from
+# publish_preview (URL access) and open_source (code release):
+#
+#   publish_preview  → Audience can VISIT if they know the URL
+#   list_in_dashboard→ Audience can DISCOVER via the public Project
+#                      Dashboard (browseable gallery)
+#   open_source      → Audience can FORK the code
+#
+# A preview is created with a private listing by default
+# (publish_preview's ensureDefaultListing). The user must explicitly
+# call list_in_dashboard() to make it discoverable. We do NOT
+# auto-list — keeping the three actions orthogonal so users always
+# know exactly what they're sharing.
+
+def list_in_dashboard(
+    slug: str,
+    name: str | None = None,
+    description: str = "",
+    cover_url: str | None = None,
+    tags: list[str] | None = None,
+) -> dict[str, Any]:
+    """Show this preview on the public Project Dashboard.
+
+    Requires publish_preview() to have run for `slug` first — gateway
+    rejects with 404 if no listing row exists yet.
+
+    Args:
+        slug: Public slug (the same one returned by publish_preview).
+        name: Display name on the dashboard card. Defaults to slug.
+        description: Short description shown on the card (≤500 chars).
+        cover_url: Optional cover image URL. Must be on an allowed
+            domain (storage.googleapis.com, image.thum.io, api.microlink.io)
+            — gateway rejects others with 400. If omitted, gateway
+            captures a screenshot of the live preview asynchronously.
+        tags: Up to 5 short tags (≤20 chars each).
+
+    Returns:
+        {"ok": True, "listing": {...}, "url": "https://..."} on success
+        {"ok": False, "error": ...} on failure
+    """
+    user_id = _user_id()
+    if not name:
+        name = slug
+    try:
+        status, body = gateway.listing_publish(
+            slug=slug,
+            owner_user_id=user_id,
+            name=name,
+            description=description,
+            cover_url=cover_url,
+            tags=tags,
+            is_public=True,
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status == 404:
+        return {
+            "ok": False,
+            "error": (
+                f"No preview found for slug '{slug}'. "
+                f"Call publish_preview() first to allocate the URL, "
+                f"then list_in_dashboard() to make it discoverable."
+            ),
+        }
+    if status == 403:
+        return {
+            "ok": False,
+            "error": f"You don't own slug '{slug}'.",
+        }
+    if status != 200:
+        return {
+            "ok": False,
+            "error": body.get("error", f"Gateway returned {status}"),
+        }
+
+    listing = body.get("listing", {})
+    return {
+        "ok": True,
+        "listing": listing,
+        "url": f"{_public_url_base()}/{slug}",
+        "dashboard_url": f"{_public_url_base()}/projects",
+    }
+
+
+def unlist_from_dashboard(slug: str) -> dict[str, Any]:
+    """Remove this preview from the Project Dashboard.
+
+    The preview URL keeps working — only the dashboard listing row
+    is deleted, along with view/favorite counts. To temporarily hide
+    instead, use list_in_dashboard with a separate is_public toggle
+    (currently always publishes; use the lower-level
+    gateway.listing_publish(is_public=False) if needed).
+
+    Args:
+        slug: Public slug to unlist.
+
+    Returns:
+        {"ok": True} on success
+        {"ok": False, "error": ...} on failure (404 if not listed)
+    """
+    user_id = _user_id()
+    try:
+        status, body = gateway.listing_unlist(slug=slug, owner_user_id=user_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status == 404:
+        return {
+            "ok": False,
+            "error": f"Slug '{slug}' is not listed on the dashboard.",
+        }
+    if status != 200:
+        return {
+            "ok": False,
+            "error": body.get("error", f"Gateway returned {status}"),
+        }
+    return {"ok": True}
+
+
+def get_listing_status(slug: str) -> dict[str, Any]:
+    """Return current dashboard listing state for a slug.
+
+    Used to answer 'is this on the dashboard yet?' before deciding
+    whether to call list_in_dashboard() or unlist_from_dashboard().
+
+    Returns:
+        {"ok": True, "exists": True, "is_public": bool, "listing": {...}}
+        {"ok": True, "exists": False}    — never published
+        {"ok": False, "error": ...}      — gateway error
+    """
+    try:
+        status, body = gateway.listing_get(slug=slug)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status == 404:
+        return {"ok": True, "exists": False}
+    if status != 200:
+        return {
+            "ok": False,
+            "error": body.get("error", f"Gateway returned {status}"),
+        }
+
+    # /by-slug endpoint hard-filters is_public=true (private rows return
+    # 404), so any 200 response means the listing is currently public.
+    # Private listings cannot be observed through this path — use
+    # gateway.listing_publish(is_public=False) to flip a public listing
+    # back to private if needed (no read-back support today).
+    project = body.get("project", {}) if isinstance(body, dict) else {}
+    return {
+        "ok": True,
+        "exists": True,
+        "is_public": True,
+        "listing": project,
+    }

@@ -143,3 +143,81 @@ def preview_unregister(slug: str, owner_user_id: str) -> tuple[int, dict]:
 def preview_list(owner_user_id: str) -> tuple[int, dict]:
     from urllib.parse import quote
     return _request("GET", f"/api/list?owner_user_id={quote(owner_user_id)}", timeout=10)
+
+
+# ─── Listing CRUD (preview-side dashboard visibility) ──────────────
+# These talk to /api/projects-query/listing — the internal-key version
+# of the JWT-protected /api/projects/listing routes used by the web
+# frontend. Same DB row, same ownership checks; the gateway exposes
+# both surfaces because clawd containers don't carry user JWTs.
+#
+# What this controls: whether a published preview is DISCOVERABLE on
+# the public Project Dashboard. It does NOT control whether the URL
+# is reachable — that lives on /api/register / /api/unregister
+# (preview_register / preview_unregister above). The two are
+# completely orthogonal:
+#
+#   publish_preview()  → URL works, others can visit if they know it
+#   list_in_dashboard()→ URL is browseable from the public gallery
+#
+# A preview can be in any combination: URL-only (default after
+# publish_preview), URL + listed, URL + listed + open-sourced.
+
+def listing_publish(
+    slug: str,
+    owner_user_id: str,
+    name: str,
+    description: str = "",
+    cover_url: str | None = None,
+    tags: list[str] | None = None,
+    is_public: bool = True,
+) -> tuple[int, dict]:
+    """Create or update a project listing on the public dashboard.
+
+    Defaults is_public=True: callers reach this function specifically
+    to put a preview on the dashboard, so the common path is publish.
+    Pass is_public=False to convert a public listing back to private
+    without deleting it (preserves view_count / favorite_count).
+    """
+    body: dict = {
+        "slug": slug,
+        "owner_user_id": owner_user_id,
+        "name": name,
+        "is_public": is_public,
+    }
+    if description:
+        body["description"] = description
+    if cover_url:
+        body["cover_url"] = cover_url
+    if tags:
+        body["tags"] = tags
+    return _request("POST", "/api/projects-query/listing", body, timeout=15)
+
+
+def listing_unlist(slug: str, owner_user_id: str) -> tuple[int, dict]:
+    """Remove a listing from the public dashboard.
+
+    Preview URL keeps working — only the dashboard row is deleted,
+    along with view/favorite counts. To temporarily hide instead of
+    permanently remove, use listing_publish(..., is_public=False).
+    """
+    from urllib.parse import quote
+    return _request(
+        "DELETE",
+        f"/api/projects-query/listing/{quote(slug)}?owner_user_id={quote(owner_user_id)}",
+        timeout=10,
+    )
+
+
+def listing_get(slug: str) -> tuple[int, dict]:
+    """Return current listing state — used to answer 'is this listed?'.
+
+    Reuses the existing /api/projects-query/by-slug/:slug endpoint
+    which is_public-agnostic (returns the row regardless of visibility).
+    """
+    from urllib.parse import quote
+    return _request(
+        "GET",
+        f"/api/projects-query/by-slug/{quote(slug)}",
+        timeout=10,
+    )

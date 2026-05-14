@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.11.0
+version: 0.12.0
 description: Share to the Starchild community in three independent ways — publish a running service to a public URL, list it on the public Project Dashboard for discovery, or open-source the project's code to the community GitHub repo.
 delivery: script
 metadata:
@@ -212,7 +212,7 @@ Returns `{"ok": True, "listing": {...}, "url": "...", "dashboard_url": "..."}`.
 
 `open_source(project_dir, version_bump="patch", message="")`
 
-Push project source to `community-projects/projects/{type}s/{user_id}/{slug}/{version}/` on GitHub.
+Push project source to `community-projects/projects/{user_id}/{slug}/` on GitHub. Versioning is delegated entirely to git history — there's no `{version}/` snapshot directory and no per-type bucket above the slug. The `type` field inside `project.yaml` stays around as runtime metadata (so forks know whether to schedule, run-once, or expose a service) but no longer affects the storage path.
 
 - `project_dir`: e.g. `output/projects/my-task`
 - `version_bump`: `patch` | `minor` | `major` | `none`

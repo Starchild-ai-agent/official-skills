@@ -498,13 +498,19 @@ def fork(source: str, dest_dir: str | None = None) -> dict[str, Any]:
 
 
 def _enumerate_project_files(user_id: str, slug: str, project_type: str) -> list[str]:
-    """Enumerate files in a project's current state via GitHub Trees API."""
+    """Enumerate files in a project's current state via GitHub Trees API.
+
+    `project_type` is accepted for signature stability but no longer affects
+    the path. The community-projects layout was flattened in 2026-05-14:
+    `projects/{user_id}/{slug}/...`, with type kept only as runtime metadata
+    inside project.yaml. Old `projects/{type}s/...` paths are migrated
+    in-place by the gateway.
+    """
     import urllib.request
     import json
 
     repo = "Starchild-ai-agent/community-projects"
-    type_folder = project_type + "s"
-    prefix = f"projects/{type_folder}/{user_id}/{slug}/"
+    prefix = f"projects/{user_id}/{slug}/"
 
     url = f"https://api.github.com/repos/{repo}/git/trees/main?recursive=1"
     req = urllib.request.Request(url, headers={"User-Agent": "community-publish-skill"})

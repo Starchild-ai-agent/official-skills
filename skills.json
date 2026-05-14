@@ -372,6 +372,12 @@
       "path": "woofi-swap/SKILL.md",
       "version": "8.2.0",
       "description": "Swap any token at the best price — single-chain or cross-chain — with one API call. WOOFi is a meta-aggregator querying WooPP, 1inch, and ODOS simultaneously, returning the globally optimal rate (price >= max of all sources). Cross-chain swaps via Stargate bridge. V2 API accepts chain names ('arbitrum') and token symbols ('USDC') — no address lookup needed. Supports all ERC-20 tokens and native gas tokens on 14 EVM chains."
+    },
+    {
+      "name": "wps",
+      "path": "wps/SKILL.md",
+      "version": "2.4.11",
+      "description": "金山文档（WPS 云文档）官方 Skill。通过 kdocs-cli 进行文档创建、读取、编辑、搜索、分享与整理。Token 可在 WPS 云文档微信小程序：我 → 龙虾专属入口 获取。"
     }
   ]
 }

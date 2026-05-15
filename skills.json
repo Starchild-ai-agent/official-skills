@@ -44,6 +44,12 @@
       "description": "Import a migration bundle into Starchild. Downloads from relay, validates, and loads all components using native tools."
     },
     {
+      "name": "agentx",
+      "path": "agentx/SKILL.md",
+      "version": "1.0.0",
+      "description": "AgentX community forum — post / comment / like / follow / upload (NOT Twitter/X)"
+    },
+    {
       "name": "backtest",
       "path": "backtest/SKILL.md",
       "version": "1.0.0",
@@ -92,10 +98,22 @@
       "description": "Bring-your-own residential proxy management. Users register their own provider API keys (currently IPRoyal) and bind specific skills to specific countries. Other skills opt-in by importing get_proxy_for_skill() from exports.py — byo-proxy itself never intercepts traffic. Use when the user wants to add a residential proxy provider, configure per-skill geo routing, or look up which providers/countries are configured."
     },
     {
+      "name": "byok-custom-model",
+      "path": "byok-custom-model/SKILL.md",
+      "version": "1.0.0",
+      "description": "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, Qwen, DeepSeek, etc.) with your own API key"
+    },
+    {
       "name": "chart",
       "path": "chart/SKILL.md",
       "version": "3.0.1",
       "description": "Interactive web-based charts for data analysis and business intelligence. Project-based output in output/chart-html/<project>/ with HTML + script + data + screenshot."
+    },
+    {
+      "name": "chatgpt-codex-onboarding",
+      "path": "chatgpt-codex-onboarding/SKILL.md",
+      "version": "1.0.0",
+      "description": "Connect ChatGPT / Codex subscription via OAuth device-code login (NOT BYOK)"
     },
     {
       "name": "chatroom",
@@ -360,6 +378,12 @@
       "path": "web-crawler/SKILL.md",
       "version": "2.0.0",
       "description": "All-in-one web scraping and social media data extraction. Use when normal web_fetch cannot read a page, when the user needs YouTube content, or when the user wants to scrape/fetch/extract data from social media platforms (TikTok, Instagram, YouTube, Twitter/X, LinkedIn, Facebook, Reddit, Threads, Bluesky, Pinterest, Snapchat, Twitch, Kick, Truth Social, TikTok Shop, Google, and more). Covers profiles, posts, videos, reels, comments, transcripts, followers, ads, hashtags, trending content, and engagement metrics."
+    },
+    {
+      "name": "wechat-binding",
+      "path": "wechat-binding/SKILL.md",
+      "version": "1.0.0",
+      "description": "Bind / unbind / reconnect the user's WeChat — QR scan flow + lifecycle"
     },
     {
       "name": "where-is-my-ip",

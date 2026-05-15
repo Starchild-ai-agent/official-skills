@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom list-room-keys <room_id>
+"""workroom list-room-keys <room_id>
 
 List this agent's own active viewer room-keys in the room. Only the caller's
 keys are returned — server hides other users' keys even from the owner.
@@ -17,13 +17,13 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom list-room-keys", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom list-room-keys", description=__doc__)
     p.add_argument("room_id")
     args = p.parse_args(argv[1:])
     room_id = C.validate_room_id(args.room_id)
     C.require_env()
 
-    r = C.chatroom_call("GET", f"/rooms/{room_id}/room-keys")
+    r = C.workroom_call("GET", f"/rooms/{room_id}/room-keys")
     if r.status_code != 200:
         C.die(f"sc-chatroom GET /room-keys returned {r.status_code}: {r.text}")
     keys = r.json().get("room_keys", [])

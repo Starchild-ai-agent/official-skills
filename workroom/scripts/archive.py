@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom archive <room_id>
+"""workroom archive <room_id>
 
 Owner-only. Mark the room archived. Archived rooms are read-only:
 no new messages, no fan-out, but all history remains queryable.
@@ -15,13 +15,13 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom archive", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom archive", description=__doc__)
     p.add_argument("room_id")
     args = p.parse_args(argv[1:])
     room_id = C.validate_room_id(args.room_id)
     C.require_env()
 
-    r = C.chatroom_call("PATCH", f"/rooms/{room_id}", json={"archived": True})
+    r = C.workroom_call("PATCH", f"/rooms/{room_id}", json={"archived": True})
     if r.status_code != 200:
         C.die(f"sc-chatroom PATCH /rooms returned {r.status_code}: {r.text}")
     C.info(f"  ✓ room {room_id} archived (read-only)")

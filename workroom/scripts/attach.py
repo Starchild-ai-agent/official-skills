@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""chatroom attach <room_id>
+"""workroom attach <room_id>
 
 Register THIS agent as a fan-out target in a room where you're already a
 member but don't yet have agent_endpoint + akm_key set. Covers two cases:
 
-  1. You created the room before `chatroom create` auto-attached owners.
+  1. You created the room before `workroom create` auto-attached owners.
      db.create_room inserts the owner with NULL endpoint/key, so sc-chatroom
      has nothing to fan out to. Running `attach <room_id>` fixes it.
 
   2. You cleared your endpoint somehow (manual PUT, external tooling) and
      want to re-arm fan-out without leaving + rejoining.
 
-If you are not a member of the room yet, use `chatroom join <invite_code>`
+If you are not a member of the room yet, use `workroom join <invite_code>`
 instead — `join` is the one-shot new-member flow.
 
 Steps:
@@ -20,7 +20,7 @@ Steps:
      leave an orphan secret behind)
   2. POST /api/keys → sign a fresh AKM key scoped to this room's thread
   3. PUT /rooms/{id}/members/{USER_ID}/endpoint with endpoint + key
-  4. ensure /data/workspace/chatroom/{room_id}/ rules.md + data.md
+  4. ensure /data/workspace/workroom/{room_id}/ rules.md + data.md
   5. Record AKM prefix in keys.json
 """
 from __future__ import annotations
@@ -31,19 +31,19 @@ import sys
 import _common as C
 
 
-DEFAULT_TTL_SECONDS = 90 * 24 * 3600    # 90 days; sliding-renewed by `chatroom send`
+DEFAULT_TTL_SECONDS = 90 * 24 * 3600    # 90 days; sliding-renewed by `workroom send`
 DEFAULT_RATE_LIMIT = {"per_minute": 10}
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom attach", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom attach", description=__doc__)
     p.add_argument("room_id")
     args = p.parse_args(argv[1:])
     room_id = C.validate_room_id(args.room_id)
     C.require_env()
 
     # 0. Confirm room exists and is writable BEFORE any side-effects
-    r = C.chatroom_call("GET", f"/rooms/{room_id}")
+    r = C.workroom_call("GET", f"/rooms/{room_id}")
     if r.status_code == 404:
         C.die(f"room {room_id} does not exist")
     if r.status_code != 200:
@@ -74,7 +74,7 @@ def main(argv: list[str]) -> int:
     put_body: dict = {"agent_endpoint": C.AGENT_BASE_URL, "akm_key": secret}
     if C.CONTAINER_ID:
         put_body["container_id"] = C.CONTAINER_ID
-    r = C.chatroom_call(
+    r = C.workroom_call(
         "PUT", f"/rooms/{room_id}/members/{C.USER_ID}/endpoint",
         json=put_body,
     )
@@ -86,7 +86,7 @@ def main(argv: list[str]) -> int:
         if r.status_code == 404:
             C.die(
                 f"you are not a member of {room_id} — use "
-                f"`chatroom join <invite_code>` first (AKM key rolled back)"
+                f"`workroom join <invite_code>` first (AKM key rolled back)"
             )
         C.die(
             f"sc-chatroom PUT /endpoint returned {r.status_code}: {r.text}  "

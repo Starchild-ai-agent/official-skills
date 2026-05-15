@@ -1,8 +1,13 @@
-"""Shared helpers for chatroom skill scripts.
+"""Shared helpers for workroom skill scripts.
 
 Scripts are written as one-shot CLI commands; this module holds the small
 amount of shared plumbing (env var resolution, HTTP calls against clawd
 loopback + sc-chatroom, JSON persistence of per-room key prefixes).
+
+The skill is named **workroom** but the underlying server is still
+**sc-chatroom** — env vars, URLs, AKM scope strings, and the agent
+thread_id prefix ``chatroom-{room_id}`` are wire protocol shared with
+deployed agents/keys, so they're intentionally left as-is.
 """
 from __future__ import annotations
 
@@ -58,8 +63,45 @@ CONTAINER_ID = (
 ).strip()
 
 WORKSPACE_DIR = Path(os.environ.get("WORKSPACE_DIR", "/data/workspace"))
-CHATROOM_WORKSPACE = WORKSPACE_DIR / "chatroom"
-KEYS_INDEX_PATH = CHATROOM_WORKSPACE / "keys.json"   # {room_id: akm_prefix}
+WORKROOM_WORKSPACE = WORKSPACE_DIR / "workroom"
+_LEGACY_WORKSPACE = WORKSPACE_DIR / "chatroom"   # pre-rename layout
+KEYS_INDEX_PATH = WORKROOM_WORKSPACE / "keys.json"   # {room_id: akm_prefix}
+
+
+def migrate_legacy_workspace() -> None:
+    """One-shot, idempotent migration from the pre-rename layout.
+
+    Old skill stored everything under ``/data/workspace/chatroom/`` —
+    per-room dirs (``rules.md``, ``data.md``) plus the ``keys.json``
+    index. After the rename to **workroom** we move each entry into
+    ``/data/workspace/workroom/`` on first skill use. Anything that
+    already exists in the new location wins (we never clobber).
+    """
+    if not _LEGACY_WORKSPACE.exists():
+        return
+    WORKROOM_WORKSPACE.mkdir(parents=True, exist_ok=True)
+    for entry in _LEGACY_WORKSPACE.iterdir():
+        target = WORKROOM_WORKSPACE / entry.name
+        if target.exists():
+            continue
+        try:
+            entry.rename(target)
+        except OSError as e:
+            print(
+                f"warning: could not migrate {entry} → {target}: {e}",
+                file=sys.stderr,
+            )
+    # Best-effort: drop the now-empty legacy dir so it doesn't keep
+    # confusing future migration runs. Ignore if non-empty.
+    try:
+        _LEGACY_WORKSPACE.rmdir()
+    except OSError:
+        pass
+
+
+# Run migration once on import — every script entry point pulls this
+# module in, so this is the natural "on skill use" hook.
+migrate_legacy_workspace()
 
 
 def require_env():
@@ -163,7 +205,7 @@ def clawd_call(method: str, path: str, **kwargs) -> httpx.Response:
     return r
 
 
-def chatroom_call(
+def workroom_call(
     method: str,
     path: str,
     *,
@@ -218,7 +260,7 @@ def load_key_index() -> dict[str, str]:
 
 
 def save_key_index(idx: dict[str, str]) -> None:
-    CHATROOM_WORKSPACE.mkdir(parents=True, exist_ok=True)
+    WORKROOM_WORKSPACE.mkdir(parents=True, exist_ok=True)
     KEYS_INDEX_PATH.write_text(json.dumps(idx, indent=2, sort_keys=True) + "\n")
 
 
@@ -244,7 +286,7 @@ def get_key(room_id: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 def room_workspace_dir(room_id: str) -> Path:
-    return CHATROOM_WORKSPACE / room_id
+    return WORKROOM_WORKSPACE / room_id
 
 
 def ensure_room_workspace(room_id: str) -> Path:
@@ -261,7 +303,7 @@ def ensure_room_workspace(room_id: str) -> Path:
 
 def _rules_template(room_id: str) -> str:
     return (
-        f"# Chatroom Rules for {room_id}\n\n"
+        f"# Workroom Rules for {room_id}\n\n"
         "## Voice\n"
         "- Short, direct.\n\n"
         "## Reply policy\n"

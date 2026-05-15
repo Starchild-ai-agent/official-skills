@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom create <name>
+"""workroom create <name>
 
 Create a new room AND attach this agent as a fan-out target so web
 messages the user sends will reach its own agent (via=web messages no
@@ -11,10 +11,10 @@ Steps:
   2. Sign a local AKM key via POST /api/keys
   3. PUT /rooms/{id}/members/{USER_ID}/endpoint → register agent_endpoint
      + akm_key so you become an eligible fan-out target
-  4. Initialize /data/workspace/chatroom/<room_id>/rules.md + data.md
+  4. Initialize /data/workspace/workroom/<room_id>/rules.md + data.md
   5. Remember AKM prefix in keys.json
 
-Use `chatroom invite <room_id>` after this to hand out join codes.
+Use `workroom invite <room_id>` after this to hand out join codes.
 """
 from __future__ import annotations
 
@@ -25,13 +25,13 @@ import install_soul
 import self_update
 
 
-DEFAULT_TTL_SECONDS = 90 * 24 * 3600    # 90 days; sliding-renewed by `chatroom send`
+DEFAULT_TTL_SECONDS = 90 * 24 * 3600    # 90 days; sliding-renewed by `workroom send`
 DEFAULT_RATE_LIMIT = {"per_minute": 10}
 
 
 def main(argv: list[str]) -> int:
     import argparse
-    p = argparse.ArgumentParser(prog="chatroom create")
+    p = argparse.ArgumentParser(prog="workroom create")
     p.add_argument("name", nargs="+", help="room display name")
     p.add_argument("--public", action="store_true",
                    help="make the room visibility=public — anyone can browse "
@@ -56,25 +56,25 @@ def main(argv: list[str]) -> int:
     try:
         soul_status = install_soul.ensure_installed()
         if soul_status in ("installed", "upgraded"):
-            C.info(f"  ✓ SOUL chatroom block {soul_status}")
+            C.info(f"  ✓ SOUL workroom block {soul_status}")
     except Exception as e:
         C.info(f"  ⚠  could not auto-install SOUL block: {e!r} "
-               "(run `chatroom install-soul` manually)")
+               "(run `workroom install-soul` manually)")
 
     # 0b. Discover and apply skill bundle updates published by sc-chatroom.
-    # Non-fatal — the next ``chatroom`` invocation picks up the new files.
+    # Non-fatal — the next ``workroom`` invocation picks up the new files.
     try:
         results = self_update.ensure_latest(verbose=False)
         changed = [n for n, s in results.items()
                    if s in ("installed", "updated")]
         if changed:
             C.info(f"  ✓ skill bundle updated: {', '.join(changed)} "
-                   "(takes effect on next chatroom invocation)")
+                   "(takes effect on next workroom invocation)")
     except Exception as e:
         C.info(f"  ⚠  could not check for skill updates: {e!r}")
 
     # 1. Create the room
-    r = C.chatroom_call("POST", "/rooms",
+    r = C.workroom_call("POST", "/rooms",
                         json={"name": name, "visibility": visibility})
     if r.status_code != 201:
         C.die(f"sc-chatroom POST /rooms returned {r.status_code}: {r.text}")
@@ -102,7 +102,7 @@ def main(argv: list[str]) -> int:
     put_body: dict = {"agent_endpoint": C.AGENT_BASE_URL, "akm_key": secret}
     if C.CONTAINER_ID:
         put_body["container_id"] = C.CONTAINER_ID
-    r = C.chatroom_call(
+    r = C.workroom_call(
         "PUT", f"/rooms/{room_id}/members/{C.USER_ID}/endpoint",
         json=put_body,
     )
@@ -128,8 +128,8 @@ def main(argv: list[str]) -> int:
     C.info("")
     C.info(f"Room {room_id} ready.")
     C.info(f"  Edit {d / 'rules.md'} to tune behavior.")
-    C.info(f"  Invite someone:  python3 skills/chatroom/scripts/invite.py {room_id}")
-    C.info(f"  Open as a user:  python3 skills/chatroom/scripts/room_key.py {room_id}")
+    C.info(f"  Invite someone:  python3 skills/workroom/scripts/invite.py {room_id}")
+    C.info(f"  Open as a user:  python3 skills/workroom/scripts/room_key.py {room_id}")
     return 0
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom leave <room_id>
+"""workroom leave <room_id>
 
 Revokes the local AKM key for the room (so sc-chatroom immediately fails
 any further fan-out with 401), then removes membership server-side.
@@ -13,7 +13,7 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom leave", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom leave", description=__doc__)
     p.add_argument("room_id")
     args = p.parse_args(argv[1:])
     room_id = C.validate_room_id(args.room_id)
@@ -32,7 +32,7 @@ def main(argv: list[str]) -> int:
         C.info(f"  · no local AKM key recorded for {room_id}")
 
     # 2. Remove membership
-    r = C.chatroom_call("DELETE", f"/rooms/{room_id}/members/{C.USER_ID}")
+    r = C.workroom_call("DELETE", f"/rooms/{room_id}/members/{C.USER_ID}")
     if r.status_code == 200:
         C.info(f"  ✓ left room {room_id}")
     elif r.status_code == 404:

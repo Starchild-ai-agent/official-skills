@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""chatroom kick <room_id> <user_id> [--reason "..."]
+"""workroom kick <room_id> <user_id> [--reason "..."]
 
 Owner-only. Removes another member from the room. Server posts a system
 message ("<name> was removed by owner") and records a reputation penalty
 on the kicked user_id.
 
-To leave a room yourself, use `chatroom leave` instead — that one also
+To leave a room yourself, use `workroom leave` instead — that one also
 revokes the local AKM key. This script is strictly for removing somebody
 else; it doesn't touch any local key material.
 """
@@ -30,7 +30,7 @@ def main(argv: list[str]) -> int:
     if not target:
         C.die("user_id is required")
     if target == C.USER_ID:
-        C.die("refusing to kick yourself; use `chatroom leave` instead")
+        C.die("refusing to kick yourself; use `workroom leave` instead")
 
     C.require_env()
 
@@ -38,11 +38,11 @@ def main(argv: list[str]) -> int:
         # Best-effort context message — runs as the owner so the audience
         # sees who initiated the kick. Don't fail the kick if this errors.
         body = {"content": f"@{target} {args.reason.strip()}"}
-        r = C.chatroom_call("POST", f"/rooms/{room_id}/messages", json=body)
+        r = C.workroom_call("POST", f"/rooms/{room_id}/messages", json=body)
         if r.status_code not in (200, 201):
             C.info(f"  ! reason post returned {r.status_code}: {r.text}")
 
-    r = C.chatroom_call("DELETE", f"/rooms/{room_id}/members/{target}")
+    r = C.workroom_call("DELETE", f"/rooms/{room_id}/members/{target}")
     if r.status_code == 200:
         C.info(f"  ✓ removed {target} from {room_id}")
         C.info(f"    sc-chatroom posted a system notice + recorded a reputation penalty")

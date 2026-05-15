@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""chatroom install-soul [--show | --uninstall]
+"""workroom install-soul [--show | --uninstall]
 
-Idempotently appends the chatroom behavior section to the agent's
+Idempotently appends the workroom behavior section to the agent's
 prompt (/data/workspace/prompt/SOUL.md by default). Without this block,
 the LLM has no idea how to interpret ``room_rules_version``, when to
 emit ``[SILENT]``, or how chatroom sessions differ from its regular
@@ -16,9 +16,15 @@ Modes:
   --uninstall   remove the block (keeps everything else intact).
 
 Target file resolution order:
-  $CHATROOM_SOUL_FILE  (explicit override)
+  $CHATROOM_SOUL_FILE  (explicit override; legacy env name kept for
+                        backward compat with deployed agent configs)
   $WORKSPACE_DIR/prompt/SOUL.md      (conventional)
   /data/workspace/prompt/SOUL.md     (fallback default)
+
+Note: the in-file ``<!-- sc-chatroom:begin/end -->`` markers and the
+``chatroom-`` thread_id prefix referenced in the prompt body are wire
+protocol shared with deployed agents — they're left as-is across the
+chatroom→workroom rename.
 """
 from __future__ import annotations
 
@@ -70,10 +76,10 @@ Before deciding anything, read these three sources fresh — the user
 edits them specifically to shape my behavior in this room, and they
 are NOT part of my system prompt:
 
-1. ``/data/workspace/chatroom/<room_id>/rules.md`` — my personal rules
+1. ``/data/workspace/workroom/<room_id>/rules.md`` — my personal rules
    for this room (style, topics I engage on, when to stay silent).
    Read it from the local filesystem each turn.
-2. ``/data/workspace/chatroom/<room_id>/data.md`` — the topics / facts
+2. ``/data/workspace/workroom/<room_id>/data.md`` — the topics / facts
    I'm allowed to draw from in this room. Read it from the local
    filesystem each turn.
 3. The room-wide owner rules — if ``room_rules_version`` in the
@@ -94,10 +100,10 @@ stale or generic behavior — never skip it.
 2. **Room rules** — fetched via ``GET /rooms/{room_id}/rules`` and
    cached locally by ``room_rules_version``. Applies to every member.
    Honor it strictly.
-3. **My personal rules** — ``/data/workspace/chatroom/<room_id>/rules.md``
+3. **My personal rules** — ``/data/workspace/workroom/<room_id>/rules.md``
    on my local workspace. Style, topics I'm willing to engage on.
    Narrows room rules, never widens.
-4. **My data scope** — ``/data/workspace/chatroom/<room_id>/data.md``.
+4. **My data scope** — ``/data/workspace/workroom/<room_id>/data.md``.
    Only reference facts listed here. Don't invent details outside scope.
 5. **My soul** — default persona, voice, interests.
 
@@ -191,7 +197,7 @@ def ensure_installed() -> str:
 
     Idempotent. Called by ``create`` / ``join`` so agents get the
     ``[SILENT]`` + room-rules behavior on first use without requiring
-    users to remember ``chatroom install-soul``. Returns one of:
+    users to remember ``workroom install-soul``. Returns one of:
     ``"installed"`` (no block existed), ``"upgraded"`` (block content
     changed across skill versions), or ``"up-to-date"`` (no-op).
     """
@@ -211,7 +217,7 @@ def ensure_installed() -> str:
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom install-soul")
+    p = argparse.ArgumentParser(prog="workroom install-soul")
     grp = p.add_mutually_exclusive_group()
     grp.add_argument("--show", action="store_true",
                      help="print the block that would be installed; don't modify")

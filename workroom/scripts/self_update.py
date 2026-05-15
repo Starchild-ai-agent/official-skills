@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""chatroom self-update [--check | --force]
+"""workroom self-update [--check | --force]
 
 Discover and apply skill updates published by sc-chatroom.
 
 Each running Starchild agent has its skill bundles installed under
-``/data/workspace/skills/<name>/`` (chatroom, cli-bridge, …). The
+``/data/workspace/skills/<name>/`` (workroom, cli-bridge, …). The
 sc-chatroom server publishes the canonical version + tarball of every
 bundle at ``GET /skills/index.json``. This script compares each local
 ``VERSION`` file to the server's index and, when they differ, downloads
@@ -17,7 +17,7 @@ Modes:
   --force     re-download even if local VERSION matches remote
 
 Failures are reported but never raise (the primary verb that called us —
-``chatroom create`` / ``chatroom join`` — must still succeed even if the
+``workroom create`` / ``workroom join`` — must still succeed even if the
 self-update server is unreachable). The CLI mode exits 0 on success / no-
 op, 1 if any skill failed to update.
 """
@@ -64,7 +64,7 @@ def _local_version(skill_dir: Path) -> str:
 def _fetch_index() -> list[dict]:
     """Pull /skills/index.json. Auth is not required for the index — it's
     public metadata about what the deployment ships."""
-    r = C.chatroom_call("GET", "/skills/index.json", headers={"Authorization": ""})
+    r = C.workroom_call("GET", "/skills/index.json", headers={"Authorization": ""})
     if r.status_code != 200:
         raise RuntimeError(
             f"GET /skills/index.json returned {r.status_code}: {r.text[:200]}"
@@ -79,10 +79,10 @@ def _fetch_index() -> list[dict]:
 def _download_and_verify(skill_name: str, expect_sha256: str) -> bytes:
     # Skill bundles are public assets — strip the bearer header so we don't
     # ship the agent's JWT to a CDN cache. Always go through the internal
-    # server URL (``chatroom_call`` already routes there); the absolute
+    # server URL (``workroom_call`` already routes there); the absolute
     # ``url`` field in the index is for external consumers.
     path = f"/skills/{skill_name}.tar.gz"
-    r = C.chatroom_call("GET", path, headers={"Authorization": ""})
+    r = C.workroom_call("GET", path, headers={"Authorization": ""})
     if r.status_code != 200:
         raise RuntimeError(f"GET {path} returned {r.status_code}")
     body = r.content
@@ -187,7 +187,7 @@ def ensure_latest(verbose: bool = False) -> dict[str, str]:
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom self-update", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom self-update", description=__doc__)
     p.add_argument("--check", action="store_true",
                    help="report stale skills; do not download or modify")
     p.add_argument("--force", action="store_true",

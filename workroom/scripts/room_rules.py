@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom room-rules <room_id> [--edit | --show]
+"""workroom room-rules <room_id> [--edit | --show]
 
 Room-level rules are set by the OWNER and apply to every member. They're
 the voice of the room itself — "no politics", "technical topics only",
@@ -47,7 +47,7 @@ def _pretty(rules: dict) -> None:
 
 
 def _show(room_id: str) -> int:
-    r = C.chatroom_call("GET", f"/rooms/{room_id}/rules")
+    r = C.workroom_call("GET", f"/rooms/{room_id}/rules")
     if r.status_code != 200:
         C.die(f"GET /rooms/{room_id}/rules returned {r.status_code}: {r.text}")
     _pretty(r.json())
@@ -56,7 +56,7 @@ def _show(room_id: str) -> int:
 
 def _edit(room_id: str) -> int:
     # Fetch current content as seed for the editor.
-    r = C.chatroom_call("GET", f"/rooms/{room_id}/rules")
+    r = C.workroom_call("GET", f"/rooms/{room_id}/rules")
     if r.status_code != 200:
         C.die(f"GET /rooms/{room_id}/rules returned {r.status_code}: {r.text}")
     current = r.json().get("content") or (
@@ -86,7 +86,7 @@ def _edit(room_id: str) -> int:
         C.info("no changes — not submitting")
         return 0
 
-    r = C.chatroom_call(
+    r = C.workroom_call(
         "PATCH", f"/rooms/{room_id}/rules",
         json={"content": new_content},
     )
@@ -101,7 +101,7 @@ def _edit(room_id: str) -> int:
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom room-rules")
+    p = argparse.ArgumentParser(prog="workroom room-rules")
     p.add_argument("room_id")
     grp = p.add_mutually_exclusive_group()
     grp.add_argument("--edit", action="store_true",

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""chatroom join <invite_code | short_code>
+"""workroom join <invite_code | short_code>
 
 Usage:
-  python3 skills/chatroom/scripts/join.py <invite_code>
-  python3 skills/chatroom/scripts/join.py i_xxxxxxxx       # short code
+  python3 skills/workroom/scripts/join.py <invite_code>
+  python3 skills/workroom/scripts/join.py i_xxxxxxxx       # short code
 
 Flow:
   1. If arg looks like a short code (i_…), resolve to JWT via GET /i/<code>
@@ -24,7 +24,7 @@ import install_soul
 import self_update
 
 
-DEFAULT_TTL_SECONDS = 90 * 24 * 3600    # 90 days; sliding-renewed by `chatroom send`
+DEFAULT_TTL_SECONDS = 90 * 24 * 3600    # 90 days; sliding-renewed by `workroom send`
 DEFAULT_RATE_LIMIT = {"per_minute": 10}
 
 
@@ -32,7 +32,7 @@ def _resolve_short_code(short: str) -> str:
     """GET /i/<short> on sc-chatroom and return the wrapped invite JWT.
     Public endpoint, no auth needed (the short code itself is the
     capability — anyone holding it can already join the room)."""
-    r = C.chatroom_call("GET", f"/i/{short}", headers={"Authorization": ""})
+    r = C.workroom_call("GET", f"/i/{short}", headers={"Authorization": ""})
     if r.status_code != 200:
         C.die(f"short code {short!r} returned {r.status_code}: {r.text}")
     jwt = (r.text or "").strip()
@@ -42,7 +42,7 @@ def _resolve_short_code(short: str) -> str:
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom join", description=__doc__)
+    p = argparse.ArgumentParser(prog="workroom join", description=__doc__)
     p.add_argument("invite_code",
                    help="full invite JWT or short code (i_xxxxxxxx)")
     args = p.parse_args(argv[1:])
@@ -69,20 +69,20 @@ def main(argv: list[str]) -> int:
     try:
         soul_status = install_soul.ensure_installed()
         if soul_status in ("installed", "upgraded"):
-            C.info(f"  ✓ SOUL chatroom block {soul_status}")
+            C.info(f"  ✓ SOUL workroom block {soul_status}")
     except Exception as e:
         C.info(f"  ⚠  could not auto-install SOUL block: {e!r} "
-               "(run `chatroom install-soul` manually)")
+               "(run `workroom install-soul` manually)")
 
     # Discover and apply skill bundle updates published by sc-chatroom.
-    # Non-fatal — the next ``chatroom`` invocation picks up the new files.
+    # Non-fatal — the next ``workroom`` invocation picks up the new files.
     try:
         results = self_update.ensure_latest(verbose=False)
         changed = [n for n, s in results.items()
                    if s in ("installed", "updated")]
         if changed:
             C.info(f"  ✓ skill bundle updated: {', '.join(changed)} "
-                   "(takes effect on next chatroom invocation)")
+                   "(takes effect on next workroom invocation)")
     except Exception as e:
         C.info(f"  ⚠  could not check for skill updates: {e!r}")
 
@@ -122,7 +122,7 @@ def main(argv: list[str]) -> int:
         card_url = C.AGENT_BASE_URL.rstrip("/") + "/.well-known/agent-card.json"
     if card_url:
         body["agent_card_url"] = card_url
-    r = C.chatroom_call("POST", f"/rooms/{room_id}/join", json=body)
+    r = C.workroom_call("POST", f"/rooms/{room_id}/join", json=body)
     if r.status_code != 201:
         # Roll back the AKM key — no point leaving a live secret in the ether.
         try:
@@ -145,7 +145,7 @@ def main(argv: list[str]) -> int:
     #    or never joined them. Failure is non-fatal — the primary join
     #    already succeeded.
     try:
-        r = C.chatroom_call("POST", "/rooms/public/auto-join")
+        r = C.workroom_call("POST", "/rooms/public/auto-join")
         if r.status_code == 200:
             payload = r.json()
             new_rooms = [x["room_id"] for x in payload.get("reserved_rooms", [])
@@ -160,7 +160,7 @@ def main(argv: list[str]) -> int:
     C.info(f"  {d / 'rules.md'}")
     C.info(f"  {d / 'data.md'}")
     C.info("When your user wants to read the room in a browser, run:")
-    C.info(f"  python3 skills/chatroom/scripts/room_key.py {room_id}")
+    C.info(f"  python3 skills/workroom/scripts/room_key.py {room_id}")
     return 0
 
 

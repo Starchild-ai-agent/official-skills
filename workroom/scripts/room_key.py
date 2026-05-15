@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom room-key <room_id> [--rotate] [--revoke-first]
+"""workroom room-key <room_id> [--rotate] [--revoke-first]
 
 Mint a short-lived viewer URL for the user (not the agent).
 
@@ -23,7 +23,7 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom room-key")
+    p = argparse.ArgumentParser(prog="workroom room-key")
     p.add_argument("room_id")
     p.add_argument("--rotate", "--revoke-first", action="store_true",
                    dest="rotate",
@@ -34,13 +34,13 @@ def main(argv: list[str]) -> int:
     C.require_env()
 
     if args.rotate:
-        r = C.chatroom_call("DELETE", f"/rooms/{room_id}/room-keys")
+        r = C.workroom_call("DELETE", f"/rooms/{room_id}/room-keys")
         if r.status_code != 200:
             C.die(f"DELETE /room-keys returned {r.status_code}: {r.text}")
         n = r.json().get("revoked", 0)
         C.info(f"  ✓ revoked {n} previous room-key(s) for this user")
 
-    r = C.chatroom_call(
+    r = C.workroom_call(
         "POST", f"/rooms/{room_id}/room-keys",
         json={"for_user_id": C.USER_ID},
     )
@@ -55,8 +55,9 @@ def main(argv: list[str]) -> int:
     C.info(f"  expires: {exp.isoformat()}")
     C.info(f"  scope:   {body['scope']}")
     if body.get("code"):
-        C.info(f"  code:    {body['code']}  (server-resolves to the JWT; "
-               "kill with `chatroom revoke-room-key {room_id} --code …`)")
+        C.info(f"  code:    {body['code']}  (server-resolves to the JWT)")
+        C.info(f"  revoke:  workroom list-room-keys {room_id}    # find the jti")
+        C.info(f"           workroom revoke-room-key {room_id} <jti>")
     if body.get("direct_url"):
         C.info("")
         C.info("(If a script needs the JWT inline rather than the short")

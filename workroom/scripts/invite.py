@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""chatroom invite <room_id> [--max-uses N] [--ttl-seconds SEC]
+"""workroom invite <room_id> [--max-uses N] [--ttl-seconds SEC]
 
 Mint a new invite code for the room. Any member of the room can create
 an invite. The room owner can list/revoke any invite; other members can
@@ -19,7 +19,7 @@ import _common as C
 
 
 def main(argv: list[str]) -> int:
-    p = argparse.ArgumentParser(prog="chatroom invite")
+    p = argparse.ArgumentParser(prog="workroom invite")
     p.add_argument("room_id")
     p.add_argument("--max-uses", type=int, default=1,
                    help="how many times the code may be consumed (default: 1)")
@@ -55,7 +55,7 @@ def main(argv: list[str]) -> int:
     }
     if args.display_name:
         invite_body["display_name"] = args.display_name
-    r = C.chatroom_call(
+    r = C.workroom_call(
         "POST", f"/rooms/{room_id}/invites", json=invite_body,
     )
     if r.status_code != 201:
@@ -77,15 +77,15 @@ def main(argv: list[str]) -> int:
 
     C.info(f"Invite {short_code} ({body['max_uses']} use(s), expires {exp}).")
     C.info("")
-    C.info(f"  chatroom join {short_code}")
-    C.info(f"    # for a Starchild agent that already has the chatroom skill")
+    C.info(f"  workroom join {short_code}")
+    C.info(f"    # for a Starchild agent that already has the workroom skill")
     C.info("")
     C.info(f"  curl -sSL {install_url} | sh")
     C.info(f"    # for anything else (Codex / Claude / OpenAI / local LLM)")
     C.info("")
     C.info("Revoke early:")
-    C.info(f"  python3 skills/chatroom/scripts/list_invites.py {room_id}      # find jti")
-    C.info(f"  python3 skills/chatroom/scripts/revoke_invite.py {room_id} <jti>")
+    C.info(f"  python3 skills/workroom/scripts/list_invites.py {room_id}      # find jti")
+    C.info(f"  python3 skills/workroom/scripts/revoke_invite.py {room_id} <jti>")
     return 0
 
 

@@ -36,7 +36,7 @@ def poll_video(request_id, download=True):
     status_url = None
     for pattern in patterns:
         try:
-            test_resp = requests.get(f"{pattern}/status", headers=headers, proxies=proxies, verify=False, timeout=10)
+test_resp = requests.get(f"{pattern}/status", headers=headers, proxies=proxies, verify=True, timeout=10)
             if test_resp.status_code == 200:
                 status_url = f"{pattern}/status"
                 result_url = pattern
@@ -49,7 +49,7 @@ def poll_video(request_id, download=True):
     
     # Poll until complete
     for _ in range(180):  # 15min max
-        resp = requests.get(status_url, headers=headers, proxies=proxies, verify=False, timeout=30)
+resp = requests.get(status_url, headers=headers, proxies=proxies, verify=True, timeout=30)
         status = resp.json().get('status')
         
         if status == 'COMPLETED':
@@ -65,7 +65,7 @@ def poll_video(request_id, download=True):
         return {"success": True, "status": "COMPLETED", "request_id": request_id}
     
     # Download result
-    result_resp = requests.get(result_url, headers=headers, proxies=proxies, verify=False, timeout=60)
+result_resp = requests.get(result_url, headers=headers, proxies=proxies, verify=True, timeout=60)
     record_response(result_resp, request_url=result_url)
     video_url = result_resp.json()['video']['url']
     

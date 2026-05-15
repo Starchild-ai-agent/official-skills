@@ -56,7 +56,7 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
     
     # Submit
     submit_url = f'https://queue.fal.run/{model}'
-    response = requests.post(submit_url, headers=headers, json=body, proxies=PROXIES, verify=False, timeout=90)
+response = requests.post(submit_url, headers=headers, json=body, proxies=PROXIES, verify=True, timeout=90)
     # Record the paid submit call to the cost ledger so the agent's
     # per-turn cost_summary picks up this video's cost (no-op if 0).
     record_response(response, request_url=submit_url, request_payload=body)
@@ -75,7 +75,7 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
     # Poll
     deadline = time.time() + 900  # 15min timeout
     while time.time() < deadline:
-        poll_resp = requests.get(status_url, headers={'Authorization': 'Key fake-falai-key-12345'}, proxies=PROXIES, verify=False, timeout=60)
+poll_resp = requests.get(status_url, headers={'Authorization': 'Key fake-falai-key-12345'}, proxies=PROXIES, verify=Fals
         status = poll_resp.json().get('status')
         
         if status == 'COMPLETED':
@@ -88,7 +88,7 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
         return {"success": False, "request_id": request_id, "cost": cost, "error": "Timeout"}
     
     # Get result & download
-    result_resp = requests.get(result_url, headers={'Authorization': 'Key fake-falai-key-12345'}, proxies=PROXIES, verify=False, timeout=90)
+result_resp = requests.get(result_url, headers={'Authorization': 'Key fake-falai-key-12345'}, proxies=PROXIES, verify=Fa
     try:
         result_json = result_resp.json()
     except Exception:

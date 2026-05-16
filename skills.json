@@ -100,7 +100,7 @@
     {
       "name": "byok-custom-model",
       "path": "byok-custom-model/SKILL.md",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "description": "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, Qwen, DeepSeek, Venice, etc.) with your own API key"
     },
     {
@@ -112,7 +112,7 @@
     {
       "name": "chatgpt-codex-onboarding",
       "path": "chatgpt-codex-onboarding/SKILL.md",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "description": "Connect ChatGPT / Codex subscription via OAuth device-code login (NOT BYOK)"
     },
     {

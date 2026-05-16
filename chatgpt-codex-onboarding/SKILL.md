@@ -1,6 +1,6 @@
 ---
 name: chatgpt-codex-onboarding
-version: 2.0.1
+version: 2.0.2
 description: "Connect ChatGPT / Codex subscription via OAuth device-code login (NOT BYOK)"
 author: starchild
 delivery: script

@@ -91,12 +91,11 @@ def _flush_cache() -> Dict[str, Any]:
     import urllib.request
     import urllib.error
     url = _api_base() + "/internal/runtime/flush_agent_cache"
-    headers = {"Content-Type": "application/json"}
-    # See byok-custom-model exports.py for the threat model.
-    _secret = os.environ.get("STARCHILD_INTERNAL_SECRET", "")
-    if _secret:
-        headers["X-Internal-Secret"] = _secret
-    req = urllib.request.Request(url, data=b"{}", headers=headers, method="POST")
+    req = urllib.request.Request(
+        url, data=b"{}",
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             try:

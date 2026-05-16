@@ -113,11 +113,14 @@ def _loopback_post(path: str, body: Dict[str, Any], timeout: float = 10.0) -> Di
     import urllib.error
     url = _api_base() + path
     data = json.dumps(body or {}).encode()
-    req = urllib.request.Request(
-        url, data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
+    headers = {"Content-Type": "application/json"}
+    # The agent loop injects STARCHILD_INTERNAL_SECRET into every bash
+    # subprocess it spawns. The loopback endpoints require that header
+    # to fail closed against processes the agent didn't start.
+    _secret = os.environ.get("STARCHILD_INTERNAL_SECRET", "")
+    if _secret:
+        headers["X-Internal-Secret"] = _secret
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             raw = resp.read().decode("utf-8", errors="replace")

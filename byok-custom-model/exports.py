@@ -8,15 +8,17 @@ Wire model:
   * Read-only operations (list, get, templates, parse_example, list_vendor_models)
     run entirely in this subprocess by importing core.* directly.
   * Mutating operations (add, add_template, remove) write the yaml registry,
-    then hit two loopback endpoints to (a) flush the AgentManager cache so
-    the next turn re-reads custom_models.yaml and (b) push the secure-input
-    SSE event into the user's open chat session so they can submit the
-    API key without it ever appearing in chat history.
-
-  Both endpoints live in starchild-clawd/routes/internal_runtime.py and
-  enforce client_host in 127.0.0.1/::1 — defense in depth on top of the
-  AUTH_WHITELIST entry. We are already loopback (script subprocess inside
-  the same container), so no auth headers are required.
+    then hit ONE loopback endpoint to flush the AgentManager cache so the
+    next turn re-reads custom_models.yaml. The flush endpoint lives at
+    /internal/runtime/flush_agent_cache and enforces client_host in
+    127.0.0.1/::1.
+  * UI prompts (secure API-key input) are NOT triggered from this
+    subprocess. The script doesn't own session state and can't reliably
+    reach the user's open SSE stream. Instead, `add()` / `add_template()`
+    return `need_env_input` in their result dict — the calling agent must
+    then invoke the in-process `request_env_input` tool with that payload.
+    This keeps UI ↔ agent ↔ user on one channel and avoids the
+    cross-process session_id reconstruction footgun.
 
 Reachability:
   - core.* import: works because /app is on sys.path[1] in subprocesses
@@ -134,47 +136,6 @@ def _loopback_post(path: str, body: Dict[str, Any], timeout: float = 10.0) -> Di
 def _flush_cache() -> Dict[str, Any]:
     """Force AgentManager to rebuild providers next call (so new model appears)."""
     return _loopback_post("/internal/runtime/flush_agent_cache", {})
-
-
-def _dispatch_env_input(*, key_env: str, key_label: str, model_id: str, base_url: str) -> Dict[str, Any]:
-    """Pop the secure-input UI for an API key.
-
-    Mirrors the action_request payload the in-process tool used to emit.
-    The session_id comes from STARCHILD_TOOL_CALLER_ID which the agent loop
-    injects into every subprocess env (see tools/bash.py subprocess_env).
-    Format: 'chat:agent:main:thread:{user_id}:{thread_id}/tool:bash/use:{tool_use_id}'
-    We extract the chat session prefix so the SSE event lands in the right stream.
-    """
-    caller = os.environ.get("STARCHILD_TOOL_CALLER_ID", "")
-    session_id = ""
-    if caller.startswith("chat:"):
-        # 'chat:agent:main:thread:NNNN:HASH/tool:bash/use:XXX' → 'agent:main:thread:NNNN:HASH'
-        session_id = caller[len("chat:"):].split("/", 1)[0]
-    if not session_id:
-        return {"ok": False, "reason": "no_session_id_in_caller_env"}
-
-    action_id = f"custom_model_{int(time.time())}_{os.urandom(3).hex()}"
-    return _loopback_post(
-        "/internal/streaming/dispatch_action_request",
-        {
-            "session_id": session_id,
-            "action": "env_input",
-            "title": f"API key for {model_id}",
-            "description": (
-                f"Provide the API key for {model_id} (endpoint: {base_url}). "
-                f"Saved to workspace/.env as {key_env} — never shown in chat."
-            ),
-            "payload": {
-                "env_vars": [{
-                    "key": key_env,
-                    "label": key_label,
-                    "required": True,
-                }],
-            },
-            "require_signature": False,
-            "action_id": action_id,
-        },
-    )
 
 
 # --------------------------------------------------------------------------
@@ -357,12 +318,12 @@ def add(
       1. Validate every field — raises CustomModelValidationError on bad input.
       2. Write the entry to workspace/config/custom_models.yaml.
       3. Flush the agent cache so the next turn picks up the new model.
-      4. If the API key env var is not yet set, dispatch the secure-input
-         popup so the user can submit it without it appearing in chat.
 
-    Step 2 happens BEFORE step 4 on purpose: if the user dismisses the popup,
-    the entry still survives in the registry so they can retry the key later
-    via the same flow.
+    Returns a dict with `need_env_input` populated when the API key env var
+    is not yet set — the CALLING AGENT must then invoke `request_env_input`
+    with that payload to pop the secure input UI. The entry is persisted
+    BEFORE this signal, so if the user dismisses the popup the registration
+    survives and they can retry the key later via the same flow.
     """
     if not upstream_model:
         return {"ok": False, "error": "'upstream_model' is required"}
@@ -391,16 +352,8 @@ def add(
 
     key_env = cm.api_key_env
     key_already_set = bool(os.environ.get(key_env))
-    dispatch_result: Optional[Dict[str, Any]] = None
-    if not key_already_set:
-        dispatch_result = _dispatch_env_input(
-            key_env=key_env,
-            key_label=f"{cm.name} API Key",
-            model_id=cm.id,
-            base_url=cm.base_url,
-        )
 
-    return {
+    result: Dict[str, Any] = {
         "ok": True,
         "status": "registered",
         "model_id": cm.id,
@@ -414,19 +367,38 @@ def add(
         "request_params": cm.request_params,
         "capabilities": cm.capabilities,
         "param_policy": cm.param_policy,
-        "action_request_sent": bool(dispatch_result and dispatch_result.get("delivered")),
-        "dispatch_diagnostic": dispatch_result,
         "cache_flush": flush_result,
-        "note": (
-            "Entry registered. "
-            + (
-                "API key already present in .env — model is ready to use."
-                if key_already_set
-                else "Waiting for user to submit the API key via the secure input prompt."
-            )
-            + f" Switch to this model by selecting {cm.id!r} in the selector."
-        ),
     }
+
+    if key_already_set:
+        result["note"] = (
+            f"Entry registered. API key already present in .env — model is ready. "
+            f"Switch via the selector ({cm.id!r})."
+        )
+    else:
+        # Signal the agent to pop the secure-input UI via the request_env_input tool.
+        # The script can't reliably reach the user's SSE stream itself.
+        result["need_env_input"] = {
+            "env_vars": [{
+                "key": key_env,
+                "label": f"{cm.name} API Key",
+                "required": True,
+            }],
+            "reason": (
+                f"Provide the API key for {cm.id} (endpoint: {cm.base_url}). "
+                f"Saved to .env as {key_env} — never shown in chat."
+            ),
+        }
+        result["next_action"] = (
+            "Call the request_env_input tool with the env_vars and reason "
+            "from need_env_input above. This pops the secure input UI for the user."
+        )
+        result["note"] = (
+            f"Entry registered but waiting for {key_env}. "
+            f"Agent should now invoke request_env_input — see next_action."
+        )
+
+    return result
 
 
 def add_template(

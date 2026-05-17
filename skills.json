@@ -100,8 +100,8 @@
     {
       "name": "byok-custom-model",
       "path": "byok-custom-model/SKILL.md",
-      "version": "2.0.3",
-      "description": "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, Qwen, DeepSeek, Venice, etc.) with your own API key"
+      "version": "2.1.0",
+      "description": "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, xAI Grok, Qwen, DeepSeek, Venice, etc.) with your own API key"
     },
     {
       "name": "chart",

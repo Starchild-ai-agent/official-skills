@@ -59,14 +59,6 @@ Use for any request involving social media profiles, posts, videos, comments, tr
 **Auth:** `x-api-key: $SCRAPECREATORS_API_KEY` header
 **Method:** All endpoints use GET requests with query params. Responses are JSON.
 
-### SerpApi — YouTube-only retrieval (legacy)
-
-- `engine=youtube` to search YouTube and discover candidate videos.
-- `engine=youtube_video` to fetch video metadata, description, chapters, related videos, and the transcript discovery link.
-- `engine=youtube_video_transcript` to fetch timestamped transcript segments for AI analysis.
-
-Do not use SerpApi for Google/Bing/general SERP scraping, shopping, maps, news, or any non-YouTube engine. The transparent proxy blocks those engines.
-
 ### Firecrawl — Fallback web page scraper
 
 Only a fallback crawler for one web page when ordinary fetching fails. Use `POST /v2/scrape` with a single `url` and focused formats like `markdown`, `html`, `rawHtml`, `links`, `summary`, or constrained `json`/`question`/`highlights` extraction.
@@ -295,34 +287,6 @@ Common optional params:
 - **`trim`** (boolean): reduces response payload size. Use when you only need key metrics.
 - **`region`** (string): 2-letter country code for proxy location. Does NOT filter by region — just routes through that country's proxy.
 
-### SerpApi (YouTube via transparent proxy)
-
-Use Python scripts with `core.http_client.proxied_get`; include a typed `SC-CALLER-ID` header for cost tracking.
-
-```python
-from core.http_client import proxied_get
-
-headers = {"SC-CALLER-ID": "chat:youtube-transcript"}
-
-search = proxied_get(
-    "https://serpapi.com/search.json",
-    params={"engine": "youtube", "search_query": "topic keywords"},
-    headers=headers,
-).json()
-
-video = proxied_get(
-    "https://serpapi.com/search.json",
-    params={"engine": "youtube_video", "v": "VIDEO_ID"},
-    headers=headers,
-).json()
-
-transcript = proxied_get(
-    "https://serpapi.com/search.json",
-    params={"engine": "youtube_video_transcript", "v": "VIDEO_ID", "language_code": "en"},
-    headers=headers,
-).json()
-```
-
 ### Firecrawl (web page fallback via transparent proxy)
 
 ```python
@@ -350,13 +314,11 @@ Route every request to the right backend. The user should never need to specify 
 Use **ScrapeCreators**. Match the user's intent to an endpoint from the routing tables above. Strip `@` from handles and `#` from hashtags before calling. Fetch the per-endpoint OpenAPI spec first for full param details.
 
 ### YouTube URL or YouTube content request
-Use **SerpApi** for YouTube search/discovery and transcript retrieval via the transparent proxy. Alternatively, ScrapeCreators also covers YouTube (channel info, videos, shorts, playlists, comments, transcripts, search, trending shorts) — use whichever is more convenient for the specific request.
+Use **ScrapeCreators** for YouTube (channel info, videos, shorts, playlists, comments, transcripts, search, trending shorts). Match the user's intent to the appropriate YouTube endpoint from the routing tables above.
 
-For a YouTube URL, extract the 11-character video id and call `youtube_video_transcript` first if the user's goal is content analysis, summarization, quote extraction, or topic mining. This returns timestamped transcript segments directly.
+For a YouTube URL, use `/v1/youtube/video` to get video details and transcript. If the user's goal is content analysis, summarization, quote extraction, or topic mining, the transcript is included in the video response.
 
-If the transcript call returns empty, unavailable, or the wrong language, call `youtube_video` next to inspect title, description, channel, publication date, and any advertised transcript metadata. Try one obvious `language_code` change only when the desired language is clear. If no transcript exists, summarize from metadata only and say the transcript was not available.
-
-For a YouTube topic query, call `engine=youtube`, choose relevant `video_results`, then call metadata/transcript only for the videos needed. Avoid fetching many transcripts by default.
+For a YouTube topic query, use `/v1/youtube/search` to find relevant videos, then call `/v1/youtube/video` only for the videos needed. Avoid fetching many videos by default.
 
 ### Blocked or JS-heavy web page
 Use **Firecrawl** once with `formats:["markdown","links"]` and `onlyMainContent:true`. Treat the returned Markdown as the extraction substrate, not as final truth: parse the title, price/value fields, specs, body description, image URLs, outbound links, and obvious contact/location hints from the page structure.
@@ -370,8 +332,6 @@ General web-page extraction lessons:
 ## Cost discipline
 
 **ScrapeCreators** — most endpoints cost 1 credit per request. Exceptions: `/v1/tiktok/user/audience` costs 26 credits; `/v1/tiktok/video/transcript` with `use_ai_as_fallback=true` costs +10 credits; `/v1/google/company/ads` with `get_ad_details=true` costs 25 credits. Warn users before calling expensive endpoints.
-
-**SerpApi** — billed per successful search-like call, regardless of result count.
 
 **Firecrawl** — billed per page plus expensive modifiers.
 

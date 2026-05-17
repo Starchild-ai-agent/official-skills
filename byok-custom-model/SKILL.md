@@ -1,6 +1,6 @@
 ---
 name: byok-custom-model
-version: 2.0.3
+version: 2.1.0
 description: "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, xAI Grok, Qwen, DeepSeek, Venice, etc.) with your own API key"
 author: starchild
 delivery: script

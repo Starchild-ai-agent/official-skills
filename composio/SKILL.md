@@ -1,6 +1,6 @@
 ---
 name: composio
-version: 1.2.1
+version: 1.2.2
 description: "Universal tool gateway via Composio — connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration."
 
 metadata:
@@ -153,6 +153,26 @@ Returns `connect_url` for the user to complete OAuth.
 ```bash
 curl -s -X DELETE $GATEWAY/api/connections/{connection_id}
 ```
+
+### Instagram Posting (important slug mapping)
+
+Composio search may return legacy Instagram slugs that are not executable in this environment.
+When posting to Instagram, use these **working slugs**:
+
+1) Create draft container:
+- `INSTAGRAM_CREATE_MEDIA_CONTAINER`
+- Required: `ig_user_id`
+- Typical args for photo: `{"ig_user_id":"...","image_url":"https://...","content_type":"photo","caption":"..."}`
+
+2) Publish draft:
+- `INSTAGRAM_CREATE_POST`
+- Required: `ig_user_id`, `creation_id`
+
+Two-step flow:
+- Execute `INSTAGRAM_CREATE_MEDIA_CONTAINER` → read `data.data.id` as `creation_id`
+- Execute `INSTAGRAM_CREATE_POST` with that `creation_id`
+
+Tip: If `/internal/search` suggests `INSTAGRAM_POST_IG_USER_MEDIA` or `INSTAGRAM_POST_IG_USER_MEDIA_PUBLISH` but execute returns "Tool ... not found", switch to the two slugs above.
 
 ### Browserbase — Hybrid Workflow (Session Management + Playwright CDP)
 

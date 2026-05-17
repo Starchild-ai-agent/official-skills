@@ -1,11 +1,11 @@
 ---
 name: byok-custom-model
-version: 2.0.3
-description: "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, Qwen, DeepSeek, Venice, etc.) with your own API key"
+version: 2.1.0
+description: "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, xAI Grok, Qwen, DeepSeek, Venice, etc.) with your own API key"
 author: starchild
 delivery: script
 protected: true
-tags: [byok, custom-model, llm, openrouter, anthropic, deepseek, qwen, kimi, mimo, gemini, venice]
+tags: [byok, custom-model, llm, openrouter, anthropic, openai, xai, grok, deepseek, qwen, kimi, mimo, gemini, venice]
 ---
 
 # 🔑 BYOK — Custom LLM Models
@@ -103,4 +103,15 @@ The popup, the .env write, and the channel-specific UX (web popup / TG card / We
 - **Never re-issue the secure-input popup automatically** if the user hasn't responded — wait.
 - **If `need_env_input` is returned, always call `request_env_input`.** Do not skip, do not ask the user to paste the key, do not retry `add_template` hoping it will pop the UI — it won't.
 - **Never write to `workspace/config/custom_models.yaml` or `workspace/.env` by hand.** Always go through the exports above.
-- The 9 curated vendors **always** use `add_template`. Only use `parse_example` + `add` for self-hosted or rare providers.
+- The 10 curated vendors **always** use `add_template`. Only use `parse_example` + `add` for self-hosted or rare providers.
+
+---
+
+## xAI Grok — note on the subscription confusion
+
+Users frequently mix up two unrelated xAI products:
+
+- **X Premium / SuperGrok subscription** ($30/mo on x.com) — chat UI access only. **Does not include API access.**
+- **console.x.ai** — independent developer account, separate billing. Generates API keys, $25 in promo credits for new accounts, then pay-per-token.
+
+If a user wants to add Grok via BYOK, point them at **https://console.x.ai/** — not x.com / Premium / SuperGrok. The `xai` template's `homepage` field already deep-links to the right place. Hermes / Grok-CLI's OAuth-to-subscription flow relies on a first-party client_id whitelist that xAI does not extend to third-party cloud agents, so the BYOK API-key path is the only realistic integration for hosted products.

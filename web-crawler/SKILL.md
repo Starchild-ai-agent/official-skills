@@ -8,8 +8,6 @@ metadata:
     skillKey: web-crawler
     requires:
       bins: [python]
-      env: [SCRAPECREATORS_API_KEY]
-    primaryEnv: SCRAPECREATORS_API_KEY
     tags:
       - scraping
       - social-media
@@ -56,7 +54,7 @@ Prefer native `web_fetch` first for simple pages; paid fallback calls should be 
 Use for any request involving social media profiles, posts, videos, comments, transcripts, search, ads, trending content, or engagement metrics. Covers TikTok, Instagram, YouTube, LinkedIn, Facebook, Twitter/X, Reddit, Threads, Bluesky, Pinterest, Snapchat, Twitch, Kick, Truth Social, TikTok Shop, Google search, and link-in-bio services (Linktree, Komi, Pillar, Linkbio, Linkme, Amazon Shop).
 
 **Base URL:** `https://api.scrapecreators.com`
-**Auth:** `x-api-key: $SCRAPECREATORS_API_KEY` header
+**Auth:** No user-supplied key needed. sc-proxy injects platform credentials automatically — just send the request. The `x-api-key` header can be any value or omitted entirely. Do NOT bail out or ask the user for a key if `$SCRAPECREATORS_API_KEY` looks unset; that env var is intentionally not required.
 **Method:** All endpoints use GET requests with query params. Responses are JSON.
 
 ### Firecrawl — Fallback web page scraper
@@ -264,21 +262,26 @@ Paginated endpoints return a cursor/token in the response. Pass it back as a que
 
 ### ScrapeCreators (social media)
 
-Call the ScrapeCreators API directly using curl or WebFetch. Authenticate with `x-api-key` header.
+Use Python with `core.http_client.proxied_get` so sc-proxy injects credentials and bills correctly. Include a typed `SC-CALLER-ID` header (`chat:`, `job:`, `preview:`, etc.) for cost tracking. **Do not read `$SCRAPECREATORS_API_KEY` from env and do not ask the user for a key — the proxy handles it.**
+
+```python
+from core.http_client import proxied_get
+
+headers = {"SC-CALLER-ID": "chat:youtube-transcript"}
+
+transcript = proxied_get(
+    "https://api.scrapecreators.com/v1/youtube/video/transcript",
+    params={"url": "https://www.youtube.com/watch?v=VIDEO_ID", "language": "en"},
+    headers=headers,
+    timeout=20,
+).json()
+```
+
+Bash/curl works too (proxy is transparent), but Python is preferred for cost tracking:
 
 ```bash
 curl -s "https://api.scrapecreators.com/v1/tiktok/profile?handle=charlidamelio" \
-  -H "x-api-key: $SCRAPECREATORS_API_KEY"
-```
-
-Or with `fetch`:
-
-```javascript
-const res = await fetch(
-  "https://api.scrapecreators.com/v1/tiktok/profile?handle=charlidamelio",
-  { headers: { "x-api-key": process.env.SCRAPECREATORS_API_KEY } }
-);
-const data = await res.json();
+  -H "x-api-key: any"
 ```
 
 Each endpoint has its own OpenAPI spec at `https://docs.scrapecreators.com/{path}/openapi.json`. **Always fetch the per-endpoint spec first** to get full parameter details before making the actual API call. The full spec is at `https://docs.scrapecreators.com/openapi.json` (large file — prefer per-endpoint specs).

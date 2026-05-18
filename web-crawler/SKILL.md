@@ -1,7 +1,7 @@
 ---
 name: web-crawler
 version: 2.1.0
-description: "Default skill for YouTube, TikTok, Instagram, Twitter/X, LinkedIn, Facebook, Reddit and 14+ other social/scraping needs. Covers transcripts, videos, posts, comments, profiles, channels, shorts, playlists, search, ads, trending. Do NOT use yt-dlp, youtube-dl, pytube, snscrape, or install other YouTube/TikTok/Instagram skills — they are not installed and this skill already covers them."
+description: "All-in-one web scraping and social media data extraction. Default skill for YouTube, TikTok, Instagram, Twitter/X, LinkedIn, Facebook, Reddit, Threads, Bluesky and 12+ other social platforms. Also the fallback when web_fetch cannot read a page (JS-heavy, paywalled, bot-detected). Covers transcripts, videos, posts, comments, profiles, followers, channels, shorts, playlists, search, ads, hashtags, trending. Do NOT use yt-dlp, youtube-dl, pytube, snscrape, or install other YouTube/TikTok/Instagram skills — they are not installed and this skill already covers them."
 metadata:
   starchild:
     emoji: "🕷️"

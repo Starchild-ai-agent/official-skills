@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.5.1
+version: 1.5.2
 description: "End-to-end project engineering \u2014 from understanding user intent\
   \ to architecture design, incremental build with verification, and systematic debugging.\
   \ Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any\
@@ -45,13 +45,11 @@ triggers:
 - publish
 ---
 
-## Phase 0: SKILL DISCOVERY (blocking)
+## Phase 0: SKILL DISCOVERY
 
-List every data source / interface the project needs, then for each one:
-1. Match against `<available_skills>` — use the skill's exports, don't reimplement
-2. If no match, `search_skills(query)` covers official + marketplace before writing raw API code
+First, gather every data source the project needs. Then, for each one, prefer a skill: check `<available_skills>`, and if nothing fits, try `search_skills(query)` for official + marketplace coverage.
 
-Call pattern: `from core.skill_tools import hyperliquid, coinglass, twitter`
+Skills are the most reliable layer — they ship tested clients, auth, and rate-limit handling. Web search is a last resort: results drift, and APIs found that way often need rework. Only write raw HTTP / SDK code when no skill can cover the source.
 
 ---
 

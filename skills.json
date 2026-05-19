@@ -286,7 +286,7 @@
     {
       "name": "slide-creator",
       "path": "slide-creator/SKILL.md",
-      "version": "2.1.4",
+      "version": "2.1.5",
       "description": "Create presentation slide decks as HTML and auto-export to 16:9 PDF. Use when the user asks to make a PPT, slide deck, presentation, or pitch deck. Final output is a PDF file — not PowerPoint format."
     },
     {

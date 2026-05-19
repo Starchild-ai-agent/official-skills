@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.5.2
+version: 1.5.3
 description: "End-to-end project engineering \u2014 from understanding user intent\
   \ to architecture design, incremental build with verification, and systematic debugging.\
   \ Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any\
@@ -45,11 +45,19 @@ triggers:
 - publish
 ---
 
-## Phase 0: SKILL DISCOVERY
+## Phase 0: SKILL DISCOVERY & REQUIRED READING
 
-First, gather every data source the project needs. Then, for each one, prefer a skill: check `<available_skills>`, and if nothing fits, try `search_skills(query)` for official + marketplace coverage.
+**A. Pick the skills.** Gather every data source the project needs. For each one, prefer a skill: check `<available_skills>`, and if nothing fits, try `search_skills(query)` for official + marketplace coverage. Skills are the most reliable layer — they ship tested clients, auth, and rate-limit handling. Web search is a last resort. Only write raw HTTP / SDK code when no skill can cover the source.
 
-Skills are the most reliable layer — they ship tested clients, auth, and rate-limit handling. Web search is a last resort: results drift, and APIs found that way often need rework. Only write raw HTTP / SDK code when no skill can cover the source.
+**B. Read the platform rules for what the project touches.** These rules live in references (not in your system prompt) so you must `read_file` them before writing code. Skipping this is the #1 cause of 401s, broken paths, and "worked locally, fails in preview" bugs.
+
+| If the project includes... | `read_file` before Phase 2 |
+|---|---|
+| Any external API call | `config/context/references/sc-proxy.md` |
+| Preview / dashboard / web app | `config/context/references/preview-guide.md` |
+| Scheduled task | `config/context/references/scheduled-tasks-guide.md` |
+| Long-running background job | `config/context/references/background-tasks.md` |
+| File writing >300 lines | `config/context/references/tool-writing-guide.md` |
 
 ---
 

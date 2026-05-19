@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.5.0
+version: 1.5.1
 description: "End-to-end project engineering \u2014 from understanding user intent\
   \ to architecture design, incremental build with verification, and systematic debugging.\
   \ Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any\
@@ -45,26 +45,13 @@ triggers:
 - publish
 ---
 
-## Phase 0: SKILL DISCOVERY (mandatory, blocking)
+## Phase 0: SKILL DISCOVERY (blocking)
 
-**Before Phase 1 design — before any architecture decision — scan `<available_skills>` for skills that match the data sources / domain the user mentioned.**
+List every data source / interface the project needs, then for each one:
+1. Match against `<available_skills>` — use the skill's exports, don't reimplement
+2. If no match, `search_skills(query)` covers official + marketplace before writing raw API code
 
-If the user says "hyperliquid", "twitter", "coinglass", "8004", any specific service/protocol/exchange:
-1. Look in `<available_skills>` for a skill whose name or description covers it
-2. If found, **read its SKILL.md immediately** to learn what exports / tools / patterns it offers
-3. Plan the data layer using those skill exports — NOT raw HTTP / SDK calls written from scratch
-4. Only write raw API code if no skill exists AND you've confirmed via `search_skills(query)`
-
-**Hard rule:** Do NOT `mkdir`, `cat > server.py`, or `write_file` for a data fetcher until you've verified whether a skill already provides that data. Skipping this step has caused real demos to ship with the wrong data layer, then need mid-build rebuilds when the user notices.
-
-**Symptom of violation:** user mid-build says "you have X skill, use it" — that means you skipped Phase 0. Stop, re-plan with the skill, restart the build.
-
-**Skill function calls in dashboard backends:**
-```python
-from core.skill_tools import hyperliquid, coinglass, twitter
-# auto-discovers skills/*/exports.py — works in server.py, run.py, scripts
-positions = hyperliquid.get_clearinghouse_state(address="0x...")
-```
+Call pattern: `from core.skill_tools import hyperliquid, coinglass, twitter`
 
 ---
 
@@ -195,22 +182,9 @@ Build one small piece → Run it → Verify output → ✅ Next piece / ❌ Fix 
 - Large files (>300 lines): split into multiple files, or skeleton-first + bash inject
 - Env vars: `os.environ["KEY"]`, persist installs to `setup.sh`
 
-### Dashboard UX Defaults (mandatory for `type=preview`)
+### Dashboard UX Defaults (`type=preview`)
 
-**Page open = data appears.** Dashboards must render real data on first load with zero user input. No "Click to load", "Enter address", "Configure parameters", "Select a symbol" gating the initial render.
-
-**Required defaults on every dashboard:**
-- ✅ Sensible defaults baked in (e.g. top 10 by notional, BTC/ETH/SOL, last 4h) — fetch immediately on `DOMContentLoaded`
-- ✅ Auto-refresh on a timer (default 30s for monitoring dashboards) — no manual refresh button required
-- ✅ Loading skeleton while first fetch resolves (never blank white screen)
-- ✅ Filter/config controls are OPTIONAL refinements ON TOP of working defaults, not prerequisites
-- ❌ Empty state with "Enter ___ to begin" as the only content on page load
-- ❌ Forms blocking the data view
-- ❌ "Refresh" button as the only way to get data
-
-**Test gate before declaring done:** open the preview URL in a fresh tab → within 3 seconds you should see live numbers, not a config form. If not, the dashboard fails Phase 2 verification.
-
-**Why this matters:** demos and shared previews are viewed by people who didn't build the project. They click the link, look for 2 seconds, judge. If they see a config form, they close the tab.
+Decide sensible defaults yourself and render real data on first load. Treat filters as optional refinements users can adjust later — never as prerequisites that gate the initial view. Auto-refresh on a sensible interval. No "Click to load" / "Enter address" / "Select symbol" before anything appears.
 
 ---
 
@@ -218,21 +192,8 @@ Build one small piece → Run it → Verify output → ✅ Next piece / ❌ Fix 
 
 - Agent tools are tool calls only — not importable in scripts
 - Preview paths must be relative (`./path` not `/path`)
-- **Port MUST be read from env, never hardcoded** in dashboard/API `app.py`:
-  ```python
-  # ✅ correct
-  import os
-  port = int(os.getenv("PORT", 8765))
-  uvicorn.run(app, host="0.0.0.0", port=port)
-  # ❌ wrong — preview tool can override PORT via env; hardcoded port silently ignores it
-  uvicorn.run(app, host="0.0.0.0", port=8765)
-  ```
-  Symptom of violation: `preview_serve failed: Service did not listen on port X within 120s`
-  even though the app appears to start. The app bound the hardcoded port; preview was
-  watching a different one. Verify with `grep -E "port\s*=\s*[0-9]" app.py` before serving.
-- **Concurrent previews need different IDs.** If two previews share the same `dir`, the
-  newer one auto-kills the older one (same-dir replacement rule). When iterating, reuse
-  the same id rather than inventing variants, or use distinct dirs.
+- **Hardcode the preview port in code, do not read from env.** Each preview runs in its own pod and the env-port contract is not reliable across pods. Pick any free port (e.g. `8765`), write it directly into the app, and pass the same number to `preview(action="serve", port=...)`. The two must match exactly.
+- **Concurrent previews need different IDs.** If two previews share the same `dir`, the newer one auto-kills the older one (same-dir replacement rule). When iterating, reuse the same id rather than inventing variants, or use distinct dirs.
 - Fullstack = one port (backend serves API + static files)
 - Cron times are UTC — convert from user timezone
 - Preview serving & publishing → read platform reference `config/context/references/preview-guide.md`

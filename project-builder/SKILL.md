@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.4.1
+version: 1.5.2
 description: "End-to-end project engineering \u2014 from understanding user intent\
   \ to architecture design, incremental build with verification, and systematic debugging.\
   \ Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any\
@@ -43,6 +43,14 @@ triggers:
 - fix this
 - preview
 - publish
+---
+
+## Phase 0: SKILL DISCOVERY
+
+First, gather every data source the project needs. Then, for each one, prefer a skill: check `<available_skills>`, and if nothing fits, try `search_skills(query)` for official + marketplace coverage.
+
+Skills are the most reliable layer — they ship tested clients, auth, and rate-limit handling. Web search is a last resort: results drift, and APIs found that way often need rework. Only write raw HTTP / SDK code when no skill can cover the source.
+
 ---
 
 ## Phase 1: DESIGN
@@ -172,10 +180,18 @@ Build one small piece → Run it → Verify output → ✅ Next piece / ❌ Fix 
 - Large files (>300 lines): split into multiple files, or skeleton-first + bash inject
 - Env vars: `os.environ["KEY"]`, persist installs to `setup.sh`
 
+### Dashboard UX Defaults (`type=preview`)
+
+Decide sensible defaults yourself and render real data on first load. Treat filters as optional refinements users can adjust later — never as prerequisites that gate the initial view. Auto-refresh on a sensible interval. No "Click to load" / "Enter address" / "Select symbol" before anything appears.
+
+---
+
 ### Platform Rules
 
 - Agent tools are tool calls only — not importable in scripts
 - Preview paths must be relative (`./path` not `/path`)
+- **Hardcode the preview port in code, do not read from env.** Each preview runs in its own pod and the env-port contract is not reliable across pods. Pick any free port (e.g. `8765`), write it directly into the app, and pass the same number to `preview(action="serve", port=...)`. The two must match exactly.
+- **Concurrent previews need different IDs.** If two previews share the same `dir`, the newer one auto-kills the older one (same-dir replacement rule). When iterating, reuse the same id rather than inventing variants, or use distinct dirs.
 - Fullstack = one port (backend serves API + static files)
 - Cron times are UTC — convert from user timezone
 - Preview serving & publishing → read platform reference `config/context/references/preview-guide.md`

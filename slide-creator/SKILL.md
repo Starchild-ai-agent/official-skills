@@ -1,6 +1,6 @@
 ---
 name: slide-creator
-version: 2.1.4
+version: 2.1.5
 description: "Create presentation slide decks as HTML and auto-export to 16:9 PDF. Use when the user asks to make a PPT, slide deck, presentation, or pitch deck. Final output is a PDF file — not PowerPoint format."
 
 metadata:
@@ -88,7 +88,7 @@ Reference handling rules:
 Then:
 1. Create `output/style-picker/index.html` — a single page with 3 side-by-side mini slide previews (16:9 aspect ratio), each fully rendered with real CSS (colors, fonts, layout, decorative elements). Each preview must look like an actual slide, not a color chip.
 2. Build these 3 options as: **(A) Reference-faithful**, **(B) Safer corporate variant**, **(C) Bolder creative variant**.
-3. `preview_serve` the directory and show the preview URL.
+3. `preview(action='serve')` the directory and show the preview URL.
 4. Each card has a label below: style name + one-line description.
 5. Add `onclick` highlight so the user can click to indicate their choice.
 
@@ -151,7 +151,7 @@ body {
 
 ### 4. Preview (Optional)
 
-Use `preview_serve` to preview in browser before exporting.
+Use `preview(action='serve')` to preview in browser before exporting.
 
 ### 5. Export to PDF
 
@@ -201,7 +201,7 @@ Only restart art direction if user wants a completely different style.
 
 ## Gotchas
 
-- **Chromium deps**: first run needs `python3 -m playwright install chromium && python3 -m playwright install-deps chromium`
+- **Chromium**: pre-installed via `workspace/setup.sh` on container start (~641 MB cached at `~/.cache/ms-playwright/`). Do NOT run `playwright install` on every export — it re-downloads the same browser. Only run it if `export_pdf.py` fails with `Executable doesn't exist`, and in that case also append the command to `workspace/setup.sh` so it persists.
 - **Fonts**: Google Fonts need HTTP — the export script starts a local server automatically
 - **Emoji rendering**: headless Chromium may lack emoji fonts — use SVG icons instead
 - **Large images**: embed as base64 or use relative paths (local server serves the project dir)

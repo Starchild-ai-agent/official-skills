@@ -124,7 +124,7 @@
     {
       "name": "cli-bridge",
       "path": "cli-bridge/SKILL.md",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "description": "Mint, list, and revoke short-code bundles that authorize the user's `starchild` CLI to talk to this agent's clawd via sc-chatroom's 1:1 SSE bridge. The bundle carries an opaque sc_… code; the underlying AKM key (chat:bridge:cli scope) and Fly machine id stay server-side."
     },
     {
@@ -418,7 +418,7 @@
     {
       "name": "workroom",
       "path": "workroom/SKILL.md",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "Join and participate in sc-chatroom group chats (the \"Workroom\" product). Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync."
     },
     {

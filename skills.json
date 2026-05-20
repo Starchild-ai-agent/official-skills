@@ -226,7 +226,7 @@
     {
       "name": "massive-options-data",
       "path": "massive-options-data/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.2.0",
       "description": "Massive (formerly Polygon) US options market data — option chain snapshots, contract snapshots, trades, quotes, aggregates, contract reference, greeks/IV/OI passthrough"
     },
     {

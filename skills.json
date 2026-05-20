@@ -8,6 +8,12 @@
       "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
     },
     {
+      "name": "PANews",
+      "path": "PANews/SKILL.md",
+      "version": "1.0.0",
+      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
+    },
+    {
       "name": "aave",
       "path": "aave/SKILL.md",
       "version": "1.1.0",
@@ -254,12 +260,6 @@
       "description": "Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart"
     },
     {
-      "name": "PANews",
-      "path": "PANews/SKILL.md",
-      "version": "1.0.0",
-      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
-    },
-    {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "5.0.0",
@@ -365,7 +365,7 @@
       "name": "us-stock",
       "path": "us-stock/SKILL.md",
       "version": "1.0.0",
-      "description": "US equities data — realtime quotes, market cap & shares outstanding, float / insider / institutional % held, top institutional + mutual fund holders, insider transactions (Form 4), full financial statements (income / balance / cashflow, annual + quarterly), earnings calendar, dividends, splits, options expirations, analyst ratings, ETF holdings. Wraps the existing (paid) twelvedata skill for prices/K-line and yfinance for fundamentals. Use for ANY US ticker (AAPL, MSFT, NVDA, BRK.B, ...)."
+      "description": "US equities data — realtime quotes, market cap & shares outstanding, float / insider / institutional % held, top institutional + mutual fund holders, insider transactions (Form 4), full financial statements (income / balance / cashflow, annual + quarterly), earnings calendar, dividends, splits, news, options expirations, analyst ratings. Wraps the existing (paid) twelvedata skill for prices/K-line and yfinance for fundamentals. Use for ANY US ticker (AAPL, MSFT, NVDA, BRK.B, ...) — TwelveData alone does not return shares outstanding / holders / financials / insiders, this skill is the source of truth."
     },
     {
       "name": "user-onboarding",

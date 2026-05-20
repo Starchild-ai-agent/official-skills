@@ -1,6 +1,6 @@
 ---
 name: massive-options-data
-version: 1.2.0
+version: 1.2.1
 description: "Massive (formerly Polygon) US options market data — option chain snapshots, contract snapshots, trades, quotes, aggregates, contract reference, greeks/IV/OI passthrough"
 delivery: script
 metadata:
@@ -35,15 +35,24 @@ actually present, not what the docs imply:
 | `implied_volatility` | ✅ | Per contract. |
 | `greeks` (delta, gamma, theta, vega) | ✅ | Per contract. |
 | `open_interest` | ✅ | Per contract. |
-| `day.{open,high,low,close,volume,vwap}` | ✅ | Previous session, 15-min delayed. |
+| `day.{open,high,low,close,volume,vwap}` | ✅ | **Option prices** (previous session OHLC), 15-min delayed. |
 | `underlying_asset.ticker` | ✅ | Just the ticker string. |
-| `underlying_asset.price` | ❌ | **Not returned** on Starter. Use a delta-band (e.g. `0.35 ≤ |Δ| ≤ 0.65`) as an ATM proxy. |
-| `last_quote` (bid/ask) | ❌ | **Not returned** on Starter. You cannot filter by bid-ask spread. |
-| `last_trade` | ❌ | Not returned on Starter. |
+| `underlying_asset.price` | ❌ | **Not returned**. |
+| `last_quote` (bid/ask) | ❌ | **Not returned**. Cannot calculate real-time bid-ask spread. |
+| `last_trade` | ❌ | **Not returned**. |
 | Historical IV / IV Rank / IV Percentile | ❌ | Not exposed on any plan; you must build your own historical IV series. |
 
-If you need NBBO quotes, last trade, or real-time data, the plan must be
-upgraded to **Developer ($79/mo)** or **Advanced ($199/mo)**.
+**Recommended workaround for missing underlying price:**
+```python
+# Combine with twelvedata skill for precise ATM filtering
+chain = massive_option_chain_snapshot("AAPL")
+ticker = chain["results"][0]["underlying_asset"]["ticker"]
+spot_data = twelvedata_price(symbol=ticker)  # from twelvedata skill
+spot_price = float(spot_data["price"])
+# Now filter by actual strike vs. spot range instead of delta approximation
+```
+
+If you need real-time bid/ask quotes or trade ticks, upgrade to **Developer ($79/mo)** or **Advanced ($199/mo)**.
 
 ## Pagination — required for any DTE-range scan
 

@@ -8,12 +8,6 @@
       "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
     },
     {
-      "name": "PANews",
-      "path": "PANews/SKILL.md",
-      "version": "1.0.0",
-      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
-    },
-    {
       "name": "aave",
       "path": "aave/SKILL.md",
       "version": "1.1.0",
@@ -132,6 +126,12 @@
       "path": "cloudflare-tunnel-publish/SKILL.md",
       "version": "1.1.0",
       "description": "Publish a local service (preview, dev server, dashboard, API) to a user-owned custom domain or subdomain via Cloudflare Tunnel — no public IP, no port forwarding, free SSL. Beginner-friendly: walks the user from Cloudflare account, domain purchase, API token creation through automated tunnel + DNS + SSL setup, with auto-restart on container reboot so the public URL survives Starchild updates. Use when the user wants their own domain (e.g. app.mydomain.com) instead of community.iamstarchild.com, asks how to bind / publish / host a service on a custom domain or subdomain, or hits ERR_SSL_VERSION_OR_CIPHER_MISMATCH / 502 / 521 / 530 on a custom domain."
+    },
+    {
+      "name": "cn-stock",
+      "path": "cn-stock/SKILL.md",
+      "version": "1.3.0",
+      "description": "China A-share data — Tushare-via-sc-proxy integrated skill for quotes, market cap, financials, shareholders, fund flow, K-line, concept boards, dragon-tiger list, and market movers. Use for ANY 沪深北 A股 stock data request (e.g. 603186 华正新材, 300476 胜宏科技, 000001 平安银行). News is intentionally NOT covered here — use normal web search."
     },
     {
       "name": "coingecko",
@@ -254,6 +254,12 @@
       "description": "Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart"
     },
     {
+      "name": "PANews",
+      "path": "PANews/SKILL.md",
+      "version": "1.0.0",
+      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
+    },
+    {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "5.0.0",
@@ -354,6 +360,12 @@
       "path": "twitter/SKILL.md",
       "version": "2.0.1",
       "description": "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
+    },
+    {
+      "name": "us-stock",
+      "path": "us-stock/SKILL.md",
+      "version": "1.0.0",
+      "description": "US equities data — realtime quotes, market cap & shares outstanding, float / insider / institutional % held, top institutional + mutual fund holders, insider transactions (Form 4), full financial statements (income / balance / cashflow, annual + quarterly), earnings calendar, dividends, splits, options expirations, analyst ratings, ETF holdings. Wraps the existing (paid) twelvedata skill for prices/K-line and yfinance for fundamentals. Use for ANY US ticker (AAPL, MSFT, NVDA, BRK.B, ...)."
     },
     {
       "name": "user-onboarding",

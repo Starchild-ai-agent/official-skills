@@ -35,7 +35,7 @@ CHATROOM_SERVER_URL = os.environ.get(
 # uses for its own API calls; CHATROOM_PUBLIC_URL is what external
 # consumers see.
 CHATROOM_PUBLIC_URL = os.environ.get(
-    "CHATROOM_PUBLIC_URL", "https://sc-chatroom.fly.dev",
+    "CHATROOM_PUBLIC_URL", "https://workroom.iamstarchild.com",
 ).rstrip("/")
 
 # Resolve this agent's own reachable URL so sc-chatroom can call us for

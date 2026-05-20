@@ -1,6 +1,6 @@
 ---
 name: massive-options-data
-version: 1.2.1
+version: 1.3.0
 description: "Massive (formerly Polygon) US options market data — option chain snapshots, contract snapshots, trades, quotes, aggregates, contract reference, greeks/IV/OI passthrough"
 delivery: script
 metadata:
@@ -23,36 +23,37 @@ options REST endpoints with a thin, predictable Python interface.
 This skill does NOT generate strategies, signals, rankings, or trading
 advice — it only exposes options data.
 
-## Plan: Starter — REAL field availability
+## Plan: Developer — REAL field availability
 
-We are on **Massive Options Starter ($29/mo)**. The official docs list more
-fields than this plan actually returns. Build your callers against what's
-actually present, not what the docs imply:
+We are on **Massive Options Developer ($79/mo)**. Build your callers against 
+what's actually present in the API responses:
 
-| Field | Starter returns? | Notes |
+| Field | Developer returns? | Notes |
 |---|---|---|
 | `details.*` (ticker, strike, expiration, type) | ✅ | Always present. |
-| `implied_volatility` | ✅ | Per contract. |
-| `greeks` (delta, gamma, theta, vega) | ✅ | Per contract. |
-| `open_interest` | ✅ | Per contract. |
+| `implied_volatility` | ✅ | Per contract, 15-min delayed. |
+| `greeks` (delta, gamma, theta, vega) | ✅ | Per contract, 15-min delayed. |
+| `open_interest` | ✅ | Per contract, previous session. |
 | `day.{open,high,low,close,volume,vwap}` | ✅ | **Option prices** (previous session OHLC), 15-min delayed. |
-| `underlying_asset.ticker` | ✅ | Just the ticker string. |
-| `underlying_asset.price` | ❌ | **Not returned**. |
-| `last_quote` (bid/ask) | ❌ | **Not returned**. Cannot calculate real-time bid-ask spread. |
-| `last_trade` | ❌ | **Not returned**. |
-| Historical IV / IV Rank / IV Percentile | ❌ | Not exposed on any plan; you must build your own historical IV series. |
+| `underlying_asset.ticker` | ✅ | Always present. |
+| `underlying_asset.price` | ✅ | **Current underlying price**, 15-min delayed. |
+| `last_trade` (price, size, timestamp) | ✅ | **Last trade**, 15-min delayed. |
+| `last_quote` (bid/ask) | ❌ | **Still not returned** on Developer. Cannot calculate real-time spread. |
+| Historical IV / IV Rank / IV Percentile | ❌ | Not exposed on any plan; build your own historical series. |
 
-**Recommended workaround for missing underlying price:**
+**ATM filtering now uses real underlying price:**
 ```python
-# Combine with twelvedata skill for precise ATM filtering
 chain = massive_option_chain_snapshot("AAPL")
-ticker = chain["results"][0]["underlying_asset"]["ticker"]
-spot_data = twelvedata_price(symbol=ticker)  # from twelvedata skill
-spot_price = float(spot_data["price"])
-# Now filter by actual strike vs. spot range instead of delta approximation
+# No need for twelvedata — underlying price is now included!
+spot_price = chain["results"][0]["underlying_asset"]["price"]
+atm_low, atm_high = spot_price * 0.95, spot_price * 1.05
+for contract in chain["results"]:
+    strike = contract["details"]["strike_price"]  
+    if atm_low <= strike <= atm_high:
+        # This is an ATM contract
 ```
 
-If you need real-time bid/ask quotes or trade ticks, upgrade to **Developer ($79/mo)** or **Advanced ($199/mo)**.
+If you need real-time bid/ask quotes, upgrade to **Advanced ($199/mo)**.
 
 ## Pagination — required for any DTE-range scan
 
@@ -92,9 +93,9 @@ EOF
 | `massive_option_chain_snapshot(underlying, **filters)` | `GET /v3/snapshot/options/{underlying}` | Full chain snapshot (price/greeks/IV/OI; quote+trade missing on Starter). |
 | `massive_option_contract_snapshot(underlying, option_ticker)` | `GET /v3/snapshot/options/{underlying}/{contract}` | Single contract snapshot. |
 | `massive_list_contracts(underlying_ticker=None, **filters)` | `GET /v3/reference/options/contracts` | Reference list of option contracts (active or expired). |
-| `massive_option_trades(option_ticker, **range)` | `GET /v3/trades/{option_ticker}` | Historical trade ticks. **Returns 403 on Starter.** |
-| `massive_option_quotes(option_ticker, **range)` | `GET /v3/quotes/{option_ticker}` | Historical NBBO quotes. **Returns 403 on Starter.** |
-| `massive_option_aggregates(option_ticker, multiplier, timespan, from_, to, **opts)` | `GET /v2/aggs/ticker/{ticker}/range/...` | OHLCV bars for an option contract. Minute bars on Starter, all bars on Developer+. |
+| `massive_option_trades(option_ticker, **range)` | `GET /v3/trades/{option_ticker}` | Historical trade ticks. **Available on Developer+.** |
+| `massive_option_quotes(option_ticker, **range)` | `GET /v3/quotes/{option_ticker}` | Historical NBBO quotes. **Still returns 403 on Developer.** Requires Advanced. |
+| `massive_option_aggregates(option_ticker, multiplier, timespan, from_, to, **opts)` | `GET /v2/aggs/ticker/{ticker}/range/...` | OHLCV bars. Minute + second bars on Developer, all bars on Advanced. |
 | `massive_paginate(url, params=None, max_pages=20)` | — | Walk `next_url` cursor pagination. |
 
 All functions return the raw JSON from upstream. HTTP errors raise via

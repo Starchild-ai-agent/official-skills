@@ -1,6 +1,6 @@
 ---
 name: massive-options-data
-version: 1.0.0
+version: 1.2.0
 description: "Massive (formerly Polygon) US options market data — option chain snapshots, contract snapshots, trades, quotes, aggregates, contract reference, greeks/IV/OI passthrough"
 delivery: script
 metadata:
@@ -23,6 +23,38 @@ options REST endpoints with a thin, predictable Python interface.
 This skill does NOT generate strategies, signals, rankings, or trading
 advice — it only exposes options data.
 
+## Plan: Starter — REAL field availability
+
+We are on **Massive Options Starter ($29/mo)**. The official docs list more
+fields than this plan actually returns. Build your callers against what's
+actually present, not what the docs imply:
+
+| Field | Starter returns? | Notes |
+|---|---|---|
+| `details.*` (ticker, strike, expiration, type) | ✅ | Always present. |
+| `implied_volatility` | ✅ | Per contract. |
+| `greeks` (delta, gamma, theta, vega) | ✅ | Per contract. |
+| `open_interest` | ✅ | Per contract. |
+| `day.{open,high,low,close,volume,vwap}` | ✅ | Previous session, 15-min delayed. |
+| `underlying_asset.ticker` | ✅ | Just the ticker string. |
+| `underlying_asset.price` | ❌ | **Not returned** on Starter. Use a delta-band (e.g. `0.35 ≤ |Δ| ≤ 0.65`) as an ATM proxy. |
+| `last_quote` (bid/ask) | ❌ | **Not returned** on Starter. You cannot filter by bid-ask spread. |
+| `last_trade` | ❌ | Not returned on Starter. |
+| Historical IV / IV Rank / IV Percentile | ❌ | Not exposed on any plan; you must build your own historical IV series. |
+
+If you need NBBO quotes, last trade, or real-time data, the plan must be
+upgraded to **Developer ($79/mo)** or **Advanced ($199/mo)**.
+
+## Pagination — required for any DTE-range scan
+
+Chain snapshots paginate by `ticker` sort order. A 250-row first page often
+covers just one expiration. To get all contracts in a DTE window you MUST
+walk `next_url` (see `massive_paginate` in `exports.py`). Skipping this is
+the #1 reason a "0 results" scan looks broken.
+
+Typical chain sizes for a single underlying with one expiration window can
+exceed 450 contracts. Allow at least 4 pages.
+
 ## Script Usage
 
 ```bash
@@ -36,9 +68,9 @@ from exports import (
     massive_option_quotes,
     massive_option_aggregates,
     massive_list_contracts,
+    massive_paginate,
 )
 
-# Full chain snapshot (greeks/IV/OI when included in your plan)
 snap = massive_option_chain_snapshot(underlying="SPY", limit=10)
 print(json.dumps(snap.get("results", [])[:2], indent=2))
 EOF
@@ -48,41 +80,26 @@ EOF
 
 | Function | Endpoint | Purpose |
 |---|---|---|
-| `massive_option_chain_snapshot(underlying, **filters)` | `GET /v3/snapshot/options/{underlying}` | Full chain snapshot for an underlying (price, greeks, IV, OI, last_quote, last_trade). |
+| `massive_option_chain_snapshot(underlying, **filters)` | `GET /v3/snapshot/options/{underlying}` | Full chain snapshot (price/greeks/IV/OI; quote+trade missing on Starter). |
 | `massive_option_contract_snapshot(underlying, option_ticker)` | `GET /v3/snapshot/options/{underlying}/{contract}` | Single contract snapshot. |
 | `massive_list_contracts(underlying_ticker=None, **filters)` | `GET /v3/reference/options/contracts` | Reference list of option contracts (active or expired). |
-| `massive_option_trades(option_ticker, **range)` | `GET /v3/trades/{option_ticker}` | Historical trade ticks. |
-| `massive_option_quotes(option_ticker, **range)` | `GET /v3/quotes/{option_ticker}` | Historical NBBO quotes. |
-| `massive_option_aggregates(option_ticker, multiplier, timespan, from_, to, **opts)` | `GET /v2/aggs/ticker/{ticker}/range/...` | OHLCV bars for an option contract. |
-| `massive_paginate(url, params=None, max_pages=20)` | — | Helper for `next_url` cursor pagination. |
+| `massive_option_trades(option_ticker, **range)` | `GET /v3/trades/{option_ticker}` | Historical trade ticks. **Returns 403 on Starter.** |
+| `massive_option_quotes(option_ticker, **range)` | `GET /v3/quotes/{option_ticker}` | Historical NBBO quotes. **Returns 403 on Starter.** |
+| `massive_option_aggregates(option_ticker, multiplier, timespan, from_, to, **opts)` | `GET /v2/aggs/ticker/{ticker}/range/...` | OHLCV bars for an option contract. Minute bars on Starter, all bars on Developer+. |
+| `massive_paginate(url, params=None, max_pages=20)` | — | Walk `next_url` cursor pagination. |
 
-All functions return the raw JSON from upstream (`{"results": [...], "status": "OK", ...}`).
-HTTP errors raise via `Response.raise_for_status()`.
+All functions return the raw JSON from upstream. HTTP errors raise via
+`Response.raise_for_status()`.
 
-## Plan & Data Delays
+## Hardening notes
 
-Endpoint availability follows your Massive plan:
-
-| Plan | Quotes | Greeks/IV | Aggregates | Delay |
-|---|---|---|---|---|
-| Options Basic (free) | ❌ | ❌ | ❌ | n/a |
-| Options Starter ($29/mo) | ✅ | ✅ | minute | 15 min |
-| Options Developer ($79/mo) | ✅ | ✅ | minute + second | 15 min |
-| Options Advanced ($199/mo) | ✅ | ✅ | full | real-time |
-
-Fields like `last_quote`, `last_trade`, `greeks` may be omitted on lower plans
-or for illiquid contracts. The functions surface fields as-returned; null
-values are kept as null.
-
-## Pagination
-
-Long results use `next_url`. Use `massive_paginate` to walk pages:
-
-```python
-from exports import massive_paginate
-url = "https://api.polygon.io/v3/snapshot/options/SPY"
-pages = massive_paginate(url, params={"limit": 250}, max_pages=8)
-```
+- **Probe first, code second.** Before writing a filter pipeline against a
+  new endpoint, dump one full record and inspect actual fields. Saves hours
+  of "why is everything filtered out?" debugging.
+- **Null handling.** `greeks`, `last_quote`, `last_trade` may be absent;
+  keep as `None`, never fabricate.
+- **Caller-id.** Every call should include a `caller_id` so transparent-proxy
+  can attribute usage.
 
 ## Credentials
 
@@ -92,5 +109,5 @@ environment so it works in BYOK setups.
 
 ## Source of truth
 - Massive options docs: https://massive.com/docs/rest/options/overview
-- Follow official field names and endpoint behavior; if upstream changes the
-  contract, update this skill rather than papering over it in callers.
+- Follow official field names; when upstream changes the contract, update
+  this skill rather than papering over it in callers.

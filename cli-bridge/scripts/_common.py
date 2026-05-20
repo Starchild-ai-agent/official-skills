@@ -23,7 +23,7 @@ CLAWD_BASE_URL = os.environ.get("CLAWD_BASE_URL", "http://127.0.0.1:8000").rstri
 # as the dial target — it MUST be reachable from the user's laptop, not
 # the .internal one.
 CHATROOM_PUBLIC_URL = os.environ.get(
-    "CHATROOM_PUBLIC_URL", "https://sc-chatroom.fly.dev",
+    "CHATROOM_PUBLIC_URL", "https://workroom.iamstarchild.com",
 ).rstrip("/")
 
 # Internal URL the skill uses for its own server-side calls (POST /cli-keys).

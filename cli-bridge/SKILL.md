@@ -1,6 +1,6 @@
 ---
 name: cli-bridge
-version: 0.1.3
+version: 0.1.4
 description: Mint, list, and revoke short-code bundles that authorize the user's `starchild` CLI to talk to this agent's clawd via sc-chatroom's 1:1 SSE bridge. The bundle carries an opaque sc_… code; the underlying AKM key (chat:bridge:cli scope) and Fly machine id stay server-side.
 delivery: script
 metadata:
@@ -75,7 +75,7 @@ Same as `chatroom`:
 - sc-chatroom is on a build that includes `POST /cli-keys` (migration 007+)
 - `FLY_MACHINE_ID` (or `CONTAINER_ID`) env is set
 - `CHATROOM_PUBLIC_URL` env points at the sc-chatroom gateway (defaults
-  to `https://sc-chatroom.fly.dev`)
+  to `https://workroom.iamstarchild.com`)
 - `CHATROOM_SERVER_URL` env points at the Fly-internal sc-chatroom
   (defaults to `http://sc-chatroom.internal:8080`)
 

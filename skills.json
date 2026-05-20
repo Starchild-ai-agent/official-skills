@@ -8,12 +8,6 @@
       "description": "Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service."
     },
     {
-      "name": "PANews",
-      "path": "PANews/SKILL.md",
-      "version": "1.0.0",
-      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
-    },
-    {
       "name": "aave",
       "path": "aave/SKILL.md",
       "version": "1.1.0",
@@ -23,7 +17,7 @@
       "name": "abstract",
       "path": "abstract/SKILL.md",
       "version": "1.0.2",
-      "description": "Abstract L2 — Master skill hub for all Abstract blockchain capabilities. Provides a directory of 7 specialized skills for building on Abstract: connecting, deploying contracts, wallet integration, agent wallets, multisig, prediction markets, and onchain agent identity. Use when the user wants to build on Abstract, deploy contracts, set up wallets, create multisigs, integrate prediction markets, register agents onchain, or any Abstract L2 development task."
+      "description": "Abstract L2 \u2014 Master skill hub for all Abstract blockchain capabilities. Provides a directory of 7 specialized skills for building on Abstract: connecting, deploying contracts, wallet integration, agent wallets, multisig, prediction markets, and onchain agent identity. Use when the user wants to build on Abstract, deploy contracts, set up wallets, create multisigs, integrate prediction markets, register agents onchain, or any Abstract L2 development task."
     },
     {
       "name": "agent-builder",
@@ -47,7 +41,7 @@
       "name": "agentx",
       "path": "agentx/SKILL.md",
       "version": "1.0.0",
-      "description": "AgentX community forum — post / comment / like / follow / upload (NOT Twitter/X)"
+      "description": "AgentX community forum \u2014 post / comment / like / follow / upload (NOT Twitter/X)"
     },
     {
       "name": "backtest",
@@ -59,13 +53,13 @@
       "name": "backup",
       "path": "backup/SKILL.md",
       "version": "1.0.0",
-      "description": "Manage this agent's state backups on sc-agent-backup storage — take snapshots, list prior backups, and restore the agent from any of them. Identity-bound; 5 backups per user, cap enforced on upload."
+      "description": "Manage this agent's state backups on sc-agent-backup storage \u2014 take snapshots, list prior backups, and restore the agent from any of them. Identity-bound; 5 backups per user, cap enforced on upload."
     },
     {
       "name": "binance-account",
       "path": "binance-account/SKILL.md",
       "version": "2.0.0",
-      "description": "Read-only Binance account tracking (spot + USD-M futures) — balances, positions, orders, fills, deposits/withdrawals, funding income, snapshot, and risk scenarios."
+      "description": "Read-only Binance account tracking (spot + USD-M futures) \u2014 balances, positions, orders, fills, deposits/withdrawals, funding income, snapshot, and risk scenarios."
     },
     {
       "name": "birdeye",
@@ -83,25 +77,25 @@
       "name": "browser-preview",
       "path": "browser-preview/SKILL.md",
       "version": "1.1.0",
-      "description": "Preview panel knowledge — the iframe-based Preview tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, 白屏, 页面挂了, tab 不见了, preview not loading, or asks about running services."
+      "description": "Preview panel knowledge \u2014 the iframe-based Preview tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, \u767d\u5c4f, \u9875\u9762\u6302\u4e86, tab \u4e0d\u89c1\u4e86, preview not loading, or asks about running services."
     },
     {
       "name": "bybit-account",
       "path": "bybit-account/SKILL.md",
       "version": "2.0.0",
-      "description": "Read-only Bybit account tracking (Unified Trading Account) — balances, positions, orders, fills, deposits/withdrawals/transfers, transaction log, and risk scenarios."
+      "description": "Read-only Bybit account tracking (Unified Trading Account) \u2014 balances, positions, orders, fills, deposits/withdrawals/transfers, transaction log, and risk scenarios."
     },
     {
       "name": "byo-proxy",
       "path": "byo-proxy/SKILL.md",
       "version": "0.1.0",
-      "description": "Bring-your-own residential proxy management. Users register their own provider API keys (currently IPRoyal) and bind specific skills to specific countries. Other skills opt-in by importing get_proxy_for_skill() from exports.py — byo-proxy itself never intercepts traffic. Use when the user wants to add a residential proxy provider, configure per-skill geo routing, or look up which providers/countries are configured."
+      "description": "Bring-your-own residential proxy management. Users register their own provider API keys (currently IPRoyal) and bind specific skills to specific countries. Other skills opt-in by importing get_proxy_for_skill() from exports.py \u2014 byo-proxy itself never intercepts traffic. Use when the user wants to add a residential proxy provider, configure per-skill geo routing, or look up which providers/countries are configured."
     },
     {
       "name": "byok-custom-model",
       "path": "byok-custom-model/SKILL.md",
-      "version": "2.1.0",
-      "description": "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, xAI Grok, Qwen, DeepSeek, Venice, etc.) with your own API key"
+      "version": "2.0.3",
+      "description": "BYOK \u2014 register a custom LLM endpoint (Anthropic, OpenAI, Qwen, DeepSeek, Venice, etc.) with your own API key"
     },
     {
       "name": "chart",
@@ -119,19 +113,19 @@
       "name": "chatroom",
       "path": "chatroom/SKILL.md",
       "version": "0.2.0",
-      "description": "DEPRECATED — renamed to workroom. This stub exists only so legacy `--skill chatroom` installs land on a clear redirect. Install `workroom` instead."
+      "description": "DEPRECATED \u2014 renamed to workroom. This stub exists only so legacy `--skill chatroom` installs land on a clear redirect. Install `workroom` instead."
     },
     {
       "name": "cli-bridge",
       "path": "cli-bridge/SKILL.md",
       "version": "0.1.3",
-      "description": "Mint, list, and revoke short-code bundles that authorize the user's `starchild` CLI to talk to this agent's clawd via sc-chatroom's 1:1 SSE bridge. The bundle carries an opaque sc_… code; the underlying AKM key (chat:bridge:cli scope) and Fly machine id stay server-side."
+      "description": "Mint, list, and revoke short-code bundles that authorize the user's `starchild` CLI to talk to this agent's clawd via sc-chatroom's 1:1 SSE bridge. The bundle carries an opaque sc_\u2026 code; the underlying AKM key (chat:bridge:cli scope) and Fly machine id stay server-side."
     },
     {
       "name": "cloudflare-tunnel-publish",
       "path": "cloudflare-tunnel-publish/SKILL.md",
       "version": "1.1.0",
-      "description": "Publish a local service (preview, dev server, dashboard, API) to a user-owned custom domain or subdomain via Cloudflare Tunnel — no public IP, no port forwarding, free SSL. Beginner-friendly: walks the user from Cloudflare account, domain purchase, API token creation through automated tunnel + DNS + SSL setup, with auto-restart on container reboot so the public URL survives Starchild updates. Use when the user wants their own domain (e.g. app.mydomain.com) instead of community.iamstarchild.com, asks how to bind / publish / host a service on a custom domain or subdomain, or hits ERR_SSL_VERSION_OR_CIPHER_MISMATCH / 502 / 521 / 530 on a custom domain."
+      "description": "Publish a local service (preview, dev server, dashboard, API) to a user-owned custom domain or subdomain via Cloudflare Tunnel \u2014 no public IP, no port forwarding, free SSL. Beginner-friendly: walks the user from Cloudflare account, domain purchase, API token creation through automated tunnel + DNS + SSL setup, with auto-restart on container reboot so the public URL survives Starchild updates. Use when the user wants their own domain (e.g. app.mydomain.com) instead of community.iamstarchild.com, asks how to bind / publish / host a service on a custom domain or subdomain, or hits ERR_SSL_VERSION_OR_CIPHER_MISMATCH / 502 / 521 / 530 on a custom domain."
     },
     {
       "name": "coingecko",
@@ -148,14 +142,14 @@
     {
       "name": "community-publish",
       "path": "community-publish/SKILL.md",
-      "version": "0.13.1",
-      "description": "Share or open-source any project the user has built — a running preview/service, a project directory, a dashboard, or scripts. Use whenever the user wants to publish, share, make public, list, distribute, deploy publicly, or open-source something. Three independent actions — publish_preview (allocate a public URL for a running service), list_in_dashboard (show it on the public Project Dashboard for discovery), open_source (push project source to the community GitHub repo). Do NOT search the filesystem for publish-related code or write custom deploy/upload scripts — this skill is the single entry point."
+      "version": "0.13.0",
+      "description": "Share to the Starchild community in three independent ways \u2014 publish a running service to a public URL, list it on the public Project Dashboard for discovery, or open-source the project's code to the community GitHub repo."
     },
     {
       "name": "composio",
       "path": "composio/SKILL.md",
-      "version": "1.2.2",
-      "description": "Universal tool gateway via Composio — connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration."
+      "version": "1.2.1",
+      "description": "Universal tool gateway via Composio \u2014 connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration."
     },
     {
       "name": "creator-insights",
@@ -191,7 +185,7 @@
       "name": "ethena",
       "path": "ethena/SKILL.md",
       "version": "1.2.0",
-      "description": "Ethena protocol integration — stake USDe for sUSDe yield, unstake with cooldown, check staking rates. Use when user mentions Ethena, USDe, sUSDe, or wants stablecoin yield."
+      "description": "Ethena protocol integration \u2014 stake USDe for sUSDe yield, unstake with cooldown, check staking rates. Use when user mentions Ethena, USDe, sUSDe, or wants stablecoin yield."
     },
     {
       "name": "hyperliquid",
@@ -203,13 +197,13 @@
       "name": "jupiter",
       "path": "jupiter/SKILL.md",
       "version": "1.2.0",
-      "description": "Jupiter DEX aggregator on Solana — token swaps, limit orders, DCA. Use when user mentions Jupiter, Solana swap, SOL/USDC swap, or Solana DEX aggregator."
+      "description": "Jupiter DEX aggregator on Solana \u2014 token swaps, limit orders, DCA. Use when user mentions Jupiter, Solana swap, SOL/USDC swap, or Solana DEX aggregator."
     },
     {
       "name": "kalshi",
       "path": "kalshi/SKILL.md",
       "version": "1.0.0",
-      "description": "Kalshi is a regulated U.S. prediction market platform where users trade on the outcomes of real-world events using “event contracts.” These contracts let traders speculate on whether something will happen — such as election results, inflation rates, sports outcomes, weather events, or economic indicators. Each contract settles at either $1 or $0 depending on the actual outcome."
+      "description": "Kalshi is a regulated U.S. prediction market platform where users trade on the outcomes of real-world events using \u201cevent contracts.\u201d These contracts let traders speculate on whether something will happen \u2014 such as election results, inflation rates, sports outcomes, weather events, or economic indicators. Each contract settles at either $1 or $0 depending on the actual outcome."
     },
     {
       "name": "lunarcrush",
@@ -224,6 +218,12 @@
       "description": "Mantle Network skills suite - 9 specialized skills for onboarding, registry safety, analytics, DeFi planning, and smart contract lifecycle on Mantle"
     },
     {
+      "name": "massive-options-data",
+      "path": "massive-options-data/SKILL.md",
+      "version": "1.0.0",
+      "description": "Massive (formerly Polygon) US options market data \u2014 option chain snapshots, contract snapshots, trades, quotes, aggregates, contract reference, greeks/IV/OI passthrough"
+    },
+    {
       "name": "okx",
       "path": "okx/SKILL.md",
       "version": "1.0.1",
@@ -233,7 +233,7 @@
       "name": "okx-account",
       "path": "okx-account/SKILL.md",
       "version": "2.0.0",
-      "description": "Read-only OKX account tracking (unified account) — balances, positions, orders, fills, deposits/withdrawals, bills, and risk scenarios."
+      "description": "Read-only OKX account tracking (unified account) \u2014 balances, positions, orders, fills, deposits/withdrawals, bills, and risk scenarios."
     },
     {
       "name": "openocean",
@@ -248,6 +248,12 @@
       "description": "Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart"
     },
     {
+      "name": "PANews",
+      "path": "PANews/SKILL.md",
+      "version": "1.0.0",
+      "description": "PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards"
+    },
+    {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "5.0.0",
@@ -256,7 +262,7 @@
     {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
-      "version": "1.5.4",
+      "version": "1.4.1",
       "description": "End-to-end project engineering \\u2014 from understanding user intent\\"
     },
     {
@@ -269,7 +275,7 @@
       "name": "sc-vpn",
       "path": "sc-vpn/SKILL.md",
       "version": "1.0.1",
-      "description": "Route outbound HTTP traffic through SC-VPN Gateway for geo-restricted access. Use when a script or request is blocked by region restrictions and needs to appear from a specific country. Do NOT set global proxy — use per-request proxy only."
+      "description": "Route outbound HTTP traffic through SC-VPN Gateway for geo-restricted access. Use when a script or request is blocked by region restrictions and needs to appear from a specific country. Do NOT set global proxy \u2014 use per-request proxy only."
     },
     {
       "name": "skill-creator",
@@ -286,8 +292,8 @@
     {
       "name": "slide-creator",
       "path": "slide-creator/SKILL.md",
-      "version": "2.1.6",
-      "description": "Create presentation slide decks as HTML and auto-export to 16:9 PDF. Use when the user asks to make a PPT, slide deck, presentation, or pitch deck. Final output is a PDF file — not PowerPoint format."
+      "version": "2.1.4",
+      "description": "Create presentation slide decks as HTML and auto-export to 16:9 PDF. Use when the user asks to make a PPT, slide deck, presentation, or pitch deck. Final output is a PDF file \u2014 not PowerPoint format."
     },
     {
       "name": "solana-dev",
@@ -311,7 +317,7 @@
       "name": "tg-bot-binding",
       "path": "tg-bot-binding/SKILL.md",
       "version": "1.0.0",
-      "description": "Guide users through the Telegram Bot binding process — creating a bot, adding it to Starchild, verifying ownership, and troubleshooting common issues."
+      "description": "Guide users through the Telegram Bot binding process \u2014 creating a bot, adding it to Starchild, verifying ownership, and troubleshooting common issues."
     },
     {
       "name": "tokenomist",
@@ -323,7 +329,7 @@
       "name": "trading-strategy",
       "path": "trading-strategy/SKILL.md",
       "version": "1.0.0",
-      "description": "Thinking partner for developing trading theses — from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, \"what do you think about\", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill)."
+      "description": "Thinking partner for developing trading theses \u2014 from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, \"what do you think about\", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill)."
     },
     {
       "name": "transparent-proxy-maintenance",
@@ -335,19 +341,19 @@
       "name": "truenorth",
       "path": "truenorth/SKILL.md",
       "version": "1.0.1",
-      "description": "TrueNorth crypto market intelligence via the public API: technical analysis (RSI, MACD, Bollinger Bands), derivatives (funding rates, open interest), options intelligence (max pain, GEX, IV), DeFi (TVL, fees), token performance, events, liquidation risk, token unlocks. Equity, commodity, macro, meme, KOL, Polymarket, and sentiment capabilities are gated to the TrueNorth web app — the CLI advertises them and redirects users to subscribe."
+      "description": "TrueNorth crypto market intelligence via the public API: technical analysis (RSI, MACD, Bollinger Bands), derivatives (funding rates, open interest), options intelligence (max pain, GEX, IV), DeFi (TVL, fees), token performance, events, liquidation risk, token unlocks. Equity, commodity, macro, meme, KOL, Polymarket, and sentiment capabilities are gated to the TrueNorth web app \u2014 the CLI advertises them and redirects users to subscribe."
     },
     {
       "name": "twelvedata",
       "path": "twelvedata/SKILL.md",
       "version": "2.0.2",
-      "description": "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
+      "description": "Stocks, forex, and commodities price data \u2014 real-time quotes, historical time series, and reference data"
     },
     {
       "name": "twitter",
       "path": "twitter/SKILL.md",
       "version": "2.0.1",
-      "description": "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
+      "description": "Twitter/X (x.com) data lookup \u2014 fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
     },
     {
       "name": "user-onboarding",
@@ -359,7 +365,7 @@
       "name": "venice",
       "path": "venice/SKILL.md",
       "version": "1.0.5",
-      "description": "Venice AI — privacy-first uncensored AI platform. Image generation/edit/upscale, TTS, speech-to-text, embeddings, video generation/transcription, model catalog, character personas, and the BYOK onboarding guide for Venice chat. Use when the user mentions Venice, wants uncensored / private / TEE / E2EE inference, needs Venice-specific features (venice_parameters, character_slug, web_search citations), or wants to register Venice as a chat model."
+      "description": "Venice AI \u2014 privacy-first uncensored AI platform. Image generation/edit/upscale, TTS, speech-to-text, embeddings, video generation/transcription, model catalog, character personas, and the BYOK onboarding guide for Venice chat. Use when the user mentions Venice, wants uncensored / private / TEE / E2EE inference, needs Venice-specific features (venice_parameters, character_slug, web_search citations), or wants to register Venice as a chat model."
     },
     {
       "name": "video",
@@ -371,31 +377,31 @@
       "name": "wallet",
       "path": "wallet/SKILL.md",
       "version": "3.5.0",
-      "description": "Multi-chain wallet — balances, transfers, signing, policy (EVM multi-chain + Solana)"
+      "description": "Multi-chain wallet \u2014 balances, transfers, signing, policy (EVM multi-chain + Solana)"
     },
     {
       "name": "web-crawler",
       "path": "web-crawler/SKILL.md",
-      "version": "2.2.0",
-      "description": "All-in-one web scraping and social media data extraction. Default skill for YouTube, TikTok, Instagram, Twitter/X, LinkedIn, Facebook, Reddit, Threads, Bluesky and 12+ other social platforms. Also the fallback when web_fetch cannot read a page (JS-heavy, paywalled, bot-detected). Covers transcripts, videos, posts, comments, profiles, followers, channels, shorts, playlists, search, ads, hashtags, trending. Do NOT use yt-dlp, youtube-dl, pytube, snscrape, or install other YouTube/TikTok/Instagram skills — they are not installed and this skill already covers them."
+      "version": "2.0.0",
+      "description": "All-in-one web scraping and social media data extraction. Use when normal web_fetch cannot read a page, when the user needs YouTube content, or when the user wants to scrape/fetch/extract data from social media platforms (TikTok, Instagram, YouTube, Twitter/X, LinkedIn, Facebook, Reddit, Threads, Bluesky, Pinterest, Snapchat, Twitch, Kick, Truth Social, TikTok Shop, Google, and more). Covers profiles, posts, videos, reels, comments, transcripts, followers, ads, hashtags, trending content, and engagement metrics."
     },
     {
       "name": "wechat-binding",
       "path": "wechat-binding/SKILL.md",
       "version": "1.0.0",
-      "description": "Bind / unbind / reconnect the user's WeChat — QR scan flow + lifecycle"
+      "description": "Bind / unbind / reconnect the user's WeChat \u2014 QR scan flow + lifecycle"
     },
     {
       "name": "where-is-my-ip",
       "path": "where-is-my-ip/SKILL.md",
       "version": "0.1.0",
-      "description": "Look up the current outbound exit IP and its geolocation (country, city, ISP, ASN). Compare what you look like with the proxy on vs. off — useful for confirming a residential proxy is actually routing through the country you think it is. Use when the user asks 'what's my IP', 'where am I appearing from', 'is my proxy working', 'check my exit', or wants to verify a byo-proxy binding before scraping."
+      "description": "Look up the current outbound exit IP and its geolocation (country, city, ISP, ASN). Compare what you look like with the proxy on vs. off \u2014 useful for confirming a residential proxy is actually routing through the country you think it is. Use when the user asks 'what's my IP', 'where am I appearing from', 'is my proxy working', 'check my exit', or wants to verify a byo-proxy binding before scraping."
     },
     {
       "name": "woofi-swap",
       "path": "woofi-swap/SKILL.md",
       "version": "8.2.0",
-      "description": "Swap any token at the best price — single-chain or cross-chain — with one API call. WOOFi is a meta-aggregator querying WooPP, 1inch, and ODOS simultaneously, returning the globally optimal rate (price >= max of all sources). Cross-chain swaps via Stargate bridge. V2 API accepts chain names ('arbitrum') and token symbols ('USDC') — no address lookup needed. Supports all ERC-20 tokens and native gas tokens on 14 EVM chains."
+      "description": "Swap any token at the best price \u2014 single-chain or cross-chain \u2014 with one API call. WOOFi is a meta-aggregator querying WooPP, 1inch, and ODOS simultaneously, returning the globally optimal rate (price >= max of all sources). Cross-chain swaps via Stargate bridge. V2 API accepts chain names ('arbitrum') and token symbols ('USDC') \u2014 no address lookup needed. Supports all ERC-20 tokens and native gas tokens on 14 EVM chains."
     },
     {
       "name": "workroom",
@@ -407,7 +413,7 @@
       "name": "wps",
       "path": "wps/SKILL.md",
       "version": "2.4.11",
-      "description": "操作金山文档（WPS 云文档 / Kdocs / 365.kdocs.cn / www.kdocs.cn）云文档的官方 Skill。核心能力覆盖云端新建、读取、编辑、搜索、分享、整理在线文档（智能文档、Word、Excel、PDF、PPT、演示文稿、智能表格、多维表格）及个人知识库。当用户的任务涉及云文档操作时使用，包括但不限于：写周报/日报/工作汇报、处理合同/发票、创建报名表/登记表、网页剪藏、接龙转表格、信息收集、文档总结与内容生成、改写仿写、翻译、AI PPT生成、PDF拆分导出、标签分类归档、收藏管理、碎片笔记整理、表格美化、回收站还原、知识库管理。"
+      "description": "\u64cd\u4f5c\u91d1\u5c71\u6587\u6863\uff08WPS \u4e91\u6587\u6863 / Kdocs / 365.kdocs.cn / www.kdocs.cn\uff09\u4e91\u6587\u6863\u7684\u5b98\u65b9 Skill\u3002\u6838\u5fc3\u80fd\u529b\u8986\u76d6\u4e91\u7aef\u65b0\u5efa\u3001\u8bfb\u53d6\u3001\u7f16\u8f91\u3001\u641c\u7d22\u3001\u5206\u4eab\u3001\u6574\u7406\u5728\u7ebf\u6587\u6863\uff08\u667a\u80fd\u6587\u6863\u3001Word\u3001Excel\u3001PDF\u3001PPT\u3001\u6f14\u793a\u6587\u7a3f\u3001\u667a\u80fd\u8868\u683c\u3001\u591a\u7ef4\u8868\u683c\uff09\u53ca\u4e2a\u4eba\u77e5\u8bc6\u5e93\u3002\u5f53\u7528\u6237\u7684\u4efb\u52a1\u6d89\u53ca\u4e91\u6587\u6863\u64cd\u4f5c\u65f6\u4f7f\u7528\uff0c\u5305\u62ec\u4f46\u4e0d\u9650\u4e8e\uff1a\u5199\u5468\u62a5/\u65e5\u62a5/\u5de5\u4f5c\u6c47\u62a5\u3001\u5904\u7406\u5408\u540c/\u53d1\u7968\u3001\u521b\u5efa\u62a5\u540d\u8868/\u767b\u8bb0\u8868\u3001\u7f51\u9875\u526a\u85cf\u3001\u63a5\u9f99\u8f6c\u8868\u683c\u3001\u4fe1\u606f\u6536\u96c6\u3001\u6587\u6863\u603b\u7ed3\u4e0e\u5185\u5bb9\u751f\u6210\u3001\u6539\u5199\u4eff\u5199\u3001\u7ffb\u8bd1\u3001AI PPT\u751f\u6210\u3001PDF\u62c6\u5206\u5bfc\u51fa\u3001\u6807\u7b7e\u5206\u7c7b\u5f52\u6863\u3001\u6536\u85cf\u7ba1\u7406\u3001\u788e\u7247\u7b14\u8bb0\u6574\u7406\u3001\u8868\u683c\u7f8e\u5316\u3001\u56de\u6536\u7ad9\u8fd8\u539f\u3001\u77e5\u8bc6\u5e93\u7ba1\u7406\u3002"
     }
   ]
 }

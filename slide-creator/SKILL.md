@@ -1,6 +1,6 @@
 ---
 name: slide-creator
-version: 2.1.5
+version: 2.1.6
 description: "Create presentation slide decks as HTML and auto-export to 16:9 PDF. Use when the user asks to make a PPT, slide deck, presentation, or pitch deck. Final output is a PDF file — not PowerPoint format."
 
 metadata:

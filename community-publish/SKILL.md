@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.13.1
+version: 0.14.0
 description: Share or open-source any project the user has built — a running preview/service, a project directory, a dashboard, or scripts. Use whenever the user wants to publish, share, make public, list, distribute, deploy publicly, or open-source something. Three independent actions — publish_preview (allocate a public URL for a running service), list_in_dashboard (show it on the public Project Dashboard for discovery), open_source (push project source to the community GitHub repo). Do NOT search the filesystem for publish-related code or write custom deploy/upload scripts — this skill is the single entry point.
 delivery: script
 metadata:

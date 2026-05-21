@@ -1,7 +1,10 @@
 ---
 name: sc-vpn
-version: 1.0.1
-description: Route outbound HTTP traffic through SC-VPN Gateway for geo-restricted access. Use when a script or request is blocked by region restrictions and needs to appear from a specific country. Do NOT set global proxy — use per-request proxy only.
+version: 1.0.2
+description: |
+  Route outbound HTTP through SC-VPN Gateway to bypass region restrictions.
+
+  Use when a script hits a geo block and needs to appear from a specific country (e.g. Binance 451, US-only news site, request as JP, KR exit IP).
 keywords: vpn, proxy, geo, region, ip, country, blocked, restricted, geo-restricted
 triggers:
   - vpn
@@ -15,6 +18,7 @@ triggers:
   - route through
   - geo blocked
   - region restricted
+
 ---
 
 # SC-VPN Gateway

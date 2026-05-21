@@ -1,7 +1,10 @@
 ---
 name: hyperliquid
-version: 1.4.0
-description: Trade perpetual futures and spot on Hyperliquid DEX
+version: 1.4.1
+description: |
+  Trade perp futures, spot, and RWA on Hyperliquid DEX with up to asset max leverage.
+
+  Use when placing perp or spot orders, setting TP/SL, or moving funds on Hyperliquid (e.g. long BTC 5x, sell ETH, deposit USDC, set stop).
 delivery: script
 tools:
   - hl_account
@@ -30,6 +33,7 @@ metadata:
       env: [WALLET_SERVICE_URL]
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Hyperliquid Trading

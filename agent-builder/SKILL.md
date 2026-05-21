@@ -1,7 +1,10 @@
 ---
 name: agent-builder
-version: 2.0.0
-description: "Create and manage focused micro-agents that do 1-2 things very well. Use when the user wants to build, run, or manage specialized agents with names, tasks, due dates, and schedules."
+version: 2.0.1
+description: |
+  Build focused micro-agents with names, tasks, schedules, and team coordination.
+
+  Use when spinning up specialized sub-agents that run on a schedule (e.g. create a market-scout, set up a research team, daemon that polls inbox).
 
 tools:
   - agent_build
@@ -20,6 +23,7 @@ metadata:
       bins: [python3]
 
 user-invocable: true
+
 ---
 
 # Agent Builder

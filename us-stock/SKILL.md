@@ -1,7 +1,10 @@
 ---
 name: us-stock
-version: 1.0.0
-description: "US equities data — realtime quotes, market cap & shares outstanding, float / insider / institutional % held, top institutional + mutual fund holders, insider transactions (Form 4), full financial statements (income / balance / cashflow, annual + quarterly), earnings calendar, dividends, splits, news, options expirations, analyst ratings. Wraps the existing (paid) twelvedata skill for prices/K-line and yfinance for fundamentals. Use for ANY US ticker (AAPL, MSFT, NVDA, BRK.B, ...) — TwelveData alone does not return shares outstanding / holders / financials / insiders, this skill is the source of truth."
+version: 1.0.1
+description: |
+  US stock fundamentals: financials, holders, insiders, earnings, dividends, splits.
+
+  Use for any US ticker beyond price (e.g. AAPL financials, NVDA top holders, MSFT insider trades, TSLA earnings calendar).
 metadata:
   starchild:
     emoji: "🇺🇸"
@@ -13,6 +16,7 @@ metadata:
         package: yfinance
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 # 🇺🇸 us-stock — US Equities Data

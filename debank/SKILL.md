@@ -1,8 +1,10 @@
 ---
 name: debank
-version: 2.0.2
-description: DeBank blockchain data API - user portfolios, token balances, transaction
-  history, and DeFi protocol positions
+version: 2.0.3
+description: |
+  Multi-chain wallet portfolios: token balances, tx history, DeFi positions, NFTs.
+
+  Use when inspecting any EVM address (e.g. show vitalik.eth balances, decode this tx, what DeFi protocols does 0x... use).
 delivery: script
 metadata:
   starchild:
@@ -13,6 +15,7 @@ metadata:
       - DEBANK_API_KEY
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 ## Script Usage

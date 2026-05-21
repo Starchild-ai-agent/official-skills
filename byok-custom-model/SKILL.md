@@ -1,11 +1,15 @@
 ---
 name: byok-custom-model
-version: 2.3.0
-description: "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, xAI Grok, Qwen, DeepSeek, NEAR AI, Venice, etc.) with your own API key"
+version: 2.3.1
+description: |
+  Register a custom LLM endpoint with your own API key for chat in Starchild.
+
+  Use when adding a personal Anthropic, OpenAI, Grok, Qwen, DeepSeek, NEAR AI, or Venice key as a chat model (e.g. add my Claude key, register DeepSeek).
 author: starchild
 delivery: script
 protected: true
 tags: [byok, custom-model, llm, openrouter, anthropic, openai, xai, grok, deepseek, qwen, kimi, mimo, gemini, venice, near-ai, tee, confidential-inference]
+
 ---
 
 # 🔑 BYOK — Custom LLM Models

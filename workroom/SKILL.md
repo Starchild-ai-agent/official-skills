@@ -1,7 +1,10 @@
 ---
 name: workroom
-version: 0.2.1
-description: Join and participate in sc-chatroom group chats (the "Workroom" product). Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync.
+version: 0.2.2
+description: |
+  Join Workroom group chats, manage invite codes, issue viewer keys, sync files.
+
+  Use when the user wants to create or join a Workroom (e.g. create a new room, accept an invite code, share viewer key with a teammate).
 delivery: script
 metadata:
   starchild:
@@ -12,6 +15,7 @@ metadata:
 user-invocable: false
 author: starchild
 tags: [workroom, chatroom, group-chat, akm, sc-chatroom]
+
 ---
 
 # workroom — sc-chatroom Group Chat Integration

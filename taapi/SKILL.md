@@ -1,7 +1,10 @@
 ---
 name: taapi
-version: 2.0.2
-description: Technical analysis indicators - RSI, MACD, Bollinger Bands, and 200+ indicators
+version: 2.0.3
+description: |
+  Technical analysis indicators: RSI, MACD, Bollinger Bands, ADX, and 200+ more.
+
+  Use when computing TA signals or scanning support and resistance on a price series (e.g. BTC RSI, ETH MACD cross, 4h Bollinger bands).
 delivery: script
 metadata:
   starchild:
@@ -13,6 +16,7 @@ metadata:
 
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 ## Script Usage

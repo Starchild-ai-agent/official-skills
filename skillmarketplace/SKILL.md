@@ -1,7 +1,10 @@
 ---
 name: skillmarketplace
-version: 4.0.0
-description: "Search, install, and publish skills. Use search_skills tool for discovery + auto-install. Manual publish via gateway."
+version: 4.0.1
+description: |
+  Search, install, and publish skills across official, community, and global registries.
+
+  Use when finding or sharing skills (e.g. install a "funding rate" skill, list installed skills, publish my custom skill to the registry).
 
 metadata:
   starchild:
@@ -9,6 +12,7 @@ metadata:
     skillKey: skillmarketplace
 
 user-invocable: true
+
 ---
 
 # Skill Market

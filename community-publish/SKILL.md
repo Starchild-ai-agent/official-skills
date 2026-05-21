@@ -1,7 +1,10 @@
 ---
 name: community-publish
-version: 0.14.0
-description: Share or open-source any project the user has built — a running preview/service, a project directory, a dashboard, or scripts. Use whenever the user wants to publish, share, make public, list, distribute, deploy publicly, or open-source something. Three independent actions — publish_preview (allocate a public URL for a running service), list_in_dashboard (show it on the public Project Dashboard for discovery), open_source (push project source to the community GitHub repo). Do NOT search the filesystem for publish-related code or write custom deploy/upload scripts — this skill is the single entry point.
+version: 0.14.1
+description: |
+  Publish previews, list on dashboard, open-source projects to community GitHub.
+
+  Use when the user wants to share, publish, list, or open-source what they built (e.g. make this dashboard public, share my project, push to GitHub).
 delivery: script
 metadata:
   starchild:
@@ -9,6 +12,7 @@ metadata:
     skillKey: community-publish
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 ## Three independent actions

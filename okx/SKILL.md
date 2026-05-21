@@ -1,7 +1,10 @@
 ---
 name: okx
-version: 1.0.1
-description: OKX OnChainOS - Complete on-chain operations suite with 17 specialized skills for trading, analytics, security, DeFi, bridging, and wallet management across 20+ blockchains
+version: 1.0.2
+description: |
+  OKX OnChainOS: on-chain trading, analytics, security, DeFi, bridging across 20+ chains.
+
+  Use when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio).
 metadata:
   starchild:
     emoji: "⛓️"
@@ -12,6 +15,7 @@ metadata:
         - node
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # OKX OnChainOS Skills Directory

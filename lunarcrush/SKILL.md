@@ -1,7 +1,10 @@
 ---
 name: lunarcrush
-version: 2.0.2
-description: Social intelligence and sentiment data - Galaxy Score, AltRank, social volume, influencer activity
+version: 2.0.3
+description: |
+  Crypto social sentiment, news, influencer tracking, and topic intelligence.
+
+  Use when gauging crowd mood, tracking KOL posts, or finding news on a coin (e.g. SOL sentiment, who's posting about $PEPE, AI category trend).
 delivery: script
 metadata:
   starchild:
@@ -13,6 +16,7 @@ metadata:
 
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 ## Script Usage

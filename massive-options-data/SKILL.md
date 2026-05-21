@@ -1,7 +1,10 @@
 ---
 name: massive-options-data
-version: 1.3.0
-description: "Massive (formerly Polygon) US options market data — option chain snapshots, contract snapshots, trades, quotes, aggregates, contract reference, greeks/IV/OI passthrough"
+version: 1.3.1
+description: |
+  US options data: chain snapshots, contracts, trades, quotes, greeks, IV, OI.
+
+  Use when pulling option chains or contract metrics for analysis (e.g. AAPL Jan calls, SPY chain, NVDA IV, weekly puts).
 delivery: script
 metadata:
   starchild:
@@ -13,6 +16,7 @@ metadata:
 
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 # Massive Options Data

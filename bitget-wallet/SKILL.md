@@ -1,7 +1,10 @@
 ---
 name: bitget-wallet
-version: 1.0.0
-description: "Interact with Bitget Wallet API for crypto market data, token info, swap quotes, RWA (real-world asset) stock trading, and security audits. Use when the user asks about wallet, token prices, market data, swap/trading quotes, RWA stock discovery and trading, token security checks, K-line charts, or token rankings on supported chains (ETH, SOL, BSC, Base, etc.)."
+version: 1.0.1
+description: |
+  Bitget Wallet: token prices, swap quotes, RWA stock trades, security audits.
+
+  Use when researching tokens or trading via Bitget on supported chains (e.g. honeypot check, USDT→BNB swap quote, RWA TSLA order, K-line on Base).
 metadata:
   starchild:
     emoji: "👛"
@@ -9,6 +12,7 @@ metadata:
     requires:
       env: []
 user-invocable: false
+
 ---
 
 # Bitget Wallet Skill

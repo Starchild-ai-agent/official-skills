@@ -1,9 +1,13 @@
 ---
 name: wechat-binding
-version: 1.0.0
-description: "Bind / unbind / reconnect the user's WeChat — QR scan flow + lifecycle"
+version: 1.0.1
+description: |
+  WeChat binding: QR scan, bind, unbind, reconnect, status check.
+
+  Use when setting up or repairing WeChat delivery (e.g. connect WeChat, scan QR, why isn't WeChat pushing, disconnect WeChat).
 author: starchild
 tags: [wechat, binding, connection, qrcode, ilink]
+
 ---
 
 # 📱 WeChat Binding

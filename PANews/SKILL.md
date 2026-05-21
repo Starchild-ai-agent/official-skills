@@ -1,7 +1,10 @@
 ---
 name: PANews
-version: 1.0.0
-description: PANews cryptocurrency and blockchain news - today's headlines, trending rankings, article search, columns, events, and Polymarket smart money leaderboards
+version: 1.0.1
+description: |
+  PANews crypto news: headlines, articles, columns, events, smart money boards.
+
+  Use when reading PANews coverage or smart-money data (e.g. today's headlines, search "restaking", read article 12345, latest Polymarket leaderboard).
 author: Seven Du
 tags: [news, crypto, blockchain, panews, polymarket, smart-money, leaderboard]
 metadata:
@@ -14,6 +17,7 @@ metadata:
 
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 # PANews

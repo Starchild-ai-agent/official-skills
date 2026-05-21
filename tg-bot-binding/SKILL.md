@@ -1,7 +1,10 @@
 ---
 name: tg-bot-binding
-version: 1.0.0
-description: "Guide users through the Telegram Bot binding process — creating a bot, adding it to Starchild, verifying ownership, and troubleshooting common issues."
+version: 1.0.1
+description: |
+  Telegram bot binding: create the bot, connect to Starchild, verify, troubleshoot.
+
+  Use when setting up Telegram delivery (e.g. add my TG bot, bot binding code, fix "telegram not pushing", whitelist a TG username).
 
 metadata:
   starchild:
@@ -10,6 +13,7 @@ metadata:
 
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Telegram Bot Binding Guide

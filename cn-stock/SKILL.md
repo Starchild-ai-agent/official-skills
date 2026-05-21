@@ -1,7 +1,10 @@
 ---
 name: cn-stock
-version: 1.3.0
-description: "China A-share data — Tushare-via-sc-proxy integrated skill for quotes, market cap, financials, shareholders, fund flow, K-line, concept boards, dragon-tiger list, and market movers. Use for ANY 沪深北 A股 stock data request (e.g. 603186 华正新材, 300476 胜宏科技, 000001 平安银行). News is intentionally NOT covered here — use normal web search."
+version: 1.3.1
+description: |
+  A股数据：行情、财务、股东、资金流、K线、概念板块、龙虎榜、市场异动。
+
+  当用户查询沪深北 A 股时使用（例如：603186 华正新材、300476 胜宏科技、000001 平安银行、龙虎榜、北向资金）。
 metadata:
   starchild:
     emoji: "🇨🇳"
@@ -13,6 +16,7 @@ metadata:
         package: pandas
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 # 🇨🇳 cn-stock — China A-Share Data (Tushare via sc-proxy)

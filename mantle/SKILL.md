@@ -1,7 +1,10 @@
 ---
 name: mantle
-version: 1.0.0
-description: Mantle Network skills suite - 9 specialized skills for onboarding, registry safety, analytics, DeFi planning, and smart contract lifecycle on Mantle
+version: 1.0.1
+description: |
+  Mantle Network hub: chain primer, registry checks, analytics, DeFi planning, contracts.
+
+  Use when working on Mantle (e.g. verify an address, plan a DeFi route, debug a Mantle RPC error, design a contract for Mantle gas).
 metadata:
   starchild:
     emoji: "🔷"
@@ -12,6 +15,7 @@ metadata:
         - node
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Skills

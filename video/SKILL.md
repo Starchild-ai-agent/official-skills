@@ -1,7 +1,10 @@
 ---
 name: video
-version: 3.3.0
-description: "End-to-end video generation via fal.ai through Starchild paid proxy. Covers text-to-video, image-to-video, video-to-video, model selection, billing, polling, and serving local reference assets via a public preview."
+version: 3.3.1
+description: |
+  AI video generation: text-to-video, image-to-video, video-to-video, model selection.
+
+  Use when generating a short video clip from a prompt or reference (e.g. 5s clip of a cat in rain, animate this photo, restyle this video).
 metadata:
   starchild:
     emoji: "🎬"
@@ -10,6 +13,7 @@ metadata:
       env: [FAL_KEY]
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # video

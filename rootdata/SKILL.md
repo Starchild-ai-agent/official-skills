@@ -1,7 +1,10 @@
 ---
 name: rootdata
-version: 1.1.0
-description: RootData Web3 intelligence API for crypto projects, investors, funding rounds, trending rankings, and personnel job changes. Use for project/investor research and dealflow tracking.
+version: 1.1.1
+description: |
+  Web3 project intel: investors, funding rounds, rankings, personnel moves.
+
+  Use when researching a crypto project or dealflow (e.g. who funded Berachain, latest seed rounds, recent VC team moves).
 delivery: script
 metadata:
   starchild:
@@ -12,6 +15,7 @@ metadata:
         - ROOTDATA_SKILL_KEY
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 # RootData

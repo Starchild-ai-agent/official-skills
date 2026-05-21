@@ -1,7 +1,10 @@
 ---
 name: ethena
-version: 1.2.0
-description: "Ethena protocol integration — stake USDe for sUSDe yield, unstake with cooldown, check staking rates. Use when user mentions Ethena, USDe, sUSDe, or wants stablecoin yield."
+version: 1.2.1
+description: |
+  Ethena staking: stake USDe for sUSDe yield, unstake with cooldown, view rates.
+
+  Use when farming stablecoin yield via Ethena (e.g. stake 1000 USDe, check sUSDe APY, unstake my position, current cooldown).
 
 metadata:
   starchild:
@@ -9,6 +12,7 @@ metadata:
     skillKey: ethena
 
 user-invocable: true
+
 ---
 
 ## ⛔ HARD RULES (read first, always)

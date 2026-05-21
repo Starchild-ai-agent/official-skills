@@ -1,11 +1,15 @@
 ---
 name: chatgpt-codex-onboarding
-version: 2.0.2
-description: "Connect ChatGPT / Codex subscription via OAuth device-code login (NOT BYOK)"
+version: 2.0.3
+description: |
+  Connect a ChatGPT or Codex subscription via OAuth device-code login.
+
+  Use when the user wants to sign in with their ChatGPT Plus, Pro, or Team account (e.g. "use my Codex subscription", "log in with ChatGPT").
 author: starchild
 delivery: script
 protected: true
 tags: [openai, oauth, chatgpt, codex, gpt-5, login, subscription]
+
 ---
 
 # 🔐 ChatGPT / Codex OAuth Onboarding

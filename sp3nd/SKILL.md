@@ -1,7 +1,10 @@
 ---
 name: sp3nd
-version: 1.0.0
-description: Autonomously buy Amazon/eBay products with USDC on Solana via SP3ND x402 payments. Covers registration, cart creation, order placement, transaction construction, payment, and order confirmation.
+version: 1.0.1
+description: |
+  Buy Amazon and eBay products with USDC on Solana via SP3ND x402 payments.
+
+  Use when paying for real-world goods with crypto (e.g. order this Amazon listing, buy eBay item, ship to Tokyo with USDC).
 tags: [solana, usdc, amazon, shopping, x402, payments]
 metadata:
   starchild:
@@ -9,6 +12,7 @@ metadata:
     skillKey: sp3nd
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 # SP3ND — Autonomous Amazon/eBay Shopping with USDC on Solana

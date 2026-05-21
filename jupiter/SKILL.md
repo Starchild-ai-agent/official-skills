@@ -1,7 +1,10 @@
 ---
 name: jupiter
-version: 1.2.0
-description: "Jupiter DEX aggregator on Solana — token swaps, limit orders, DCA. Use when user mentions Jupiter, Solana swap, SOL/USDC swap, or Solana DEX aggregator."
+version: 1.2.1
+description: |
+  Solana DEX aggregator: token swaps, limit orders, dollar-cost averaging.
+
+  Use when swapping SPL tokens, setting limit orders, or scheduling DCA on Solana (e.g. SOL→USDC swap, limit buy JUP, weekly DCA into BONK).
 
 metadata:
   starchild:
@@ -9,6 +12,7 @@ metadata:
     skillKey: jupiter
 
 user-invocable: true
+
 ---
 
 # Jupiter — Solana DEX Aggregator

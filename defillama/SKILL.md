@@ -1,8 +1,12 @@
 ---
 name: defillama
-description: DefiLlama API integration for DeFi analytics - TVL, stablecoin yields, vault/APY ranking, protocol revenue, fees, DEX volume, chain flows, bridges, and treasury data. Best for DeFi research, stablecoin farming, yield strategy screening, and protocol/chain market intelligence.
-version: 2.2.2
+description: |
+  DeFi analytics: protocol TVL, stablecoin yields, fees, DEX volume, bridges, treasuries.
+
+  Use when screening yield strategies, comparing protocols, or tracking chain flows (e.g. best USDC yield, Uniswap fees, Arbitrum TVL).
+version: 2.2.3
 delivery: script
+
 ---
 
 

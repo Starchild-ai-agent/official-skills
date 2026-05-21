@@ -1,14 +1,16 @@
 ---
 name: skill-creator
-version: 1.2.0
-description: Create and scaffold new skills with proper frontmatter, directory structure,
-  and validation. Use when the user asks to build a new capability, integrate a new
-  API, or extend the system with a repeatable workflow.
+version: 1.2.1
+description: |
+  Scaffold new skills with valid frontmatter, directory layout, and a starter SKILL.md.
+
+  Use when building a new reusable workflow or wrapping a new API (e.g. create a kalshi skill, scaffold an API helper, start a charting skill).
 metadata:
   starchild:
     emoji: "\U0001F6E0\uFE0F"
     skillKey: skill-creator
 user-invocable: true
+
 ---
 
 ## Core Principles

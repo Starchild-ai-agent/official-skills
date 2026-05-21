@@ -1,7 +1,10 @@
 ---
 name: cli-bridge
-version: 0.1.4
-description: Mint, list, and revoke short-code bundles that authorize the user's `starchild` CLI to talk to this agent's clawd via sc-chatroom's 1:1 SSE bridge. The bundle carries an opaque sc_… code; the underlying AKM key (chat:bridge:cli scope) and Fly machine id stay server-side.
+version: 0.1.5
+description: |
+  Manage short-code bundles that authorize the local starchild CLI to talk to this agent.
+
+  Use when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session).
 delivery: script
 metadata:
   starchild:
@@ -12,6 +15,7 @@ metadata:
 user-invocable: false
 author: starchild
 tags: [cli, akm, bridge, sc-chatroom, short-code]
+
 ---
 
 # cli-bridge — issue CLI bundles for the user's own `starchild` binary

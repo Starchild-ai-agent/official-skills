@@ -1,16 +1,16 @@
 ---
 name: byok-custom-model
-version: 2.1.0
-description: "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, xAI Grok, Qwen, DeepSeek, Venice, etc.) with your own API key"
+version: 2.3.0
+description: "BYOK — register a custom LLM endpoint (Anthropic, OpenAI, xAI Grok, Qwen, DeepSeek, NEAR AI, Venice, etc.) with your own API key"
 author: starchild
 delivery: script
 protected: true
-tags: [byok, custom-model, llm, openrouter, anthropic, openai, xai, grok, deepseek, qwen, kimi, mimo, gemini, venice]
+tags: [byok, custom-model, llm, openrouter, anthropic, openai, xai, grok, deepseek, qwen, kimi, mimo, gemini, venice, near-ai, tee, confidential-inference]
 ---
 
 # 🔑 BYOK — Custom LLM Models
 
-Register a custom LLM endpoint to the model selector. Bypasses the platform proxy — the user supplies their own API key, the agent hits the vendor / aggregator directly (OpenRouter, DashScope, Anthropic native, self-hosted, etc.).
+Register a custom LLM endpoint to the model selector. Bypasses the platform proxy — the user supplies their own API key, the agent hits the vendor / aggregator directly (OpenRouter, DashScope, Anthropic native, NEAR AI Cloud TEE, self-hosted, etc.).
 
 This is a **script-mode skill** — no tools registered. Read this file, then call the exports from a `bash` block.
 
@@ -30,9 +30,13 @@ When a user wants to add a custom model, **the first move is NOT to ask for `bas
 4. Call `add(...)` (or `add_template(vendor=...)` for a curated vendor) — the entry is written to `custom_models.yaml`.
 5. **If the result contains `need_env_input`, immediately call the `request_env_input` tool** with `env_vars` and `reason` from that payload. This pops the secure-input UI; the user enters the key; it lands in `workspace/.env`. **This step is mandatory — the script cannot pop the UI itself.**
 
-For the 9 curated vendors below, skip steps 1-3 and go straight to `add_template(vendor=...)` — base_url / wire / thinking / capabilities are all pre-filled. Step 5 still applies.
+For the 11 curated vendors below, skip steps 1-3 and go straight to `add_template(vendor=...)` — base_url / wire / thinking / capabilities are all pre-filled. Step 5 still applies.
 
-Curated vendors: `anthropic`, `openai`, `qwen`, `deepseek`, `kimi`, `mimo`, `gemini`, `gemma`, `venice`.
+Curated vendors: `anthropic`, `openai`, `xai`, `qwen`, `deepseek`, `kimi`, `mimo`, `gemini`, `gemma`, `venice`, `near-ai`.
+
+**Privacy-first tier:** `near-ai` and `venice` both target privacy-sensitive users, but NEAR AI is the cleaner integration — Venice's TEE story is itself built on top of NEAR AI + Phala, so going direct to NEAR AI yields a shorter trust chain (Intel + NVIDIA silicon + NEAR's reproducible enclave image; no product-layer proxy in between). Curated NEAR model list is **open-weight TEE-protected only** — NEAR's catalog also proxies Claude / GPT-5 / Gemini Pro under "Anonymized, not TEE-protected" mode, which we deliberately exclude since the entire privacy value-prop here is the hardware enclave.
+
+**NEAR AI reasoning protocol:** NEAR uses `chat_template_kwargs` nested under `extra_body` instead of the top-level `reasoning_effort`/`thinking`/`enable_thinking` that other vendors use. The provider handles this automatically via the `nearai_chat_template` thinking_capability rule. Per-model parameter names vary (GLM/Qwen3.5/Qwen3.6 use `enable_thinking`, DeepSeek-V3 uses `thinking`, gpt-oss is always-on). Full spec: [docs.near.ai/cloud/reasoning-models](https://docs.near.ai/cloud/reasoning-models). Default model `Qwen/Qwen3.6-35B-A3B-FP8` works out of the box; `Qwen3.5-122B-A10B` ships with `thinking_mode='disabled'` because its hidden-thinking pattern would otherwise cause `finish=length, content=null` on baseline calls.
 
 ---
 
@@ -47,7 +51,7 @@ from exports import (
     list_vendor_models, add, add_template, remove,
 )
 
-# Enumerate the 9 curated vendor presets
+# Enumerate the 11 curated vendor presets
 print(json.dumps(templates(), indent=2))
 
 # One-click registration for a curated vendor
@@ -62,7 +66,7 @@ EOF
 
 | Function | Required args | Purpose |
 |---|---|---|
-| `templates()` | — | List the 9 curated vendor presets |
+| `templates()` | — | List the 11 curated vendor presets |
 | `list_vendor_models(vendor)` | `vendor` | Live `/models` catalog (only if the template has `model_discovery`) |
 | `add_template(vendor, *, upstream_model=None, name=None)` | `vendor` | One-click registration for a curated vendor (recommended path) |
 | `parse_example(api_example)` | `api_example` | Parse docs API example into a safe draft (non-curated vendors) |
@@ -103,7 +107,7 @@ The popup, the .env write, and the channel-specific UX (web popup / TG card / We
 - **Never re-issue the secure-input popup automatically** if the user hasn't responded — wait.
 - **If `need_env_input` is returned, always call `request_env_input`.** Do not skip, do not ask the user to paste the key, do not retry `add_template` hoping it will pop the UI — it won't.
 - **Never write to `workspace/config/custom_models.yaml` or `workspace/.env` by hand.** Always go through the exports above.
-- The 10 curated vendors **always** use `add_template`. Only use `parse_example` + `add` for self-hosted or rare providers.
+- The 11 curated vendors **always** use `add_template`. Only use `parse_example` + `add` for self-hosted or rare providers.
 
 ---
 

@@ -233,7 +233,8 @@ def validate_open_source(project_dir: str) -> dict[str, Any]:
 
 
 def open_source(project_dir: str, version_bump: str = "patch",
-                message: str = "") -> dict[str, Any]:
+                message: str = "",
+                make_discoverable: bool = True) -> dict[str, Any]:
     """Validate, bump version, and push project source to the community GitHub repo.
 
     Args:
@@ -244,6 +245,16 @@ def open_source(project_dir: str, version_bump: str = "patch",
                  code changes in the session — it becomes the body of the
                  GitHub commit and is what people read when browsing
                  history. If blank, gateway uses a generic template.
+        make_discoverable: if True (default), after pushing the code attempt
+                 to make the paired dashboard listing public. The pairing
+                 slug is `publisher.public_slug` if set in project.yaml,
+                 otherwise `publisher.code_slug`, otherwise `manifest.name`.
+                 If no preview/listing row exists for that slug yet
+                 (pure libraries, pure scripts), the auto-list is silently
+                 skipped — open_source itself still succeeds. Pass
+                 make_discoverable=False to push code without touching
+                 listing visibility (useful when the listing should stay
+                 private for now).
     """
     pd = _abspath(project_dir)
     if not os.path.isdir(pd):
@@ -301,6 +312,56 @@ def open_source(project_dir: str, version_bump: str = "patch",
     # Surface the binding back to the caller so the agent can show what was
     # wired (or what's pending).
     publisher = manifest.get("publisher") or {}
+
+    # Auto-list: "open source" matches the user-intuition default of
+    # "make this fully public". If a paired preview/listing row exists,
+    # flip it to public. If none exists (pure code with no preview),
+    # silently skip — the open_source push itself still succeeds.
+    auto_list_result: dict[str, Any] = {"attempted": False}
+    if make_discoverable:
+        short_slug = (
+            publisher.get("public_slug")
+            or publisher.get("code_slug")
+            or manifest["name"]
+        )
+        full_slug = (
+            short_slug if short_slug.startswith(f"{uid}-") else f"{uid}-{short_slug}"
+        )
+        desc = str(manifest.get("description") or "")[:500]
+        display_name = manifest.get("display_name") or manifest["name"]
+        raw_tags = manifest.get("tags") or []
+        tags = (
+            [str(t)[:20] for t in raw_tags[:5]]
+            if isinstance(raw_tags, list)
+            else None
+        )
+        try:
+            list_res = list_in_dashboard(
+                slug=full_slug,
+                name=display_name,
+                description=desc,
+                tags=tags,
+            )
+        except Exception as e:
+            list_res = {"ok": False, "error": f"auto-list call raised: {e}"}
+
+        auto_list_result["attempted"] = True
+        auto_list_result["slug"] = full_slug
+        if list_res.get("ok"):
+            auto_list_result["listed"] = True
+            auto_list_result["url"] = list_res.get("url")
+        else:
+            err = str(list_res.get("error") or "")
+            # 404 ("No preview found") is the expected "pure code / no
+            # preview" case — not an error, just a no-op.
+            if "No preview found" in err:
+                auto_list_result["listed"] = False
+                auto_list_result["reason"] = "no_preview_for_slug"
+            else:
+                auto_list_result["listed"] = False
+                auto_list_result["reason"] = "list_failed"
+                auto_list_result["error"] = err
+
     return {
         "ok": True,
         "user_id": uid,
@@ -314,6 +375,7 @@ def open_source(project_dir: str, version_bump: str = "patch",
             "code_slug": publisher.get("code_slug") or manifest["name"],
             "public_slug": publisher.get("public_slug"),
         },
+        "auto_list": auto_list_result,
         "hint": _publisher_hint_for_open_source(uid, manifest, publisher),
     }
 

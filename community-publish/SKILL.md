@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.13.1
+version: 0.14.0
 description: Share or open-source any project the user has built — a running preview/service, a project directory, a dashboard, or scripts. Use whenever the user wants to publish, share, make public, list, distribute, deploy publicly, or open-source something. Three independent actions — publish_preview (allocate a public URL for a running service), list_in_dashboard (show it on the public Project Dashboard for discovery), open_source (push project source to the community GitHub repo). Do NOT search the filesystem for publish-related code or write custom deploy/upload scripts — this skill is the single entry point.
 delivery: script
 metadata:
@@ -243,7 +243,7 @@ Returns `{"ok": True, "listing": {...}, "url": "...", "dashboard_url": "..."}`.
 
 ## `open_source()` — push code to GitHub
 
-`open_source(project_dir, version_bump="patch", message="")`
+`open_source(project_dir, version_bump="patch", message="", make_discoverable=True)`
 
 Push project source to `community-projects/projects/{user_id}/{slug}/` on GitHub. Versioning is delegated entirely to git history — there's no `{version}/` snapshot directory and no per-type bucket above the slug. The `type` field inside `project.yaml` stays around as runtime metadata (so forks know whether to schedule, run-once, or expose a service) but no longer affects the storage path.
 
@@ -256,7 +256,11 @@ Push project source to `community-projects/projects/{user_id}/{slug}/` on GitHub
   lines. Don't list every file; describe the user-visible change. If the
   user explicitly said "just publish", use a one-line summary like "Initial
   publish" or "Re-publish without changes".
-- Returns `{"ok": True, "github_url": ..., "version": ..., "publisher": {...}, "hint": "..."}`
+- `make_discoverable` (default `True`): "open source" matches the user-intuition default of "make this fully public". After pushing the code, if a paired preview/listing row exists for the same slug (via `publisher.public_slug` / `publisher.code_slug` / `manifest.name`), it is automatically flipped to public on the Project Dashboard. Pure libraries / pure scripts with no preview row are skipped silently — no side effect. Pass `make_discoverable=False` when the listing should stay private.
+- Returns `{"ok": True, "github_url": ..., "version": ..., "publisher": {...}, "auto_list": {...}, "hint": "..."}`
+  - `auto_list.attempted`: whether the auto-list path was tried (False when `make_discoverable=False`)
+  - `auto_list.listed`: True on success, False otherwise
+  - `auto_list.reason`: `"no_preview_for_slug"` (pure code case — expected) or `"list_failed"` with `error` field
 
 **Commit message style** — write like a normal git commit body:
 

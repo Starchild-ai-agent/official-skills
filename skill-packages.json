@@ -1,0 +1,169 @@
+{
+  "packages": [
+    {
+      "id": "crypto-trading",
+      "name": "Crypto Trading Essentials",
+      "name_zh": "加密货币交易包",
+      "name_ko": "암호화폐 트레이딩 패키지",
+      "description": "Complete crypto trading ecosystem — perpetual futures, spot DEX, prices, derivatives data, on-chain TVL, multi-chain wallet, and yield strategies.",
+      "description_zh": "完整的加密货币交易生态 — 永续合约、现货 DEX、价格数据、衍生品分析、链上 TVL、多链钱包与收益策略",
+      "description_ko": "완전한 암호화폐 트레이딩 생태계 — 무기한 선물, 현물 DEX, 가격 데이터, 파생상품 분석, 온체인 TVL, 멀티체인 지갑 및 수익 전략",
+      "skills": [
+        "hyperliquid",
+        "coingecko",
+        "coinglass",
+        "wallet",
+        "1inch",
+        "jupiter",
+        "defillama",
+        "ethena",
+        "aave",
+        "tokenomist"
+      ]
+    },
+    {
+      "id": "stock-investment",
+      "name": "Stock Investment Suite",
+      "name_zh": "股票投资套件",
+      "name_ko": "주식 투자 스위트",
+      "description": "Global stock market data — US equities deep fundamentals, China A-shares, options greeks, 200+ technical indicators, strategy backtesting.",
+      "description_zh": "全球股票市场数据 — 美股深度基本面、A股行情、期权希腊字母、200+ 技术指标、策略回测",
+      "description_ko": "글로벌 주식 시장 데이터 — 미국 주식 심층 펀더멘털, 중국 A주, 옵션 그릭스, 200+ 기술 지표, 전략 백테스팅",
+      "skills": [
+        "twelvedata",
+        "us-stock",
+        "cn-stock",
+        "massive-options-data",
+        "taapi",
+        "trading-strategy",
+        "backtest"
+      ]
+    },
+    {
+      "id": "media-creator",
+      "name": "Media Creator Essentials",
+      "name_zh": "图像与视频制作包",
+      "name_ko": "미디어 크리에이터 패키지",
+      "description": "End-to-end multimedia content creation — video generation, AI image creation, presentation slides, interactive charts, and data visualization.",
+      "description_zh": "端到端多媒体内容创作 — 视频生成、AI 图像创作、演示文稿、交互式图表与数据可视化",
+      "description_ko": "엔드투엔드 멀티미디어 콘텐츠 제작 — 비디오 생성, AI 이미지 제작, 프레젠테이션 슬라이드, 인터랙티브 차트 및 데이터 시각화",
+      "skills": [
+        "video",
+        "slide-creator",
+        "chart",
+        "venice"
+      ]
+    },
+    {
+      "id": "social-media",
+      "name": "Social Media Management",
+      "name_zh": "社交媒体管理包",
+      "name_ko": "소셜 미디어 관리 패키지",
+      "description": "Multi-platform social data extraction, sentiment analysis, content strategy, community interaction, and 1000+ app integrations.",
+      "description_zh": "多平台社交数据提取、情绪分析、内容策略、社区互动与 1000+ 应用集成",
+      "description_ko": "멀티 플랫폼 소셜 데이터 추출, 감성 분석, 콘텐츠 전략, 커뮤니티 상호작용 및 1000+ 앱 통합",
+      "skills": [
+        "twitter",
+        "web-crawler",
+        "agentx",
+        "lunarcrush",
+        "creator-insights",
+        "composio"
+      ]
+    },
+    {
+      "id": "developer-tools",
+      "name": "Developer Toolkit",
+      "name_zh": "开发者工具包",
+      "name_ko": "개발자 도구 패키지",
+      "description": "End-to-end project building, skill creation, community publishing, Solana development, and agent state backup.",
+      "description_zh": "端到端项目构建、技能创建、社区发布、Solana 开发与 Agent 状态备份",
+      "description_ko": "엔드투엔드 프로젝트 빌딩, 스킬 생성, 커뮤니티 퍼블리싱, 솔라나 개발 및 에이전트 상태 백업",
+      "skills": [
+        "project-builder",
+        "skill-creator",
+        "community-publish",
+        "solana-dev",
+        "abstract",
+        "mantle",
+        "backup"
+      ]
+    },
+    {
+      "id": "data-analytics",
+      "name": "Data Analytics Suite",
+      "name_zh": "数据分析包",
+      "name_ko": "데이터 분석 스위트",
+      "description": "Enterprise-grade data analysis — interactive charts, HTML dashboards, web scraping, blockchain portfolio analytics, and Web3 project intelligence.",
+      "description_zh": "企业级数据分析 — 交互式图表、HTML 仪表板、网页数据抓取、区块链投资组合分析与 Web3 项目情报",
+      "description_ko": "엔터프라이즈급 데이터 분석 — 인터랙티브 차트, HTML 대시보드, 웹 스크래핑, 블록체인 포트폴리오 분석 및 Web3 프로젝트 인텔리전스",
+      "skills": [
+        "chart",
+        "dashboard",
+        "web-crawler",
+        "debank",
+        "birdeye",
+        "rootdata"
+      ]
+    },
+    {
+      "id": "cex-account-tracking",
+      "name": "CEX Account Tracking",
+      "name_zh": "交易所账户追踪包",
+      "name_ko": "거래소 계정 추적 패키지",
+      "description": "Unified read-only tracking across Binance, Bybit, and OKX — balances, positions, orders, fills, and risk scenarios.",
+      "description_zh": "币安、Bybit、OKX 多交易所统一只读追踪 — 余额、持仓、订单、成交与风险场景",
+      "description_ko": "바이낸스, 바이빗, OKX 통합 읽기 전용 추적 — 잔고, 포지션, 주문, 체결 및 리스크 시나리오",
+      "skills": [
+        "binance-account",
+        "bybit-account",
+        "okx-account",
+        "wallet"
+      ]
+    },
+    {
+      "id": "news-intelligence",
+      "name": "News & Market Intelligence",
+      "name_zh": "新闻与市场情报包",
+      "name_ko": "뉴스 및 시장 인텔리전스 패키지",
+      "description": "Real-time crypto news, social sentiment, Web3 project intelligence, token unlock schedules, and market technical analysis.",
+      "description_zh": "实时加密新闻、社交情绪、Web3 项目情报、代币解锁时间表与市场技术分析",
+      "description_ko": "실시간 암호화폐 뉴스, 소셜 감성, Web3 프로젝트 인텔리전스, 토큰 언락 일정 및 시장 기술 분석",
+      "skills": [
+        "PANews",
+        "lunarcrush",
+        "truenorth",
+        "rootdata"
+      ]
+    },
+    {
+      "id": "prediction-markets",
+      "name": "Prediction Markets",
+      "name_zh": "预测市场包",
+      "name_ko": "예측 시장 패키지",
+      "description": "Trade and analyze prediction markets on Polymarket and Kalshi, plus perpetual trading competitions.",
+      "description_zh": "Polymarket 和 Kalshi 预测市场交易与分析，以及永续合约交易竞赛",
+      "description_ko": "Polymarket과 Kalshi에서 예측 시장 거래 및 분석, 무기한 선물 트레이딩 대회",
+      "skills": [
+        "polymarket",
+        "kalshi",
+        "degenclaw"
+      ]
+    },
+    {
+      "id": "business-office",
+      "name": "Business Office Suite",
+      "name_zh": "企业办公包",
+      "name_ko": "비즈니스 오피스 스위트",
+      "description": "Cloud document management, presentation creation, external app integrations, and user onboarding guides.",
+      "description_zh": "云文档管理、演示文稿制作、外部应用集成与用户引导",
+      "description_ko": "클라우드 문서 관리, 프레젠테이션 제작, 외부 앱 통합 및 사용자 온보딩 가이드",
+      "skills": [
+        "wps",
+        "slide-creator",
+        "composio",
+        "user-onboarding"
+      ]
+    }
+  ]
+}

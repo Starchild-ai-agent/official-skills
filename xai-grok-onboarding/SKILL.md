@@ -158,6 +158,36 @@ Subsequent chat calls hit `https://api.x.ai/v1` directly using the OAuth bearer 
 
 ---
 
+## Limits & BYOK fallback
+
+xAI does **not** publish exact daily caps or RPM the way OpenAI does. Practical reality for OAuth-backed Grok usage:
+
+- **No published hard numbers.** Limits are fair-use based — xAI throttles temporarily if you generate massive volume in a short window.
+- **Tier matters.** Heavy ($300/mo) gives the highest consumer ceiling — significantly above SuperGrok ($30) or X Premium+. Standard text/chat rarely hits the cap for normal-to-heavy daily use.
+- **Image / video / voice have tighter quotas.** E.g. Heavy users get roughly ~80+ video generations per 12 hours, but these can still throttle during peak load.
+- **Soft ceiling signal:** if the user starts seeing `429` or "rate limit exceeded" messages from xAI, they've hit the fair-use ceiling for that feature. Wait it out (limits reset on a rolling window, not a fixed daily clock) or switch billing modes.
+
+### When to suggest switching to BYOK
+
+If the user wants **predictable, spend-based** high-volume access — or if they're hitting limits often — they can switch to a regular xAI API key:
+
+1. Get a key at https://console.x.ai (pay-per-token, separate from subscription)
+2. Use `byok-custom-model` skill with the xAI template
+3. BYOK models appear alongside OAuth models in the picker — switch per turn
+
+Both paths can coexist; the user picks per request. OAuth = subscription quota (good default). BYOK = clearer rate limits + per-token billing (good for heavy automation or when you want cost transparency).
+
+### Error → action table
+
+| Symptom | Cause | Action |
+|---|---|---|
+| `429` / "rate limit exceeded" on chat | OAuth fair-use ceiling hit | Wait for soft reset, or switch this request to BYOK |
+| `403` / `access_denied` at OAuth time | xAI account gated | Use BYOK (see preflight section above) |
+| Repeated `401` after `refresh()` | Token revoked / subscription canceled | `logout()` + restart, or switch to BYOK |
+| `503` / 5xx upstream | xAI infra issue | Retry shortly. BYOK uses the same upstream, won't help |
+
+---
+
 ## Reauth
 
 Tokens auto-refresh via `refresh_token` (6h access token TTL — relatively generous vs Codex's 1h). If a 401 surfaces:

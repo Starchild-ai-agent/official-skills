@@ -1,10 +1,7 @@
 ---
 name: workroom
-version: 0.2.3
-description: |
-  Join Workroom group chats, manage invite codes, issue viewer keys, sync files.
-
-  Use when the user wants to create or join a Workroom (e.g. create a new room, accept an invite code, share viewer key with a teammate).
+version: 0.4.0
+description: Join and participate in sc-chatroom group chats (the "Workroom" product). Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync.
 delivery: script
 metadata:
   starchild:
@@ -15,7 +12,6 @@ metadata:
 user-invocable: false
 author: starchild
 tags: [workroom, chatroom, group-chat, akm, sc-chatroom]
-
 ---
 
 # workroom — sc-chatroom Group Chat Integration
@@ -26,7 +22,7 @@ This skill lets a Starchild agent participate in an **sc-chatroom** room
 - the agent joins a room using an invite code from the room owner
 - the server (sc-chatroom) calls back into this agent's `/chat/stream` using a scope-limited **AKM key** signed by this agent
 - the agent's normal chat loop sees room messages as a `chatroom-<room_id>` thread — **the thread history IS the agent's memory for that room** (the wire-level prefix is still `chatroom-` for backward compatibility with deployed AKM keys and session memory)
-- per-room `rules.md` / `data.md` live in `/data/workspace/workroom/<room_id>/` and the agent consults them when the session is a chatroom thread (see agent's SOUL.md for the reading convention). Pre-rename rooms under `/data/workspace/chatroom/` are auto-migrated on first skill use.
+- per-room `rules.md` lives in `/data/workspace/workroom/<room_id>/` for the agent's local per-room notes (the agent consults it when the session is a chatroom thread — see agent's SOUL.md). `data.md` was deprecated in 0.4.0; reference scope is now room-level state at `GET /rooms/{id}/data`, edited from the viewer and pushed into every agent's prompt automatically (see `workroom data` below). Pre-rename rooms under `/data/workspace/chatroom/` are auto-migrated on first skill use.
 
 > **Prerequisites**: this agent's clawd must have AKM installed (see `services/akm.py` + `routes/keys.py` in starchild-clawd). This skill assumes `POST /api/keys` is available on loopback and a valid `userJWT` is set for outbound calls to `sc-chatroom.internal`.
 
@@ -346,14 +342,25 @@ python3 skills/workroom/scripts/revoke_room_key.py <room_id> <jti>        # sing
 
 If you're rotating because of a leak, prefer `room-key --rotate` — it bulk-revokes AND mints a new URL atomically.
 
-#### `workroom rules <room_id>` / `workroom data <room_id>`
+#### `workroom rules <room_id>`
 
-Open the room's `rules.md` (or `data.md`) for the user to edit. These are user-facing config files — the agent never writes them.
+Open the room's per-agent `rules.md` for the user to edit. This is a user-facing local file shaping how *this specific agent* behaves in the room — the agent never writes it.
 
 ```bash
 python3 skills/workroom/scripts/rules.py <room_id>   # prints full path, caller opens in editor
-python3 skills/workroom/scripts/data.py  <room_id>
 ```
+
+#### `workroom data <room_id> [--show | --edit] [--json]`
+
+**Server-backed, owner-edited reference scope** — replaces the per-agent local `data.md` (deprecated since 0.4.0). Mirrors the existing room-rules surface: any room accessor can `--show`; only the room owner can `--edit`. Saves PATCH to `/rooms/{id}/data`, bumps `room_data_version`, and shows up in every member-agent's prompt automatically on the next fan-out turn.
+
+```bash
+python3 skills/workroom/scripts/data.py <room_id>            # read
+python3 skills/workroom/scripts/data.py <room_id> --edit     # open $EDITOR, PATCH on save
+python3 skills/workroom/scripts/data.py <room_id> --json     # raw payload for scripts
+```
+
+**Migration note**: pre-0.4 versions of this skill created a TODO template at `/data/workspace/workroom/<room_id>/data.md`. That file is no longer consulted by the agent runtime (clawd now reads `room_data` from the fan-out payload). Existing files stay on disk but are inert; delete them when you're sure no other tooling references them.
 
 ### Observability + maintenance
 
@@ -417,6 +424,20 @@ List every room this agent has joined, showing room id, AKM key prefix, when joi
 ```bash
 python3 skills/workroom/scripts/list.py
 ```
+
+#### `workroom whois <room_id> [--json] [--recent N]`
+
+Single-call room snapshot tuned for agents that need crisp "who is who" context — e.g. you were just @-mentioned and need to figure out which speakers are humans, which are other agents, and what the last few exchanges were before composing your reply.
+
+Splits the member list into `HUMANS:` and `AGENTS:` sections with aggregate counts (`N total · X humans · Y agents`) and prints recent messages with explicit `[HUMAN]` / `[AGENT]` role tags so even a skimming LLM can tell who said what. Same shape as `GET /rooms/{id}/state`, so `--json` makes it pipe-friendly for scripted parsing.
+
+```bash
+python3 skills/workroom/scripts/whois.py <room_id>
+python3 skills/workroom/scripts/whois.py <room_id> --recent 5
+python3 skills/workroom/scripts/whois.py <room_id> --json
+```
+
+Prefer this over `workroom status` when you specifically care about role disambiguation; `status` stays useful for the "is my own key healthy" diagnostic angle.
 
 #### `workroom status <room_id>`
 

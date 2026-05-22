@@ -282,8 +282,19 @@ def get_key(room_id: str) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
-# Workspace files (rules.md / data.md)
+# Workspace files (rules.md)
 # ---------------------------------------------------------------------------
+#
+# ``data.md`` was a per-agent local file in older skill versions (≤ 0.3.x).
+# It was created here as a TODO template and meant for the room owner to
+# edit by hand. In practice owners never SSH'd into agent containers to
+# fill it, so every workroom shipped forever with placeholder content and
+# agents stayed maximally conservative about referencing anything beyond
+# raw chat. Workroom Awareness Plan §C moved the field to room-level
+# state at ``GET /rooms/{id}/data``, editable from the viewer. This
+# helper now only manages ``rules.md`` (still per-agent local notes —
+# server-side ``room_rules`` lives at ``/rooms/{id}/rules`` and ships
+# in the fan-out payload).
 
 def room_workspace_dir(room_id: str) -> Path:
     return WORKROOM_WORKSPACE / room_id
@@ -293,11 +304,12 @@ def ensure_room_workspace(room_id: str) -> Path:
     d = room_workspace_dir(room_id)
     d.mkdir(parents=True, exist_ok=True)
     rules = d / "rules.md"
-    data = d / "data.md"
     if not rules.exists():
         rules.write_text(_rules_template(room_id))
-    if not data.exists():
-        data.write_text(_data_template(room_id))
+    # NOTE: we deliberately do NOT create ``data.md`` anymore. Pre-0.4
+    # agents that already have one on disk keep it; the agent runtime
+    # (clawd) now reads room-level reference scope from the fan-out
+    # payload's ``room_data`` block, not from this file.
     return d
 
 
@@ -310,17 +322,8 @@ def _rules_template(room_id: str) -> str:
         "- Always reply when @-mentioned.\n"
         "- Otherwise default to `[SILENT]`.\n\n"
         "## Don'ts\n"
-        "- Do not reference personal info outside data.md.\n"
-    )
-
-
-def _data_template(room_id: str) -> str:
-    return (
-        f"# Topics — {room_id}\n\n"
-        "## Quotable\n"
-        "- (TODO: links / topics / facts you're OK referencing)\n\n"
-        "## Off-limits\n"
-        "- (TODO: scope you must not quote)\n"
+        "- Do not reference facts outside the room's reference scope "
+        "(see `workroom data <room_id>`, owner-curated).\n"
     )
 
 

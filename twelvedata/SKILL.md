@@ -1,7 +1,10 @@
 ---
 name: twelvedata
-version: 2.0.2
-description: "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
+version: 2.0.3
+description: |
+  Stocks, forex, and commodities prices: real-time quotes and historical bars.
+
+  Use when looking up traditional-market prices (e.g. AAPL quote, EUR/USD chart, gold price, SPY history). Not for crypto.
 delivery: script
 metadata:
   starchild:
@@ -13,6 +16,7 @@ metadata:
 
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 # Twelve Data

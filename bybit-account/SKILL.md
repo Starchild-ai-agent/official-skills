@@ -1,7 +1,10 @@
 ---
 name: bybit-account
-version: 2.0.0
-description: Read-only Bybit account tracking (Unified Trading Account) — balances, positions, orders, fills, deposits/withdrawals/transfers, transaction log, and risk scenarios.
+version: 2.0.1
+description: |
+  Read-only Bybit tracking: UTA balance, derivatives positions, orders, fills, PnL.
+
+  Use when monitoring Bybit without trading (e.g. account equity, open perp positions, today's fills, deposit history, risk level).
 author: starchild
 tags: [bybit, account, readonly, tracking, futures, spot, unified]
 metadata:
@@ -18,6 +21,7 @@ metadata:
       - kind: pip
         package: python-dotenv
 user-invocable: true
+
 ---
 
 # Bybit Account (Read-Only)

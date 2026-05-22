@@ -1,9 +1,13 @@
 ---
 name: agent-import
-description: Import a migration bundle into Starchild. Downloads from relay, validates, and loads all components using native tools.
-version: 1.1.0
+description: |
+  Import an agent migration bundle into Starchild from the relay service.
+
+  Use when moving an agent from another platform into Starchild (e.g. import my OpenClaw export, load this 8-char migration code).
+version: 1.1.1
 author: starchild
 tags: [migration, import, onboarding]
+
 ---
 
 # Agent Import — Migration Bundle Loader

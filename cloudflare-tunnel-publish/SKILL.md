@@ -1,7 +1,10 @@
 ---
 name: cloudflare-tunnel-publish
-version: 1.1.0
-description: "Publish a local service (preview, dev server, dashboard, API) to a user-owned custom domain or subdomain via Cloudflare Tunnel — no public IP, no port forwarding, free SSL. Beginner-friendly: walks the user from Cloudflare account, domain purchase, API token creation through automated tunnel + DNS + SSL setup, with auto-restart on container reboot so the public URL survives Starchild updates. Use when the user wants their own domain (e.g. app.mydomain.com) instead of community.iamstarchild.com, asks how to bind / publish / host a service on a custom domain or subdomain, or hits ERR_SSL_VERSION_OR_CIPHER_MISMATCH / 502 / 521 / 530 on a custom domain."
+version: 1.1.1
+description: |
+  Publish a local service to a user-owned custom domain via Cloudflare Tunnel.
+
+  Use when the user wants their own domain instead of community.iamstarchild.com (e.g. app.mydomain.com, fix SSL 521 on a custom domain).
 keywords: cloudflare, tunnel, cloudflared, custom domain, subdomain, hostname, DNS, SSL, TLS, publish, host, bind, expose, 自定义域名, 自己的域名, 绑定域名, 子域名, 二级域名, 域名解析, 上线, 发布, 部署, ERR_SSL_VERSION_OR_CIPHER_MISMATCH, 502, 521, 530
 triggers:
   - 想用我自己的域名
@@ -31,6 +34,7 @@ metadata:
       bins: [python3, curl]
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 ## What this skill does

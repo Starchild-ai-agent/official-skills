@@ -1,13 +1,17 @@
 ---
 name: dashboard
-version: 1.0.0
-description: Create HTML/CSS/JS dashboards with data visualization and real-time updates
+version: 1.0.1
+description: |
+  Build live HTML, CSS, and JS dashboards with charts and real-time data updates.
+
+  Use when assembling a multi-panel monitoring view (e.g. portfolio dashboard, price tracker, system health board, multi-asset comparison).
 metadata:
   starchild:
     emoji: 📊
     requires:
       bins: []
     install: []
+
 ---
 
 # Dashboard Creation Skill

@@ -1,15 +1,16 @@
 ---
 name: user-onboarding
-version: 1.2.4
-description: Guide first-time Starchild users through onboarding with assistant/intern
-  positioning, quick wins, discovery questions, and game-style feedback. Use for fresh
-  sessions, vague starts, what-can-you-do questions, or users who don't know where
-  to begin.
+version: 1.2.5
+description: |
+  Onboarding script for first-time Starchild users: positioning, quick wins, discovery.
+
+  Use when the user is new or vague (e.g. "what can you do", "I don't know where to start", first session with no context, generic hello).
 metadata:
   starchild:
     emoji: "\U0001F44B"
     skillKey: user-onboarding
 user-invocable: true
+
 ---
 
 ## How to position Starchild

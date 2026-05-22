@@ -1,7 +1,10 @@
 ---
 name: backtest
-version: 1.0.0
-description: Build and run backtests against real historical data. Use when a strategy needs validation, the user wants performance numbers, or before committing to a trade approach.
+version: 1.0.1
+description: |
+  Backtest trading strategies against real historical data and report performance.
+
+  Use when validating an entry or exit rule or comparing strategies (e.g. test EMA cross on BTC, RSI mean-reversion on ETH, walk-forward MACD).
 
 metadata:
   starchild:
@@ -19,6 +22,7 @@ metadata:
 
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Backtest

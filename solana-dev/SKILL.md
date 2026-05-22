@@ -1,7 +1,10 @@
 ---
 name: solana-dev
-version: 1.1.0
-description: "Use when user asks to build a Solana dapp, write an Anchor program, create a token, debug Solana errors, set up wallet connection, test my Solana program, deploy to devnet, or explain Solana concepts (rent, accounts, PDAs, CPIs, etc.). End-to-end Solana development playbook covering wallet connection, Anchor/Pinocchio programs, Codama client generation, LiteSVM/Mollusk/Surfpool testing, and security checklists. Integrates with the Solana MCP server for live documentation search. Prefers framework-kit (@solana/client + @solana/react-hooks) for UI, wallet-standard-first connection (incl. ConnectorKit), @solana/kit for client/RPC code, and @solana/web3-compat for legacy boundaries."
+version: 1.1.1
+description: |
+  Solana development: Anchor and Pinocchio programs, Kit clients, wallet flows, testing.
+
+  Use when building a Solana dapp or program (e.g. write Anchor escrow, create SPL token, wallet-standard login, debug PDA, deploy to devnet).
 author: Solana Foundation
 tags: [solana, anchor, web3, dapp, blockchain, rust, tokens, pda]
 metadata:
@@ -13,6 +16,7 @@ metadata:
     upstream_version: "1.1.0"
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Solana Development Skill (framework-kit-first)

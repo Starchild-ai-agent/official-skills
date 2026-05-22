@@ -1,7 +1,10 @@
 ---
 name: chart
-version: 3.0.1
-description: Interactive web-based charts for data analysis and business intelligence. Project-based output in output/chart-html/<project>/ with HTML + script + data + screenshot.
+version: 3.0.2
+description: |
+  Interactive web charts: line, bar, candle, scatter, with HTML and screenshot output.
+
+  Use when visualizing data for analysis or BI (e.g. plot BTC vs gold last year, bar chart of revenue by quarter, compare two return series).
 
 metadata:
   starchild:
@@ -10,6 +13,7 @@ metadata:
 
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Chart — Project-Based Interactive Charting

@@ -1,13 +1,17 @@
 ---
 name: abstract
-version: 1.0.2
-description: "Abstract L2 — Master skill hub for all Abstract blockchain capabilities. Provides a directory of 7 specialized skills for building on Abstract: connecting, deploying contracts, wallet integration, agent wallets, multisig, prediction markets, and onchain agent identity. Use when the user wants to build on Abstract, deploy contracts, set up wallets, create multisigs, integrate prediction markets, register agents onchain, or any Abstract L2 development task."
+version: 1.0.3
+description: |
+  Abstract L2 hub: wallets, contracts, multisig, prediction markets, agent identity.
+
+  Use when building on Abstract L2 (e.g. deploy Anchor contract, set up AGW login, create a Safe, integrate Myriad markets, register ERC-8004 agent).
 metadata:
   starchild:
     emoji: "🔷"
     skillKey: abstract
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Abstract L2 — Skills Directory

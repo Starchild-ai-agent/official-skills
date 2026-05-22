@@ -1,7 +1,10 @@
 ---
 name: venice
-version: 1.0.5
-description: Venice AI — privacy-first uncensored AI platform. Image generation/edit/upscale, TTS, speech-to-text, embeddings, video generation/transcription, model catalog, character personas, and the BYOK onboarding guide for Venice chat. Use when the user mentions Venice, wants uncensored / private / TEE / E2EE inference, needs Venice-specific features (venice_parameters, character_slug, web_search citations), or wants to register Venice as a chat model.
+version: 1.0.6
+description: |
+  Venice AI: image, video, TTS, STT, embeddings, plus BYOK guide for Venice chat.
+
+  Use when the user wants uncensored or private inference via Venice (e.g. generate image on Venice, register Venice as a chat model, TEE inference).
 delivery: script
 metadata:
   starchild:
@@ -12,6 +15,7 @@ metadata:
       - VENICE_API_KEY
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 # Venice AI

@@ -12,10 +12,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
       - name: Build and validate skills.json
         run: |
           python3 << 'PYEOF'
-          import json, os, re, sys
+          import json, os, re, sys, yaml
 
           SKIP = {".git", ".github", "scripts", "node_modules"}
 
@@ -23,18 +31,15 @@ jobs:
               m = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
               if not m:
                   return {}
-              fm = {}
-              for line in m.group(1).split("\n"):
-                  line = line.strip()
-                  if not line or line.startswith("#"):
-                      continue
-                  if ":" in line:
-                      k, v = line.split(":", 1)
-                      k = k.strip()
-                      v = v.strip().strip('"').strip("'")
-                      if k in ("name", "version", "description"):
-                          fm[k] = v
-              return fm
+              try:
+                  data = yaml.safe_load(m.group(1)) or {}
+              except yaml.YAMLError as e:
+                  raise RuntimeError(f"YAML parse error: {e}")
+              return {
+                  k: (str(data[k]).strip() if data.get(k) is not None else "")
+                  for k in ("name", "version", "description")
+                  if k in data
+              }
 
           skills, errors = [], []
           for name in sorted(os.listdir(".")):
@@ -47,7 +52,11 @@ jobs:
                   continue
               with open(md) as f:
                   content = f.read()
-              fm = parse_fm(content)
+              try:
+                  fm = parse_fm(content)
+              except RuntimeError as e:
+                  errors.append(f"{name}: {e}")
+                  continue
               missing = [field for field in ("name", "version", "description") if field not in fm]
               if missing:
                   errors.append(name + ": missing " + ", ".join(missing))

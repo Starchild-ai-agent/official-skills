@@ -1,7 +1,10 @@
 ---
 name: composio
-version: 1.2.2
-description: "Universal tool gateway via Composio — connect to 1000+ external apps (Gmail, Slack, GitHub, Google Calendar, Notion, etc.) through the Composio Gateway. Use when the user wants to interact with external SaaS services, send emails, manage calendars, access documents, or any third-party app integration."
+version: 1.2.3
+description: |
+  Composio gateway: act on 1000+ connected apps like Gmail, Slack, GitHub, Calendar.
+
+  Use when the user wants to act in a connected SaaS app (e.g. send Gmail, create Notion page, add Calendar event, open a GitHub issue).
 
 metadata:
   starchild:
@@ -9,6 +12,7 @@ metadata:
     skillKey: composio
 
 user-invocable: true
+
 ---
 
 # Composio — External App Integration via Gateway

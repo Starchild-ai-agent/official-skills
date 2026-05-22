@@ -1,7 +1,10 @@
 ---
 name: "polymarket"
-version: 5.0.0
-description: "Trade Polymarket prediction markets via Privy wallet. Script-first: most flows are 1 bash + 1 sign. Search, analyze, place/cancel orders, manage positions."
+version: 5.0.1
+description: |
+  Polymarket prediction markets: search, place or cancel orders, manage positions.
+
+  Use when betting on event outcomes via Polymarket (e.g. search Iran ceasefire markets, buy YES at 0.65, close my Trump position, list open orders).
 author: starchild
 tags: [polymarket, trading, prediction-markets, polygon, defi]
 tools:
@@ -16,6 +19,7 @@ metadata:
         - POLY_SECRET
         - POLY_PASSPHRASE
         - POLY_WALLET
+
 ---
 
 # Polymarket Trading Skill v5.0.0

@@ -1,7 +1,10 @@
 ---
 name: wallet
-version: 3.5.0
-description: "Multi-chain wallet — balances, transfers, signing, policy (EVM multi-chain + Solana)"
+version: 3.5.1
+description: |
+  Multi-chain wallet: EVM and Solana balances, transfers, signing, and policy.
+
+  Use when checking balances, sending tokens, signing typed data, or proposing a wallet policy (e.g. send 10 USDC on Base, sign EIP-712, Solana balance).
 author: starchild
 tags: [wallet, evm, solana, transfer, sign, policy, debank, birdeye]
 tools:
@@ -21,6 +24,7 @@ tools:
   - wallet_get_policy
   - wallet_propose_policy
 tool_module: wallet.wallet
+
 ---
 
 # 💰 Wallet Skill

@@ -1,7 +1,10 @@
 ---
 name: 1inch
-version: 2.2.0
-description: Script-first 1inch swap skill (no system tool dependency). Uses local scripts + 1inch API + wallet service.
+version: 2.2.1
+description: |
+  1inch DEX aggregator: same-chain EVM swaps, SOL↔EVM cross-chain, limit orders.
+
+  Use when swapping tokens with best routing or placing limit orders (e.g. ETH→USDC on Base, SOL→ETH cross-chain, limit buy ARB at 0.80).
 delivery: script
 author: starchild
 tags: [1inch, dex, swap, evm, script-first]
@@ -13,6 +16,7 @@ metadata:
       env: [ONEINCH_API_KEY, WALLET_SERVICE_URL]
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # 1inch (Script-First, Install-and-Use)

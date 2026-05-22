@@ -1,7 +1,10 @@
 ---
 name: woofi-swap
-version: 8.2.0
-description: "Swap any token at the best price — single-chain or cross-chain — with one API call. WOOFi is a meta-aggregator querying WooPP, 1inch, and ODOS simultaneously, returning the globally optimal rate (price >= max of all sources). Cross-chain swaps via Stargate bridge. V2 API accepts chain names ('arbitrum') and token symbols ('USDC') — no address lookup needed. Supports all ERC-20 tokens and native gas tokens on 14 EVM chains."
+version: 8.2.1
+description: |
+  Best-price meta-aggregator: same-chain swaps plus cross-chain bridging on 14 EVM chains.
+
+  Use when swapping or bridging tokens by symbol on EVM (e.g. swap USDC to WETH on Arbitrum, bridge USDC Arbitrum to Base, best price ETH→ARB).
 tags: [swap, trade, exchange, convert, token-swap, dex, dex-aggregator, meta-aggregator, megaswap, best-price, optimal-price, quote, price-quote, exchange-rate, multichain, cross-chain, crypto-swap, token-exchange, buy, sell, erc20, native-token, defi, liquidity-aggregator, 1inch, odos, woofi, bridge, stargate, layerzero]
 author: starchild
 
@@ -67,6 +70,7 @@ triggers:
   - "cross chain bridge"
 
 user-invocable: true
+
 ---
 
 # WOOFi Swap — Best-Price Meta-Aggregator (V2)

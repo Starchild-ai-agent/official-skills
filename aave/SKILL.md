@@ -1,7 +1,10 @@
 ---
 name: aave
-version: 1.1.0
-description: Supply and withdraw tokens on Aave V3 lending pools
+version: 1.1.1
+description: |
+  Aave V3 lending: supply tokens to earn yield, withdraw any time, view positions.
+
+  Use when farming lending yield or checking Aave positions (e.g. supply 100 USDC on Arbitrum, withdraw all DAI, current Aave APY).
 delivery: script
 metadata:
   starchild:
@@ -11,6 +14,7 @@ metadata:
       env: [WALLET_SERVICE_URL]
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Aave V3 Yield Farming

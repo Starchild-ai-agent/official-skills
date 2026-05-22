@@ -1,7 +1,10 @@
 ---
 name: binance-account
-version: 2.0.0
-description: Read-only Binance account tracking (spot + USD-M futures) — balances, positions, orders, fills, deposits/withdrawals, funding income, snapshot, and risk scenarios.
+version: 2.0.1
+description: |
+  Read-only Binance tracking: spot balances, USDM futures, PnL, funding, deposits.
+
+  Use when monitoring Binance positions without trading (e.g. total PnL today, open futures positions, funding earned, recent deposits).
 author: starchild
 tags: [binance, account, readonly, tracking, futures, spot]
 metadata:
@@ -18,6 +21,7 @@ metadata:
       - kind: pip
         package: python-dotenv
 user-invocable: true
+
 ---
 
 # Binance Account (Read-Only)

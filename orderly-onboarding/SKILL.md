@@ -1,7 +1,11 @@
 ---
 name: orderly-onboarding
-version: 1.0.1
-description: Agent onboarding for Orderly Network - omnichain perpetual futures infrastructure, MCP server, skills, and developer quickstart
+version: 1.0.2
+description: |
+  Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart.
+
+  Use when starting on Orderly (e.g. install Orderly MCP, set up the DEX template, integrate the React SDK, use the orderly CLI).
+
 ---
 
 # Orderly Network: Agent Onboarding

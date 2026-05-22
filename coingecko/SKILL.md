@@ -1,7 +1,10 @@
 ---
 name: coingecko
-version: 2.0.3
-description: CoinGecko crypto price data, charts, market discovery, and global stats
+version: 2.0.4
+description: |
+  Crypto spot prices, OHLC charts, market discovery, and global stats.
+
+  Use when looking up coin prices, market caps, trending coins, sector rankings, or comparing tokens (e.g. BTC price, ETH chart, top gainers).
 delivery: script
 metadata:
   starchild:
@@ -12,6 +15,7 @@ metadata:
       - COINGECKO_API_KEY
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 ## Script Usage

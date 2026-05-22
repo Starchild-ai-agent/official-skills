@@ -1,7 +1,10 @@
 ---
 name: creator-insights
-version: 1.0.0
-description: Comprehensive Twitter/X intelligence system providing account analytics, competitive intelligence, thread & follower analysis, viral content patterns, and AI-powered content generation. Uses TwitterAPI.io + OpenRouter to deliver data-driven growth strategies with beautiful ASCII dashboards. Use when creators need performance insights, VIP follower discovery, thread engagement analysis, viral content research, or AI-generated tweet drafting.
+version: 1.0.1
+description: |
+  Twitter/X account analytics, viral patterns, VIP follower discovery, tweet drafting.
+
+  Use when analyzing a creator's reach, finding hidden-gem followers, or drafting tweets in someone's style (e.g. score @vitalik, draft tweet on AI).
 
 metadata:
   starchild:
@@ -14,6 +17,7 @@ metadata:
 
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Twitter Creator Insights

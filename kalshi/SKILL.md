@@ -1,7 +1,10 @@
 ---
 name: kalshi
-version: 1.0.0
-description: Kalshi is a regulated U.S. prediction market platform where users trade on the outcomes of real-world events using “event contracts.” These contracts let traders speculate on whether something will happen — such as election results, inflation rates, sports outcomes, weather events, or economic indicators. Each contract settles at either $1 or $0 depending on the actual outcome.
+version: 1.0.1
+description: |
+  Kalshi prediction markets: binary event contracts on politics, economy, sports, weather.
+
+  Use when trading or browsing US regulated event markets (e.g. CPI above 3%, NHL Edmonton vs Florida, jobs report > 200k, election odds).
 allowed-tools: Bash, Read, Write, WebFetch
 homepage: https://kalshi.com
 metadata:
@@ -28,6 +31,7 @@ metadata:
       - cftc-regulated
       - elections
       - forecasting
+
 ---
 
 # Kalshi API

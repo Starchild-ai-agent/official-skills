@@ -1,7 +1,10 @@
 ---
 name: slide-creator
-version: 2.1.6
-description: "Create presentation slide decks as HTML and auto-export to 16:9 PDF. Use when the user asks to make a PPT, slide deck, presentation, or pitch deck. Final output is a PDF file — not PowerPoint format."
+version: 2.1.7
+description: |
+  Build 16:9 slide decks as HTML, exported to PDF (not PowerPoint format).
+
+  Use when making a deck, presentation, or pitch (e.g. 10-slide pitch deck for X, training course on Y, quarterly results presentation).
 
 metadata:
   starchild:
@@ -14,6 +17,7 @@ metadata:
         package: PyMuPDF
 
 user-invocable: true
+
 ---
 
 # Slide Creator — HTML → PDF Presentations

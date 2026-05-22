@@ -1,7 +1,10 @@
 ---
 name: byo-proxy
-version: 0.1.0
-description: "Bring-your-own residential proxy management. Users register their own provider API keys (currently IPRoyal) and bind specific skills to specific countries. Other skills opt-in by importing get_proxy_for_skill() from exports.py — byo-proxy itself never intercepts traffic. Use when the user wants to add a residential proxy provider, configure per-skill geo routing, or look up which providers/countries are configured."
+version: 0.1.1
+description: |
+  Bring-your-own residential proxy: per-skill country bindings, opt-in routing.
+
+  Use when the user wants paid residential IPs or per-skill geo routing (e.g. bind web-crawler to JP, add IPRoyal account, route this scrape via DE).
 delivery: script
 metadata:
   starchild:
@@ -12,6 +15,7 @@ metadata:
 user-invocable: true
 author: starchild
 tags: [proxy, residential, geo, byo, iproyal]
+
 ---
 
 # byo-proxy — bring-your-own residential proxy

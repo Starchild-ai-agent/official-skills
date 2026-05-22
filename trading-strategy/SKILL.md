@@ -1,7 +1,10 @@
 ---
 name: trading-strategy
-version: 1.0.0
-description: Thinking partner for developing trading theses — from worldview to conviction to execution. Use when user talks about market worries, macro views, trade ideas, "what do you think about", asset allocation, or wants to build a trading strategy. Not for backtesting (use backtest skill) or one-off price checks (use market-data skill).
+version: 1.0.1
+description: |
+  Thinking partner for trading theses: worldview, evidence, conviction, execution.
+
+  Use when discussing market views, macro worries, or building a trade idea (e.g. "I think dollar gets debased", "is DeFi undervalued", asset allocation).
 
 metadata:
   starchild:
@@ -10,6 +13,7 @@ metadata:
 
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Trading Strategy

@@ -1,7 +1,10 @@
 ---
 name: tokenomist
-version: 2.0.2
-description: Tokenomist unlock/emission/allocation API skill. Use when users ask token unlock schedules, cliff unlock events, daily emissions, allocation breakdowns, or tokenomics supply pressure analytics.
+version: 2.0.3
+description: |
+  Token unlock schedules, cliff events, daily emissions, allocation breakdowns.
+
+  Use when checking upcoming unlocks, supply pressure, or vesting cliffs before a trade (e.g. ARB unlock, ENA emission, SUI cliff).
 delivery: script
 metadata:
   starchild:
@@ -13,6 +16,7 @@ metadata:
 
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 ## Script Usage

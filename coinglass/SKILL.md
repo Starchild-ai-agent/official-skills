@@ -1,9 +1,10 @@
 ---
 name: coinglass
-version: 3.0.3
-description: Comprehensive crypto derivatives data - funding rates, open interest,
-  liquidations, long/short ratios, Hyperliquid whale tracking, volume analysis, ETF
-  flows, futures market data
+version: 3.0.4
+description: |
+  Crypto derivatives data: funding rates, open interest, liquidations, long/short ratios.
+
+  Use when researching perp markets, tracking Hyperliquid whale positions, or comparing ETF flows (e.g. BTC funding, ETH OI, liquidation heatmap).
 delivery: script
 metadata:
   starchild:
@@ -18,6 +19,7 @@ metadata:
       - COINGLASS_API_KEY
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 ## Liquidation Heatmap（真正的价格区间清算压力）

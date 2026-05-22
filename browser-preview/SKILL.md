@@ -1,7 +1,10 @@
 ---
 name: browser-preview
-version: 1.1.0
-description: "Preview panel knowledge — the iframe-based Preview tab in the right panel. Use when the user mentions browser, preview, tab disappeared, page broken, blank screen, white screen, 白屏, 页面挂了, tab 不见了, preview not loading, or asks about running services."
+version: 1.1.1
+description: |
+  Preview panel and iframe diagnostics: registry, ports, paths, blank screens.
+
+  Use when a preview tab is broken or missing (e.g. white screen, tab disappeared, 404 on assets, preview not loading, list running services).
 
 metadata:
   starchild:
@@ -10,6 +13,7 @@ metadata:
 
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # Browser Preview

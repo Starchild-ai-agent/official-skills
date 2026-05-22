@@ -1,7 +1,10 @@
 ---
 name: openocean
-version: 1.1.0
-description: OpenOcean DEX aggregator adapter for Starchild wallet (quote, approval, and swap execution with balance-delta verification)
+version: 1.1.1
+description: |
+  OpenOcean DEX aggregator: quote and execute swaps with balance-delta verification.
+
+  Use when comparing routes or executing a swap via OpenOcean (e.g. quote DAI→USDC, swap with slippage check, verify post-trade balance).
 author: starchild
 tags: [openocean, dex, swap, evm, ethereum, aggregator]
 delivery: script
@@ -11,6 +14,7 @@ metadata:
     skillKey: openocean
 user-invocable: true
 disable-model-invocation: false
+
 ---
 
 # OpenOcean Skill (Starchild Adapter)

@@ -1,7 +1,10 @@
 ---
 name: twitter
-version: 2.0.1
-description: "Twitter/X (x.com) data lookup — fetch tweets by URL or ID, search tweets, user profiles, followers, replies. Use for ANY x.com or twitter.com URL."
+version: 2.0.2
+description: |
+  Twitter/X data: fetch tweets, search, user profiles, followers, replies, trends.
+
+  Use for any x.com or twitter.com URL or lookup (e.g. summarize this tweet, recent posts by @vitalikbuterin, search $SOL min_faves:50).
 delivery: script
 metadata:
   starchild:
@@ -13,6 +16,7 @@ metadata:
 
 user-invocable: false
 disable-model-invocation: false
+
 ---
 
 # Twitter / X (script-mode)

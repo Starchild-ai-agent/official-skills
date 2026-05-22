@@ -1,7 +1,10 @@
 ---
 name: okx-account
-version: 2.0.0
-description: Read-only OKX account tracking (unified account) — balances, positions, orders, fills, deposits/withdrawals, bills, and risk scenarios.
+version: 2.0.1
+description: |
+  Read-only OKX tracking: unified-account equity, perp positions, orders, fills, bills.
+
+  Use when monitoring OKX without trading (e.g. account equity, current PnL, recent fills, withdrawal history, margin level).
 author: starchild
 tags: [okx, account, readonly, tracking, futures, spot, swap]
 metadata:
@@ -19,6 +22,7 @@ metadata:
       - kind: pip
         package: python-dotenv
 user-invocable: true
+
 ---
 
 # OKX Account (Read-Only)

@@ -1,7 +1,10 @@
 ---
 name: truenorth
-version: 1.0.1
-description: "TrueNorth crypto market intelligence via the public API: technical analysis (RSI, MACD, Bollinger Bands), derivatives (funding rates, open interest), options intelligence (max pain, GEX, IV), DeFi (TVL, fees), token performance, events, liquidation risk, token unlocks. Equity, commodity, macro, meme, KOL, Polymarket, and sentiment capabilities are gated to the TrueNorth web app — the CLI advertises them and redirects users to subscribe."
+version: 1.0.2
+description: |
+  Crypto TA, derivatives, options intel, DeFi metrics, unlocks, liquidation risk.
+
+  Use when running a multi-angle check on a coin or planning a leveraged entry (e.g. BTC max pain, ETH funding, ARB unlock, liq risk at 95k).
 metadata:
   starchild:
     emoji: "📈"
@@ -16,6 +19,7 @@ metadata:
         bins: ["tn"]
         label: "Install TrueNorth CLI (npm)"
 user-invocable: false
+
 ---
 
 # TrueNorth — crypto market intelligence

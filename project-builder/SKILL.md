@@ -1,10 +1,10 @@
 ---
 name: project-builder
-version: 1.5.4
-description: "End-to-end project engineering \u2014 from understanding user intent\
-  \ to architecture design, incremental build with verification, and systematic debugging.\
-  \ Covers scheduled tasks (cron jobs), dashboards, web apps, APIs, scripts, and any\
-  \ software the user wants built. Replaces coder + preview-dev with a unified methodology."
+version: 1.5.5
+description: |
+  End-to-end project engineering: design, incremental build, verify, debug systematically.
+
+  Use when building software, dashboards, scheduled jobs, or web apps the user has asked for (e.g. build a price monitor, daily summary task, ship an API).
 tags:
 - engineering
 - development
@@ -43,6 +43,7 @@ triggers:
 - fix this
 - preview
 - publish
+
 ---
 
 ## Phase 0: SKILL DISCOVERY & REQUIRED READING

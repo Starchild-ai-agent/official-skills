@@ -1,6 +1,6 @@
 ---
 name: creator-insights
-version: 1.0.1
+version: 1.0.2
 description: |
   Twitter/X account analytics, viral patterns, VIP follower discovery, tweet drafting.
 

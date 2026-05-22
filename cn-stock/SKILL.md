@@ -1,6 +1,6 @@
 ---
 name: cn-stock
-version: 1.3.1
+version: 1.3.2
 description: |
   A股数据：行情、财务、股东、资金流、K线、概念板块、龙虎榜、市场异动。
 

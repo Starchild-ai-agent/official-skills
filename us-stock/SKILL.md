@@ -1,6 +1,6 @@
 ---
 name: us-stock
-version: 1.0.1
+version: 1.0.2
 description: |
   US stock fundamentals: financials, holders, insiders, earnings, dividends, splits.
 

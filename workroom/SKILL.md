@@ -1,6 +1,6 @@
 ---
 name: workroom
-version: 0.2.2
+version: 0.2.3
 description: |
   Join Workroom group chats, manage invite codes, issue viewer keys, sync files.
 

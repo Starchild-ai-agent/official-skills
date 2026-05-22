@@ -184,16 +184,24 @@ def status() -> Dict[str, Any]:
             "state": st.value,
             "connected": False,
             "verification_url_root": VERIFY_URL,
-            "hint": "Not connected. Run start() to log in with your SuperGrok / X Premium subscription.",
+            "hint": "Not connected. Run start() to log in with your xAI / X Premium / SuperGrok account.",
         }
     now = int(time.time())
     slugs = resolve_xai_models(cached_models=cred.available_models)
+    tier_label = {
+        1: "X Premium",
+        2: "X Premium+",
+        3: "SuperGrok",
+        4: "SuperGrok Heavy",
+    }.get(cred.tier or 0)
     return {
         "ok": True,
         "state": st.value,
         "connected": st in {OAuthState.CONNECTED, OAuthState.EXPIRING},
         "email": cred.email,
         "account_id": cred.account_id,
+        "tier": cred.tier,
+        "tier_label": tier_label,
         "expires_at": cred.expires_at,
         "expires_in_seconds": max(0, cred.expires_at - now),
         "updated_at": cred.updated_at,

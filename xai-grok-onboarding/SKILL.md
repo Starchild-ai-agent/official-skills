@@ -1,20 +1,35 @@
 ---
 name: xai-grok-onboarding
-version: 1.0.0
+version: 1.1.0
 description: |
-  Connect a SuperGrok / X Premium subscription via OAuth device-code login.
+  Connect an xAI account (X Premium / X Premium+ / SuperGrok / SuperGrok Heavy) via OAuth 2.0 device-code login.
 
-  Use when the user wants to sign in with their xAI Grok subscription (e.g. "use my SuperGrok", "log in with Grok", "connect my SuperGrok Heavy").
+  Use when the user wants to sign in with their xAI account (e.g. "use my SuperGrok", "log in with Grok", "connect my X Premium").
 author: starchild
 delivery: script
 protected: true
-tags: [xai, grok, oauth, supergrok, x-premium, login, subscription]
+tags: [xai, grok, oauth, supergrok, x-premium, login, subscription, multi-agent]
 
 ---
 
-# 🟢 xAI Grok OAuth Onboarding
+# 🟢 xAI OAuth Onboarding
 
-Use the user's existing **SuperGrok / X Premium / SuperGrok Heavy subscription** for `grok-4.3`, `grok-build-0.1`, `grok-4.20-*` access — without a separate API key.
+Use any active **xAI account** — X Premium, X Premium+, SuperGrok, or SuperGrok Heavy — for `grok-4.3`, `grok-build-0.1`, `grok-4.20-*` and multi-agent models. No separate API key needed.
+
+This is **standard OAuth 2.0** (RFC 8628 Device Authorization Grant), not a vendor-custom flow.
+
+## Tier → model access
+
+The JWT issued by `auth.x.ai` carries a `tier` claim; higher tiers unlock more models from `/v1/models`. Observed mapping (xAI does not publish this officially):
+
+| Tier | Subscription | Approx. model access |
+|---|---|---|
+| 1 | X Premium ($8/mo) | grok-4.3 baseline |
+| 2 | X Premium+ ($16/mo) | + grok-4.20-0309 variants |
+| 3 | SuperGrok ($30/mo) | + reasoning models |
+| 4 | SuperGrok Heavy ($300/mo) | + grok-build-0.1 + multi-agent |
+
+`status()` reports the user's tier so they know which models will be available.
 
 This is a **script-mode skill** — no tools registered. Read this file, then call the exports from a `bash` block.
 
@@ -124,12 +139,20 @@ All functions return a dict with `ok: True` on success or `ok: False, error: "..
 
 Models surface with the `xai-grok/` prefix:
 - `xai-grok/grok-4.3` — primary chat model (default)
-- `xai-grok/grok-build-0.1` — Grok Build coding model (SuperGrok Heavy only)
+- `xai-grok/grok-build-0.1` — Grok Build coding model (SuperGrok Heavy tier only)
 - `xai-grok/grok-4.20-0309-reasoning` — reasoning variant
 - `xai-grok/grok-4.20-0309-non-reasoning` — faster, no reasoning
-- `xai-grok/grok-4.20-multi-agent-0309` — multi-agent variant
+- `xai-grok/grok-4.20-multi-agent-0309` — multi-agent variant (uses /v1/responses internally)
 
 User switches via `/model xai-grok/grok-4.3` or the model picker UI.
+
+### Lane routing (transparent)
+
+The provider auto-routes based on model id:
+- Multi-agent models → `https://api.x.ai/v1/responses` (Responses API)
+- All other Grok models → `https://api.x.ai/v1/chat/completions` (OpenAI-compatible)
+
+Users do not need to know which dialect each model speaks — passing the standard `messages=[...]` shape works for both. For multi-agent, an optional `thinking={"effort": "low"|"medium"|"high"}` controls how many agents collaborate.
 
 Subsequent chat calls hit `https://api.x.ai/v1` directly using the OAuth bearer — bypasses the platform proxy. **Subscription usage limits apply** (not the platform credit balance). Image / video models (`grok-imagine-*`) are filtered out of the chat picker but accessible via image generation tools.
 

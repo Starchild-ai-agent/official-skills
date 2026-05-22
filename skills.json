@@ -412,8 +412,8 @@
     {
       "name": "xai-grok-onboarding",
       "path": "xai-grok-onboarding/SKILL.md",
-      "version": "1.0.0",
-      "description": "Connect a SuperGrok / X Premium subscription via OAuth device-code login.\n\nUse when the user wants to sign in with their xAI Grok subscription (e.g. \"use my SuperGrok\", \"log in with Grok\", \"connect my SuperGrok Heavy\")."
+      "version": "1.1.0",
+      "description": "Connect an xAI account (X Premium / X Premium+ / SuperGrok / SuperGrok Heavy) via OAuth 2.0 device-code login.\n\nUse when the user wants to sign in with their xAI account (e.g. \"use my SuperGrok\", \"log in with Grok\", \"connect my X Premium\")."
     }
   ]
 }

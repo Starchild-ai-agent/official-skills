@@ -260,6 +260,12 @@
       "description": "Polymarket prediction markets: search, place or cancel orders, manage positions.\n\nUse when betting on event outcomes via Polymarket (e.g. search Iran ceasefire markets, buy YES at 0.65, close my Trump position, list open orders)."
     },
     {
+      "name": "price-action-ta",
+      "path": "price-action-ta/SKILL.md",
+      "version": "1.0.0",
+      "description": "Price action analysis with Wyckoff, SMC/ICT, Al Brooks, and classical PA — outputs structured trade scripts with levels, entry, stop, R:R.\n\nUse when the user wants real technical analysis on a ticker (e.g. \"PA analysis on NVDA\", \"Wyckoff phase for BTC\", \"where's the order block on SOL\", \"走势分析\", \"SMC 分析\")."
+    },
+    {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
       "version": "1.5.5",

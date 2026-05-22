@@ -124,7 +124,7 @@
     {
       "name": "cn-stock",
       "path": "cn-stock/SKILL.md",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "description": "A股数据：行情、财务、股东、资金流、K线、概念板块、龙虎榜、市场异动。\n\n当用户查询沪深北 A 股时使用（例如：603186 华正新材、300476 胜宏科技、000001 平安银行、龙虎榜、北向资金）。"
     },
     {
@@ -154,7 +154,7 @@
     {
       "name": "creator-insights",
       "path": "creator-insights/SKILL.md",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "Twitter/X account analytics, viral patterns, VIP follower discovery, tweet drafting.\n\nUse when analyzing a creator's reach, finding hidden-gem followers, or drafting tweets in someone's style (e.g. score @vitalik, draft tweet on AI)."
     },
     {
@@ -352,7 +352,7 @@
     {
       "name": "us-stock",
       "path": "us-stock/SKILL.md",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "US stock fundamentals: financials, holders, insiders, earnings, dividends, splits.\n\nUse for any US ticker beyond price (e.g. AAPL financials, NVDA top holders, MSFT insider trades, TSLA earnings calendar)."
     },
     {
@@ -400,7 +400,7 @@
     {
       "name": "workroom",
       "path": "workroom/SKILL.md",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "description": "Join Workroom group chats, manage invite codes, issue viewer keys, sync files.\n\nUse when the user wants to create or join a Workroom (e.g. create a new room, accept an invite code, share viewer key with a teammate)."
     },
     {

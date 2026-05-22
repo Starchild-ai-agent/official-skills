@@ -226,7 +226,7 @@
     {
       "name": "okx",
       "path": "okx/SKILL.md",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "description": "OKX OnChainOS: on-chain trading, analytics, security, DeFi, bridging across 20+ chains.\n\nUse when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio)."
     },
     {

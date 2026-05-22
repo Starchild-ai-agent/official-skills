@@ -1,6 +1,6 @@
 ---
 name: kalshi
-version: 1.0.1
+version: 1.0.2
 description: |
   Kalshi prediction markets: binary event contracts on politics, economy, sports, weather.
 
@@ -133,8 +133,18 @@ load_dotenv('/data/workspace/.env')
 BASE_URL = "https://api.elections.kalshi.com"
 
 def kalshi_headers(method: str, path: str) -> dict:
-    raw_pk = os.environ["KALSHI_PRIVATE_KEY"].strip().replace(' ', '')
-    pem = f"-----BEGIN RSA PRIVATE KEY-----\n{raw_pk}\n-----END RSA PRIVATE KEY-----"
+    import re
+    raw = os.environ["KALSHI_PRIVATE_KEY"]
+    # Decode literal escape sequences first (some input channels save '\n' as
+    # two chars backslash+n instead of a real newline).
+    raw = (raw.replace('\\r\\n', '\n').replace('\\n', '\n')
+              .replace('\\r', '\n').replace('\\t', ' '))
+    # Strip PEM markers if present, then strip ALL whitespace and rewrap.
+    body = re.sub(r'-----BEGIN[^-]+-----', '', raw)
+    body = re.sub(r'-----END[^-]+-----', '', body)
+    body = re.sub(r'\s+', '', body)
+    wrapped = '\n'.join(body[i:i+64] for i in range(0, len(body), 64))
+    pem = f"-----BEGIN RSA PRIVATE KEY-----\n{wrapped}\n-----END RSA PRIVATE KEY-----\n"
     private_key = serialization.load_pem_private_key(pem.encode(), password=None, backend=default_backend())
     ts = str(int(time.time() * 1000))
     msg = (ts + method + path).encode()  # path must NOT include query string
@@ -154,7 +164,7 @@ print(resp.json())  # {"balance": 5000, ...} — balance is in cents
 **Signing gotchas:**
 - **PSS not PKCS1v15** — PKCS1v15 padding returns 401. Must use PSS with SHA256.
 - **Strip query strings before signing** — signature is computed on the bare path only (e.g. `/trade-api/v2/portfolio/balance`), not `/trade-api/v2/portfolio/balance?param=value`. Including query string will 401.
-- **Key env var format** — `KALSHI_PRIVATE_KEY` should be stored as the raw base64 body with no PEM headers. The helper wraps it automatically.
+- **Key env var format** — `KALSHI_PRIVATE_KEY` accepts any of: raw base64 body, full PEM with real newlines, or full PEM with newlines collapsed to whitespace (common when pasted through web forms). The helper normalises all formats automatically. For the most robust storage, save as a double-quoted multi-line PEM with `\n` escapes in `.env` so python-dotenv rehydrates it to a real PEM string.
 
 ### API Spec
 

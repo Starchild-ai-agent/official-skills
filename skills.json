@@ -94,7 +94,7 @@
     {
       "name": "byok-custom-model",
       "path": "byok-custom-model/SKILL.md",
-      "version": "2.3.1",
+      "version": "2.3.2",
       "description": "Register a custom LLM endpoint with your own API key for chat in Starchild.\n\nUse when adding a personal Anthropic, OpenAI, Grok, Qwen, DeepSeek, NEAR AI, or Venice key as a chat model (e.g. add my Claude key, register DeepSeek)."
     },
     {
@@ -408,6 +408,12 @@
       "path": "wps/SKILL.md",
       "version": "2.4.12",
       "description": "金山文档（WPS / Kdocs）：新建、读取、编辑、搜索、分享、整理在线文档与知识库。\n\n当用户处理在线文档时使用（例如：写周报、网页剪藏到文档、PDF 拆分、AI 生成 PPT、表格美化、接龙转表格）。"
+    },
+    {
+      "name": "xai-grok-onboarding",
+      "path": "xai-grok-onboarding/SKILL.md",
+      "version": "1.0.0",
+      "description": "Connect a SuperGrok / X Premium subscription via OAuth device-code login.\n\nUse when the user wants to sign in with their xAI Grok subscription (e.g. \"use my SuperGrok\", \"log in with Grok\", \"connect my SuperGrok Heavy\")."
     }
   ]
 }

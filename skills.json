@@ -248,6 +248,12 @@
       "description": "Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart.\n\nUse when starting on Orderly (e.g. install Orderly MCP, set up the DEX template, integrate the React SDK, use the orderly CLI)."
     },
     {
+      "name": "pancakeswap",
+      "path": "pancakeswap/SKILL.md",
+      "version": "1.0.0",
+      "description": "PancakeSwap DeFi operations — token swaps, liquidity provision, yield farming, fee collection, reward harvesting, and PCS Hub integration. Use when the user mentions PancakeSwap, CAKE, swapping on BSC/BNB Chain, LP positions, farming, staking, syrup pools, or any PancakeSwap-related DeFi action."
+    },
+    {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "5.0.1",

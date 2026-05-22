@@ -202,7 +202,7 @@
     {
       "name": "kalshi",
       "path": "kalshi/SKILL.md",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "Kalshi prediction markets: binary event contracts on politics, economy, sports, weather.\n\nUse when trading or browsing US regulated event markets (e.g. CPI above 3%, NHL Edmonton vs Florida, jobs report > 200k, election odds)."
     },
     {

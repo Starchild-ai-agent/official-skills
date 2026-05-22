@@ -1,6 +1,6 @@
 ---
 name: byok-custom-model
-version: 2.3.1
+version: 2.3.2
 description: |
   Register a custom LLM endpoint with your own API key for chat in Starchild.
 
@@ -24,21 +24,37 @@ This is a **script-mode skill** — no tools registered. Read this file, then ca
 
 ---
 
-## Onboarding flow — API-example first
+## Curated vendors (always check this first)
 
-When a user wants to add a custom model, **the first move is NOT to ask for `base_url` or `upstream_model`.** Instead:
+The skill ships with 11 pre-configured vendors. **Always match the user's intent against this list before asking for any URL, model name, or API example** — base_url / wire / thinking / capabilities are all pre-filled, so a curated match goes straight to `add_template(vendor=...)`.
 
-1. Ask the user to paste the provider's official API example from their docs (curl / requests / fetch sample). **Tell them not to include a real API key** — placeholders or fake keys are fine.
-2. Run `parse_example` to auto-detect base_url, upstream_model, wire (openai vs anthropic), thinking params, and vendor-specific request fields.
-3. Review the draft with the user.
-4. Call `add(...)` (or `add_template(vendor=...)` for a curated vendor) — the entry is written to `custom_models.yaml`.
+| Vendor id | Use when user mentions… |
+|---|---|
+| `anthropic` | Claude, Anthropic |
+| `openai` | GPT-4o, GPT-5, OpenAI direct |
+| `xai` | Grok, xAI |
+| `qwen` | Qwen, 通义千问, DashScope |
+| `deepseek` | DeepSeek |
+| `kimi` | Kimi, Moonshot |
+| `mimo` | MiMo, 小米 |
+| `gemini` | Gemini |
+| `gemma` | Gemma |
+| `near-ai` | **privacy, TEE, confidential inference, "don't log my data", Web3-native** |
+| `venice` | Venice (only if user names it; see Privacy-first tier below) |
+
+---
+
+## Onboarding flow — templates first
+
+1. **Check the curated vendors table above.** If the user's intent matches one, go straight to `add_template(vendor=...)` and skip to step 5. Do NOT ask for a URL.
+2. Only if no curated vendor matches: ask the user to paste the provider's official API example from their docs (curl / requests / fetch sample). Tell them **not to include a real API key** — placeholders or fake keys are fine.
+3. Run `parse_example` to auto-detect base_url, upstream_model, wire (openai vs anthropic), thinking params, and vendor-specific request fields.
+4. Review the draft with the user, then call `add(...)` — the entry is written to `custom_models.yaml`.
 5. **If the result contains `need_env_input`, immediately call the `request_env_input` tool** with `env_vars` and `reason` from that payload. This pops the secure-input UI; the user enters the key; it lands in `workspace/.env`. **This step is mandatory — the script cannot pop the UI itself.**
 
-For the 11 curated vendors below, skip steps 1-3 and go straight to `add_template(vendor=...)` — base_url / wire / thinking / capabilities are all pre-filled. Step 5 still applies.
-
-Curated vendors: `anthropic`, `openai`, `xai`, `qwen`, `deepseek`, `kimi`, `mimo`, `gemini`, `gemma`, `venice`, `near-ai`.
-
 **Privacy-first tier:** `near-ai` and `venice` both target privacy-sensitive users, but NEAR AI is the cleaner integration — Venice's TEE story is itself built on top of NEAR AI + Phala, so going direct to NEAR AI yields a shorter trust chain (Intel + NVIDIA silicon + NEAR's reproducible enclave image; no product-layer proxy in between). Curated NEAR model list is **open-weight TEE-protected only** — NEAR's catalog also proxies Claude / GPT-5 / Gemini Pro under "Anonymized, not TEE-protected" mode, which we deliberately exclude since the entire privacy value-prop here is the hardware enclave.
+
+**Whenever NEAR AI is in scope, always recommend a TEE-protected (privacy) model** — that's the entire reason a user picks NEAR over OpenAI/Anthropic direct. The curated list is already TEE-only, so `add_template(vendor='near-ai')` defaults are safe. If the user asks to register a non-TEE model on NEAR (e.g. NEAR's anonymized Claude passthrough), warn them it weakens the privacy guarantee and recommend they either stay on a curated TEE model or register the upstream vendor directly.
 
 **NEAR AI reasoning protocol:** NEAR uses `chat_template_kwargs` nested under `extra_body` instead of the top-level `reasoning_effort`/`thinking`/`enable_thinking` that other vendors use. The provider handles this automatically via the `nearai_chat_template` thinking_capability rule. Per-model parameter names vary (GLM/Qwen3.5/Qwen3.6 use `enable_thinking`, DeepSeek-V3 uses `thinking`, gpt-oss is always-on). Full spec: [docs.near.ai/cloud/reasoning-models](https://docs.near.ai/cloud/reasoning-models). Default model `Qwen/Qwen3.6-35B-A3B-FP8` works out of the box; `Qwen3.5-122B-A10B` ships with `thinking_mode='disabled'` because its hidden-thinking pattern would otherwise cause `finish=length, content=null` on baseline calls.
 

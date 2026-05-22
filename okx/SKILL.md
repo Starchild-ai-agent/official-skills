@@ -1,6 +1,6 @@
 ---
 name: okx
-version: 1.0.3
+version: 1.0.4
 description: |
   OKX OnChainOS: on-chain trading, analytics, security, DeFi, bridging across 20+ chains.
 
@@ -31,8 +31,9 @@ cross-chain bridging, wallet ops, security scanning, payment protocols, and
 real-time data streams across 20+ blockchains (Ethereum, Solana, XLayer, Base,
 BSC, Arbitrum, Polygon, Optimism, Avalanche, TRON, …).
 
-All sub-skills are driven by a single binary, `onchainos`, which is downloaded
-on first use.
+Most sub-skills drive a single binary, `onchainos`, which is downloaded on first
+use. A subset of capabilities (read-only data) can also be accessed without the
+binary, via Starchild's sc-proxy — see **Authentication options** below.
 
 ---
 
@@ -51,23 +52,59 @@ need. Each sub-skill ships its own SKILL.md + reference docs + trigger phrases.
 
 ---
 
-## Authentication options
+## Authentication options (read this before invoking anything)
 
-The CLI binary needs OKX Web3 credentials to call the OnchainOS data layer.
-Two paths:
+There are two distinct paths. Pick based on what the agent needs to do:
 
-1. **Use your own API Key** — apply at
-   [web3.okx.com → Build → Dev Portal](https://web3.okx.com/build/dev-portal),
-   then `onchainos wallet login` (silent AK mode). Set `OKX_API_KEY`,
-   `OKX_SECRET_KEY`, `OKX_PASSPHRASE` env vars.
-2. **Use Starchild's shared proxy** (read-only data only) — sc-proxy auto-injects
-   platform credentials for the `web3.okx.com` domain. No setup required;
-   billed at $0.001/request through your Starchild credits (rate-limited to
-   60 req/min). Trading & wallet ops still require your own login.
+### Path A — Direct HTTP via Starchild sc-proxy (no API Key needed)
 
-For wallet operations (send / swap / sign), additionally run
-`onchainos wallet login <email>` to create or attach an OnchainOS TEE wallet
-account (private key stays inside the enclave, never on disk).
+For read-only data lookups (prices, K-line, smart-money signals, token
+analytics, security checks, public-address portfolios — **≈ 80 % of OnchainOS
+capabilities**), the agent can skip the CLI entirely and call
+`https://web3.okx.com/...` directly through sc-proxy:
+
+```python
+from core.http_client import proxied_get
+r = proxied_get(
+    "https://web3.okx.com/api/v6/dex/aggregator/supported/chain",
+    headers={"SC-CALLER-ID": f"chat:{thread_id}"},
+)
+```
+
+sc-proxy auto-injects platform OKX credentials, signs each request with
+HMAC-SHA256, and bills the caller's Starchild credits.
+
+- **Cost**: $0.001 / request
+- **Rate limit**: 60 req/min
+- **Setup**: none
+- **Limits**: data only — cannot send transactions or manage wallets
+
+### Path B — `onchainos` CLI with your own OKX Web3 API Key
+
+For wallet ops (`wallet login`, `wallet send`, `wallet contract-call`), DEX
+swaps that need execution, cross-chain bridges, strategy orders, payments, and
+any other CLI-driven workflow, the user must bring their own credentials:
+
+1. Apply at [web3.okx.com → Build → Dev Portal](https://web3.okx.com/build/dev-portal)
+2. Set env vars:
+   ```bash
+   export OKX_API_KEY=<your key>
+   export OKX_SECRET_KEY=<your secret>
+   export OKX_PASSPHRASE=<your passphrase>
+   ```
+3. Run any sub-skill's CLI commands.
+
+### Why the CLI can't use sc-proxy
+
+The `onchainos` binary uses Rust's `rustls` TLS stack with **bundled
+`webpki-roots`** — a compile-time copy of the Mozilla root CA list. It ignores
+the system trust store, ignores `SSL_CERT_FILE`, and has no documented env
+override. As a result, sc-proxy's MITM CA is rejected as `UnknownIssuer`, and
+the CLI cannot be transparently proxied. Path A (direct HTTP from agent
+scripts) is the only way to use platform credentials with OnchainOS today.
+
+Wallet creation (`onchainos wallet login <email>`) gives you a fresh TEE-managed
+account — it does NOT import your existing OKX App / extension wallet.
 
 ---
 
@@ -129,26 +166,26 @@ account (private key stays inside the enclave, never on disk).
 
 ## Quick task → sub-skill map
 
-| I want to… | Sub-skill |
-|---|---|
-| Check a token price or chart | `okx-dex-market` |
-| Search / analyze a token's holders | `okx-dex-token` |
-| Follow smart money buys | `okx-dex-signal` |
-| Scan new meme launches | `okx-dex-trenches` |
-| Stream live market data over WS | `okx-dex-ws` |
-| Look at any public wallet | `okx-wallet-portfolio` |
-| Manage / send from my own wallet | `okx-agentic-wallet` |
-| Swap tokens (same chain) | `okx-dex-swap` |
-| Bridge tokens (cross chain) | `okx-dex-bridge` |
-| Place a limit order | `okx-dex-strategy` |
-| Find best DeFi yield (any protocol) | `okx-defi-invest` |
-| Use a specific DApp (Aave, Polymarket, …) | `okx-dapp-discovery` |
-| View my DeFi positions | `okx-defi-portfolio` |
-| Scan a token / dApp for risk | `okx-security` |
-| Estimate gas / simulate / broadcast a tx | `okx-onchain-gateway` |
-| Pay an x402 / MPP / a2a-pay gated resource | `okx-agent-payments-protocol` |
-| Join a trading competition | `okx-growth-competition` |
-| Debug a CLI failure | `okx-audit-log` |
+| I want to… | Sub-skill | Suggested path |
+|---|---|---|
+| Check a token price or chart | `okx-dex-market` | A (no key) |
+| Search / analyze a token's holders | `okx-dex-token` | A (no key) |
+| Follow smart money buys | `okx-dex-signal` | A (no key) |
+| Scan new meme launches | `okx-dex-trenches` | A (no key) |
+| Stream live market data over WS | `okx-dex-ws` | B (CLI/WS client) |
+| Look at any public wallet | `okx-wallet-portfolio` | A (no key) |
+| Scan a token / dApp for risk | `okx-security` | A (no key) |
+| Estimate gas / simulate a tx | `okx-onchain-gateway` | A or B |
+| Manage / send from my own wallet | `okx-agentic-wallet` | B (requires login) |
+| Swap tokens (same chain) | `okx-dex-swap` | B (signing) |
+| Bridge tokens (cross chain) | `okx-dex-bridge` | B (signing) |
+| Place a limit order | `okx-dex-strategy` | B (TEE storage) |
+| Find best DeFi yield (any protocol) | `okx-defi-invest` | B (signing) |
+| View my DeFi positions | `okx-defi-portfolio` | A (no key) |
+| Use a specific DApp (Aave, Polymarket, …) | `okx-dapp-discovery` | B (full DApp flow) |
+| Pay an x402 / MPP / a2a-pay gated resource | `okx-agent-payments-protocol` | B (signing) |
+| Join a trading competition | `okx-growth-competition` | B (wallet required) |
+| Debug a CLI failure | `okx-audit-log` | B (local CLI logs) |
 
 ---
 
@@ -157,11 +194,11 @@ account (private key stays inside the enclave, never on disk).
 - **Chain identifiers**: both human names (`ethereum`, `solana`, `xlayer`) and
   numeric IDs are accepted. Run `onchainos swap chains` or
   `onchainos gateway chains` for the full list.
-- **Read-only ops** (market data, signal, security scan, portfolio of a public
-  address) work without an OnchainOS wallet login — API Key alone is enough.
-- **Trading & sending** require `onchainos wallet login` so the TEE has a key
-  to sign with. Wallet creation gives you a fresh address — it does **not**
-  import your existing OKX App / extension wallet.
+- **Read-only ops** (market data, signals, security scan, public-address
+  portfolios) work via Path A without any user-supplied API Key.
+- **Trading & sending** require Path B + `onchainos wallet login` so the TEE
+  has a key to sign with. Wallet creation gives you a fresh address — it does
+  NOT import your existing OKX App / extension wallet.
 - **Security gate**: when `okx-security` reports a fail, the calling agent
   MUST block the related operation rather than proceed.
 

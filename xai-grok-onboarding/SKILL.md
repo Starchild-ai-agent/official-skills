@@ -1,6 +1,6 @@
 ---
 name: xai-grok-onboarding
-version: 1.2.0
+version: 1.3.0
 description: |
   Connect an xAI account (X Premium / X Premium+ / SuperGrok / SuperGrok Heavy) via OAuth 2.0 device-code login.
 
@@ -155,6 +155,46 @@ The provider auto-routes based on model id:
 Users do not need to know which dialect each model speaks — passing the standard `messages=[...]` shape works for both. For multi-agent, an optional `thinking={"effort": "low"|"medium"|"high"}` controls how many agents collaborate.
 
 Subsequent chat calls hit `https://api.x.ai/v1` directly using the OAuth bearer — bypasses the platform proxy. **Subscription usage limits apply** (not the platform credit balance). Image / video models (`grok-imagine-*`) are filtered out of the chat picker but accessible via image generation tools.
+
+---
+
+## xAI's OAuth allowlist — biggest cause of "frontend rejected my login"
+
+**Critical context (verified from independent implementations, 2026-05):** xAI's backend maintains an internal allowlist on the OAuth API surface and frequently returns `HTTP 403` to OAuth tokens even when the user's subscription is active and the device-code flow itself succeeded. This is documented by Hermes Agent ([their xAI OAuth troubleshooting](https://hermes-agent.nousresearch.com/docs/guides/xai-grok-oauth#http-403-after-a-successful-login-tier--entitlement)) and confirmed by independent OpenCode plugin authors. **It is not a bug in our adapter — switching to PKCE flow does not bypass it (both grant types hit the same allowlist).**
+
+### Subscription tier ↔ OAuth availability (observed, not guaranteed)
+
+| Subscription | Price | OAuth typical outcome |
+|---|---|---|
+| X Premium (X.com only) | $8 /mo | ❌ Often rejected — not enough entitlement |
+| X Premium+ (linked X account) | $16 /mo | ✅ Usually works — xAI auto-links via X account |
+| SuperGrok (grok.com direct) | $30 /mo | ⚠️ Mixed — some users blocked, some pass |
+| SuperGrok Heavy | $300 /mo | ✅ Reliably works |
+
+### Preflight before starting the flow
+
+If the user has a **standalone X Premium** subscription (not Premium+) or a **SuperGrok base** subscription and is hitting frontend rejection, tell them to do this first, in order:
+
+1. Go to https://grok.com → Settings → Account → **"Connect your X Account"** (links the two identities so xAI can verify subscription status)
+2. Make sure the linked X account is the one carrying the Premium / Premium+ tag
+3. Sign out + sign back in at https://accounts.x.ai once after linking (refreshes the entitlement)
+4. Retry the device-code flow
+
+A large share of reported "OAuth login fails / device code never accepted" cases trace back to **missing X account link** — xAI's backend can't verify the Premium status without the link, and the front door silently rejects the device code.
+
+### When OAuth still fails after preflight → recommend BYOK
+
+The standard fix in the community (Hermes, OpenCode plugin, etc.) is **stop fighting OAuth, switch to API key**:
+
+- The `XAI_API_KEY` path uses a different xAI backend (console.x.ai pay-per-token) that is **not subject to the OAuth allowlist**.
+- Tell the user to grab a key at https://console.x.ai and then route them to the `byok-custom-model` skill with the xAI template. Setup is two minutes.
+- Trade-off: BYOK bills per-token from a separate wallet instead of using the subscription quota — explain that clearly so the user picks consciously.
+
+### What we do NOT do
+
+- ❌ Spoof referrer / pretend to be another known client (Hermes, grok-cli, etc.) — bypassing entitlement is against ToS and xAI may tighten the allowlist further
+- ❌ Retry the device-code flow on `access_denied` — it will keep failing; recommend preflight or BYOK instead
+- ❌ Tell the user it's a Starchild bug — it's an xAI account-gating decision we cannot override
 
 ---
 

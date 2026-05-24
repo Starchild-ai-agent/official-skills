@@ -182,6 +182,12 @@
       "description": "Degenerate Claw perp competition: trade Hyperliquid, post signals, climb leaderboard.\n\nUse when joining the ACP agent trading contest (e.g. register, open long ETH 5x, post Signals thread, check leaderboard rank)."
     },
     {
+      "name": "elfa",
+      "path": "elfa/SKILL.md",
+      "version": "1.0.0",
+      "description": "ELFA AI — real-time crypto social intelligence and automated condition-engine skills for AI agents.\n\nTrack trending tokens, surface narratives, search mentions, run market analysis, and build automated trigger-based workflows."
+    },
+    {
       "name": "ethena",
       "path": "ethena/SKILL.md",
       "version": "1.2.1",

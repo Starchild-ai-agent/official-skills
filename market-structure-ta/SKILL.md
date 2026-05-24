@@ -1,17 +1,17 @@
 ---
-name: price-action-ta
+name: market-structure-ta
 version: 1.0.0
 description: |
-  Price action analysis with Wyckoff, SMC/ICT, Al Brooks, and classical PA — outputs structured trade scripts with levels, entry, stop, R:R.
+  Market structure analysis with Wyckoff, SMC/ICT, Al Brooks, and classical price action — outputs structured trade scripts with levels, entry, stop, R:R.
 
-  Use when the user wants real technical analysis on a ticker (e.g. "PA analysis on NVDA", "Wyckoff phase for BTC", "where's the order block on SOL", "走势分析", "SMC 分析").
+  Use when the user wants real technical analysis on a ticker (e.g. "market structure analysis on NVDA", "Wyckoff phase for BTC", "where's the order block on SOL", "走势结构分析", "SMC 分析").
 
 metadata:
   starchild:
     emoji: "📐"
-    skillKey: price-action-ta
+    skillKey: market-structure-ta
 
-tags: [trading, technical-analysis, smc, wyckoff, ict, price-action]
+tags: [trading, technical-analysis, market-structure, smc, wyckoff, ict, price-action]
 
 user-invocable: true
 disable-model-invocation: false
@@ -128,7 +128,7 @@ Output a structured trading thesis (see Output Format below). If you couldn't fi
 Always produce this structure. No exceptions.
 
 ```
-## [TICKER] — Price Action Analysis ([DATE])
+## [TICKER] — Market Structure Analysis ([DATE])
 
 ### 1. Macro Narrative
 [2–4 sentences. Where are we in the Wyckoff cycle? What's the dominant order flow?

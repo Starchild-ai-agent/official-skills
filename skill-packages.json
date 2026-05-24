@@ -12,6 +12,7 @@
         "hyperliquid",
         "coingecko",
         "coinglass",
+        "market-structure-ta",
         "wallet",
         "1inch",
         "jupiter",
@@ -26,15 +27,16 @@
       "name": "Stock Investment Suite",
       "name_zh": "股票投资套件",
       "name_ko": "주식 투자 스위트",
-      "description": "Global stock market data — US equities deep fundamentals, China A-shares, options greeks, 200+ technical indicators, strategy backtesting.",
-      "description_zh": "全球股票市场数据 — 美股深度基本面、A股行情、期权希腊字母、200+ 技术指标、策略回测",
-      "description_ko": "글로벌 주식 시장 데이터 — 미국 주식 심층 펀더멘털, 중국 A주, 옵션 그릭스, 200+ 기술 지표, 전략 백테스팅",
+      "description": "Global stock market data — US equities deep fundamentals, China A-shares, options greeks, 200+ technical indicators, market-structure analysis, and strategy backtesting.",
+      "description_zh": "全球股票市场数据 — 美股深度基本面、A股行情、期权希腊字母、200+ 技术指标、市场结构分析与策略回测",
+      "description_ko": "글로벌 주식 시장 데이터 — 미국 주식 심층 펀더멘털, 중국 A주, 옵션 그릭스, 200+ 기술 지표, 시장 구조 분석 및 전략 백테스팅",
       "skills": [
         "twelvedata",
         "us-stock",
         "cn-stock",
         "massive-options-data",
         "taapi",
+        "market-structure-ta",
         "trading-strategy",
         "backtest"
       ]

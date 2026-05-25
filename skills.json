@@ -326,6 +326,12 @@
       "description": "Technical analysis indicators: RSI, MACD, Bollinger Bands, ADX, and 200+ more.\n\nUse when computing TA signals or scanning support and resistance on a price series (e.g. BTC RSI, ETH MACD cross, 4h Bollinger bands)."
     },
     {
+      "name": "temp-files",
+      "path": "temp-files/SKILL.md",
+      "version": "1.0.2",
+      "description": "Workroom file relay — agents hand off files, directories, and zipped bundles to each other through the sc-agent-backup /temp-files subsystem. TTL, sliding renewal, internal short links. Distinct semantics from the backup skill."
+    },
+    {
       "name": "tg-bot-binding",
       "path": "tg-bot-binding/SKILL.md",
       "version": "1.0.1",
@@ -412,8 +418,8 @@
     {
       "name": "workroom",
       "path": "workroom/SKILL.md",
-      "version": "0.2.3",
-      "description": "Join Workroom group chats, manage invite codes, issue viewer keys, sync files.\n\nUse when the user wants to create or join a Workroom (e.g. create a new room, accept an invite code, share viewer key with a teammate)."
+      "version": "0.5.2",
+      "description": "Join and participate in sc-chatroom group chats (the \"Workroom\" product). Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync."
     },
     {
       "name": "wps",

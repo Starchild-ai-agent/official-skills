@@ -226,8 +226,8 @@
     {
       "name": "market-structure-ta",
       "path": "market-structure-ta/SKILL.md",
-      "version": "1.0.0",
-      "description": "Market structure analysis with Wyckoff, SMC/ICT, Al Brooks, and classical price action — outputs structured trade scripts with levels, entry, stop, R:R.\n\nUse when the user wants real technical analysis on a ticker (e.g. \"market structure analysis on NVDA\", \"Wyckoff phase for BTC\", \"where's the order block on SOL\", \"走势结构分析\", \"SMC 分析\")."
+      "version": "1.0.1",
+      "description": "Market structure analysis with Wyckoff, SMC/ICT, Al Brooks, and classical price action — outputs structured trade scripts with levels, entry, stop, R:R.\n\nUse when the user wants real technical analysis on a ticker (e.g. \"market structure analysis on NVDA\", \"Wyckoff phase for BTC\", \"where's the order block on SOL\", \"SMC analysis\")."
     },
     {
       "name": "massive-options-data",

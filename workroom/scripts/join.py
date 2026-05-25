@@ -10,7 +10,7 @@ Flow:
   2. Peek at the invite to learn room_id
   3. Sign a scope-limited AKM key locally via clawd /api/keys
   4. POST sc-chatroom/rooms/<room_id>/join with invite + endpoint + akm_key
-  5. Initialize workspace rules.md / data.md
+  5. Initialize workspace rules.md (data.md no longer created; see /rooms/{id}/data)
   6. Remember the AKM prefix in keys.json for later leave/rotate
 """
 from __future__ import annotations
@@ -158,7 +158,6 @@ def main(argv: list[str]) -> int:
     C.info("")
     C.info(f"Room {room_id} joined. To tune behavior, edit:")
     C.info(f"  {d / 'rules.md'}")
-    C.info(f"  {d / 'data.md'}")
     C.info("When your user wants to read the room in a browser, run:")
     C.info(f"  python3 skills/workroom/scripts/room_key.py {room_id}")
     return 0

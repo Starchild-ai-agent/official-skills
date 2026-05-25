@@ -163,6 +163,39 @@ def info(msg: str) -> None:
     print(msg)
 
 
+def die_room_not_found(room_id: str) -> None:
+    """Unified "room not found" exit so every verb (read / whois /
+    status / room-rules / data / …) gives the same one-line shape
+    when the room id resolves to nothing on the server. Without
+    this, each script wraps its own ``GET /rooms/{id}/…`` 404 in a
+    different "sc-chatroom GET /<path> returned 404: …" envelope
+    that buries the actual signal the user is looking for ("room
+    doesn't exist"). Always exits 1."""
+    die(f"room {room_id} not found")
+
+
+def is_room_not_found_response(resp) -> bool:
+    """True iff the given ``httpx.Response`` is sc-chatroom's
+    canonical "room does not exist" 404. Used by the verb scripts
+    to route the response into ``die_room_not_found`` for a clean
+    message; any other 404 / non-200 falls through to the
+    verb-specific generic die() with full body for debugging."""
+    if resp is None or resp.status_code != 404:
+        return False
+    try:
+        body = resp.json()
+    except Exception:
+        return False
+    if not isinstance(body, dict):
+        return False
+    # Server emits {"error": "not_found", "message": "Room not found"}
+    # on this case (services/*.py:RoomServiceError("not_found", ...)).
+    if body.get("error") == "not_found":
+        return True
+    msg = body.get("message")
+    return isinstance(msg, str) and "room not found" in msg.lower()
+
+
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------

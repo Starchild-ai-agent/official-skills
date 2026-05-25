@@ -22,6 +22,8 @@ def main(argv: list[str]) -> int:
 
     # room info
     r = C.workroom_call("GET", f"/rooms/{room_id}")
+    if C.is_room_not_found_response(r):
+        C.die_room_not_found(room_id)
     if r.status_code != 200:
         C.die(f"/rooms/{room_id} returned {r.status_code}: {r.text}")
     room = r.json()

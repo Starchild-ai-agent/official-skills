@@ -51,7 +51,8 @@ def main(argv: list[str]) -> int:
     p.add_argument("--since", type=int, default=0,
                    help="seq > since (forward sync; ignored if --before set)")
     p.add_argument("--limit", type=int, default=50,
-                   help="max messages returned (server-capped)")
+                   help="max messages returned (1..100; server cap is 200 but "
+                        "the skill enforces 100 to keep agent prompts bounded)")
     p.add_argument("--before", type=int, default=None,
                    help="reverse fetch — seq < before, K most recent")
     p.add_argument("--sender_user_id", default=None,
@@ -63,6 +64,17 @@ def main(argv: list[str]) -> int:
     args = p.parse_args(argv[1:])
 
     room_id = C.validate_room_id(args.room_id)
+    # Reject obviously-bad --limit values before any HTTP round-trip.
+    # Server already clamps with max(1, min(limit, 200)) silently, but
+    # silent clamping hides off-by-one bugs in caller scripts AND lets
+    # `--limit 0` succeed-with-1-message (useless and confusing). 100
+    # matches the whois `--recent` cap so the two read paths agree.
+    if args.limit < 1 or args.limit > 100:
+        C.die(
+            f"--limit must be in [1, 100] (got {args.limit}); "
+            "this skill caps reads at 100 to keep agent prompts bounded. "
+            "Use --before pagination to walk further history."
+        )
     C.require_env()
 
     qs: list[str] = [f"limit={args.limit}"]
@@ -76,6 +88,8 @@ def main(argv: list[str]) -> int:
         qs.append(f"mentions={args.mentions}")
 
     r = C.workroom_call("GET", f"/rooms/{room_id}/messages?{'&'.join(qs)}")
+    if C.is_room_not_found_response(r):
+        C.die_room_not_found(room_id)
     if r.status_code != 200:
         C.die(f"sc-chatroom GET /messages returned {r.status_code}: {r.text}")
     body = r.json()

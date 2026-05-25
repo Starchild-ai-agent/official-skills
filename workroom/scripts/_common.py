@@ -163,6 +163,39 @@ def info(msg: str) -> None:
     print(msg)
 
 
+def die_room_not_found(room_id: str) -> None:
+    """Unified "room not found" exit so every verb (read / whois /
+    status / room-rules / data / …) gives the same one-line shape
+    when the room id resolves to nothing on the server. Without
+    this, each script wraps its own ``GET /rooms/{id}/…`` 404 in a
+    different "sc-chatroom GET /<path> returned 404: …" envelope
+    that buries the actual signal the user is looking for ("room
+    doesn't exist"). Always exits 1."""
+    die(f"room {room_id} not found")
+
+
+def is_room_not_found_response(resp) -> bool:
+    """True iff the given ``httpx.Response`` is sc-chatroom's
+    canonical "room does not exist" 404. Used by the verb scripts
+    to route the response into ``die_room_not_found`` for a clean
+    message; any other 404 / non-200 falls through to the
+    verb-specific generic die() with full body for debugging."""
+    if resp is None or resp.status_code != 404:
+        return False
+    try:
+        body = resp.json()
+    except Exception:
+        return False
+    if not isinstance(body, dict):
+        return False
+    # Server emits {"error": "not_found", "message": "Room not found"}
+    # on this case (services/*.py:RoomServiceError("not_found", ...)).
+    if body.get("error") == "not_found":
+        return True
+    msg = body.get("message")
+    return isinstance(msg, str) and "room not found" in msg.lower()
+
+
 # ---------------------------------------------------------------------------
 # Validation
 # ---------------------------------------------------------------------------
@@ -282,8 +315,19 @@ def get_key(room_id: str) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
-# Workspace files (rules.md / data.md)
+# Workspace files (rules.md)
 # ---------------------------------------------------------------------------
+#
+# ``data.md`` was a per-agent local file in older skill versions (≤ 0.3.x).
+# It was created here as a TODO template and meant for the room owner to
+# edit by hand. In practice owners never SSH'd into agent containers to
+# fill it, so every workroom shipped forever with placeholder content and
+# agents stayed maximally conservative about referencing anything beyond
+# raw chat. Workroom Awareness Plan §C moved the field to room-level
+# state at ``GET /rooms/{id}/data``, editable from the viewer. This
+# helper now only manages ``rules.md`` (still per-agent local notes —
+# server-side ``room_rules`` lives at ``/rooms/{id}/rules`` and ships
+# in the fan-out payload).
 
 def room_workspace_dir(room_id: str) -> Path:
     return WORKROOM_WORKSPACE / room_id
@@ -293,11 +337,12 @@ def ensure_room_workspace(room_id: str) -> Path:
     d = room_workspace_dir(room_id)
     d.mkdir(parents=True, exist_ok=True)
     rules = d / "rules.md"
-    data = d / "data.md"
     if not rules.exists():
         rules.write_text(_rules_template(room_id))
-    if not data.exists():
-        data.write_text(_data_template(room_id))
+    # NOTE: we deliberately do NOT create ``data.md`` anymore. Pre-0.4
+    # agents that already have one on disk keep it; the agent runtime
+    # (clawd) now reads room-level reference scope from the fan-out
+    # payload's ``room_data`` block, not from this file.
     return d
 
 
@@ -310,17 +355,8 @@ def _rules_template(room_id: str) -> str:
         "- Always reply when @-mentioned.\n"
         "- Otherwise default to `[SILENT]`.\n\n"
         "## Don'ts\n"
-        "- Do not reference personal info outside data.md.\n"
-    )
-
-
-def _data_template(room_id: str) -> str:
-    return (
-        f"# Topics — {room_id}\n\n"
-        "## Quotable\n"
-        "- (TODO: links / topics / facts you're OK referencing)\n\n"
-        "## Off-limits\n"
-        "- (TODO: scope you must not quote)\n"
+        "- Do not reference facts outside the room's reference scope "
+        "(see `workroom data <room_id>`, owner-curated).\n"
     )
 
 

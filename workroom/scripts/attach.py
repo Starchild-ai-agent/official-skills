@@ -94,6 +94,35 @@ def main(argv: list[str]) -> int:
         )
     C.info(f"  ✓ attached as fan-out target at {C.AGENT_BASE_URL}")
 
+    # 2b. If sc-chatroom was already holding a different AKM key for this
+    #     member, it returns the prior key's prefix so we can revoke it
+    #     locally. Otherwise the keystore accumulates orphan-active keys
+    #     across re-attaches, and — far worse — that orphan can later get
+    #     out-of-band revoked while sc-chatroom is still PUTting against
+    #     it, leading to the silent 401-storm we just debugged. Best-
+    #     effort: if the DELETE fails we keep going (the new key works
+    #     either way).
+    try:
+        body = r.json()
+    except ValueError:
+        body = {}
+    prior_prefix = body.get("prior_akm_prefix") if isinstance(body, dict) else None
+    if isinstance(prior_prefix, str) and prior_prefix:
+        try:
+            rd = C.clawd_call("DELETE", f"/api/keys/{prior_prefix}")
+            if rd.status_code in (200, 204, 404):
+                C.info(f"  ✓ revoked previous AKM key ({prior_prefix}…)")
+            else:
+                C.info(
+                    f"  ! could not revoke previous AKM key {prior_prefix}: "
+                    f"HTTP {rd.status_code} (continuing — new key is active)"
+                )
+        except Exception as e:
+            C.info(
+                f"  ! could not revoke previous AKM key {prior_prefix}: "
+                f"{e!r} (continuing — new key is active)"
+            )
+
     # 3. Workspace (idempotent — safe on re-attach)
     d = C.ensure_room_workspace(room_id)
     C.info(f"  ✓ workspace ready at {d}")

@@ -1,10 +1,12 @@
 ---
 name: okx
-version: 1.0.4
+version: 1.0.6
 description: |
   OKX OnChainOS: on-chain trading, analytics, security, DeFi, bridging across 20+ chains.
 
   Use when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio).
+
+  Wallet: default to the user's Agent Wallet (via the `wallet` skill). Only use the OnchainOS TEE wallet (`onchainos wallet login <email>`) when the user explicitly asks for it.
 metadata:
   starchild:
     emoji: "⛓️"
@@ -49,6 +51,18 @@ npx skills add https://github.com/okx/onchainos-skills --skill <sub-skill-name>
 
 There is **no batched "install all"** — install the sub-skills you actually
 need. Each sub-skill ships its own SKILL.md + reference docs + trigger phrases.
+
+---
+
+## Wallet — default to the user's Agent Wallet
+
+Use the platform `wallet` skill for signing and broadcasting. OKX DEX
+endpoints return unsigned calldata (`{to, value, data, ...}`); feed it to
+`wallet_transfer(data=<calldata>)` and you're done. No separate OKX wallet
+needed.
+
+Only use the OnchainOS TEE wallet (`onchainos wallet login <email>`) when
+the user explicitly asks for it.
 
 ---
 
@@ -177,7 +191,7 @@ account — it does NOT import your existing OKX App / extension wallet.
 | Scan a token / dApp for risk | `okx-security` | A (no key) |
 | Estimate gas / simulate a tx | `okx-onchain-gateway` | A or B |
 | Manage / send from my own wallet | `okx-agentic-wallet` | B (requires login) |
-| Swap tokens (same chain) | `okx-dex-swap` | B (signing) |
+| Swap tokens (same chain) | `okx-dex-swap` REST + sign with the `wallet` skill (Agent Wallet) |
 | Bridge tokens (cross chain) | `okx-dex-bridge` | B (signing) |
 | Place a limit order | `okx-dex-strategy` | B (TEE storage) |
 | Find best DeFi yield (any protocol) | `okx-defi-invest` | B (signing) |
@@ -196,9 +210,8 @@ account — it does NOT import your existing OKX App / extension wallet.
   `onchainos gateway chains` for the full list.
 - **Read-only ops** (market data, signals, security scan, public-address
   portfolios) work via Path A without any user-supplied API Key.
-- **Trading & sending** require Path B + `onchainos wallet login` so the TEE
-  has a key to sign with. Wallet creation gives you a fresh address — it does
-  NOT import your existing OKX App / extension wallet.
+- **Trading & sending** default to the user's Agent Wallet via the `wallet`
+  skill. Only fall back to `onchainos wallet login` when the user asks.
 - **Security gate**: when `okx-security` reports a fail, the calling agent
   MUST block the related operation rather than proceed.
 

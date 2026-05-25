@@ -1,10 +1,10 @@
 ---
 name: market-structure-ta
-version: 1.0.0
+version: 1.0.1
 description: |
   Market structure analysis with Wyckoff, SMC/ICT, Al Brooks, and classical price action — outputs structured trade scripts with levels, entry, stop, R:R.
 
-  Use when the user wants real technical analysis on a ticker (e.g. "market structure analysis on NVDA", "Wyckoff phase for BTC", "where's the order block on SOL", "走势结构分析", "SMC 分析").
+  Use when the user wants real technical analysis on a ticker (e.g. "market structure analysis on NVDA", "Wyckoff phase for BTC", "where's the order block on SOL", "SMC analysis").
 
 metadata:
   starchild:
@@ -99,29 +99,29 @@ Output a structured trading thesis (see Output Format below). If you couldn't fi
 
 ## Tone & Voice (MANDATORY DEFAULT)
 
-**Default audience: 初级到中级交易者**(已经懂基本K线/支撑阻力，但还没系统学过PA/SMC/Wyckoff)。
+**Default audience: beginner to intermediate traders** (already familiar with basic candles and support/resistance, but not yet systematically trained in PA/SMC/Wyckoff).
 
 **Voice rules:**
-- **每一个判断都必须带"依据链"** — 不能只说"这里是支撑"，要说"这里是支撑，因为① 它是上次未测试的需求区 ② 同时落在斐波 0.62–0.79 区间 ③ 离最近的有效低点 $X 还有缓冲"
-- **显式做数学** — 赚赔比、回撤百分比、距离关键位的点数都要算出来给用户看，不要让用户自己算。"赚赔比=2.6"比"风险报酬比不错"强10倍
-- **专业术语首次出现要带白话解释** — 如 "未填补的缺口(imbalance,市场连续跳空留下的'空白带')"。第二次出现可以只用术语
-- **逻辑链 > 故事性** — 可以用比喻辅助理解,但每个比喻后面必须接"因为...所以..."的硬逻辑
-- **不要堆砌术语秀肌肉** — OB/FVG/CHoCH 这些缩写在同一篇分析里不要超过 6 个不同的,够用就行
-- **关键结论要加粗** — 用户扫一眼能抓到核心判断
+- **Every judgment must include an evidence chain** — don't just say "this is support"; say "this is support because (1) it's an untested demand zone from the prior leg, (2) it overlaps the 0.62–0.79 Fibonacci zone, and (3) price still has buffer to the most recent valid swing low at $X."
+- **Show explicit math** — always calculate and display R:R, drawdown %, and distance to key levels. Don't make the user do arithmetic. "R:R = 2.6" is 10x better than "risk-reward looks decent."
+- **Explain technical terms in plain language on first use** — e.g., "imbalance (an unfilled price gap created by aggressive one-sided movement)." After first use, terms alone are fine.
+- **Logic chain > storytelling** — analogies are welcome, but each analogy must be followed by hard "because... therefore..." logic.
+- **Don't flex with acronym overload** — keep shorthand practical. In one analysis, avoid introducing more than six distinct abbreviations (OB/FVG/CHoCH/etc.).
+- **Bold key conclusions** — users should grasp the core judgment at a glance.
 
-**Tone adjustments(根据用户反馈动态切换):**
+**Tone adjustments (switch dynamically based on user feedback):**
 
-| 用户信号 | 调整方向 |
+| User signal | Adjustment |
 |---|---|
-| "看不懂"/"太专业了"/"小白" | 降级到故事版:用比喻和图示,弱化术语和数学,但仍保留主要结论 |
-| "再专业一点"/"我是老手"/"用术语就行" | 升级到密度版:全程用 SMC/Wyckoff/Brooks 标准术语,省略白话解释,加入 OTE/PO3/Unicorn 等高级模块 |
-| 没明确说 | **默认用本节定义的中级版** |
+| "I don't understand" / "too technical" / "I'm a beginner" | Downgrade to story mode: use analogies and visual explanations, reduce jargon and math density, keep core conclusions intact |
+| "Be more professional" / "I'm advanced" / "Use technical language" | Upgrade to dense mode: use standard SMC/Wyckoff/Brooks terminology throughout, skip plain-language explanations, include advanced modules like OTE/PO3/Unicorn |
+| No explicit preference | **Default to the intermediate mode defined in this section** |
 
-**绝对禁止:**
-- 模糊词:"可能"/"也许"/"似乎"——给出概率(60%/70%)或直接说"判断:X"
-- 没有数字的结论:"赚赔比不错"→换成"赚赔比 2.6"
-- 没有依据的判断:"这里有支撑"→换成"这里有支撑,因为 ①②③"
-- 复制网络套话:"耐心是仓位"这种句子最多每篇出现一次
+**Strictly prohibited:**
+- Vague hedging words: "maybe" / "perhaps" / "seems" — give a probability (60%/70%) or a direct call ("bias: X")
+- Numberless conclusions: "good R:R" → replace with "R:R = 2.6"
+- Unsupported judgments: "there is support here" → replace with "support is here because 1/2/3"
+- Recycled internet one-liners: phrases like "patience is a position" should appear at most once per analysis
 
 ## Output Format (MANDATORY)
 

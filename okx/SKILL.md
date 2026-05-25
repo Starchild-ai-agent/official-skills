@@ -1,12 +1,12 @@
 ---
 name: okx
-version: 1.0.5
+version: 1.0.6
 description: |
   OKX OnChainOS: on-chain trading, analytics, security, DeFi, bridging across 20+ chains.
 
   Use when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio).
 
-  ⚠️ Wallet note: signing sub-skills (swap, bridge, send, DeFi invest, payments) require their OWN OnchainOS TEE wallet — they do NOT use the platform Agent Wallet. If the user already has a funded Agent Wallet and the task is a generic same-chain swap, prefer `woofi-swap` / `1inch` / `openocean` first. Read the "Wallet boundary" block in SKILL.md before installing any Path B sub-skill.
+  Wallet: default to the user's Agent Wallet (via the `wallet` skill). Only use the OnchainOS TEE wallet (`onchainos wallet login <email>`) when the user explicitly asks for it.
 metadata:
   starchild:
     emoji: "⛓️"
@@ -54,37 +54,15 @@ need. Each sub-skill ships its own SKILL.md + reference docs + trigger phrases.
 
 ---
 
-## Wallet boundary (read FIRST before any signing op)
+## Wallet — default to the user's Agent Wallet
 
-OKX OnChainOS sub-skills that **sign or send** transactions (`okx-dex-swap`,
-`okx-dex-bridge`, `okx-agentic-wallet`, `okx-defi-invest`, `okx-dex-strategy`,
-`okx-agent-payments-protocol`, `okx-x402-payment`, `okx-growth-competition`)
-use an **independent TEE wallet** created via `onchainos wallet login <email>`.
+Use the platform `wallet` skill for signing and broadcasting. OKX DEX
+endpoints return unsigned calldata (`{to, value, data, ...}`); feed it to
+`wallet_transfer(data=<calldata>)` and you're done. No separate OKX wallet
+needed.
 
-That wallet is **separate from the user's platform Agent Wallet**. It starts at
-zero balance, has its own address, and must be funded separately. Asking a
-user with a funded Agent Wallet to "enter your email to set up a wallet" is
-the most common confusion point — avoid it unless the user explicitly wants
-OKX-specific features.
-
-**Decision rule before installing any Path B / signing sub-skill:**
-
-1. Does the user already have a funded platform Agent Wallet? Run `wallet_info`
-   or check the wallet skill output. If yes:
-2. Can the task be done with a wallet-integrated DEX skill?
-   - Same-chain ERC-20 swap → prefer `woofi-swap`, `1inch`, or `openocean`
-     (these sign with the platform Agent Wallet — zero extra setup)
-   - Generic transfer / sign → use the platform `wallet` skill
-   - Solana swap → check if a wallet-integrated Solana DEX skill is installed
-3. Only fall through to OKX Path B when:
-   - The user explicitly asks for OKX / OnchainOS, OR
-   - No wallet-integrated skill covers the chain or feature (e.g. cross-chain
-     bridge, DeFi position management on an unsupported protocol), OR
-   - The user wants OKX-specific perks (TEE custody, growth competitions, MPP)
-
-Whenever you do choose Path B, tell the user **before** install:
-> "This will create a separate OKX OnchainOS wallet (not your Agent Wallet).
-> You'll need to fund it separately. Continue?"
+Only use the OnchainOS TEE wallet (`onchainos wallet login <email>`) when
+the user explicitly asks for it.
 
 ---
 
@@ -213,7 +191,7 @@ account — it does NOT import your existing OKX App / extension wallet.
 | Scan a token / dApp for risk | `okx-security` | A (no key) |
 | Estimate gas / simulate a tx | `okx-onchain-gateway` | A or B |
 | Manage / send from my own wallet | `okx-agentic-wallet` | B (requires login) |
-| Swap tokens (same chain) | `okx-dex-swap` | B (signing) — **prefer `woofi-swap` / `1inch` / `openocean` if user has a funded Agent Wallet** |
+| Swap tokens (same chain) | `okx-dex-swap` REST + sign with the `wallet` skill (Agent Wallet) |
 | Bridge tokens (cross chain) | `okx-dex-bridge` | B (signing) |
 | Place a limit order | `okx-dex-strategy` | B (TEE storage) |
 | Find best DeFi yield (any protocol) | `okx-defi-invest` | B (signing) |
@@ -232,11 +210,8 @@ account — it does NOT import your existing OKX App / extension wallet.
   `onchainos gateway chains` for the full list.
 - **Read-only ops** (market data, signals, security scan, public-address
   portfolios) work via Path A without any user-supplied API Key.
-- **Trading & sending** require Path B + `onchainos wallet login` so the TEE
-  has a key to sign with. Wallet creation gives you a fresh address — it does
-  NOT import your existing OKX App / extension wallet, and it does NOT use the
-  user's platform Agent Wallet. See "Wallet boundary" above before installing
-  any signing sub-skill.
+- **Trading & sending** default to the user's Agent Wallet via the `wallet`
+  skill. Only fall back to `onchainos wallet login` when the user asks.
 - **Security gate**: when `okx-security` reports a fail, the calling agent
   MUST block the related operation rather than proceed.
 

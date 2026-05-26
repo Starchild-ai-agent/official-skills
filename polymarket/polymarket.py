@@ -59,49 +59,94 @@ Step 3: polymarket_auth(wallet_address="0x...", signature="0x...", timestamp=T) 
 
     async def execute(self, ctx, wallet_address, signature=None, timestamp=None):
         if not AVAILABLE: return _unavailable()
+
+        # --- Input validation (before any branch) ---
+        if not isinstance(wallet_address, str) or not wallet_address.startswith("0x") or len(wallet_address) != 42:
+            return ToolResult(success=False, error=(
+                f"Invalid wallet_address: expected 42-char 0x... hex, got {wallet_address!r}. "
+                "Call wallet_info first to get the agent's actual wallet address."
+            ))
+
         try:
-            if not signature:
+            # --- Step 1: produce EIP-712 message to sign ---
+            # Treat empty string AND None as "no signature provided" (start step 1).
+            if not signature or not isinstance(signature, str) or not signature.strip():
                 ts = int(time.time())
                 msg = await asyncio.to_thread(build_clob_auth_message, wallet_address, ts)
                 return ToolResult(success=True, output={
                     "step": "sign", "timestamp": ts, "eip712_message": msg,
-                    "instructions": "Sign with wallet_sign_typed_data, then call again with signature and timestamp",
+                    "instructions": (
+                        "Sign with wallet_sign_typed_data using the EXACT wallet shown by wallet_info. "
+                        "Then call polymarket_auth again with BOTH signature (0x... 132 chars) and timestamp "
+                        f"(integer {ts} from this response). Do NOT pass signature='' or timestamp=0."
+                    ),
                 })
-            else:
-                creds = await asyncio.to_thread(derive_api_credentials, signature, wallet_address, timestamp or 0)
-                # Auto-save to .env
-                import os
-                env_path = "/data/workspace/.env"
-                updates = {
-                    "POLY_API_KEY": creds.get("apiKey", ""),
-                    "POLY_SECRET": creds.get("secret", ""),
-                    "POLY_PASSPHRASE": creds.get("passphrase", ""),
-                    "POLY_WALLET": wallet_address,
-                }
-                try:
-                    existing = {}
-                    if os.path.exists(env_path):
-                        with open(env_path) as f:
-                            for line in f:
-                                line = line.strip()
-                                if line and "=" in line and not line.startswith("#"):
-                                    k, v = line.split("=", 1)
-                                    existing[k.strip()] = v.strip()
-                    existing.update(updates)
-                    with open(env_path, "w") as f:
-                        for k, v in existing.items():
-                            f.write(f"{k}={v}\n")
-                    # Also set in current process
-                    for k, v in updates.items():
-                        os.environ[k] = v
-                except Exception as e:
-                    logger.warning(f"Failed to save credentials to .env: {e}")
 
-                return ToolResult(success=True, output={
-                    "step": "complete",
-                    "api_key": creds.get("apiKey", "")[:8] + "...",
-                    "saved_to": env_path,
-                })
+            # --- Step 2: derive credentials with strict signature + timestamp validation ---
+            sig = signature.strip()
+            if not sig.startswith("0x") or len(sig) != 132:
+                return ToolResult(success=False, error=(
+                    f"Invalid signature: expected 132-char 0x... hex (65 bytes), got len={len(sig)}. "
+                    "Did wallet_sign_typed_data return undefined? Re-run wallet_sign_typed_data with the "
+                    "EIP-712 payload from step 1, then call this tool again with the real signature."
+                ))
+
+            if not isinstance(timestamp, int) or timestamp <= 0:
+                return ToolResult(success=False, error=(
+                    f"Invalid timestamp: must be the positive integer returned by step 1, got {timestamp!r}. "
+                    "Do NOT pass 0 or None. If you lost the timestamp, restart from step 1 "
+                    "(call polymarket_auth(wallet_address=...) with no signature)."
+                ))
+
+            # Staleness check — ClobAuth tolerates ~5 min skew; reject anything older.
+            now = int(time.time())
+            age = now - timestamp
+            if age > 300:
+                return ToolResult(success=False, error=(
+                    f"Timestamp expired: {age}s old (max 300s). Restart from step 1 to get a fresh "
+                    "timestamp + EIP-712 payload, then sign and submit within 5 minutes."
+                ))
+            if age < -60:
+                return ToolResult(success=False, error=(
+                    f"Timestamp from the future ({-age}s ahead). This usually means you reused a timestamp "
+                    "from a different prepare call. Restart from step 1."
+                ))
+
+            creds = await asyncio.to_thread(derive_api_credentials, sig, wallet_address, timestamp)
+
+            # Auto-save to .env
+            import os
+            env_path = "/data/workspace/.env"
+            updates = {
+                "POLY_API_KEY": creds.get("apiKey", ""),
+                "POLY_SECRET": creds.get("secret", ""),
+                "POLY_PASSPHRASE": creds.get("passphrase", ""),
+                "POLY_WALLET": wallet_address,
+            }
+            try:
+                existing = {}
+                if os.path.exists(env_path):
+                    with open(env_path) as f:
+                        for line in f:
+                            line = line.strip()
+                            if line and "=" in line and not line.startswith("#"):
+                                k, v = line.split("=", 1)
+                                existing[k.strip()] = v.strip()
+                existing.update(updates)
+                with open(env_path, "w") as f:
+                    for k, v in existing.items():
+                        f.write(f"{k}={v}\n")
+                # Also set in current process
+                for k, v in updates.items():
+                    os.environ[k] = v
+            except Exception as e:
+                logger.warning(f"Failed to save credentials to .env: {e}")
+
+            return ToolResult(success=True, output={
+                "step": "complete",
+                "api_key": creds.get("apiKey", "")[:8] + "...",
+                "saved_to": env_path,
+            })
         except Exception as e:
             return ToolResult(success=False, error=str(e))
 

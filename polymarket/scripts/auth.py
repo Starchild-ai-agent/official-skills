@@ -68,22 +68,93 @@ def prepare(wallet):
     print(f"  Then: python3 auth.py --save <signature> {wallet} {ts}")
 
 def save(signature, wallet, timestamp):
+    # --- Defensive validation BEFORE hitting the API ---
+    # 1. Signature shape
+    if not signature or not signature.startswith("0x") or len(signature) != 132:
+        die(
+            f"Invalid signature: expected 132-char 0x... hex, got len={len(signature) if signature else 0}.\n"
+            "  Cause: wallet_sign_typed_data likely returned undefined or you pasted the wrong value.\n"
+            "  Fix:   restart from --prepare, sign the EIP-712 from /tmp/poly_auth.json with wallet_sign_typed_data,\n"
+            "         then pass the resulting 0x-prefixed signature here."
+        )
+
+    # 2. Wallet shape
+    if not wallet or not wallet.startswith("0x") or len(wallet) != 42:
+        die(f"Invalid wallet: expected 42-char 0x... hex, got {wallet!r}")
+
+    # 3. Timestamp shape + staleness
+    try:
+        ts_int = int(timestamp)
+    except (TypeError, ValueError):
+        die(f"Invalid timestamp: must be an integer (epoch seconds), got {timestamp!r}")
+    if ts_int <= 0:
+        die(f"Invalid timestamp: must be > 0, got {ts_int}")
+    age = int(time.time()) - ts_int
+    if age > 300:
+        die(
+            f"Timestamp expired: {age}s old (max 300s).\n"
+            "  Cause: signature + timestamp must both come from the SAME --prepare call, used within 5 minutes.\n"
+            f"  Fix:   re-run `python3 auth.py --prepare {wallet}`, re-sign, then --save within 5 min."
+        )
+    if age < -60:
+        die(
+            f"Timestamp from the future ({-age}s ahead).\n"
+            "  Cause: you likely reused a timestamp from a different prepare call.\n"
+            f"  Fix:   re-run `python3 auth.py --prepare {wallet}` to get a fresh timestamp."
+        )
+
+    # 4. Wallet consistency with the prepare call that produced this timestamp
+    try:
+        with open("/tmp/poly_auth.json") as f:
+            prep = json.load(f)
+        prep_wallet = prep.get("meta", {}).get("wallet", "")
+        prep_ts = prep.get("meta", {}).get("timestamp", "")
+        if prep_wallet and prep_wallet.lower() != wallet.lower():
+            die(
+                f"Wallet mismatch: --prepare was called with {prep_wallet}, but --save received {wallet}.\n"
+                "  Cause: the signature was produced for a different wallet than the one you're saving for.\n"
+                f"  Fix:   re-run `python3 auth.py --prepare {wallet}` and re-sign with the matching wallet."
+            )
+        if prep_ts and str(prep_ts) != str(ts_int):
+            die(
+                f"Timestamp mismatch: --prepare produced timestamp {prep_ts}, but --save received {ts_int}.\n"
+                "  Cause: signature and timestamp are from different prepare calls — they must come as a pair.\n"
+                f"  Fix:   re-run `python3 auth.py --prepare {wallet}`, re-sign, then --save with the new pair."
+            )
+    except FileNotFoundError:
+        # No prep file — skip consistency check but warn. User may be running --save with values from a
+        # previous session; staleness check above already enforces the 5-min window.
+        pass
+    except (json.JSONDecodeError, KeyError):
+        pass  # Corrupt prep file — skip check, rely on API-side validation.
+
     headers = {
         "POLY_ADDRESS": wallet,
         "POLY_SIGNATURE": signature,
-        "POLY_TIMESTAMP": timestamp,
+        "POLY_TIMESTAMP": str(ts_int),
         "POLY_NONCE": "0",
         "Content-Type": "application/json",
     }
-    
+
     # Try derive first
     r = clob_get("/auth/derive-api-key", headers=headers)
     if r.status_code != 200:
         r = clob_post("/auth/api-key", headers=headers)
-    
+
     if r.status_code != 200:
-        die(f"Auth failed ({r.status_code}): {r.text}")
-    
+        # Structured hint for the most common cause
+        hint = ""
+        body = (r.text or "").lower()
+        if r.status_code == 401:
+            hint = (
+                "\n  Most likely cause: signature does NOT match (wallet, timestamp) pair Polymarket expects.\n"
+                "  Restart from --prepare to get a fresh pair, sign with the EXACT wallet that owns the address,\n"
+                "  and submit within 5 minutes. Do NOT mix timestamps/signatures across prepare calls."
+            )
+        elif r.status_code == 403 and "geo" in body:
+            hint = "\n  Cause: geo-block. Set POLY_VPN_REGION=ar (or another supported region) and retry."
+        die(f"Auth failed ({r.status_code}): {r.text}{hint}")
+
     data = r.json()
     api_key = data.get("apiKey", "")
     secret = data.get("secret", "")

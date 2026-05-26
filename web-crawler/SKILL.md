@@ -1,58 +1,76 @@
 ---
 name: web-crawler
-version: 2.2.1
-description: |
-  Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn, Reddit, Threads.
+version: 2.2.2
+description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
+  Reddit, Threads, plus robust web-page fallback extraction.
 
-  Use when extracting public posts, transcripts, or pages JS-heavy enough to block plain fetch (e.g. download YouTube transcript, scrape TikTok comments).
+
+  Use when extracting public posts, transcripts, or pages JS-heavy enough to block
+  plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403, anti-bot, cloudflare, JS-heavy page.
+
+  '
 metadata:
   starchild:
-    emoji: "🕷️"
+    emoji: "\U0001F577\uFE0F"
     skillKey: web-crawler
     requires:
-      bins: [python]
+      bins:
+      - python
     tags:
-      - scraping
-      - social-media
-      - web-crawler
-      - tiktok
-      - instagram
-      - youtube
-      - linkedin
-      - facebook
-      - twitter
-      - reddit
-      - threads
-      - bluesky
-      - pinterest
-      - snapchat
-      - twitch
-      - truth-social
-      - tiktok-shop
-      - google
-      - ad-library
-      - creator-data
-      - transcripts
-      - trending
+    - scraping
+    - social-media
+    - web-crawler
+    - tiktok
+    - instagram
+    - youtube
+    - linkedin
+    - facebook
+    - twitter
+    - reddit
+    - threads
+    - bluesky
+    - pinterest
+    - snapchat
+    - twitch
+    - truth-social
+    - tiktok-shop
+    - google
+    - ad-library
+    - creator-data
+    - transcripts
+    - trending
+    - web_fetch-failed
+    - cloudflare
+    - anti-bot
+    - js-heavy
+    - listing-page
+    - fallback
+    - 反爬
+    - 抓取失败
+    - 自动回退
 user-invocable: true
 disable-model-invocation: false
-
 ---
 
-# Web crawler
+## Quick trigger rules (read this first)
+Use this skill immediately when any of these conditions is true:
 
-All-in-one scraping skill. Routes requests to the best backend automatically — the user does not need to know which API is used.
+- `web_fetch` returns HTTP **401/403/429/5xx**
+- Response is an anti-bot challenge page (for example Cloudflare "Attention Required", "Just a moment", or challenge/captcha pages)
+- The page is JS-heavy and the first fetch misses required detail fields (for example publish time, author, listing code, updated time, price breakdown)
+- Search results do not contain the requested field and the value must be extracted from the target page itself
 
-Use this when:
-- Normal `web_fetch` fails, returns boilerplate, or a site blocks basic fetching
-- The user asks for YouTube video content/transcript
-- The user wants to scrape, fetch, or extract data from any social media platform
-- The user mentions social media profiles, posts, comments, transcripts, ads, trending content, or engagement metrics
+Fallback rule:
+- If ordinary fetch is blocked or incomplete, switch to Firecrawl fallback in this skill before asking the user for screenshots/manual text.
 
-Prefer native `web_fetch` first for simple pages; paid fallback calls should be deliberate and scoped.
+## Error signatures -> action
+| Signature | Action |
+|---|---|
+| `web_fetch` HTTP 401/403/429/5xx | Call Firecrawl `POST /v2/scrape` once with `formats:["markdown","links"]` + `onlyMainContent:true` |
+| Cloudflare/challenge page text in body | Same Firecrawl call as above |
+| Markdown still misses key fields | Retry once with `formats:["rawHtml"]` |
 
 ## What each service is for
-
 ### ScrapeCreators — Social media data extraction (27+ platforms)
 
 Use for any request involving social media profiles, posts, videos, comments, transcripts, search, ads, trending content, or engagement metrics. Covers TikTok, Instagram, YouTube, LinkedIn, Facebook, Twitter/X, Reddit, Threads, Bluesky, Pinterest, Snapchat, Twitch, Kick, Truth Social, TikTok Shop, Google search, and link-in-bio services (Linktree, Komi, Pillar, Linkbio, Linkme, Amazon Shop).
@@ -70,7 +88,6 @@ Do not use Firecrawl crawl/map/search/agent/browser endpoints. Do not request sc
 ---
 
 ## ScrapeCreators — Intent routing
-
 Map user intent to the right endpoint. Endpoint paths use the pattern `/v1/platform/action`.
 
 **Important:** After selecting an endpoint from the tables below, fetch its OpenAPI spec at `https://docs.scrapecreators.com/{path}/openapi.json` for full parameter details, types, and example response before making the actual API call. For example: `https://docs.scrapecreators.com/v1/tiktok/profile/openapi.json`
@@ -263,7 +280,6 @@ Paginated endpoints return a cursor/token in the response. Pass it back as a que
 ---
 
 ## Access patterns
-
 ### ScrapeCreators (social media)
 
 Use Python with `core.http_client.proxied_get` so sc-proxy injects credentials and bills correctly. Include a typed `SC-CALLER-ID` header (`chat:`, `job:`, `preview:`, etc.) for cost tracking. **Do not read `$SCRAPECREATORS_API_KEY` from env and do not ask the user for a key — the proxy handles it.**
@@ -314,7 +330,6 @@ page = proxied_post(
 ```
 
 ## Decision rules
-
 Route every request to the right backend. The user should never need to specify which API to use.
 
 ### Social media request (profile, posts, comments, search, ads, trending, transcripts)
@@ -337,7 +352,6 @@ General web-page extraction lessons:
 - If Markdown misses important layout or structured fields, retry once with `rawHtml`; use `json`, `question`, or `highlights` only when the user asked for narrow extraction and the schema/prompt is specific.
 
 ## Cost discipline
-
 **ScrapeCreators** — most endpoints cost 1 credit per request. Exceptions: `/v1/tiktok/user/audience` costs 26 credits; `/v1/tiktok/video/transcript` with `use_ai_as_fallback=true` costs +10 credits; `/v1/google/company/ads` with `get_ad_details=true` costs 25 credits. Warn users before calling expensive endpoints.
 
 **Firecrawl** — billed per page plus expensive modifiers.

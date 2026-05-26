@@ -65,10 +65,24 @@ Step 3: polymarket_auth(wallet_address="0x...", signature="0x...", timestamp=T) 
                 msg = await asyncio.to_thread(build_clob_auth_message, wallet_address, ts)
                 return ToolResult(success=True, output={
                     "step": "sign", "timestamp": ts, "eip712_message": msg,
-                    "instructions": "Sign with wallet_sign_typed_data, then call again with signature and timestamp",
+                    "instructions": "Sign with wallet_sign_typed_data, then call again with signature and the SAME timestamp",
                 })
             else:
-                creds = await asyncio.to_thread(derive_api_credentials, signature, wallet_address, timestamp or 0)
+                if not isinstance(signature, str) or not signature.strip():
+                    return ToolResult(success=False, error="signature is required for credential derivation")
+
+                if timestamp is None:
+                    return ToolResult(success=False, error="timestamp is required and must be the exact value returned in step 1")
+
+                try:
+                    ts = int(timestamp)
+                except (TypeError, ValueError):
+                    return ToolResult(success=False, error="timestamp must be an integer from step 1")
+
+                if ts <= 0:
+                    return ToolResult(success=False, error="timestamp must be > 0")
+
+                creds = await asyncio.to_thread(derive_api_credentials, signature, wallet_address, ts)
                 # Auto-save to .env
                 import os
                 env_path = "/data/workspace/.env"

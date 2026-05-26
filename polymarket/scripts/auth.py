@@ -14,6 +14,7 @@ Full flow (agent):
   4. bash: python3 auth.py --save 0xSIG 0xWALLET TIMESTAMP
 """
 import sys, json, argparse, time
+import os
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from common import (
     BASE, CHAIN_ID, cred, ensure_credentials,
@@ -68,10 +69,39 @@ def prepare(wallet):
     print(f"  Then: python3 auth.py --save <signature> {wallet} {ts}")
 
 def save(signature, wallet, timestamp):
+    if not isinstance(signature, str) or not signature.strip() or signature == "undefined":
+        die("Invalid signature: must be a non-empty hex string from wallet_sign_typed_data")
+
+    try:
+        ts_int = int(timestamp)
+    except (TypeError, ValueError):
+        die("Invalid timestamp: must be integer from the latest --prepare")
+
+    if ts_int <= 0:
+        die("Invalid timestamp: must be > 0")
+
+    now = int(time.time())
+    if abs(now - ts_int) > 600:
+        die("Timestamp expired: rerun --prepare, re-sign, then --save with the new timestamp")
+
+    auth_file = "/tmp/poly_auth.json"
+    if os.path.exists(auth_file):
+        try:
+            with open(auth_file, "r") as f:
+                prepared = json.load(f)
+            prepared_wallet = ((prepared.get("meta") or {}).get("wallet") or "").lower()
+            prepared_ts = str(((prepared.get("meta") or {}).get("timestamp") or ""))
+            if prepared_wallet and wallet.lower() != prepared_wallet:
+                die("Wallet mismatch: --save wallet must match the latest --prepare wallet")
+            if prepared_ts and str(ts_int) != prepared_ts:
+                die("Timestamp mismatch: --save timestamp must match the latest --prepare timestamp")
+        except Exception as e:
+            die(f"Failed to validate /tmp/poly_auth.json: {e}")
+
     headers = {
         "POLY_ADDRESS": wallet,
         "POLY_SIGNATURE": signature,
-        "POLY_TIMESTAMP": timestamp,
+        "POLY_TIMESTAMP": str(ts_int),
         "POLY_NONCE": "0",
         "Content-Type": "application/json",
     }
@@ -82,7 +112,11 @@ def save(signature, wallet, timestamp):
         r = clob_post("/auth/api-key", headers=headers)
     
     if r.status_code != 200:
-        die(f"Auth failed ({r.status_code}): {r.text}")
+        die(
+            f"Auth failed ({r.status_code}): {r.text} | "
+            "Likely causes: signature/timestamp mismatch, wallet mismatch vs --prepare, or expired timestamp. "
+            "Fix: rerun --prepare <wallet>, sign that exact payload, then --save with same wallet+timestamp."
+        )
     
     data = r.json()
     api_key = data.get("apiKey", "")

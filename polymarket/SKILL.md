@@ -1,6 +1,6 @@
 ---
 name: "polymarket"
-version: 5.0.1
+version: 5.0.2
 description: |
   Polymarket prediction markets: search, place or cancel orders, manage positions.
 
@@ -62,6 +62,17 @@ wallet_sign_typed_data(domain, types, primaryType, message)  # from /tmp/poly_au
 # Step 4: Save derived credentials
 bash("cd skills/polymarket && python3 scripts/auth.py --save 0xSIG 0xWALLET TIMESTAMP")
 ```
+
+**Critical auth invariants (must hold):**
+- `TIMESTAMP` in `--save` must be exactly the one returned by the latest `--prepare`.
+- `0xWALLET` in `--save` must match the wallet used in that same `--prepare`.
+- Do not reuse old signatures or old timestamps after changing wallet.
+- If `--save` returns 401, rerun full flow (`--prepare` → sign → `--save`) instead of retrying with the same inputs.
+- Never call auth with empty signature or `timestamp=0`.
+
+**Validation behavior in script path:**
+- `scripts/auth.py --save` now rejects expired timestamps and wallet/timestamp mismatch against `/tmp/poly_auth.json` before requesting CLOB API.
+- On auth failure, error text includes actionable mismatch/expiry hints instead of opaque 401-only output.
 **Calls**: 1-2 tool calls (check may suffice; full re-derive = 1 sign + 2 bash).
 
 ### 📈 Place Order (BUY or SELL)
@@ -152,6 +163,8 @@ CLOB API is geo-blocked from US. Scripts handle this transparently:
 ---
 
 ## Changelog
+- **v5.0.2**: Hardened auth path. Reject empty/undefined signature and invalid timestamp in `polymarket_auth`; `scripts/auth.py --save` now validates timestamp expiry plus wallet/timestamp match against latest `--prepare`; added explicit auth invariants to SKILL docs.
+- **v5.0.1**: Minor stability/documentation refresh.
 - **v5.0.0**: Script-first architecture. 6 scripts wrap all flows. BUY order: 8 calls → 3 (2 bash + 1 sign). Status/search/cancel: 0 tool calls. Credential auto-check + auto-derive.
 - **v4.3.0**: Fixed HMAC signature, removed POLY_NONCE, mandatory lookup after search.
 - **v4.0.0**: Merged official v2.4 + local v3.9. Modular tools/, Privy-only, 13 tools.

@@ -268,7 +268,7 @@
     {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
-      "version": "5.0.1",
+      "version": "5.0.2",
       "description": "Polymarket prediction markets: search, place or cancel orders, manage positions.\n\nUse when betting on event outcomes via Polymarket (e.g. search Iran ceasefire markets, buy YES at 0.65, close my Trump position, list open orders)."
     },
     {
@@ -400,8 +400,8 @@
     {
       "name": "web-crawler",
       "path": "web-crawler/SKILL.md",
-      "version": "2.2.1",
-      "description": "Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn, Reddit, Threads.\n\nUse when extracting public posts, transcripts, or pages JS-heavy enough to block plain fetch (e.g. download YouTube transcript, scrape TikTok comments)."
+      "version": "2.2.2",
+      "description": "Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn, Reddit, Threads, plus robust web-page fallback extraction.\n\nUse when extracting public posts, transcripts, or pages JS-heavy enough to block plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403, anti-bot, cloudflare, JS-heavy page."
     },
     {
       "name": "wechat-binding",

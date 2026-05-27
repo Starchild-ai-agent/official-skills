@@ -1,6 +1,6 @@
 ---
 name: "polymarket"
-version: 6.0.0
+version: 6.0.1
 description: |
   Trade on Polymarket prediction markets (CLOB V2) from a Privy EOA wallet.
   Search markets, place/cancel orders, manage positions. No private key handling.
@@ -183,6 +183,12 @@ CLOB API is geo-blocked from US IPs. `scripts/common.py` transparently routes th
 | 403 geo-block | VPN unhealthy | Retry; if persists, set `POLY_VPN_REGION` to another region |
 | Orderbook shows 0.01 / 0.99 | Looking at the wrong outcome's book | Use the token_id you actually plan to buy |
 
+### Known transient errors
+
+- **Privy / Alchemy paymaster HTTP 500** may happen during rapid back-to-back on-chain calls.
+- This is typically transient infra jitter, not a permanent wallet/skill issue.
+- Practical fix: wait ~10 seconds and retry the same step.
+
 ---
 
 ## Architecture summary
@@ -197,6 +203,7 @@ CLOB API is geo-blocked from US IPs. `scripts/common.py` transparently routes th
 
 ## Changelog
 
+- **v6.0.1** — Bugfixes: (1) `scripts/common.py::save_env_var()` now guards missing trailing newline in `.env` to prevent key concatenation; (2) `scripts/close_positions.py` migrated from V1 wire fields to CLOB V2 schema (`timestamp/metadata/builder`, domain `version=2`) aligned with `prepare_order.py`. Added "Known transient errors" note for occasional Privy/Alchemy paymaster HTTP 500 under rapid consecutive calls (retry after ~10s).
 - **v6.0.0** — Major: full SKILL rewrite for clarity ("3 steps to trade"), new idempotent `setup.py` for one-time wrap + approvals, end-to-end live-verified on CLOB V2 (BUY `0x43f20c67...20b653` → SELL `0x19f475e4...fedde1`, 5 NO @ 0.989 → @ 0.988, ~$0.005 slippage). Supersedes the V1-era flow entirely.
 - **v5.1.0** — Added `setup.py` (idempotent wrap + approvals). Full SKILL rewrite for clarity. Live-verified: BUY `0x43f20c67...20b653`, SELL `0x19f475e4...fedde1` (5 NO @ 0.989 → @ 0.988, ~$0.005 slippage).
 - **v5.0.5** — CLOB V2 wire format fix: `salt` must be int; remove `taker`/`nonce`/`feeRateBps`.

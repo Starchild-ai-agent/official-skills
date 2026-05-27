@@ -55,8 +55,12 @@ def save_env_var(key, value):
         else:
             new_lines.append(line)
     if not found:
+        # Guard: if existing .env last line has no trailing newline,
+        # ensure new key starts on a new line instead of being concatenated.
+        if new_lines and not new_lines[-1].endswith("\n"):
+            new_lines[-1] = new_lines[-1] + "\n"
         new_lines.append(f"{key}={value}\n")
-    
+
     with open(ENV_FILE, "w") as f:
         f.writelines(new_lines)
     os.environ[key] = value

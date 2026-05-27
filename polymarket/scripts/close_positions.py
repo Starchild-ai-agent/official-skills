@@ -58,39 +58,66 @@ def build_sell_payload(token_id, size, price, info, wallet):
     exchange = CTF_EXCHANGE_NEG if info["neg_risk"] else CTF_EXCHANGE
     tick = float(info["tick_size"])
     price = round(round(price / tick) * tick, 4)
-    
+
     maker_amount = int(size * 1_000_000)
     taker_amount = int(price * size * 1_000_000)
     salt = round(time.time() * random.random())
 
+    # CLOB V2 signing schema (aligned with prepare_order.py)
+    ts_ms = int(time.time() * 1000)
+    zero32 = "0x" + "0" * 64
+
     return {
         "domain": {
-            "name": "Polymarket CTF Exchange", "version": "1",
-            "chainId": CHAIN_ID, "verifyingContract": exchange,
+            "name": "Polymarket CTF Exchange",
+            "version": "2",
+            "chainId": CHAIN_ID,
+            "verifyingContract": exchange,
         },
-        "types": {"Order": [
-            {"name": "salt", "type": "uint256"}, {"name": "maker", "type": "address"},
-            {"name": "signer", "type": "address"}, {"name": "taker", "type": "address"},
-            {"name": "tokenId", "type": "uint256"}, {"name": "makerAmount", "type": "uint256"},
-            {"name": "takerAmount", "type": "uint256"}, {"name": "expiration", "type": "uint256"},
-            {"name": "nonce", "type": "uint256"}, {"name": "feeRateBps", "type": "uint256"},
-            {"name": "side", "type": "uint8"}, {"name": "signatureType", "type": "uint8"},
-        ]},
+        "types": {
+            "Order": [
+                {"name": "salt", "type": "uint256"},
+                {"name": "maker", "type": "address"},
+                {"name": "signer", "type": "address"},
+                {"name": "tokenId", "type": "uint256"},
+                {"name": "makerAmount", "type": "uint256"},
+                {"name": "takerAmount", "type": "uint256"},
+                {"name": "side", "type": "uint8"},
+                {"name": "signatureType", "type": "uint8"},
+                {"name": "timestamp", "type": "uint256"},
+                {"name": "metadata", "type": "bytes32"},
+                {"name": "builder", "type": "bytes32"},
+            ]
+        },
         "primaryType": "Order",
         "message": {
-            "salt": str(salt), "maker": wallet, "signer": wallet,
-            "taker": "0x0000000000000000000000000000000000000000",
-            "tokenId": str(token_id), "makerAmount": str(maker_amount),
-            "takerAmount": str(taker_amount), "expiration": "0", "nonce": "0",
-            "feeRateBps": str(info["fee_bps"]), "side": 1, "signatureType": EOA,
+            "salt": str(salt),
+            "maker": wallet,
+            "signer": wallet,
+            "tokenId": str(token_id),
+            "makerAmount": str(maker_amount),
+            "takerAmount": str(taker_amount),
+            "side": 1,
+            "signatureType": EOA,
+            "timestamp": str(ts_ms),
+            "metadata": zero32,
+            "builder": zero32,
         },
         "meta": {
-            "token_id": token_id, "salt": salt,
-            "maker_amount": maker_amount, "taker_amount": taker_amount,
-            "order_side": 1, "side_str": "SELL",
-            "price": price, "size": size,
-            "fee_bps": info["fee_bps"], "neg_risk": info["neg_risk"],
+            "token_id": token_id,
+            "salt": salt,
+            "maker_amount": maker_amount,
+            "taker_amount": taker_amount,
+            "order_side": 1,
+            "side_str": "SELL",
+            "price": price,
+            "size": size,
+            "fee_bps": info["fee_bps"],
+            "neg_risk": info["neg_risk"],
             "exchange": exchange,
+            "timestamp": str(ts_ms),
+            "metadata": zero32,
+            "builder": zero32,
         },
     }
 

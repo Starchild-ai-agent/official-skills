@@ -5,7 +5,7 @@ description: |
 
   当用户处理在线文档时使用（例如：写周报、网页剪藏到文档、PDF 拆分、AI 生成 PPT、表格美化、接龙转表格）。
 homepage: https://www.kdocs.cn/latest
-version: 2.4.12
+version: 2.4.13
 metadata: {"requires":{"bins":["kdocs-cli"],"cliHelp":"kdocs-cli --help"},"openclaw":{"category":"kdocs","tokenUrl":"https://www.kdocs.cn/latest","emoji":"📝","keywords":["金山文档","金山表格","金山收藏","WPS","WPS文档","云文档","在线文档","kdocs","WPS云文档","接龙转表格","接龙","群接龙","报名表","信息收集","收集表","登记表","网页剪藏","剪藏","保存网页","网页保存到文档","保存文章","收藏文章","总结","帮我总结","帮我整理","帮我写","帮我翻译","帮我做PPT","翻译文档 - 做PPT - 生成PPT - 培训课件 - 方案展示 - 项目展示","文档总结","内容生成","改写","仿写","翻译","文档翻译","PPT","演示文稿","幻灯片","PDF","拆分PDF","导出PDF","Word","Excel","表格","Markdown","碎片整理","笔记整理","表格优化","文档处理","文件处理","办公助手","文档助手","周报","日报","工作汇报","合同","发票"]},"file_types":["pdf","doc","docx","xlsx","xls","pptx","ppt","otl","ksheet","dbt","jpg","jpeg","png","bmp","gif","webp","url","md","txt","html"],"category":"productivity"}
 
 ---
@@ -231,6 +231,7 @@ kdocs-cli <service> <action> [参数]
 | 错误特征 | 原因 | 处理方式 |
 |----------|------|----------|
 | `400006` / 鉴权失败 | Token 过期或未配置 | 运行 `kdocs-cli auth login` 重新登录，或 `kdocs-cli auth set-token <token>` 重新设置 |
+| `Expecting value: line 1 column 1 (char 0)` 或类似 JSON 解析失败 | 上游返回了空响应或非 JSON（HTML 错误页 / 重定向 / 网关错误），不是 CLI 本身崩溃。常见触发：文件 ID 错误、文件已被删除、无访问权限、Token 过期但未触发 400006、临时网络中断 | 按顺序排查：① `kdocs-cli auth status` 确认 Token 有效；② 用 `kdocs-cli drive search` 或 `kdocs-cli wps file_info` 重新核对 file_id；③ 确认当前账号对该文件有读权限（在金山文档网页端打开链接验证）；④ 等待 3-5 秒后重试一次；仍失败则报告用户 |
 | `429001` / 限频 | 请求过于频繁，响应含**限频恢复时间** | 立即停止命令调用，直到达到恢复时间；禁止立即重试、换参、换子命令连续请求 |
 | `429002` / 熔断 | 多因短时间内连续触发 `429001` ，响应含**熔断持续时间** | 熔断时长内零请求，期满再试；重新规划任务避免请求过频 |
 | `unknown action` / `unknown service` | CLI 版本过旧或名称拼写错误 | 先运行 `kdocs-cli upgrade` 升级到最新版本；仍报错再运行 `kdocs-cli <service> --help` 确认可用命令 |

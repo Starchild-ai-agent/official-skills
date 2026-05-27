@@ -268,7 +268,7 @@
     {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
-      "version": "6.0.0",
+      "version": "6.0.1",
       "description": "Trade on Polymarket prediction markets (CLOB V2) from a Privy EOA wallet.\nSearch markets, place/cancel orders, manage positions. No private key handling.\n\nUse when the user wants to bet on event outcomes (e.g. \"buy YES at 0.65 on the\nceasefire market\", \"what are my open positions\", \"close my Trump bet\")."
     },
     {

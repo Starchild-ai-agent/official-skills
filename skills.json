@@ -424,7 +424,7 @@
     {
       "name": "wps",
       "path": "wps/SKILL.md",
-      "version": "2.4.12",
+      "version": "2.4.13",
       "description": "金山文档（WPS / Kdocs）：新建、读取、编辑、搜索、分享、整理在线文档与知识库。\n\n当用户处理在线文档时使用（例如：写周报、网页剪藏到文档、PDF 拆分、AI 生成 PPT、表格美化、接龙转表格）。"
     },
     {

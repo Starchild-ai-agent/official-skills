@@ -1,31 +1,31 @@
-# Polymarket Onboarding Checklist v4.0
+# Polymarket Onboarding Checklist v5.0.3
 
 ## Goal
 Get to a state where the agent can place and close a Polymarket trade reliably.
 
 ## Preconditions
-- Skill loaded (`polymarket_search` etc. available)
-- Wallet policy allows `eth_signTypedData_v4` and `eth_sendTransaction`
+- `skills/polymarket/scripts/*.py` available (script-first)
+- Wallet signing available (`wallet_sign_typed_data`)
 - Agent has POL (gas) and USDC.e (collateral) on Polygon
 
 ## 1) Auth
-1. `wallet_info()` → confirm EVM address
-2. `polymarket_auth(wallet_address="0x...")` → get EIP-712 message
-3. `wallet_sign_typed_data(...)` → sign it
-4. `polymarket_auth(wallet_address, signature, timestamp)` → credentials saved to .env
-5. `polymarket_get_balances()` → confirm no auth error
+1. `python3 scripts/auth.py --check`
+2. If stale/missing: `python3 scripts/auth.py --prepare 0xWALLET`
+3. `wallet_sign_typed_data(...)` on `/tmp/poly_auth.json`
+4. `python3 scripts/auth.py --save 0xSIG 0xWALLET TIMESTAMP`
+5. `python3 scripts/status.py --json` → confirm auth works
 
-## 2) Funding
-1. `wallet_balance(chain="polygon")` → check USDC.e + POL
-2. If short: bridge/swap as needed
+## 2) Funding / Allowance
+1. Check on-chain balances (POL + USDC.e)
+2. If `status.py` allowance remains 0, verify ERC20 `allowance(owner,spender)` on-chain
+3. Ensure non-zero allowance for CLOB spenders before order test
 
 ## 3) Trade
-1. `polymarket_search(query="topic")` → find market
-2. `polymarket_orderbook(token_id)` → check liquidity
-3. `polymarket_prepare_order(token_id, side, price, size)` → get EIP-712 order
-4. `wallet_sign_typed_data(...)` → sign order
-5. `polymarket_post_order(token_id, signature, order_meta)` → submit
-6. `polymarket_get_trades()` + `polymarket_get_positions()` → verify
+1. `python3 scripts/search.py "keyword" --limit 2` → pick active market token_id
+2. `python3 scripts/prepare_order.py TOKEN_ID BUY PRICE SIZE`
+3. `wallet_sign_typed_data(...)` on `/tmp/poly_order.json`
+4. `python3 scripts/post_order.py 0xSIG` → submit
+5. `python3 scripts/status.py --json` + trades/positions verify
 
 ## Common Failures
 | Error | Fix |

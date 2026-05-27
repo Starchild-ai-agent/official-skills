@@ -94,10 +94,14 @@ def main():
 
     salt = round(time.time() * random.random())
 
+    # CLOB V2 signing schema (domain version=2, V2 order fields)
+    ts_ms = int(time.time() * 1000)
+    zero32 = "0x" + "0" * 64
+
     payload = {
         "domain": {
             "name": "Polymarket CTF Exchange",
-            "version": "1",
+            "version": "2",
             "chainId": CHAIN_ID,
             "verifyingContract": exchange,
         },
@@ -106,15 +110,14 @@ def main():
                 {"name": "salt", "type": "uint256"},
                 {"name": "maker", "type": "address"},
                 {"name": "signer", "type": "address"},
-                {"name": "taker", "type": "address"},
                 {"name": "tokenId", "type": "uint256"},
                 {"name": "makerAmount", "type": "uint256"},
                 {"name": "takerAmount", "type": "uint256"},
-                {"name": "expiration", "type": "uint256"},
-                {"name": "nonce", "type": "uint256"},
-                {"name": "feeRateBps", "type": "uint256"},
                 {"name": "side", "type": "uint8"},
                 {"name": "signatureType", "type": "uint8"},
+                {"name": "timestamp", "type": "uint256"},
+                {"name": "metadata", "type": "bytes32"},
+                {"name": "builder", "type": "bytes32"},
             ]
         },
         "primaryType": "Order",
@@ -122,15 +125,14 @@ def main():
             "salt": str(salt),
             "maker": wallet,
             "signer": wallet,
-            "taker": "0x0000000000000000000000000000000000000000",
             "tokenId": str(args.token_id),
             "makerAmount": str(maker_amount),
             "takerAmount": str(taker_amount),
-            "expiration": "0",
-            "nonce": "0",
-            "feeRateBps": str(info["fee_bps"]),
             "side": order_side,
             "signatureType": EOA,
+            "timestamp": str(ts_ms),
+            "metadata": zero32,
+            "builder": zero32,
         },
         "meta": {
             "token_id": args.token_id,
@@ -144,6 +146,9 @@ def main():
             "fee_bps": info["fee_bps"],
             "neg_risk": info["neg_risk"],
             "exchange": exchange,
+            "timestamp": str(ts_ms),
+            "metadata": zero32,
+            "builder": zero32,
         },
     }
 

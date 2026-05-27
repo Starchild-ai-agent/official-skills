@@ -7,7 +7,7 @@ Usage:
 
 Output: Order ID, fill status, updated position.
 """
-import sys, json, argparse
+import sys, json, argparse, re
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from common import (
     BASE, EOA, cred, ensure_credentials,
@@ -24,6 +24,12 @@ def main():
     if not ok:
         die(msg)
 
+    sig = (args.signature or "").strip()
+    if not re.fullmatch(r"0x[0-9a-fA-F]+", sig):
+        die("Invalid signature format: expected 0x-prefixed hex from wallet_sign_typed_data")
+    if len(sig) < 130:
+        die("Invalid signature length: expected full ECDSA signature from wallet_sign_typed_data")
+
     try:
         with open(args.order) as f:
             payload = json.load(f)
@@ -34,26 +40,29 @@ def main():
     message = payload["message"]
     wallet = cred("POLY_WALLET")
     api_key = cred("POLY_API_KEY")
-    side_str = "BUY" if meta["order_side"] == 0 else "SELL"
+    side_str = "BUY" if int(message.get("side", meta.get("order_side", 0))) == 0 else "SELL"
 
+    # CLOB V2 wire format: salt MUST be int, taker/nonce/feeRateBps removed
     order_body = {
         "order": {
-            "salt": meta["salt"],
+            "salt": int(message["salt"]),
             "maker": wallet,
             "signer": wallet,
-            "taker": "0x0000000000000000000000000000000000000000",
-            "tokenId": str(meta["token_id"]),
-            "makerAmount": str(meta["maker_amount"]),
-            "takerAmount": str(meta["taker_amount"]),
-            "expiration": "0",
-            "nonce": "0",
-            "feeRateBps": str(meta.get("fee_bps", 0)),
+            "tokenId": str(message["tokenId"]),
+            "makerAmount": str(message["makerAmount"]),
+            "takerAmount": str(message["takerAmount"]),
             "side": side_str,
-            "signatureType": EOA,
+            "signatureType": int(message.get("signatureType", EOA)),
+            "timestamp": str(message["timestamp"]),
+            "metadata": str(message.get("metadata", "0x" + "0" * 64)),
+            "builder": str(message.get("builder", "0x" + "0" * 64)),
+            "expiration": "0",
             "signature": args.signature,
         },
         "owner": api_key,
         "orderType": "GTC",
+        "deferExec": False,
+        "postOnly": False,
     }
 
     body_str = json.dumps(order_body, separators=(",", ":"))

@@ -268,8 +268,8 @@
     {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
-      "version": "5.0.2",
-      "description": "Polymarket prediction markets: search, place or cancel orders, manage positions.\n\nUse when betting on event outcomes via Polymarket (e.g. search Iran ceasefire markets, buy YES at 0.65, close my Trump position, list open orders)."
+      "version": "6.0.0",
+      "description": "Trade on Polymarket prediction markets (CLOB V2) from a Privy EOA wallet.\nSearch markets, place/cancel orders, manage positions. No private key handling.\n\nUse when the user wants to bet on event outcomes (e.g. \"buy YES at 0.65 on the\nceasefire market\", \"what are my open positions\", \"close my Trump bet\")."
     },
     {
       "name": "project-builder",

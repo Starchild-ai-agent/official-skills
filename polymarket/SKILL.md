@@ -1,14 +1,17 @@
 ---
 name: "polymarket"
-version: 5.0.2
+version: 6.0.0
 description: |
-  Polymarket prediction markets: search, place or cancel orders, manage positions.
+  Trade on Polymarket prediction markets (CLOB V2) from a Privy EOA wallet.
+  Search markets, place/cancel orders, manage positions. No private key handling.
 
-  Use when betting on event outcomes via Polymarket (e.g. search Iran ceasefire markets, buy YES at 0.65, close my Trump position, list open orders).
+  Use when the user wants to bet on event outcomes (e.g. "buy YES at 0.65 on the
+  ceasefire market", "what are my open positions", "close my Trump bet").
 author: starchild
 tags: [polymarket, trading, prediction-markets, polygon, defi]
 tools:
   - wallet_sign_typed_data
+  - wallet_transfer
 metadata:
   starchild:
     emoji: "🎲"
@@ -19,152 +22,183 @@ metadata:
         - POLY_SECRET
         - POLY_PASSPHRASE
         - POLY_WALLET
+---
+
+# Polymarket Trading (CLOB V2)
+
+Script-first. Every workflow is one bash call + at most one `wallet_sign_typed_data` (which can't be scripted because it's a wallet RPC). Verified live: see Changelog v5.1.0.
 
 ---
 
-# Polymarket Trading Skill v5.0.0
+## TL;DR — Trade in 3 steps
 
-Trade on Polymarket CLOB via **Privy wallet** (EOA, signature_type=0). No private key needed.
+```bash
+# 1. One-time setup (idempotent — safe to re-run)
+python3 scripts/setup.py --all 10        # wrap 10 USDC.e -> pUSD + all approvals
 
-**Script-first architecture**: complex flows are wrapped in `scripts/`. Agent calls bash + one sign.
+# 2. Find a market
+python3 scripts/search.py "trump" --limit 3   # returns token_ids
+
+# 3. Place order
+python3 scripts/prepare_order.py <token_id> BUY <price> <size>
+# → sign /tmp/poly_order.json via wallet_sign_typed_data
+python3 scripts/post_order.py <signature>
+```
+
+All scripts live in `skills/polymarket/scripts/` and assume working dir is the skill folder.
 
 ---
 
-## Scripts (Primary Interface)
+## Account prerequisites (one-time, on-chain)
 
-All scripts are in `skills/polymarket/scripts/`. Each is self-contained with VPN, auth, error handling.
+CLOB V2 settles in **pUSD** (an ERC-20 USDC wrapper), NOT raw USDC.e. Before the first order, the EOA must:
 
-### 🔍 Search
+1. Hold USDC.e on Polygon (any amount ≥ what you want to trade).
+2. Wrap USDC.e → pUSD via `CollateralOnramp.wrap()`.
+3. `approve(pUSD, spender, MAX)` for the 3 V2 exchange spenders.
+4. `setApprovalForAll(CTF, spender, true)` for the same 3 spenders (needed for SELL/redemption).
+
+`scripts/setup.py` does all of this and is **idempotent**: it reads on-chain state and skips anything already done. Gas is sponsored by the Privy/Alchemy paymaster — user pays 0 MATIC.
+
 ```bash
-bash("cd skills/polymarket && python3 scripts/search.py 'US Iran ceasefire'")
+python3 scripts/setup.py                  # dry-run: show current state + next step
+python3 scripts/setup.py --all 10         # wrap 10 USDC.e + approve everything
+python3 scripts/setup.py --wrap 50        # wrap more later
+python3 scripts/setup.py --approve        # re-issue approvals only
 ```
-**Output**: JSON with events, markets, outcomes (name + price + token_id). Ready for ordering.
-**Calls**: 0 tool calls. Everything in one bash.
-
-### 💰 Status (balance + positions + orders)
-```bash
-bash("cd skills/polymarket && python3 scripts/status.py")
-```
-**Output**: Balance, open positions, open orders, recent trades — all in one shot.
-**Calls**: 0 tool calls.
-
-### 🔐 Auth (first-time or refresh)
-```bash
-# Step 1: Check if credentials exist and work
-bash("cd skills/polymarket && python3 scripts/auth.py --check")
-
-# If missing/stale → Step 2: Prepare signing payload
-bash("cd skills/polymarket && python3 scripts/auth.py --prepare 0xWALLET")
-
-# Step 3: Sign (ONLY tool call that can't be scripted)
-wallet_sign_typed_data(domain, types, primaryType, message)  # from /tmp/poly_auth.json
-
-# Step 4: Save derived credentials
-bash("cd skills/polymarket && python3 scripts/auth.py --save 0xSIG 0xWALLET TIMESTAMP")
-```
-
-**Critical auth invariants (must hold):**
-- `TIMESTAMP` in `--save` must be exactly the one returned by the latest `--prepare`.
-- `0xWALLET` in `--save` must match the wallet used in that same `--prepare`.
-- Do not reuse old signatures or old timestamps after changing wallet.
-- If `--save` returns 401, rerun full flow (`--prepare` → sign → `--save`) instead of retrying with the same inputs.
-- Never call auth with empty signature or `timestamp=0`.
-
-**Validation behavior in script path:**
-- `scripts/auth.py --save` now rejects expired timestamps and wallet/timestamp mismatch against `/tmp/poly_auth.json` before requesting CLOB API.
-- On auth failure, error text includes actionable mismatch/expiry hints instead of opaque 401-only output.
-**Calls**: 1-2 tool calls (check may suffice; full re-derive = 1 sign + 2 bash).
-
-### 📈 Place Order (BUY or SELL)
-```bash
-# Step 1: Prepare (fetches market info + orderbook + builds EIP-712)
-bash("cd skills/polymarket && python3 scripts/prepare_order.py TOKEN_ID BUY 0.76 13")
-
-# Step 2: Sign (read /tmp/poly_order.json for domain/types/message)
-wallet_sign_typed_data(domain, types, primaryType="Order", message)
-
-# Step 3: Submit + verify
-bash("cd skills/polymarket && python3 scripts/post_order.py 0xSIGNATURE")
-```
-**Calls**: 1 tool call (sign) + 2 bash. Down from 8 tool calls.
-
-### ❌ Cancel Orders
-```bash
-bash("cd skills/polymarket && python3 scripts/cancel.py --all")
-# or
-bash("cd skills/polymarket && python3 scripts/cancel.py --id 0xORDER_ID")
-```
-**Calls**: 0 tool calls.
-
-### 🔄 Close Positions
-```bash
-# Step 1: Build SELL orders for all positions
-bash("cd skills/polymarket && python3 scripts/close_positions.py")
-
-# Step 2: For each /tmp/poly_close_N.json:
-wallet_sign_typed_data(...)  # sign each
-bash("cd skills/polymarket && python3 scripts/post_order.py 0xSIG --order /tmp/poly_close_N.json")
-```
-**Calls**: N signs + N bash (one per position).
 
 ---
 
-## Token ID & Orderbook Cheat Sheet
+## Scripts
 
-### YES/NO Are Complements
-Each market has TWO tokens. Their prices sum to ~$1.00.
-- YES at 0.25 ↔ NO at 0.75
-- Buying NO at 0.75 = betting AGAINST the event
+| Script | Purpose | Tool calls |
+|---|---|---|
+| `setup.py`           | One-time wrap + approvals (idempotent)                | 0–8 wallet_transfer |
+| `search.py`          | Find events/markets, returns token_ids + live prices | 0 |
+| `status.py`          | Balance + positions + open orders + recent trades    | 0 |
+| `prepare_order.py`   | Fetch orderbook + build EIP-712 payload              | 0 |
+| `post_order.py`      | Submit signed order, verify fill                     | 0 |
+| `cancel.py`          | Cancel one order (`--id`) or all (`--all`)           | 0 |
+| `close_positions.py` | Build SELL orders for all positions                  | 0 |
+| `auth.py`            | Check / derive CLOB API key from wallet              | 0–1 sign |
 
-### Which token_id?
-| Bet | Action | Token | Price |
+### Search
+
+```bash
+python3 scripts/search.py "ceasefire" --limit 3
+```
+
+- Use **short keywords** (`trump`, `btc`, `ceasefire`), not full literal questions — long queries often return empty.
+- Output JSON includes `outcomes[i].token_id` (YES = index 0, NO = index 1) and current price.
+
+### Place an order — full flow
+
+```bash
+# 1. Prepare: fetches market info + orderbook, writes /tmp/poly_order.json
+python3 scripts/prepare_order.py 7892825...50228 BUY 0.65 10
+
+# 2. Sign (Python in agent runtime, ONE tool call)
+#    from core.skill_tools import wallet
+#    p = json.load(open('/tmp/poly_order.json'))
+#    sig = wallet.wallet_sign_typed_data(
+#        domain=p['domain'], types=p['types'],
+#        primaryType=p['primaryType'], message=p['message']
+#    )['signature']
+
+# 3. Post: submits and prints order ID + fill status + tx hash
+python3 scripts/post_order.py 0xSIGNATURE
+```
+
+### Close one or all positions
+
+```bash
+python3 scripts/close_positions.py                # all positions
+python3 scripts/close_positions.py --token_id X   # one position
+# → writes one /tmp/poly_close_N.json per position; sign each + post
+```
+
+---
+
+## YES / NO & orderbook
+
+Every binary market has two complementary tokens: `YES + NO ≈ $1.00`.
+
+| Bet | Action | Use | Buy price |
 |---|---|---|---|
-| Event happens | BUY YES | `outcomes[0].token_id` | YES price |
-| Event doesn't happen | BUY NO | `outcomes[1].token_id` | NO price |
+| Event happens     | BUY YES | `outcomes[0].token_id` | YES price |
+| Event won't happen | BUY NO  | `outcomes[1].token_id` | NO price |
 
-### Orderbook Rule
-Always check the book for the token you intend to BUY.
-- **BUY**: your entry price ≈ `best_ask`
-- **SELL**: your exit price ≈ `best_bid`
-- If book shows 0.01/0.99 → you're looking at the wrong token
-
----
-
-## Architecture
-
-| Mode | sig_type | How it works | Gas? |
-|---|---|---|---|
-| **EOA (we use this)** | `0` | Agent wallet = signer AND maker | Yes for one-time approvals |
-
-**Collateral**: USDC.e on Polygon. NOT native USDC.
+Always check the book for the token **you intend to buy**:
+- BUY → entry ≈ `best_ask`
+- SELL → exit ≈ `best_bid`
+- If you see 0.01 / 0.99, you're looking at the wrong token's book.
 
 ---
 
-## VPN
+## Order rules (CLOB V2)
 
-CLOB API is geo-blocked from US. Scripts handle this transparently:
-1. Direct → if 403 → parallel-test VPN regions → cache fastest
-2. Endpoint: `http://{region}:x@sc-vpn.internal:8080` (HTTP proxy)
-3. Regions: `ar, br, mx, my, th, au, za` (also: `au, ch, de, jp`)
-4. Override: `POLY_VPN_REGION=ar` or `POLY_DISABLE_VPN=true`
+- **Minimum order value:** $1 (i.e. `price × size ≥ 1.0`)
+- **Minimum size:** 5 shares
+- **Tick:** normalized automatically by `prepare_order.py` (usually $0.01)
+- **`signatureType`:** always `0` (EOA) for Privy wallets
+
+V2 wire format is strict — `post_order.py` already handles this, but if you ever build a payload by hand:
+- `salt` must be **int** (not string)
+- Do **NOT** send `taker` / `nonce` / `feeRateBps` (V1 fields, removed in V2)
+- `metadata` and `builder` are `bytes32` zeros (`0x` + 64 zeros)
 
 ---
 
-## Common Errors
+## Auth refresh
+
+CLOB credentials (`POLY_API_KEY` / `POLY_SECRET` / `POLY_PASSPHRASE`) are derived from a wallet signature once and persist. If `status.py` returns 401:
+
+```bash
+python3 scripts/auth.py --check                   # quick sanity check
+python3 scripts/auth.py --prepare 0xWALLET        # build signing payload
+# → wallet_sign_typed_data(...)
+python3 scripts/auth.py --save 0xSIG 0xWALLET TIMESTAMP
+```
+
+Invariants: `TIMESTAMP` and `0xWALLET` in `--save` must match the most recent `--prepare`. If 401 persists, rerun the full prepare→sign→save flow with a fresh timestamp.
+
+---
+
+## Geo / VPN
+
+CLOB API is geo-blocked from US IPs. `scripts/common.py` transparently routes through `sc-vpn.internal:8080` and caches the fastest region. No agent action needed. Override with `POLY_VPN_REGION=ar` or disable with `POLY_DISABLE_VPN=true`.
+
+---
+
+## Errors → fixes
 
 | Error | Cause | Fix |
-|-------|-------|-----|
-| 401 / Invalid API key | Stale creds | `scripts/auth.py --check`, re-derive if needed |
-| 403 geo-block | US IP | VPN auto-handles; if sc-vpn down → restart infra |
-| 400 Invalid order | Wrong tick/amount | `prepare_order.py` auto-normalizes |
-| L2_BALANCE_TOO_LOW | No USDC.e | Fund wallet on Polygon |
-| Orderbook 0.01/0.99 | Wrong token's book | Check the token you BUY, not complement |
+|---|---|---|
+| `Invalid order payload` | Wrong V2 wire format (string salt / extra V1 fields) | Use `post_order.py` (it sends the right shape) |
+| `invalid amount for a marketable BUY order ($X), min size: $1` | Order value < $1 | Increase price × size to ≥ $1 |
+| `not enough balance` / 0 buying power | pUSD not wrapped yet, OR `signature_type` mismatch in cache | `setup.py --all 10`, then `status.py` |
+| `L2_BALANCE_TOO_LOW` | No pUSD in EOA | Wrap more: `setup.py --wrap N` |
+| `order_version_mismatch` | Old V1 signing schema | Re-run `prepare_order.py` (uses V2 domain `version=2`) |
+| 401 / Invalid API key | Stale CLOB credentials | `auth.py` refresh flow |
+| 403 geo-block | VPN unhealthy | Retry; if persists, set `POLY_VPN_REGION` to another region |
+| Orderbook shows 0.01 / 0.99 | Looking at the wrong outcome's book | Use the token_id you actually plan to buy |
+
+---
+
+## Architecture summary
+
+- **Wallet:** Privy EOA, `signatureType=0`. Agent signs EIP-712 via `wallet_sign_typed_data`; no private key in agent context.
+- **Gas:** sponsored (Alchemy paymaster) — every on-chain call routes through `wallet_transfer`.
+- **Collateral:** pUSD (`0xC011a7E1...DFB`), 6 decimals, 1:1 wrap of USDC.e.
+- **Exchanges:** CTF Exchange V2 (binary), Neg-Risk Adapter, Neg-Risk Exchange V2 — all 3 must be approved for SELL/settlement.
+- **CLOB:** `https://clob.polymarket.com` (V2 backend, live since Apr 28 2026). L1 = wallet sig, L2 = HMAC with derived API key.
 
 ---
 
 ## Changelog
-- **v5.0.2**: Hardened auth path. Reject empty/undefined signature and invalid timestamp in `polymarket_auth`; `scripts/auth.py --save` now validates timestamp expiry plus wallet/timestamp match against latest `--prepare`; added explicit auth invariants to SKILL docs.
-- **v5.0.1**: Minor stability/documentation refresh.
-- **v5.0.0**: Script-first architecture. 6 scripts wrap all flows. BUY order: 8 calls → 3 (2 bash + 1 sign). Status/search/cancel: 0 tool calls. Credential auto-check + auto-derive.
-- **v4.3.0**: Fixed HMAC signature, removed POLY_NONCE, mandatory lookup after search.
-- **v4.0.0**: Merged official v2.4 + local v3.9. Modular tools/, Privy-only, 13 tools.
+
+- **v6.0.0** — Major: full SKILL rewrite for clarity ("3 steps to trade"), new idempotent `setup.py` for one-time wrap + approvals, end-to-end live-verified on CLOB V2 (BUY `0x43f20c67...20b653` → SELL `0x19f475e4...fedde1`, 5 NO @ 0.989 → @ 0.988, ~$0.005 slippage). Supersedes the V1-era flow entirely.
+- **v5.1.0** — Added `setup.py` (idempotent wrap + approvals). Full SKILL rewrite for clarity. Live-verified: BUY `0x43f20c67...20b653`, SELL `0x19f475e4...fedde1` (5 NO @ 0.989 → @ 0.988, ~$0.005 slippage).
+- **v5.0.5** — CLOB V2 wire format fix: `salt` must be int; remove `taker`/`nonce`/`feeRateBps`.
+- **v5.0.4** — Migrated to V2 EIP-712 domain (version=2), V2 contracts, V2 order fields.
+- **v5.0.0** — Script-first architecture (BUY: 8 calls → 3).

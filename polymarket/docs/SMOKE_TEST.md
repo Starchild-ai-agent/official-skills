@@ -1,4 +1,4 @@
-# Polymarket Smoke Test v4.0
+# Polymarket Smoke Test v5.0.3
 
 ## Objective
 Complete one full loop: search → buy → verify → sell → verify.
@@ -8,32 +8,31 @@ Complete one full loop: search → buy → verify → sell → verify.
 
 ## Procedure
 
-### A — Init (3 calls)
-1. `wallet_info()`
-2. `polymarket_auth(...)` (full 2-step flow)
-3. `polymarket_get_balances()` → confirm balance readable
+### A — Init (script-first)
+1. `python3 scripts/auth.py --check`
+2. If needed: `python3 scripts/auth.py --prepare 0xWALLET` → sign → `python3 scripts/auth.py --save ...`
+3. `python3 scripts/status.py --json`
 
-### B — Discover (1-2 calls)
-1. `polymarket_search(query="...")` → pick active market
-2. `polymarket_orderbook(token_id)` → confirm liquidity
+### B — Discover
+1. `python3 scripts/search.py "keyword" --limit 2` (avoid long literal full-sentence query)
+2. Pick token_id from outcomes
 
-### C — Open (3 calls)
-1. `polymarket_prepare_order(token_id, "BUY", price, size)`
+### C — Open
+1. `python3 scripts/prepare_order.py TOKEN_ID BUY PRICE SIZE`
 2. `wallet_sign_typed_data(domain, types, "Order", message)`
-3. `polymarket_post_order(token_id, signature, order_meta)`
+3. `python3 scripts/post_order.py 0xSIG`
 
-### D — Verify Open (2 calls)
-1. `polymarket_get_trades(limit=5)`
-2. `polymarket_get_positions()`
+### D — Verify Open
+1. `python3 scripts/status.py --json`
+2. Check orders/positions/trades fields
 
-### E — Close (3 calls)
-1. `polymarket_prepare_order(token_id, "SELL", price, size)`
+### E — Close
+1. `python3 scripts/prepare_order.py TOKEN_ID SELL PRICE SIZE`
 2. `wallet_sign_typed_data(...)`
-3. `polymarket_post_order(...)`
+3. `python3 scripts/post_order.py 0xSIG`
 
-### F — Verify Close (2 calls)
-1. `polymarket_get_trades(limit=5)`
-2. `polymarket_get_positions()` → position back to baseline
+### F — Verify Close
+1. `python3 scripts/status.py --json` → position back to baseline
 
 ## Pass Criteria
 - No auth errors

@@ -1,6 +1,6 @@
 ---
 name: chatgpt-codex-onboarding
-version: 2.0.3
+version: 2.0.4
 description: |
   Connect a ChatGPT or Codex subscription via OAuth device-code login.
 

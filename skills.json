@@ -236,6 +236,12 @@
       "description": "US options data: chain snapshots, contracts, trades, quotes, greeks, IV, OI.\n\nUse when pulling option chains or contract metrics for analysis (e.g. AAPL Jan calls, SPY chain, NVDA IV, weekly puts)."
     },
     {
+      "name": "mcp-connector",
+      "path": "mcp-connector/SKILL.md",
+      "version": "1.0.0",
+      "description": "Connect to any MCP (Model Context Protocol) server and use its tools, resources, and prompts"
+    },
+    {
       "name": "okx",
       "path": "okx/SKILL.md",
       "version": "1.0.6",

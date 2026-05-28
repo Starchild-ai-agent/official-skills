@@ -1,6 +1,6 @@
 ---
 name: xai-grok-onboarding
-version: 1.3.0
+version: 1.3.1
 description: |
   Connect an xAI account (X Premium / X Premium+ / SuperGrok / SuperGrok Heavy) via OAuth 2.0 device-code login.
 
@@ -37,6 +37,21 @@ This is a **script-mode skill** — no tools registered. Read this file, then ca
 - `byok-custom-model` skill — for vendor-key BYOK setup (xAI API key from console.x.ai, different mechanism — bills per-token, NOT subscription-backed)
 - `chatgpt-codex-onboarding` skill — same pattern, for ChatGPT/Codex subscription
 - `config/context/references/model-onboarding.md` — overall model-selection landscape
+
+## Backend compatibility
+
+This skill depends on the `core.xai_grok` Python package inside the platform image (shipped 2026-05-22). On older images the skill loads cleanly but every public function returns:
+
+```json
+{
+  "ok": false,
+  "error": "xai_oauth_backend_unavailable",
+  "detail": "ModuleNotFoundError: core.xai_grok not found in any of: [/app, /data/workspace/starchild-clawd]",
+  "hint": "Update the platform image OR fall back to byok-custom-model with an xAI API key."
+}
+```
+
+If you see this response, do NOT retry — the platform itself needs an update. Either wait for the image refresh or guide the user to `byok-custom-model` with an API key from console.x.ai.
 
 ---
 

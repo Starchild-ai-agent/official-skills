@@ -1,6 +1,6 @@
 ---
 name: xai-grok-onboarding
-version: 1.3.1
+version: 1.3.2
 description: |
   Connect an xAI account (X Premium / X Premium+ / SuperGrok / SuperGrok Heavy) via OAuth 2.0 device-code login.
 

@@ -1,7 +1,7 @@
 ---
 name: mcp-connector
-version: 1.0.0
-description: Connect to any MCP (Model Context Protocol) server and use its tools, resources, and prompts
+version: 1.0.1
+description: Connect to any MCP (Model Context Protocol) server (Including Robinhood and Base) and use its tools, resources, and prompts
 tools:
   - mcp_browse
   - mcp_connect

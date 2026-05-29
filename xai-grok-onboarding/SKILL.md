@@ -1,6 +1,6 @@
 ---
 name: xai-grok-onboarding
-version: 1.3.1
+version: 1.3.2
 description: |
   Connect an xAI account (X Premium / X Premium+ / SuperGrok / SuperGrok Heavy) via OAuth 2.0 device-code login.
 
@@ -127,7 +127,13 @@ Three terminal outcomes:
 
 ### 3. After successful connect — tell the user
 
-The frontend model picker refreshes after connect. The default model is `xai-grok/grok-4.3`. Other available models depend on the subscription tier (SuperGrok Heavy unlocks `grok-build-0.1`).
+When `poll()` returns `status='connected'`, the **first thing you must do** is tell the user:
+
+> "Connection successful. Please refresh your browser page — once it reloads, the new `xai-grok/*` models will appear in the model picker."
+
+The web frontend caches the model list client-side and does **not** auto-refresh after an OAuth connect completes. Without a manual page refresh the user will not see their newly available models and will think the connection failed. Always include this instruction in your reply — do not assume the picker updates on its own.
+
+After the refresh, the default model is `xai-grok/grok-4.3`. Other available models depend on the subscription tier (SuperGrok Heavy unlocks `grok-build-0.1`).
 
 To switch: `/model xai-grok/grok-4.3` or use the picker.
 

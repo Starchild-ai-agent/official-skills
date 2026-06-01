@@ -242,6 +242,12 @@
       "description": "Connect to any MCP (Model Context Protocol) server (Including Robinhood and Base) and use its tools, resources, and prompts"
     },
     {
+      "name": "monad",
+      "path": "monad/SKILL.md",
+      "version": "1.0.0",
+      "description": "Set of skills for developing and building apps on Monad.\n\nUse as the entry point when working with Monad — guides you to the right sub-skill (scaffold, wallet, contracts, gas, indexer, etc.) for any Monad development task."
+    },
+    {
       "name": "okx",
       "path": "okx/SKILL.md",
       "version": "1.0.6",

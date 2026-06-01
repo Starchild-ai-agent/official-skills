@@ -1,0 +1,11 @@
+{
+  "name": "monskills-propose",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency manifest for propose.mjs. Installed once into ~/.monskills/propose-deps/ by propose.sh.",
+  "dependencies": {
+    "viem": "^2.21.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

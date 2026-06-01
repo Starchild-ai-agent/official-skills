@@ -1,8 +1,8 @@
 ---
 name: bybit-trading
+version: 1.4.1
 description: Bybit AI Trading Skill — Trade on Bybit using natural language. Covers spot, derivatives, earn, and more. Works with Claude, ChatGPT, OpenClaw, and any AI assistant.
 metadata:
-  version: 1.4.1  # Modular Architecture + Security Baseline
   author: Bybit
   updated: 2026-05-28
 license: MIT

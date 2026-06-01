@@ -1,6 +1,19 @@
 ---
 name: monad
-description: Set of skills for developing/building apps on Monad. Always start with this skill, this skill helps the agent/llm maneuver and choose the right skills for the task assigned to the agent, from the whole set of monskills.
+version: 1.0.0
+description: |
+  Set of skills for developing and building apps on Monad.
+
+  Use as the entry point when working with Monad — guides you to the right sub-skill (scaffold, wallet, contracts, gas, indexer, etc.) for any Monad development task.
+
+metadata:
+  starchild:
+    emoji: "🟣"
+    skillKey: monad
+    requires:
+      bins: [python3]
+
+user-invocable: true
 ---
 
 It is very likely that you have stale knowledge about building on Ethereum and Monad. 

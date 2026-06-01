@@ -26,41 +26,117 @@ from typing import Any, Dict, Optional
 
 
 # --------------------------------------------------------------------------
-# sys.path bootstrap (same as codex skill)
+# sys.path bootstrap (same as codex skill) + backend availability check
 # --------------------------------------------------------------------------
+#
+# History: in the window 2026-05-22 → 2026-05-26 the xai_grok backend
+# was published to skills/ but the corresponding core/xai_grok module
+# was briefly reverted from the platform image (commit db5ad17). Skills
+# called from older images crashed with bare
+#   ModuleNotFoundError: No module named 'core.xai_grok'
+# and the agent had no idea why (issue #161).
+#
+# Strategy now:
+#   1. _bootstrap_clawd_path returns a (found, checked_paths) tuple so
+#      we can build an honest diagnostic if nothing matched.
+#   2. The top-level `from core.xai_grok import ...` is wrapped in
+#      try/except. On failure we record the exception and let every
+#      public function return a structured "backend unavailable"
+#      response with a concrete next-step. The module still imports
+#      cleanly, so skill discovery doesn't break.
+#   3. Backend-dependent type names referenced in annotations are safe
+#      because the file uses `from __future__ import annotations`
+#      (annotations are strings, not evaluated at import time).
 
-def _bootstrap_clawd_path() -> None:
+def _bootstrap_clawd_path():
+    """Locate the starchild-clawd checkout containing core/xai_grok.
+
+    Returns (found: bool, checked_paths: List[str]). On success, the
+    matching directory is prepended to sys.path so `from core.xai_grok
+    import ...` resolves. On failure callers can report which paths
+    were searched so users know where to point STARCHILD_CLAWD_DIR.
+    """
     candidates = []
     env_override = os.environ.get("STARCHILD_CLAWD_DIR")
     if env_override:
         candidates.append(env_override)
     candidates.extend(["/app", "/data/workspace/starchild-clawd"])
     for cand in candidates:
-        if os.path.exists(os.path.join(cand, "core", "xai_grok", "__init__.py")):
+        marker = os.path.join(cand, "core", "xai_grok", "__init__.py")
+        if os.path.exists(marker):
             if cand not in sys.path:
                 sys.path.insert(0, cand)
-            return
+            return True, candidates
+    return False, candidates
 
-_bootstrap_clawd_path()
 
-from core.xai_grok import (  # noqa: E402
-    AccountAccessDenied,
-    DeviceCodePrompt,
-    DeviceCodeTimeout,
-    OAuthState,
-    ReauthRequired,
-    VERIFY_URL,
-    XaiGrokOAuthError,
-    classify_state,
-    delete_credential,
-    fetch_models_from_api,
-    load_credential,
-    poll_authorization,
-    refresh_access_token,
-    request_device_code,
-    resolve_xai_models,
-    save_credential,
-)
+_CLAWD_FOUND, _CLAWD_CHECKED = _bootstrap_clawd_path()
+_BACKEND_IMPORT_ERROR = None  # type: ignore[assignment]
+
+if _CLAWD_FOUND:
+    try:
+        from core.xai_grok import (  # noqa: E402
+            AccountAccessDenied,
+            DeviceCodePrompt,
+            DeviceCodeTimeout,
+            OAuthState,
+            ReauthRequired,
+            VERIFY_URL,
+            XaiGrokOAuthError,
+            classify_state,
+            delete_credential,
+            fetch_models_from_api,
+            load_credential,
+            poll_authorization,
+            refresh_access_token,
+            request_device_code,
+            resolve_xai_models,
+            save_credential,
+        )
+    except (ImportError, AttributeError) as _e:
+        # Module exists but is missing expected symbols — partial deploy
+        # or version skew. Defer the error to call time so skill
+        # discovery still works.
+        _BACKEND_IMPORT_ERROR = _e
+else:
+    # The whole xai_grok package is absent. Most common cause:
+    # platform image predates 2026-05-22 (xAI OAuth backend launch).
+    _BACKEND_IMPORT_ERROR = ModuleNotFoundError(
+        "core.xai_grok not found in any of: " + ", ".join(_CLAWD_CHECKED)
+    )
+
+
+def _backend_unavailable_response() -> Dict[str, Any]:
+    """Structured error returned by every public method when the
+    backend can't be loaded. Tells the agent exactly what to do next
+    instead of crashing with a raw ModuleNotFoundError.
+    """
+    return {
+        "ok": False,
+        "error": "xai_oauth_backend_unavailable",
+        "detail": f"{type(_BACKEND_IMPORT_ERROR).__name__}: {_BACKEND_IMPORT_ERROR}",
+        "checked_paths": _CLAWD_CHECKED,
+        "hint": (
+            "The xAI OAuth backend (core.xai_grok) is not available in this "
+            "platform image. Two options: "
+            "(1) Update the platform image — xAI OAuth shipped 2026-05-22; "
+            "older images don't have it. "
+            "(2) Fall back to BYOK API key via the byok-custom-model skill "
+            "(get a key from https://console.x.ai)."
+        ),
+    }
+
+
+def _require_backend(fn):
+    """Decorator: short-circuit to a structured error if the backend
+    failed to import. Keeps every public function one-liner."""
+    def wrapper(*args, **kwargs):
+        if _BACKEND_IMPORT_ERROR is not None:
+            return _backend_unavailable_response()
+        return fn(*args, **kwargs)
+    wrapper.__name__ = fn.__name__
+    wrapper.__doc__ = fn.__doc__
+    return wrapper
 
 
 # --------------------------------------------------------------------------
@@ -174,6 +250,7 @@ def _run(coro):
 # Public API
 # --------------------------------------------------------------------------
 
+@_require_backend
 def status() -> Dict[str, Any]:
     """Inspect the current OAuth credential state."""
     cred = load_credential()
@@ -212,6 +289,7 @@ def status() -> Dict[str, Any]:
     }
 
 
+@_require_backend
 def start() -> Dict[str, Any]:
     """Step 1: ask xAI for a device-code prompt."""
     try:
@@ -238,6 +316,7 @@ def start() -> Dict[str, Any]:
     }
 
 
+@_require_backend
 def poll(pending_id: Optional[str] = None) -> Dict[str, Any]:
     """Step 2: poll xAI to see if the user finished authorizing.
 
@@ -315,6 +394,7 @@ def poll(pending_id: Optional[str] = None) -> Dict[str, Any]:
     }
 
 
+@_require_backend
 def logout() -> Dict[str, Any]:
     """Disconnect — delete the on-disk credential file and flush cache."""
     existed = delete_credential()
@@ -327,6 +407,7 @@ def logout() -> Dict[str, Any]:
     }
 
 
+@_require_backend
 def refresh() -> Dict[str, Any]:
     """Force-refresh the access token. Normally automatic — debug only."""
     cred = load_credential()
@@ -347,6 +428,7 @@ def refresh() -> Dict[str, Any]:
     }
 
 
+@_require_backend
 def models(force: bool = False) -> Dict[str, Any]:
     """List the OAuth subscription's available models.
 

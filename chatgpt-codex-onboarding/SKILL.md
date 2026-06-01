@@ -1,6 +1,6 @@
 ---
 name: chatgpt-codex-onboarding
-version: 2.0.3
+version: 2.0.4
 description: |
   Connect a ChatGPT or Codex subscription via OAuth device-code login.
 
@@ -103,12 +103,18 @@ All functions return a dict with `ok: True` on success or `ok: False, error: "..
 
 ## After connecting
 
+When `poll()` returns `status='connected'`, the **first thing you must do** is tell the user:
+
+> "Connection successful. Please refresh your browser page — once it reloads, the new `openai-codex/*` models will appear in the model picker."
+
+The web frontend caches the model list client-side and does not auto-refresh after an OAuth connect completes. Without a manual page refresh the user will not see their newly available models and will think the connection failed. Always include this instruction in your reply — do not assume the picker updates on its own.
+
 Models appear with the `openai-codex/` prefix:
 - `openai-codex/gpt-5-codex` — primary
 - `openai-codex/gpt-5` — full GPT-5
 - `openai-codex/gpt-5-mini` — smaller / faster
 
-User switches via `/model openai-codex/gpt-5-codex` or the model picker UI.
+After refresh, the user switches via `/model openai-codex/gpt-5-codex` or the model picker UI.
 
 Subsequent calls hit OpenAI directly using the OAuth token — bypasses the platform proxy. Subscription usage limits apply (not the platform's credit balance).
 

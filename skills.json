@@ -206,6 +206,48 @@
       "description": "Trade perp futures, spot, and RWA on Hyperliquid DEX with up to asset max leverage.\n\nUse when placing perp or spot orders, setting TP/SL, or moving funds on Hyperliquid (e.g. long BTC 5x, sell ETH, deposit USDC, set stop)."
     },
     {
+      "name": "image-3d",
+      "path": "image-3d/SKILL.md",
+      "version": "1.0.0",
+      "description": "3D-style image generation: 3D characters, product renders, isometric dioramas, 3D icons, 3D text, interior design renders, architectural visualization, 3D scenes, game assets.\n\nUse when generating 3D-style 2D images from text descriptions or reference photos (e.g. 3D character design, isometric diorama, 3D product render, interior design visualization, architectural render, 3D app icon, 3D text effect, game asset render)."
+    },
+    {
+      "name": "image-bg-remove",
+      "path": "image-bg-remove/SKILL.md",
+      "version": "1.0.0",
+      "description": "Background removal: transparent PNGs, cutouts, product photos, portraits, pets, group photos.\nUses dedicated Bria RMBG 2.0 model — no prompt needed, fast (~3s), cheap ($0.01).\n\nUse when removing backgrounds, creating transparent PNGs, making cutouts, extracting foreground subjects, or preparing images for compositing."
+    },
+    {
+      "name": "image-create",
+      "path": "image-create/SKILL.md",
+      "version": "1.0.0",
+      "description": "Pure text-to-image generation for all creative scenarios: logo design, poster design, illustration, meme, game assets, social media content, 3D rendering, education, fashion, food, pet, wedding, holiday marketing, and artistic styles.\n\nUse when generating images from text descriptions without a reference photo (e.g. design a logo, create a poster, generate game art, make a meme, 3D render)."
+    },
+    {
+      "name": "image-ecommerce",
+      "path": "image-ecommerce/SKILL.md",
+      "version": "1.0.0",
+      "description": "E-commerce product photography: white-background hero shots, lifestyle scenes, flat lay, detail close-ups, packaging shots, group/collection displays, scale references, seasonal/holiday themes, 360-degree views, comparison layouts, infographics, and platform-optimized images (Amazon, Shopify, Taobao, Instagram, Xiaohongshu, Etsy, eBay).\n\nUse when generating professional product photos for e-commerce listings, catalogs, or marketing (e.g. product hero shot, Amazon listing image, lifestyle product photo, product on white background, product detail close-up, seasonal product campaign)."
+    },
+    {
+      "name": "image-edit",
+      "path": "image-edit/SKILL.md",
+      "version": "1.0.0",
+      "description": "Image editing and enhancement: background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.\n\nUse when editing, enhancing, or transforming an existing image (e.g. remove background, upscale photo, restore old photo, retouch portrait, change car color, apply filter, extend image)."
+    },
+    {
+      "name": "image-portrait",
+      "path": "image-portrait/SKILL.md",
+      "version": "1.0.0",
+      "description": "Identity-consistent portrait generation: professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.\n\nUse when generating styled portraits from a reference photo (e.g. professional headshot, anime avatar, cyberpunk portrait, travel photo, dating profile photo, ID photo)."
+    },
+    {
+      "name": "image-tryon",
+      "path": "image-tryon/SKILL.md",
+      "version": "1.0.0",
+      "description": "Virtual try-on: clothing, accessories, hairstyles, makeup, glasses, hats, shoes, watches.\n\nUse when the user wants to see how an item looks on a person — e.g. \"try on this dress\", \"put these glasses on me\", \"show me with this hairstyle\", \"what would I look like in this outfit\"."
+    },
+    {
       "name": "jupiter",
       "path": "jupiter/SKILL.md",
       "version": "1.2.1",

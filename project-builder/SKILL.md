@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.5.7
+version: 1.5.8
 description: |
   End-to-end project engineering: design, incremental build, verify, debug systematically.
 
@@ -48,7 +48,7 @@ triggers:
 
 ## Phase 0: SKILL DISCOVERY & REQUIRED READING
 
-**⚠️ CRITICAL — UI Design Quality Gate:** If the project produces ANY visual HTML output (dashboard, web app, landing page, portfolio, any page the user will see), you MUST `read_file` the `project-design` skill's SKILL.md and follow its Design Dials methodology BEFORE writing any HTML/CSS. This is not optional. project-builder handles engineering; project-design handles visual quality. Skipping project-design produces generic AI slop.
+**⚠️ CRITICAL — UI Design Quality Gate:** If the project produces ANY visual HTML output (dashboard, web app, landing page, portfolio, any page the user will see), you MUST `read_file` the `ui-design` skill's SKILL.md and follow it BEFORE writing any HTML/CSS. This is not optional. project-builder handles engineering; ui-design handles visual quality (and tells you when to reach for a component library like shadcn/ui, HeroUI, or coss ui instead of hand-writing). Skipping ui-design produces generic AI slop.
 
 **A. Pick the skills.** Gather every data source the project needs. For each one, prefer a skill: check `<available_skills>`, and if nothing fits, try `search_skills(query)` for official + marketplace coverage. Skills are the most reliable layer — they ship tested clients, auth, and rate-limit handling. Web search is a last resort. Only write raw HTTP / SDK code when no skill can cover the source.
 
@@ -61,7 +61,7 @@ triggers:
 | Scheduled task | `config/context/references/scheduled-tasks-guide.md` |
 | Long-running background job | `config/context/references/background-tasks.md` |
 | File writing >300 lines | `config/context/references/tool-writing-guide.md` |
-| **Any visual HTML output** (dashboard, web app, landing page, portfolio) | **`project-design` skill SKILL.md** — load it and follow its Design Dials methodology for all visual decisions (color, typography, layout, animation). This skill is the UI quality gate; skipping it produces generic AI slop. |
+| **Any visual HTML output** (dashboard, web app, landing page, portfolio) | **`ui-design` skill SKILL.md** — load it and follow it for all visual decisions (track choice, color, typography, layout, animation, and when to use a component library). This skill is the UI quality gate; skipping it produces generic AI slop. |
 
 ---
 
@@ -84,8 +84,8 @@ For medium+ projects, present to user BEFORE writing code:
 
 **UI Design Gate (required, blocking — for visual projects):**
 If the architecture choice is Preview Server or any project that outputs HTML the user will see:
-1. `read_file` the `project-design` skill's SKILL.md **now** (if you haven't already in this session).
-2. Run the Design Dials from project-design to determine Surface, Accent, Typography, and Aesthetic Family.
+1. `read_file` the `ui-design` skill's SKILL.md **now** (if you haven't already in this session) and pick a track (hand-built vs component library).
+2. For hand-built UI, run the Design Dials (in ui-design's `references/design-process.md`) to determine Surface, Accent, Typography, and Aesthetic Family.
 3. Include the Design Dials output line in your phase plan below.
 If you skip this step, the UI will look like generic AI output. This gate is blocking — do not proceed to Phase 2 without completing it.
 
@@ -203,7 +203,7 @@ Build one small piece → Run it → Verify output → ✅ Next piece / ❌ Fix 
 
 Decide sensible defaults yourself and render real data on first load. Treat filters as optional refinements users can adjust later — never as prerequisites that gate the initial view. Auto-refresh on a sensible interval. No "Click to load" / "Enter address" / "Select symbol" before anything appears.
 
-**Visual design quality (MANDATORY for all HTML output):** If the `project-design` skill is installed, you MUST `read_file` its SKILL.md and follow its Design Dials methodology before writing any HTML/CSS. project-builder owns the engineering workflow; project-design owns the visual quality. Using project-builder alone produces functional but visually generic output.
+**Visual design quality (MANDATORY for all HTML output):** If the `ui-design` skill is installed, you MUST `read_file` its SKILL.md and follow it before writing any HTML/CSS. project-builder owns the engineering workflow; ui-design owns the visual quality. Using project-builder alone produces functional but visually generic output.
 
 ---
 

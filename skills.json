@@ -170,12 +170,6 @@
       "description": "Drop-in crypto subscription paywall for creator products: EVM wallet login (SIWE) + on-chain\npayment verification. Users sign in with their wallet, pay a monthly/yearly subscription by\ntransferring tokens (ETH/Base/BSC, any ERC20 incl. custom tokens) to the creator's Starchild\nagent wallet, and get gated access — verified on-chain with no payment processor or third-party\naccount.\n\nUse when a creator wants to add \"sign up → pay → use\" monetization to something they built\n(e.g. \"add a paywall\", \"let users pay to subscribe\", \"gate my app behind a crypto payment\",\n\"收款\", \"订阅付费\", \"wallet login + subscription\"). Not for fiat/Stripe, not for pay-per-use metering."
     },
     {
-      "name": "ui-design",
-      "path": "ui-design/SKILL.md",
-      "version": "1.0.0",
-      "description": "UI/UX quality gate and build guide for all visual output — palette, typography, layout, anti-AI-slop, plus when to use component libraries (shadcn/ui, HeroUI, coss ui) and GSAP motion.\n\nUse when building any visual HTML (e.g. landing page, dashboard, web app, portfolio); pair with project-builder."
-    },
-    {
       "name": "debank",
       "path": "debank/SKILL.md",
       "version": "2.0.3",
@@ -344,6 +338,12 @@
       "description": "End-to-end project engineering: design, incremental build, verify, debug systematically.\n\nUse when building software, dashboards, scheduled jobs, or web apps the user has asked for (e.g. build a price monitor, daily summary task, ship an API)."
     },
     {
+      "name": "project-design",
+      "path": "project-design/SKILL.md",
+      "version": "1.0.1",
+      "description": "Professional UI design system — the visual quality gate for all HTML output.\n\nMUST USE together with project-builder when building any HTML page, dashboard, landing page,\nportfolio, or web application. project-builder handles engineering workflow; this skill handles\nvisual design decisions (color palette, typography, layout, animation).\n\nEnsures every generated UI looks professional, modern, and unique — never generic AI slop."
+    },
+    {
       "name": "rootdata",
       "path": "rootdata/SKILL.md",
       "version": "1.1.1",
@@ -432,6 +432,12 @@
       "path": "twitter/SKILL.md",
       "version": "2.0.2",
       "description": "Twitter/X data: fetch tweets, search, user profiles, followers, replies, trends.\n\nUse for any x.com or twitter.com URL or lookup (e.g. summarize this tweet, recent posts by @vitalikbuterin, search $SOL min_faves:50)."
+    },
+    {
+      "name": "ui-design",
+      "path": "ui-design/SKILL.md",
+      "version": "1.0.0",
+      "description": "The UI/UX quality gate and build guide for every visual output — landing pages, dashboards,\nweb apps, portfolios, tools, any HTML the user will see. Merges visual-design methodology\n(palette, typography, layout, anti-AI-slop) with concrete build guidance, including when and\nhow to use open-source component libraries (shadcn/ui, HeroUI, coss ui) to reduce work and\nraise quality.\n\nMUST USE together with project-builder whenever a project produces visual HTML/CSS/JS.\nproject-builder owns the engineering workflow; this skill owns how the result looks and feels."
     },
     {
       "name": "us-stock",

@@ -347,7 +347,7 @@
       "name": "project-design",
       "path": "project-design/SKILL.md",
       "version": "1.0.1",
-      "description": "Professional UI design system for generating high-quality, distinctive web pages and dashboards.\n\nUse when building any HTML page, dashboard, landing page, portfolio, or web application. Ensures every generated UI looks professional, modern, and unique — never generic AI slop."
+      "description": "Professional UI design system — the visual quality gate for all HTML output.\n\nMUST USE together with project-builder when building any HTML page, dashboard, landing page,\nportfolio, or web application. project-builder handles engineering workflow; this skill handles\nvisual design decisions (color palette, typography, layout, animation).\n\nEnsures every generated UI looks professional, modern, and unique — never generic AI slop."
     },
     {
       "name": "rootdata",

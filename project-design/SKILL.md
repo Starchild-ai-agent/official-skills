@@ -1,10 +1,13 @@
 ---
 name: project-design
-version: 1.0.0
+version: 1.0.1
 description: |
-  Professional UI design system for generating high-quality, distinctive web pages and dashboards.
+  Professional UI design system — the visual quality gate for all HTML output.
 
-  Use when building any HTML page, dashboard, landing page, portfolio, or web application.
+  MUST USE together with project-builder when building any HTML page, dashboard, landing page,
+  portfolio, or web application. project-builder handles engineering workflow; this skill handles
+  visual design decisions (color palette, typography, layout, animation).
+
   Ensures every generated UI looks professional, modern, and unique — never generic AI slop.
 metadata:
   starchild:

@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.5.5
+version: 1.5.6
 description: |
   End-to-end project engineering: design, incremental build, verify, debug systematically.
 
@@ -59,6 +59,7 @@ triggers:
 | Scheduled task | `config/context/references/scheduled-tasks-guide.md` |
 | Long-running background job | `config/context/references/background-tasks.md` |
 | File writing >300 lines | `config/context/references/tool-writing-guide.md` |
+| **Any visual HTML output** (dashboard, web app, landing page, portfolio) | **`project-design` skill SKILL.md** — load it and follow its Design Dials methodology for all visual decisions (color, typography, layout, animation). This skill is the UI quality gate; skipping it produces generic AI slop. |
 
 ---
 
@@ -192,6 +193,8 @@ Build one small piece → Run it → Verify output → ✅ Next piece / ❌ Fix 
 ### Dashboard UX Defaults (`type=preview`)
 
 Decide sensible defaults yourself and render real data on first load. Treat filters as optional refinements users can adjust later — never as prerequisites that gate the initial view. Auto-refresh on a sensible interval. No "Click to load" / "Enter address" / "Select symbol" before anything appears.
+
+**Visual design quality (MANDATORY for all HTML output):** If the `project-design` skill is installed, you MUST `read_file` its SKILL.md and follow its Design Dials methodology before writing any HTML/CSS. project-builder owns the engineering workflow; project-design owns the visual quality. Using project-builder alone produces functional but visually generic output.
 
 ---
 

@@ -340,14 +340,14 @@
     {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
-      "version": "1.5.5",
+      "version": "1.5.6",
       "description": "End-to-end project engineering: design, incremental build, verify, debug systematically.\n\nUse when building software, dashboards, scheduled jobs, or web apps the user has asked for (e.g. build a price monitor, daily summary task, ship an API)."
     },
     {
       "name": "project-design",
       "path": "project-design/SKILL.md",
-      "version": "1.0.0",
-      "description": "Professional UI design system for generating high-quality, distinctive web pages and dashboards.\n\nUse when building any HTML page, dashboard, landing page, portfolio, or web application.\nEnsures every generated UI looks professional, modern, and unique — never generic AI slop."
+      "version": "1.0.1",
+      "description": "Professional UI design system for generating high-quality, distinctive web pages and dashboards.\n\nUse when building any HTML page, dashboard, landing page, portfolio, or web application. Ensures every generated UI looks professional, modern, and unique — never generic AI slop."
     },
     {
       "name": "rootdata",

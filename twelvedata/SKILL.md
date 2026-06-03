@@ -1,6 +1,6 @@
 ---
 name: twelvedata
-version: 2.0.2
+version: 2.0.3
 description: "Stocks, forex, and commodities price data — real-time quotes, historical time series, and reference data"
 delivery: script
 metadata:

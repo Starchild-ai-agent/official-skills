@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.5.6
+version: 1.5.7
 description: |
   End-to-end project engineering: design, incremental build, verify, debug systematically.
 
@@ -48,6 +48,8 @@ triggers:
 
 ## Phase 0: SKILL DISCOVERY & REQUIRED READING
 
+**⚠️ CRITICAL — UI Design Quality Gate:** If the project produces ANY visual HTML output (dashboard, web app, landing page, portfolio, any page the user will see), you MUST `read_file` the `project-design` skill's SKILL.md and follow its Design Dials methodology BEFORE writing any HTML/CSS. This is not optional. project-builder handles engineering; project-design handles visual quality. Skipping project-design produces generic AI slop.
+
 **A. Pick the skills.** Gather every data source the project needs. For each one, prefer a skill: check `<available_skills>`, and if nothing fits, try `search_skills(query)` for official + marketplace coverage. Skills are the most reliable layer — they ship tested clients, auth, and rate-limit handling. Web search is a last resort. Only write raw HTTP / SDK code when no skill can cover the source.
 
 **B. Read the platform rules for what the project touches.** These rules live in references (not in your system prompt) so you must `read_file` them before writing code. Skipping this is the #1 cause of 401s, broken paths, and "worked locally, fails in preview" bugs.
@@ -79,6 +81,13 @@ For medium+ projects, present to user BEFORE writing code:
 2. Architecture choice and why
 3. Cost estimate — (cost/run) × frequency × 30 = monthly
 4. Known limitations
+
+**UI Design Gate (required, blocking — for visual projects):**
+If the architecture choice is Preview Server or any project that outputs HTML the user will see:
+1. `read_file` the `project-design` skill's SKILL.md **now** (if you haven't already in this session).
+2. Run the Design Dials from project-design to determine Surface, Accent, Typography, and Aesthetic Family.
+3. Include the Design Dials output line in your phase plan below.
+If you skip this step, the UI will look like generic AI output. This gate is blocking — do not proceed to Phase 2 without completing it.
 
 **Design Gate (required, blocking):**
 After Phase 1, STOP and present a short phase plan (milestones for DESIGN/BUILD/DEBUG). Ask explicitly: **"Approve this plan and proceed to Phase 2 BUILD?"** Match the user's language when phrasing the question — never inject a hardcoded non-English string.

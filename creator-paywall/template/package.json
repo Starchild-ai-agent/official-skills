@@ -1,0 +1,19 @@
+{
+  "name": "creator-paywall",
+  "version": "0.1.0",
+  "description": "Minimal crypto subscription paywall: SIWE wallet auth + on-chain transfer verification. Drop-in for creator products.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "viem": "^2.21.55"
+  }
+}

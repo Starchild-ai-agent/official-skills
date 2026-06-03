@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Creator Paywall</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; background:#0b0d12;
+         color:#e6e8ee; margin:0; min-height:100vh; }
+  .wrap { max-width:560px; margin:0 auto; padding:32px 20px 64px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:16px; margin:0 0 12px; }
+  .sub { color:#9aa3b2; font-size:14px; margin:0 0 24px; }
+  button { background:#3b82f6; color:#fff; border:0; border-radius:10px; padding:12px 18px;
+           font-size:15px; font-weight:600; cursor:pointer; transition:.15s; width:100%; }
+  button:hover:not(:disabled) { background:#2f6fe0; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button.ghost { background:#1a202c; color:#cbd2dd; font-weight:500; }
+  button.ghost:hover:not(:disabled) { background:#222a38; }
+  .card { background:#11151d; border:1px solid #1e2430; border-radius:16px; padding:22px; margin:14px 0; }
+  select, input { width:100%; background:#0b0d12; color:#e6e8ee; border:1px solid #2a3140;
+                  border-radius:10px; padding:11px; font-size:14px; }
+  label { display:block; font-size:12px; color:#9aa3b2; margin:14px 0 6px; text-transform:uppercase; letter-spacing:.04em; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .pill { font-size:12px; padding:5px 11px; border-radius:999px; background:#1a202c; color:#9aa3b2; font-family:ui-monospace,monospace; }
+  .pill.live { color:#34d399; } .pill.warn { color:#fbbf24; }
+  .seg { display:flex; gap:8px; }
+  .seg button { background:#0b0d12; border:1px solid #2a3140; color:#9aa3b2; font-weight:500; }
+  .seg button.on { background:#1e3a8a33; border-color:#3b82f6; color:#fff; }
+  .price { font-size:34px; font-weight:700; margin:6px 0; }
+  .price small { font-size:15px; color:#9aa3b2; font-weight:400; }
+  .muted { color:#9aa3b2; font-size:13px; line-height:1.5; }
+  .ok { color:#34d399; } .bad { color:#f87171; }
+  .hr { height:1px; background:#1e2430; margin:18px 0; border:0; }
+  .hero { text-align:center; padding:30px 0 10px; }
+  .hero .emoji { font-size:48px; }
+  .feat { display:flex; gap:10px; align-items:flex-start; margin:12px 0; font-size:14px; color:#cbd2dd; }
+  .feat .dot { color:#3b82f6; font-weight:700; }
+  .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#11151d;
+           border:1px solid #2a3140; border-radius:10px; padding:11px 16px; font-size:13px;
+           max-width:90%; opacity:0; transition:.2s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .badge { display:inline-flex; align-items:center; gap:6px; background:#064e3b55; color:#34d399;
+           border:1px solid #065f46; border-radius:999px; padding:6px 14px; font-size:13px; font-weight:600; }
+  pre { background:#0b0d12; border:1px solid #1e2430; border-radius:10px; padding:14px;
+        overflow:auto; font-size:12px; margin:10px 0 0; }
+  .row2 { display:flex; gap:8px; } .row2 > * { flex:1; }
+  .small { font-size:12px; }
+  a { color:#60a5fa; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ VIEW 1: NOT LOGGED IN ============ -->
+  <section id="view-landing" style="display:none">
+    <div class="hero">
+      <div class="emoji">🔐</div>
+      <h1>Members Only</h1>
+      <p class="sub">Sign in with your wallet to subscribe and unlock access.</p>
+    </div>
+    <div class="card">
+      <div class="feat"><span class="dot">›</span><span>Connect any EVM wallet — your address is your account.</span></div>
+      <div class="feat"><span class="dot">›</span><span>Pay once a month or year, directly on-chain.</span></div>
+      <div class="feat"><span class="dot">›</span><span>No passwords, no signup forms.</span></div>
+      <hr class="hr" />
+      <button id="btn-connect">Connect wallet &amp; sign in</button>
+      <p class="muted small" id="wallet-warn" style="margin-top:12px"></p>
+    </div>
+  </section>
+
+  <!-- ============ VIEW 2: LOGGED IN, NOT SUBSCRIBED ============ -->
+  <section id="view-paywall" style="display:none">
+    <div class="topbar">
+      <h1 style="font-size:18px">Choose your plan</h1>
+      <span class="pill" id="acct-2"></span>
+    </div>
+    <p class="sub">You're signed in but don't have an active subscription yet.</p>
+
+    <div class="card">
+      <label>Plan</label>
+      <select id="plan"></select>
+
+      <label>Billing period</label>
+      <div class="seg" id="period-seg">
+        <button data-p="monthly" class="on">Monthly</button>
+        <button data-p="yearly">Yearly</button>
+      </div>
+
+      <div class="price" id="price-display">—</div>
+      <p class="muted" id="pay-to"></p>
+
+      <button id="btn-pay">Pay &amp; subscribe</button>
+      <p class="muted small" id="pay-status" style="margin-top:12px"></p>
+    </div>
+
+    <div class="card">
+      <h2>Already paid?</h2>
+      <p class="muted">If you sent the payment but it's not showing, confirm it here.</p>
+      <button id="btn-check" class="ghost" style="margin-bottom:10px">🔄 Check payment</button>
+      <div class="row2">
+        <input id="txhash" placeholder="tx hash (needed for native ETH/BNB)" />
+        <button id="btn-verify" class="ghost" style="width:auto; white-space:nowrap">Verify</button>
+      </div>
+    </div>
+
+    <button id="btn-logout-2" class="ghost">Sign out</button>
+  </section>
+
+  <!-- ============ VIEW 3: SUBSCRIBED ============ -->
+  <section id="view-member" style="display:none">
+    <div class="topbar">
+      <span class="badge">● Active subscription</span>
+      <span class="pill" id="acct-3"></span>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:40px">🎉</div>
+      <h1>You're in.</h1>
+      <p class="sub" id="expiry-line" style="margin-bottom:0"></p>
+    </div>
+
+    <div class="card">
+      <h2>🔓 Premium content</h2>
+      <p class="muted">This is gated behind <code>requireAuth + requireSubscription</code>. Fetched live from the server.</p>
+      <button id="btn-protected">Load premium content</button>
+      <pre id="protected-out" style="display:none"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Renew / extend</h2>
+      <p class="muted">Subscriptions extend by paying again — your expiry rolls forward.</p>
+      <button id="btn-renew" class="ghost">Renew subscription</button>
+    </div>
+
+    <button id="btn-logout-3" class="ghost">Sign out</button>
+  </section>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+// Resolve API calls relative to the current page so it works under /preview/<id>/ proxy paths.
+const apiUrl = (p) => new URL(p.replace(/^\//,""), document.baseURI).toString();
+// Token-based auth (works inside iframes where cookies are blocked). Falls back to cookie too.
+let authToken = localStorage.getItem("paywall_token") || null;
+const api = (p, o={}) => {
+  const headers = { "Content-Type":"application/json", ...(o.headers||{}) };
+  if (authToken) headers.Authorization = "Bearer " + authToken;
+  return fetch(apiUrl(p), { credentials:"include", ...o, headers }).then(r=>r.json());
+};
+let cfg=null, account=null, period="monthly", intent=null;
+
+function toast(msg, cls="") { const t=$("toast"); t.innerHTML=`<span class="${cls}">${msg}</span>`; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),4000); }
+function show(view) { for (const v of ["landing","paywall","member"]) $("view-"+v).style.display = v===view?"block":"none"; }
+const short = (a) => a.slice(0,6)+"…"+a.slice(-4);
+
+// ---------- boot: decide which view ----------
+async function boot() {
+  show("landing"); // always show something first, even if requests fail
+  try {
+    cfg = await api("/api/config");
+    renderPlans();
+  } catch (e) {
+    $("wallet-warn").innerHTML = "⚠️ Could not reach the server. Try reloading.";
+    return;
+  }
+  if (!window.ethereum) $("wallet-warn").innerHTML = "⚠️ No EVM wallet detected. Open this page in a new browser tab with MetaMask, or in your wallet's in-app browser. (Wallets are often blocked inside embedded preview frames.)";
+  try {
+    const me = await api("/api/me"); // restore session if cookie present
+    if (me.wallet) { account = me.wallet; routeAfterAuth(me); }
+  } catch (e) { /* stay on landing */ }
+}
+
+function renderPlans() {
+  $("plan").innerHTML = cfg.plans.map((p,i) =>
+    `<option value="${i}">${p.symbol} · ${p.chainName}</option>`).join("");
+  updatePrice();
+}
+function curPlan() { return cfg.plans[$("plan").value]; }
+function updatePrice() {
+  const p = curPlan();
+  const amt = period==="yearly" ? p.price_yearly : p.price_monthly;
+  $("price-display").innerHTML = `${amt} ${p.symbol} <small>/ ${period==="yearly"?"year":"month"}</small>`;
+  $("pay-to").innerHTML = `Pays to creator wallet <code>${short(cfg.creatorWallet)}</code> on ${p.chainName}.`;
+}
+$("plan").onchange = updatePrice;
+$("period-seg").onclick = (e) => {
+  if (!e.target.dataset.p) return;
+  period = e.target.dataset.p;
+  [...$("period-seg").children].forEach(b => b.classList.toggle("on", b.dataset.p===period));
+  updatePrice();
+};
+
+// ---------- login (SIWE) ----------
+$("btn-connect").onclick = async () => {
+  if (!window.ethereum) return toast("No EVM wallet found.", "bad");
+  try {
+    const [addr] = await window.ethereum.request({ method:"eth_requestAccounts" });
+    account = addr;
+    const chainId = parseInt(await window.ethereum.request({ method:"eth_chainId" }),16);
+    const { message } = await api(`/api/nonce?address=${addr}&chainId=${chainId}&uri=${location.origin}`);
+    toast("Sign the message in your wallet…");
+    const signature = await window.ethereum.request({ method:"personal_sign", params:[message, addr] });
+    const r = await api("/api/login", { method:"POST", body: JSON.stringify({ message, signature, chainId }) });
+    if (!r.ok) return toast("Login failed: "+r.error, "bad");
+    authToken = r.token;
+    localStorage.setItem("paywall_token", r.token);
+    toast("Signed in ✓", "ok");
+    routeAfterAuth(await api("/api/me"));
+  } catch (e) { toast("Cancelled: "+(e.message||e), "bad"); }
+};
+
+function routeAfterAuth(me) {
+  $("acct-2").textContent = short(account);
+  $("acct-3").textContent = short(account);
+  if (me.subscribed) {
+    const d = new Date(me.expiresAt*1000);
+    $("expiry-line").textContent = "Access until " + d.toISOString().slice(0,10) + ".";
+    show("member");
+  } else {
+    show("paywall");
+  }
+}
+
+// ---------- pay ----------
+async function startPayment() {
+  const p = curPlan();
+  intent = await api("/api/subscribe/intent", { method:"POST",
+    body: JSON.stringify({ chainId:p.chainId, token:p.token, period }) });
+  if (intent.error) { toast("Error: "+intent.error, "bad"); return null; }
+  await switchChain(p.chainId);
+  const txHash = p.token==="native"
+    ? await sendNative(intent.payTo, intent.amount)
+    : await sendErc20(p.token, intent.payTo, intent.amount);
+  return txHash;
+}
+
+$("btn-pay").onclick = async () => {
+  $("btn-pay").disabled = true; $("pay-status").innerHTML = "";
+  try {
+    const txHash = await startPayment();
+    if (!txHash) { $("btn-pay").disabled=false; return; }
+    $("txhash").value = txHash;
+    $("pay-status").innerHTML = `<span class="muted">Tx sent. Confirming on-chain…</span>`;
+    pollVerify(txHash);
+  } catch (e) { toast("Payment cancelled.", "bad"); $("pay-status").innerHTML=`<span class="bad">${e.message||e}</span>`; $("btn-pay").disabled=false; }
+};
+
+async function pollVerify(txHash, n=0) {
+  const r = await api("/api/subscribe/verify", { method:"POST", body: JSON.stringify({ intentId:intent.intentId, txHash }) });
+  if (r.ok) { toast("Subscription active ✓","ok"); return routeAfterAuth(await api("/api/me")); }
+  if (n < 15) { $("pay-status").innerHTML = `<span class="muted">Waiting for confirmations… (${r.error})</span>`; setTimeout(()=>pollVerify(txHash,n+1), 5000); }
+  else { $("pay-status").innerHTML = `<span class="warn">Not confirmed yet. Try “Check payment” below in a moment.</span>`; $("btn-pay").disabled=false; }
+}
+
+$("btn-check").onclick = async () => {
+  $("btn-check").disabled=true;
+  const r = await api("/api/subscribe/check", { method:"POST", body: JSON.stringify({ intentId: intent?.intentId }) });
+  $("btn-check").disabled=false;
+  if (r.found) { toast("Payment found ✓","ok"); routeAfterAuth(await api("/api/me")); }
+  else toast("Not found yet: "+r.reason, "bad");
+};
+
+$("btn-verify").onclick = async () => {
+  if (!intent) return toast("Start a payment first.", "bad");
+  const txHash = $("txhash").value.trim();
+  if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) return toast("Enter a valid tx hash.", "bad");
+  const r = await api("/api/subscribe/verify", { method:"POST", body: JSON.stringify({ intentId:intent.intentId, txHash }) });
+  if (r.ok) { toast("Verified ✓","ok"); routeAfterAuth(await api("/api/me")); }
+  else toast("Verify: "+r.error, "bad");
+};
+
+// ---------- member view ----------
+$("btn-protected").onclick = async () => {
+  const r = await api("/api/protected");
+  const out = $("protected-out"); out.style.display="block";
+  out.textContent = JSON.stringify(r, null, 2);
+  if (r.error) out.className="bad";
+};
+$("btn-renew").onclick = async () => {
+  try {
+    const txHash = await startPayment();
+    if (!txHash) return;
+    toast("Renewal tx sent, confirming…");
+    pollVerify(txHash);
+  } catch(e){ toast("Cancelled.", "bad"); }
+};
+
+for (const id of ["btn-logout-2","btn-logout-3"]) $(id).onclick = async () => {
+  await api("/api/logout", { method:"POST" });
+  account=null; authToken=null; intent=null; localStorage.removeItem("paywall_token");
+  show("landing"); toast("Signed out.");
+};
+
+// ---------- raw EIP-1193 helpers ----------
+async function switchChain(chainId) {
+  const hex="0x"+chainId.toString(16);
+  try { await window.ethereum.request({ method:"wallet_switchEthereumChain", params:[{chainId:hex}] }); }
+  catch(e){ if (e.code===4902) throw new Error("Add this network to your wallet first."); throw e; }
+}
+async function sendNative(to, wei) {
+  return window.ethereum.request({ method:"eth_sendTransaction",
+    params:[{ from:account, to, value:"0x"+BigInt(wei).toString(16) }] });
+}
+async function sendErc20(tk, to, wei) {
+  const data="0xa9059cbb"+to.toLowerCase().replace("0x","").padStart(64,"0")+BigInt(wei).toString(16).padStart(64,"0");
+  return window.ethereum.request({ method:"eth_sendTransaction", params:[{ from:account, to:tk, data }] });
+}
+
+boot();
+</script>
+</body>
+</html>

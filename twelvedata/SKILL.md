@@ -1,6 +1,6 @@
 ---
 name: twelvedata
-version: 2.0.3
+version: 2.0.4
 description: |
   Stocks, forex, and commodities prices: real-time quotes and historical bars.
 

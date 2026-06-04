@@ -49,13 +49,28 @@ def handle_api_error(e: Exception) -> ToolResult:
         return ToolResult(
             success=False,
             error="API key error. The TWELVEDATA_API_KEY may be invalid or missing.",
+            error_category="auth_error",
         )
     if "429" in error_str:
         return ToolResult(
             success=False,
             error="Rate limit exceeded. Please wait before making more requests.",
+            error_category="rate_limit",
         )
-    return ToolResult(success=False, error=f"Twelve Data API error: {error_str}")
+    if "404" in error_str:
+        return ToolResult(
+            success=False,
+            error=(
+                "Symbol not found in TwelveData. "
+                "Check the spelling or use twelvedata_search to find the correct ticker."
+            ),
+            error_category="invalid_symbol",
+        )
+    return ToolResult(
+        success=False,
+        error=f"Twelve Data API error: {error_str}",
+        error_category="upstream_error",
+    )
 
 # API Configuration
 BASE_URL = "https://api.twelvedata.com"

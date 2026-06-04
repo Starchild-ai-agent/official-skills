@@ -1,6 +1,6 @@
 ---
 name: ui-design
-version: 1.0.1
+version: 1.0.2
 description: |
   The UI/UX quality gate and build guide for every visual output — landing pages, dashboards,
   web apps, portfolios, tools, any HTML the user will see. Merges visual-design methodology
@@ -85,6 +85,26 @@ Default when unspecified and a build is justified: **shadcn/ui** (MCP + CLI make
 Component libraries give you correct components; they don't give you cinematic motion. For scroll-driven storytelling, multi-step timelines, text-into-characters reveals, SVG morph/draw, or FLIP layout transitions, reach for **[GSAP](https://gsap.com/)** — now 100% free (incl. all former-paid plugins: ScrollTrigger, SplitText, MorphSVG, Flip…). Unlike the component libraries, GSAP is plain JS that loads via a CDN `<script>` tag with **no build step**, so it works in a single-file Track A preview *and* a Track B app.
 
 Decision: plain CSS for hovers/toggles/simple reveals (the default — don't pull 50KB for a button); GSAP only when the motion is a *feature* (landing-page scroll story, hero text reveal, animated SVG). Full guidance — when-to-use table, CDN loading, core/timeline/ScrollTrigger API, plugin list, the React `useGSAP` hook, and the reduced-motion/cleanup rules — is in `references/animations.md` (GSAP section). Look up the current version and plugin APIs at gsap.com at build time; don't ship memorized snippets.
+
+---
+
+## AI-generated visual assets (optional quality boost)
+
+When the user wants a premium, polished look — or when the project would benefit from custom imagery (hero backgrounds, logos, decorative illustrations, themed graphics) — load the **image-create** skill and use it to generate visuals with AI.
+
+**When to use:**
+- Landing pages, portfolios, or dashboards where a custom hero image would elevate the design
+- Projects where the user explicitly wants "better looking" / "more polished" / "premium" output
+- Any time a stock photo or generic gradient feels insufficient
+
+**How to use:**
+1. Load the `image-create` skill (read its SKILL.md) and follow its instructions to generate an image with a prompt that matches the project's Design Read (atmosphere, aesthetic family, color palette)
+2. The generated image is saved to `output/images/`. **You MUST copy it into the project's preview/serve directory** before referencing it in HTML:
+   ```
+   bash("cp output/images/GENERATED_FILE.png output/projects/{slug}/src/hero.png")
+   ```
+3. Reference the image with a **relative path** in HTML: `url('./hero.png')` — NOT `url('../images/...')`. Preview can only serve files within its own directory.
+4. If image generation fails, fall back to CSS gradients or abstract SVG patterns — never leave a broken `<img>` or `background-image` reference.
 
 ---
 

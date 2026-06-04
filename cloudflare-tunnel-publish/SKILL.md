@@ -1,6 +1,6 @@
 ---
 name: cloudflare-tunnel-publish
-version: 1.1.1
+version: 1.2.0
 description: |
   Publish a local service to a user-owned custom domain via Cloudflare Tunnel.
 
@@ -277,6 +277,7 @@ disown
 - ✅ Redirect stdin from `/dev/null` so the service doesn't block on terminal input after detach.
 - ✅ Background the entire `start_services.sh` call from `setup.sh` with `&` and `disown` — otherwise `cloudflared` (which runs forever) blocks `setup.sh`, blocking the agent from starting.
 - ✅ The PID-file check makes the script idempotent — safe to re-run mid-session for testing without spawning duplicates.
+- ✅ For local app services, add a port reachability guard before spawn (e.g., if `127.0.0.1:<port>` is already open, log `already reachable` and skip starting). This avoids false startup failures when the app is already running under another supervisor.
 - ❌ Don't use `nohup` from the agent toolkit — the runtime explicitly rejects it for orphan-process reasons.
 - ❌ Don't rely on `pgrep` — not installed in the Starchild container. Use `[ -d /proc/$PID ]` instead.
 
@@ -300,6 +301,55 @@ done
 bash /data/workspace/scripts/start_services.sh
 tail -5 /data/workspace/logs/startup.log
 ```
+
+### ⚠️ setup.sh alone is NOT enough — you also need a watchdog
+
+`setup.sh` only runs **once, at container boot**. It does nothing if a process dies **while the container keeps running** — and that is the most common real-world failure:
+
+- `cloudflared` can exit on its own (network blip, edge disconnect, upstream reset, `quic` failure) hours after a clean start. The container stays up, but the tunnel process is gone → domain returns **530 / 1033** even though `setup.sh` ran fine at boot.
+- The local app can crash (unhandled exception, OOM-kill of a single process) without taking down the container.
+
+In this situation `bash_process(action='list')` shows the tunnel session as `exited`, and re-running `run_tunnel.sh` fixes it instantly — but you only find out because the user complained that the domain went down. **For "long-term stable" requests, a boot-time script is the floor, not the goal.** Add a watchdog.
+
+**The watchdog: a self-healing cron that re-runs `start_services.sh` every few minutes.** Because `start_services.sh` is idempotent (PID-file + port guard), running it on a schedule is safe — it's a no-op when everything is healthy and an auto-repair when something died. This closes the mid-life-death gap that `setup.sh` cannot.
+
+Make the watchdog check **liveness AND reachability**, not just the PID — a `cloudflared` process can be alive but disconnected. Add this to the END of `start_services.sh` so the same script both starts and heals:
+
+```bash
+# --- self-heal: if the public URL is unreachable, force-restart the tunnel ---
+# Runs every invocation (boot + cron). Idempotent: only acts when actually broken.
+HOST=$(python3 -c "import json;print(json.load(open('$WS/.cf_state.json'))['hostname'])")
+if ! curl -fsS --max-time 10 "https://$HOST/" >/dev/null 2>&1; then
+  log "WARN $HOST unreachable — restarting tunnel"
+  pf="$PIDDIR/cloudflared.pid"
+  if is_alive "$pf"; then kill "$(cat "$pf")" 2>/dev/null || true; sleep 2; fi
+  rm -f "$pf"
+  start_service "cloudflared" "$WS" "bash $WS/skills/cloudflare-tunnel-publish/scripts/run_tunnel.sh"
+  sleep 6
+  curl -fsS --max-time 10 "https://$HOST/" >/dev/null 2>&1 \
+    && log "recovered: https://$HOST" \
+    || log "ERROR still down after restart: https://$HOST"
+fi
+```
+
+Then register the watchdog as a **scheduled task in `command` mode** (cheap — direct bash, no LLM call):
+
+```
+scheduled_task(action="schedule",
+  title="tunnel watchdog",
+  schedule="every 5 minutes",
+  command="bash /data/workspace/scripts/start_services.sh",
+  deliver="local")   # local = silent, no push spam; it only logs
+```
+
+Set `deliver="local"` so routine healthy runs stay silent. The watchdog writes to `logs/startup.log`, so a healthy day shows only `already reachable` / `already running` lines, and any real recovery is timestamped there.
+
+**Checklist for a genuinely durable deployment (do all three):**
+1. ✅ `start_services.sh` with PID-file + port guard + a reachability self-heal block (above).
+2. ✅ Hooked into `setup.sh` (survives container restart).
+3. ✅ A `scheduled_task` watchdog every 3–5 min in `command` mode (survives mid-life process death). **This is the piece that makes it "long-term stable" — skipping it means the tunnel will eventually die and stay dead until the user notices.**
+
+**Don't claim "long-term stable" after only editing `setup.sh`.** That covers container restarts but leaves the most common failure (silent mid-life tunnel exit) completely unguarded. Verify the watchdog is registered (`scheduled_task(action="list")`) before telling the user it's stable.
 
 **Tell the user explicitly:**
 > 🔔 你的服务现在在容器里跑。Starchild 的容器可能因为更新、内存或迁移**任何时候**自动重启，重启后所有进程都会死。我已经把启动脚本写进 `workspace/setup.sh`，下次容器起来会自动拉起服务和隧道——你不用管。如果哪天访问域名变成 502/521/530，那就是服务还没拉起来或者启动失败，让我看一眼 `logs/startup.log` 和 `logs/cloudflared.log` 就能定位。

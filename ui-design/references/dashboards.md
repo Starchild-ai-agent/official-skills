@@ -30,7 +30,7 @@ When researching free APIs: check `github.com/public-apis/public-apis` first, pr
 
 ## 2. Architecture
 
-- **Quick / single-file preview (most common):** one HTML file, Tailwind via CDN, Chart.js via CDN, fetch on a timer. Apply the full Track-A design gate. Served by the static `preview`.
+- **Quick static preview (most common):** HTML + CSS + JS files (split for maintainability), Tailwind via CDN, Chart.js via CDN, fetch on a timer. Apply the full Track-A design gate. Served by the static `preview`.
 - **Real app:** Vite/Next + a component library (`component-libraries.md`) for the shell (sidebar, cards, tables), Chart.js/ECharts/ApexCharts for viz. Needs a `preview` with `command` + `port`.
 - **Backend needed only** when you require SSE/WebSocket or server-side aggregation — otherwise keep it client-side.
 

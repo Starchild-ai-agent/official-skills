@@ -146,7 +146,7 @@ The implementation should:
 
 [GSAP](https://gsap.com/) (GreenSock Animation Platform) is the production-grade JS animation engine for the moments CSS transitions can't cover: scroll-driven sequences, timelines, text-into-characters reveals, SVG morph/draw, FLIP layout animations, draggable UI. As of **April 2025 it is 100% free including commercial use** (Webflow now sponsors it) — the formerly-paid plugins (ScrollTrigger, SplitText, MorphSVG, DrawSVG, Flip, Physics2D, etc.) are all free. Apache-style open availability, no license gate.
 
-**Why it fits both tracks:** GSAP is framework-agnostic plain JavaScript. It loads via a `<script>` CDN tag with **no build step**, so it works in a single-file Track A preview *and* in a Track B React app. This is the key difference from the component libraries — you can reach for GSAP even in a throwaway preview.
+**Why it fits both tracks:** GSAP is framework-agnostic plain JavaScript. It loads via a `<script>` CDN tag with **no build step**, so it works in a Track A static preview *and* in a Track B React app. This is the key difference from the component libraries — you can reach for GSAP even in a throwaway preview.
 
 ### When to use GSAP vs plain CSS
 

@@ -1,6 +1,6 @@
 # Design Process — Quality Gate (Track A: hand-built UI)
 
-This is the visual-quality methodology for **hand-built** HTML/CSS/JS (single-file previews, vanilla pages, CDN dashboards). It is the heart of the `ui-design` skill's general guidance. Follow it whenever you write markup/styles yourself instead of pulling a component library.
+This is the visual-quality methodology for **hand-built** HTML/CSS/JS (static previews, vanilla pages, CDN dashboards). It is the heart of the `ui-design` skill's general guidance. Follow it whenever you write markup/styles yourself instead of pulling a component library. For larger projects, split into separate files (index.html + style.css + script.js) instead of inlining everything.
 
 When you build with a component library (React + shadcn / HeroUI / coss ui), the library already enforces spacing, a11y, and component polish — in that case use `references/component-libraries.md` and treat this file as the taste layer (palette, type, layout rhythm, anti-slop, copy rules) on top of the library defaults.
 

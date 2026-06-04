@@ -10,11 +10,11 @@ Open-source component libraries do the boring, error-prone work for you: accessi
 
 | Situation | Use a component library? |
 |-----------|--------------------------|
-| Single-file HTML preview, quick dashboard, no build step | **No** — hand-build with Track A (`design-process.md`) + CDN Tailwind/Chart.js. React libraries need a bundler. |
+| Static HTML preview, quick dashboard, no build step | **No** — hand-build with Track A (`design-process.md`) + CDN Tailwind/Chart.js. React libraries need a bundler. |
 | Real React / Next.js / Vite app the user will keep and extend | **Yes** — pull components, don't hand-roll. |
 | App with forms, modals, dropdowns, tables, date pickers, command palettes | **Yes** — these are exactly what the libraries get right and what hand-rolled code gets wrong (a11y, focus traps, keyboard). |
 | User explicitly wants "shadcn", "HeroUI", "Cal.com style", "Origin UI" | **Yes** — use the named one. |
-| Tiny widget, email HTML, or anything that must be one portable file | **No** — Track A. |
+| Tiny widget, email HTML, or anything without a build step | **No** — Track A. |
 
 **The build-step reality (Starchild `preview`):** shadcn/ui, HeroUI, and coss ui are all **React + Tailwind**. They require a bundler (Vite or Next.js) and a `preview` started with a `command` + `port`, not the static file server. If the task is a throwaway preview with no build, stay on Track A. If you're scaffolding a real app, set up Vite + Tailwind first, then add the library. (HeroUI's raw CSS can be applied to plain HTML via Tailwind, but its component *behavior* is React — don't fake it.)
 

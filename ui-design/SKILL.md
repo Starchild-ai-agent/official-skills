@@ -1,6 +1,6 @@
 ---
 name: ui-design
-version: 1.0.2
+version: 1.0.3
 description: |
   The UI/UX quality gate and build guide for every visual output — landing pages, dashboards,
   web apps, portfolios, tools, any HTML the user will see. Merges visual-design methodology
@@ -41,7 +41,7 @@ Two ways to build a UI. Choose deliberately; they are not interchangeable.
 
 Decision shortcut:
 ```
-No build step / throwaway preview / must be one portable file → Track A
+No build step / throwaway preview / static files only          → Track A
 Real app, lots of interactive components, user will extend it  → Track B
 User named "shadcn" / "HeroUI" / "Cal.com look" / "Origin UI"  → Track B (that library)
 Just a dashboard?                                              → either track + references/dashboards.md

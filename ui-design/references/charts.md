@@ -1,6 +1,6 @@
 # Charts & Data Visualization Reference
 
-Guidelines for creating professional charts in single-HTML dashboards. These are design standards — implement the actual chart code fresh each time.
+Guidelines for creating professional charts in dashboards. These are design standards — implement the actual chart code fresh each time.
 
 ---
 

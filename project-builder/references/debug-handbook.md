@@ -116,6 +116,7 @@ curl -s http://localhost:{port}/ | head -30
 | Data shows "undefined" | API endpoint returns unexpected shape | curl the endpoint, check JSON structure |
 | "Connection failed" | Process crashed or wrong port | Check command, read error log |
 | Stale data | Caching or frontend not re-fetching | Add cache-busting, check polling logic |
+| **Charts keep growing / page height explodes** | Chart container has no fixed px height, or chart.resize() in ResizeObserver loop | Set explicit `height: Npx` + `position: relative` + `overflow: hidden` on chart container. See `project-design/references/charts.md` "Chart Container Anti-Expansion" section |
 
 **Fix in place:** Use `edit_file` to fix the specific bug. Don't create new files. Then `preview_stop` + `preview_serve` to restart.
 

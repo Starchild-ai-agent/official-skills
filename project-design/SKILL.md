@@ -1,6 +1,6 @@
 ---
 name: project-design
-version: 1.0.1
+version: 1.0.2
 description: |
   Professional UI design system — the visual quality gate for all HTML output.
 

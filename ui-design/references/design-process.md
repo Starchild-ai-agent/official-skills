@@ -423,6 +423,39 @@ function toggleTheme() {
 }
 ```
 
+### Color Adaptation Across Themes (CRITICAL)
+
+Every visual element must look correct in BOTH themes. Common failures:
+
+1. **Charts and data visualization** — Chart.js/ECharts use JS-configured colors, not CSS. When the theme toggles, charts must re-read CSS variables and re-render:
+   ```js
+   // Read CSS variables for chart colors — call this after every theme toggle
+   function getThemeColors() {
+     const style = getComputedStyle(document.documentElement);
+     return {
+       text: style.getPropertyValue('--text-primary').trim(),
+       muted: style.getPropertyValue('--text-secondary').trim(),
+       accent: style.getPropertyValue('--accent').trim(),
+       grid: style.getPropertyValue('--border').trim(),
+       surface: style.getPropertyValue('--surface-primary').trim(),
+     };
+   }
+   // After theme toggle: destroy and recreate charts with new colors
+   ```
+
+2. **AI-generated images** — Hero backgrounds and decorative images designed for dark mode will look wrong on light backgrounds (and vice versa). Solutions:
+   - Use CSS `mix-blend-mode: multiply` (light) / `screen` (dark) to adapt
+   - Or overlay a semi-transparent surface color on top of the image per theme
+   - Or generate two versions of the image (one for each theme) and swap via CSS
+
+3. **Borders and shadows** — Borders designed for light backgrounds may disappear on dark surfaces, and shadows designed for dark mode may be too harsh on light backgrounds. Always define border and shadow colors as CSS variables so they adapt per theme.
+
+4. **Status colors (success/warning/error)** — Green/yellow/red that pass contrast on white may fail on dark surfaces. Define separate status color values per theme.
+
+5. **SVG icons and inline graphics** — If using `currentColor`, they adapt automatically. If using hardcoded fills, they won't. Always use `currentColor` or CSS variables for SVG colors.
+
+**Rule: After implementing both themes, manually toggle between them and verify every section looks correct. The checklist item "Dark mode parity" is a blocking check — don't ship if one theme is clearly an afterthought.**
+
 ---
 
 ## Anti-Patterns (NEVER DO THESE)

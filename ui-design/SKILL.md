@@ -1,6 +1,6 @@
 ---
 name: ui-design
-version: 1.0.0
+version: 1.0.1
 description: |
   The UI/UX quality gate and build guide for every visual output — landing pages, dashboards,
   web apps, portfolios, tools, any HTML the user will see. Merges visual-design methodology

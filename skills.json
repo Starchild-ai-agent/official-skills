@@ -436,7 +436,7 @@
     {
       "name": "ui-design",
       "path": "ui-design/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "The UI/UX quality gate and build guide for every visual output — landing pages, dashboards,\nweb apps, portfolios, tools, any HTML the user will see. Merges visual-design methodology\n(palette, typography, layout, anti-AI-slop) with concrete build guidance, including when and\nhow to use open-source component libraries (shadcn/ui, HeroUI, coss ui) to reduce work and\nraise quality.\n\nMUST USE together with project-builder whenever a project produces visual HTML/CSS/JS.\nproject-builder owns the engineering workflow; this skill owns how the result looks and feels."
     },
     {

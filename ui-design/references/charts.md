@@ -67,12 +67,83 @@ Default to Chart.js unless the dashboard needs advanced interactions (drill-down
 
 ---
 
+## Chart Container Anti-Expansion (CRITICAL)
+
+**Problem:** Chart.js and ECharts in responsive mode will infinitely expand their height if the container doesn't have a strictly fixed height. This happens because:
+1. The chart reads the container's height → renders at that height
+2. The render increases the container's scrollHeight → triggers a resize observer
+3. The resize observer re-reads the (now larger) height → re-renders taller
+4. Infinite loop → page becomes unusable
+
+**The fix — always use this exact container pattern:**
+
+```html
+<!-- ✅ CORRECT: Fixed-height wrapper with position:relative + canvas -->
+<div class="chart-card">
+  <h3>Chart Title</h3>
+  <div class="chart-container" style="height: 280px; position: relative;">
+    <canvas id="myChart"></canvas>
+  </div>
+</div>
+```
+
+```css
+/* ✅ CORRECT: Chart container CSS */
+.chart-container {
+  position: relative;   /* REQUIRED — canvas positions relative to this */
+  height: 280px;        /* REQUIRED — explicit px height, NOT min-height, NOT auto */
+  width: 100%;          /* OK — width can be flexible */
+  overflow: hidden;     /* SAFETY — prevent any overflow from expanding parent */
+}
+
+/* ❌ WRONG — these will cause infinite expansion: */
+.chart-container {
+  height: auto;         /* ❌ auto height = chart decides = infinite growth */
+  min-height: 280px;    /* ❌ min-height without max = can grow forever */
+  flex: 1;              /* ❌ flex child without explicit height = expansion */
+  height: 100%;         /* ❌ percentage of flex/grid parent = unstable */
+}
+```
+
+**Chart.js configuration (mandatory):**
+```js
+new Chart(ctx, {
+  // ...
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,  // REQUIRED — let container control height
+    // ...
+  }
+});
+```
+
+**ECharts configuration (mandatory):**
+```js
+const chart = echarts.init(container);
+// Container MUST have explicit px height before init
+
+// If you need to handle resize:
+window.addEventListener('resize', () => {
+  chart.resize();  // ECharts resize — reads container dimensions
+});
+// Do NOT call chart.resize() inside a ResizeObserver on the chart container itself — infinite loop!
+```
+
+**Additional safety rules:**
+- Never put a chart container inside a CSS Grid or Flexbox child without an explicit `height` in px
+- Never use `height: 100%` on a chart container unless the parent chain all the way up has explicit heights
+- Never call `chart.resize()` or `chart.update()` inside a ResizeObserver that observes the chart's own container
+- Always set `overflow: hidden` on the chart container as a safety net
+- If using CSS Grid for dashboard layout, set `grid-template-rows` with explicit values (e.g., `280px`), not `auto` or `1fr`
+
+---
+
 ## Chart Container Design
 
 Every chart should be wrapped in a card with:
 1. **Title** (left-aligned, semibold)
 2. **Optional period selector** (right-aligned, small toggle buttons)
-3. **Chart area** (fixed height, responsive width)
+3. **Chart area** (fixed height via explicit px, responsive width)
 4. **Optional footer** (summary text or legend)
 
 ---

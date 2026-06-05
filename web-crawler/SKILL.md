@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.2.2
+version: 2.3.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -52,6 +52,28 @@ user-invocable: true
 disable-model-invocation: false
 ---
 
+## Preferred entry: call exports.py (don't hand-roll requests)
+Ready-made helpers live in `skills/web-crawler/exports.py`. Prefer them over
+writing your own `proxied_get`/`proxied_post` calls — they already inject the
+proxy credentials, so **there is no API key to find** (don't read
+`$SCRAPECREATORS_API_KEY` / `$FIRECRAWL_API_KEY`, don't check `.env`, don't ask
+the user).
+
+```python
+import sys; sys.path.insert(0, "/data/workspace/skills/web-crawler")
+from exports import scrape_markdown, youtube_transcript, sc_get
+scrape_markdown("https://example.com/article")          # Firecrawl fallback
+youtube_transcript("https://youtube.com/watch?v=ID")     # ScrapeCreators
+sc_get("/v1/tiktok/profile", handle="charlidamelio")     # any SC endpoint
+```
+
+Named wrappers exist for the high-frequency actions (YouTube/TikTok transcript &
+video, IG/Twitter/Reddit posts, profiles, Google/Reddit search). For any other
+ScrapeCreators endpoint use `sc_get(path, **params)` — it auto-strips leading
+`@`/`#` from handles/hashtags. The intent-routing tables below still tell you
+*which* endpoint to pass. Pass `caller_id="chat:<thread>"` (or `job:`/`preview:`)
+for cost tracking.
+
 ## Quick trigger rules (read this first)
 Use this skill immediately when any of these conditions is true:
 
@@ -82,6 +104,8 @@ Use for any request involving social media profiles, posts, videos, comments, tr
 ### Firecrawl — Fallback web page scraper
 
 Only a fallback crawler for one web page when ordinary fetching fails. Use `POST /v2/scrape` with a single `url` and focused formats like `markdown`, `html`, `rawHtml`, `links`, `summary`, or constrained `json`/`question`/`highlights` extraction.
+
+**Auth:** No user-supplied key needed. sc-proxy injects the Firecrawl credential automatically when you call through `core.http_client.proxied_post` — just send the request. Do NOT read `$FIRECRAWL_API_KEY` from env, do NOT check `.env` for it, and do NOT ask the user for a Firecrawl key if it looks unset; that env var is intentionally not required. The same proxy-injection model as ScrapeCreators applies here.
 
 Do not use Firecrawl crawl/map/search/agent/browser endpoints. Do not request screenshots, audio, branding, images, or browser actions unless the proxy policy is expanded later.
 
@@ -311,6 +335,8 @@ Common optional params:
 - **`region`** (string): 2-letter country code for proxy location. Does NOT filter by region — just routes through that country's proxy.
 
 ### Firecrawl (web page fallback via transparent proxy)
+
+No Firecrawl API key required — sc-proxy injects it. Don't look it up in `.env` or ask the user. Just call:
 
 ```python
 from core.http_client import proxied_post

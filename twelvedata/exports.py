@@ -29,14 +29,54 @@ API_KEY = os.environ.get("TWELVEDATA_API_KEY", "")
 BASE = "https://api.twelvedata.com"
 
 
+def _explain_error(code, body):
+    """Map a TwelveData error code to a short, actionable message.
+
+    Never echoes the raw JSON body back to the agent (issue #243)."""
+    code = str(code)
+    msg = ""
+    if isinstance(body, dict):
+        msg = str(body.get("message", "")).strip()
+    if code == "404":
+        return (
+            "Symbol not found in TwelveData. Check the spelling, or use "
+            "twelvedata_search to find the correct ticker."
+        )
+    if code == "401":
+        return "TwelveData API key is invalid or missing (TWELVEDATA_API_KEY)."
+    if code == "429":
+        return "TwelveData rate limit hit. Wait before retrying."
+    # Generic: include the upstream message text only (not the full JSON).
+    return f"TwelveData API error {code}" + (f": {msg}" if msg else "")
+
+
 def _get(endpoint, params=None):
-    """Make a GET request to TwelveData API."""
+    """Make a GET request to TwelveData API.
+
+    TwelveData signals invalid symbols in two ways:
+      - an HTTP 4xx status, or
+      - HTTP 200 with an error envelope {"code": 404, "status": "error",
+        "message": ...} in the body.
+    Both are normalised into a clean RuntimeError so the agent sees an
+    actionable message instead of a raw JSON dump (issue #243)."""
     if params is None:
         params = {}
     params["apikey"] = API_KEY
     r = proxied_get(f"{BASE}/{endpoint}", params=params)
-    r.raise_for_status()
-    return r.json()
+
+    # Non-2xx: surface a short readable error, not the raw body.
+    if r.status_code >= 400:
+        try:
+            body = r.json()
+        except Exception:
+            body = {}
+        raise RuntimeError(_explain_error(body.get("code", r.status_code), body))
+
+    data = r.json()
+    # TwelveData frequently returns HTTP 200 with an error envelope.
+    if isinstance(data, dict) and str(data.get("status")) == "error":
+        raise RuntimeError(_explain_error(data.get("code", r.status_code), data))
+    return data
 
 
 def twelvedata_time_series(symbol, interval="1day", outputsize=30, start_date=None, end_date=None, prepost=False):

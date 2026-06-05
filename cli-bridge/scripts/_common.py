@@ -1,6 +1,6 @@
 """Shared helpers for the cli-bridge skill scripts.
 
-Mirror the conventions of skills/chatroom/scripts/_common.py but slimmer —
+Mirror the conventions of skills/workroom/scripts/_common.py but slimmer —
 cli-bridge needs loopback access to clawd's /api/keys plus authed access
 to sc-chatroom's /cli-keys for the short-code exchange.
 """

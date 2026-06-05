@@ -87,6 +87,59 @@ def scrape_markdown(url, caller_id=None, **kw):
     return (data.get("data") or {}).get("markdown", "")
 
 
+def wayback_snapshot_url(url, caller_id=None, timeout=30):
+    """Ask the Internet Archive for the newest available Wayback snapshot of
+    `url`. Returns the snapshot URL string, or None if none archived.
+    Note: Wayback honors robots.txt / paywalls, so hard paywalls (NYT/WSJ)
+    are often NOT captured here — try archive.today first for those.
+    """
+    resp = proxied_get("https://archive.org/wayback/available",
+                       params={"url": url}, headers=_headers(caller_id),
+                       timeout=timeout)
+    resp.raise_for_status()
+    snaps = (resp.json().get("archived_snapshots") or {}).get("closest") or {}
+    return snaps.get("url") if snaps.get("available") else None
+
+
+def archive_fallback(url, caller_id=None, timeout=120):
+    """Last-resort full-text recovery for a page Firecrawl couldn't get
+    (hard paywall / Cloudflare returning 403 even through Firecrawl).
+
+    Strategy, in order:
+      1. archive.today — scrape the `/newest/` snapshot via Firecrawl. This
+         site captures with a real browser and historically preserves full
+         text behind paywalls (NYT, WSJ, Economist). Best for paywalls.
+      2. Wayback Machine — if archive.today has nothing, fall back to the
+         Internet Archive's newest snapshot and scrape that.
+
+    Returns a dict: {markdown, source, snapshot_url}. markdown == "" means
+    no archived copy exists anywhere — then stop and tell the user / try a
+    different source. archive_fallback CANNOT create a snapshot that nobody
+    ever saved; it only retrieves existing ones.
+    """
+    # 1. archive.today — try its mirror domains; /newest/ resolves latest capture
+    for host in ("https://archive.ph/newest/", "https://archive.today/newest/",
+                 "https://archive.is/newest/"):
+        try:
+            md = scrape_markdown(host + url, caller_id=caller_id, timeout=timeout)
+            if md and len(md) > 800:  # filter out "no snapshot" / chrome-only pages
+                return {"markdown": md, "source": "archive.today",
+                        "snapshot_url": host + url}
+        except Exception:
+            continue
+    # 2. Wayback Machine fallback
+    try:
+        snap = wayback_snapshot_url(url, caller_id=caller_id)
+        if snap:
+            md = scrape_markdown(snap, caller_id=caller_id, timeout=timeout)
+            if md:
+                return {"markdown": md, "source": "wayback",
+                        "snapshot_url": snap}
+    except Exception:
+        pass
+    return {"markdown": "", "source": None, "snapshot_url": None}
+
+
 # ---------------------------------------------------------------------------
 # High-frequency named wrappers (thin sugar over sc_get).
 # ---------------------------------------------------------------------------
@@ -142,6 +195,7 @@ def linkedin_profile(url, caller_id=None):
 
 __all__ = [
     "sc_get", "scrape_page", "scrape_markdown",
+    "archive_fallback", "wayback_snapshot_url",
     "youtube_transcript", "youtube_video",
     "tiktok_video", "tiktok_transcript", "tiktok_profile",
     "instagram_post", "instagram_profile",

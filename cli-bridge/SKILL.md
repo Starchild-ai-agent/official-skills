@@ -1,10 +1,10 @@
 ---
 name: cli-bridge
-version: 0.1.5
+version: 0.2.1
 description: |
-  Manage short-code bundles that authorize the local starchild CLI to talk to this agent.
+  Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.
 
-  Use when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session).
+  Use when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine).
 delivery: script
 metadata:
   starchild:
@@ -92,7 +92,7 @@ python3 skills/cli-bridge/scripts/cli_login.py --label "my laptop"
 python3 skills/cli-bridge/scripts/cli_login.py --label "codex-vm" --ttl-days 14
 ```
 
-Default TTL is 30 days; max is 90 days. Output is a one-liner the user
+Default TTL is 90 days; max is 365 days. Output is a one-liner the user
 copies into `starchild login`. The bundle is opaque — sc-chatroom
 resolves it on each call.
 
@@ -116,6 +116,113 @@ python3 skills/cli-bridge/scripts/cli_revoke.py --akm sk_yyyyyy
 Default: kills the short code in sc-chatroom; underlying AKM stays alive.
 With `--akm`: also revokes the AKM on local clawd, taking out every
 bundle backed by it.
+
+## Local shell via `agent-shell` (CLI ≥ v0.2.0)
+
+A `cli-login` bundle now also authorizes the agent to run shell commands
+on the **user's own machine** — for "is nginx running on my laptop",
+"organize ~/Downloads", and the like. The user starts a small daemon:
+
+```bash
+starchild agent-shell            # daemonizes; holds a WS open to your clawd
+starchild agent-shell --foreground   # attach to the terminal for debugging
+starchild agent-shell-stop       # stop the daemon
+```
+
+The daemon is single-instance (pidfile + flock) and macOS/Linux only. It
+self-updates at startup and periodically, so a long-lived daemon picks up
+new CLI builds on its own.
+
+How it works: the daemon dials `wss://<chatroom>/ws/cli-shell` with the
+bundle's `sc_…` code. sc-chatroom resolves the code and **reverse-proxies**
+the WebSocket to the user's clawd machine — it accepts the laptop's
+upgrade, opens its own upstream WS to clawd pinned with
+`fly-force-instance-id`, and pumps bytes between the two (this is *not*
+`fly-replay`: chatroom and clawd are different Fly apps, and cross-app
+replay is rejected with 403). The AKM is injected server-side on the
+upstream hop — it never reaches the laptop. clawd holds the connection in
+its `ShellHubService`; the `local_shell` tool is then exposed to the LLM
+**only while a laptop is connected**, and pushes commands down the socket.
+
+The AKM is minted with `capabilities: ["shell"]` (always granted; the
+bundle also carries `x: ["shell"]` as a hint). Capability is authoritative
+on the AKM in clawd, not the bundle.
+
+### What the agent knows up front (capability manifest)
+
+On connect, the daemon sends a `hello` frame advertising:
+
+- **Platform** — `os` (darwin/linux), `arch` (arm64/amd64), and the active
+  `shell`. So the agent knows whether it's talking to BSD or GNU userland,
+  which package manager to assume, etc. — no more guessing `ps` flags or
+  hitting `ps: illegal option`.
+- **Policy summary** — `mode` (`default-deny` when no allow rules exist, else
+  `allowlist`), the user's `allowed` rules, explicit `denied_extra` rules,
+  and the always-on `builtin_denied` list.
+
+clawd renders this into the agent's system prompt (only while connected),
+so the agent picks a permitted command — or tells the user plainly that the
+local policy forbids it — instead of probing blindly.
+
+### Session behavior
+
+- **Connection-level cwd.** Each command's resulting working directory is
+  echoed back (via a trailing-`pwd` sentinel stripped from stdout) and
+  persisted for the next command, so `cd` has real meaning across calls
+  within a session — without the cost/fragility of a full PTY. An explicit
+  per-call cwd overrides it.
+- **Output truncation.** stdout/stderr are each capped at 200 lines (plus a
+  byte cap) so a `find /` or log dump can't flood the LLM context. The full
+  pre-truncation line count is reported (`stdout_lines` / `stderr_lines`),
+  and `truncated: true` is set — the agent can say "showing first 200 of N
+  lines" rather than truncating silently.
+- **Heartbeat.** The daemon pings every 45s to keep the idle WebSocket
+  alive (Fly's edge cuts idle sockets at ~2.5min). Exec runs in a goroutine
+  so a long command doesn't block heartbeats.
+
+### Local execution policy (the only auto-run guard)
+
+The daemon runs headless (no TTY to prompt on), so every command is
+gated by `~/.config/starchild/exec-policy.toml` (parsed as a tiny
+YAML `allow:`/`deny:` line format — no TOML dependency, despite the name).
+Rules are **substring** matches by default; wrap a rule in `/ /` for a
+regex:
+
+```yaml
+allow:
+  - "ls"
+  - "cat "
+  - "/^git (status|log|diff)/"
+  - "ps"
+deny:
+  - "git push"
+```
+
+Decision order: **built-in deny (always wins) → file `deny` → file
+`allow` → default-deny.** Two hard rules apply regardless of the file:
+
+- A built-in deny list of interactive/TTY-blocking and destructive
+  commands is **always** refused: `vim`/`vi`/`nano`/`emacs`,
+  `less`/`more`/`man`, `top`/`htop`/`btop`, `ssh`/`telnet`, `sudo`/`su`/
+  `doas`, `tmux`/`screen`, `reboot`/`shutdown`/`halt`, plus the shapes
+  `rm -rf`, `mkfs`, `dd if=`, `… | sh`, `… | bash`, `> /dev/sd*`.
+- **Default-deny:** anything not matched by an `allow` rule is denied. So
+  with no policy file the policy `mode` is `default-deny` and nothing runs
+  until the user opts commands in.
+
+### Limitations
+
+- **Unattended policy only.** There is no interactive approval prompt; the
+  policy file is the sole guard. A future version adds a web-approval popup.
+- **Synchronous commands only.** No background jobs / progress polling yet.
+- **macOS/Linux only.** The daemon refuses to run on Windows.
+- **Revocation:** `cli-revoke <sc_…>` kills the short code; the daemon's
+  next reconnect then fails auth and the channel closes.
+
+> **Security note:** a running `agent-shell` plus a permissive policy is
+> effectively remote command execution on the user's machine, bounded by
+> the AKM TTL, the `sc_…` code's validity, and the policy file. Keep the
+> shipped default (deny-all) and widen deliberately.
 
 ## End-to-end smoke test
 

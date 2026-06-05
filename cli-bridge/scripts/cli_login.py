@@ -71,12 +71,16 @@ def main(argv: list[str]) -> int:
     C.require_env()
     ttl_seconds = ttl_days * 86400
 
-    # 1. Mint the AKM key on local clawd
+    # 1. Mint the AKM key on local clawd. v0.2.0 always grants the `shell`
+    # capability so the agent-shell daemon can run local_shell — the AKM is
+    # the authoritative capability source (clawd reads it on the /ws/cli-shell
+    # handshake). A --no-shell opt-out is deferred to a later version.
     akm_body = {
         "scope": C.CLI_BRIDGE_SCOPE,
         "ttl_seconds": ttl_seconds,
         "label": label,
         "rate_limit": DEFAULT_RATE_LIMIT,
+        "capabilities": ["shell"],
     }
     r = C.clawd_call("POST", "/api/keys", json=akm_body)
     if r.status_code != 201:
@@ -111,7 +115,9 @@ def main(argv: list[str]) -> int:
     code = rr.json()["code"]
 
     # 3. Pack the bundle. No secret inside — only the short code, the
-    # gateway URL, expiry, and label.
+    # gateway URL, expiry, label, and the advertised capabilities (`x`).
+    # `x` is informational for the laptop (the AKM in clawd is authoritative);
+    # the agent-shell daemon reads it to know it may offer shell.
     bundle = _encode_bundle({
         "d": C.CHATROOM_PUBLIC_URL,
         "c": "",                      # routing target now resolved by the code
@@ -119,6 +125,7 @@ def main(argv: list[str]) -> int:
         "s": C.CLI_BRIDGE_SCOPE,
         "exp": expires_at,
         "l": label,
+        "x": ["shell"],               # capabilities (v0.2.0: always shell)
     })
 
     C.info(f"  ✓ minted CLI key (akm_prefix {akm_prefix}, code {code}, "

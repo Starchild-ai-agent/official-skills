@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.3.0
+version: 2.4.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -65,6 +65,9 @@ from exports import scrape_markdown, youtube_transcript, sc_get
 scrape_markdown("https://example.com/article")          # Firecrawl fallback
 youtube_transcript("https://youtube.com/watch?v=ID")     # ScrapeCreators
 sc_get("/v1/tiktok/profile", handle="charlidamelio")     # any SC endpoint
+
+from exports import archive_fallback                      # paywall / Firecrawl-403
+archive_fallback("https://www.nytimes.com/.../article.html")  # archive snapshot
 ```
 
 Named wrappers exist for the high-frequency actions (YouTube/TikTok transcript &
@@ -91,6 +94,34 @@ Fallback rule:
 | `web_fetch` HTTP 401/403/429/5xx | Call Firecrawl `POST /v2/scrape` once with `formats:["markdown","links"]` + `onlyMainContent:true` |
 | Cloudflare/challenge page text in body | Same Firecrawl call as above |
 | Markdown still misses key fields | Retry once with `formats:["rawHtml"]` |
+| **Firecrawl itself returns 403 / empty** (hard paywall: NYT, WSJ, Economist, FT, Bloomberg) | Call `archive_fallback(url)` — recovers full text from a web archive snapshot |
+
+### Paywall / Firecrawl-blocked fallback chain (use `archive_fallback`)
+When Firecrawl can't get the page either (it returns 403, or markdown comes back
+empty) the site is behind a hard paywall or aggressive WAF. Do NOT keep retrying
+Firecrawl. Recover the article from a **web archive snapshot** instead:
+
+```python
+from exports import archive_fallback
+res = archive_fallback("https://www.nytimes.com/.../article.html")
+res["markdown"]      # full text, or "" if no snapshot exists anywhere
+res["source"]        # "archive.today" | "wayback" | None
+res["snapshot_url"]  # the snapshot that was scraped
+```
+
+How it works (and why this order):
+- **archive.today first** (`archive.ph` / `archive.is` mirrors). User-triggered,
+  real-browser captures; historically preserves full text *behind* paywalls.
+  Best bet for NYT/WSJ/Economist. We scrape its `/newest/` snapshot via Firecrawl
+  (archive.today has its own Cloudflare, so scrape it through Firecrawl, never
+  `web_fetch` it directly).
+- **Wayback Machine second** (`archive.org`). Automated crawler that *honors*
+  robots.txt and paywalls, so it often has NO full text for hard paywalls — but
+  it's a good fallback for ordinary 403/Cloudflare pages that aren't paywalled.
+
+Limitation: archives only return text **someone already saved**. If
+`res["markdown"] == ""`, no snapshot exists — stop, tell the user, and try the
+outlet's official API/RSS or a different source. Do not fabricate the article.
 
 ## What each service is for
 ### ScrapeCreators — Social media data extraction (27+ platforms)

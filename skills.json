@@ -14,6 +14,12 @@
       "description": "PANews crypto news: headlines, articles, columns, events, smart money boards.\n\nUse when reading PANews coverage or smart-money data (e.g. today's headlines, search \"restaking\", read article 12345, latest Polymarket leaderboard)."
     },
     {
+      "name": "shopify",
+      "path": "Shopify/SKILL.md",
+      "version": "1.0.0",
+      "description": "Shopify development skills: Admin GraphQL, Storefront, Hydrogen, Liquid, Polaris, Functions, POS, and more.\n\nUse when building, querying, or validating code for Shopify's development ecosystem (e.g. Admin API queries, Hydrogen components, Liquid themes, checkout extensions).\n\nSkills are installable via the `npx skill` CLI and provide Claude Code with API-specific context, documentation search, and code validation for each Shopify surface."
+    },
+    {
       "name": "aave",
       "path": "aave/SKILL.md",
       "version": "1.1.1",

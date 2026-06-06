@@ -130,7 +130,7 @@
     {
       "name": "cli-bridge",
       "path": "cli-bridge/SKILL.md",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "description": "Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.\n\nUse when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine)."
     },
     {

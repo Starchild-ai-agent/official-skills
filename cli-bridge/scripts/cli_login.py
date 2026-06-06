@@ -50,6 +50,13 @@ def _parse(argv: list[str]) -> argparse.Namespace:
         help=f"Days until the AKM key expires (default {DEFAULT_TTL_DAYS}, "
              f"max {MAX_TTL_DAYS}).",
     )
+    p.add_argument(
+        "--enable-shell", action="store_true",
+        help="Grant the `shell` capability so `starchild agent-shell` can run "
+             "commands on the user's machine. OFF by default: a plain bundle is "
+             "a chat bridge only, never local RCE. Only pass this when the user "
+             "explicitly asks for local shell access.",
+    )
     return p.parse_args(argv[1:])
 
 
@@ -70,17 +77,20 @@ def main(argv: list[str]) -> int:
         C.die(f"--ttl-days exceeds max ({MAX_TTL_DAYS}); use a shorter TTL")
     C.require_env()
     ttl_seconds = ttl_days * 86400
+    enable_shell = args.enable_shell
 
-    # 1. Mint the AKM key on local clawd. v0.2.0 always grants the `shell`
-    # capability so the agent-shell daemon can run local_shell — the AKM is
-    # the authoritative capability source (clawd reads it on the /ws/cli-shell
-    # handshake). A --no-shell opt-out is deferred to a later version.
+    # 1. Mint the AKM key on local clawd. The `shell` capability is granted
+    # ONLY when --enable-shell is passed — the AKM is the authoritative
+    # capability source (clawd reads it on the /ws/cli-shell handshake and
+    # refuses exec for connections without it, #264). A default bundle is a
+    # chat bridge only: even if it leaks, it cannot drive local_shell.
+    capabilities = ["shell"] if enable_shell else []
     akm_body = {
         "scope": C.CLI_BRIDGE_SCOPE,
         "ttl_seconds": ttl_seconds,
         "label": label,
         "rate_limit": DEFAULT_RATE_LIMIT,
-        "capabilities": ["shell"],
+        "capabilities": capabilities,
     }
     r = C.clawd_call("POST", "/api/keys", json=akm_body)
     if r.status_code != 201:
@@ -117,19 +127,28 @@ def main(argv: list[str]) -> int:
     # 3. Pack the bundle. No secret inside — only the short code, the
     # gateway URL, expiry, label, and the advertised capabilities (`x`).
     # `x` is informational for the laptop (the AKM in clawd is authoritative);
-    # the agent-shell daemon reads it to know it may offer shell.
-    bundle = _encode_bundle({
+    # the agent-shell daemon reads it to decide whether to even offer shell.
+    # Omitted entirely for a plain bridge bundle.
+    payload = {
         "d": C.CHATROOM_PUBLIC_URL,
         "c": "",                      # routing target now resolved by the code
         "k": code,                    # bearer the CLI will send
         "s": C.CLI_BRIDGE_SCOPE,
         "exp": expires_at,
         "l": label,
-        "x": ["shell"],               # capabilities (v0.2.0: always shell)
-    })
+    }
+    if capabilities:
+        payload["x"] = capabilities   # only present when shell was granted
+    bundle = _encode_bundle(payload)
 
     C.info(f"  ✓ minted CLI key (akm_prefix {akm_prefix}, code {code}, "
            f"expires {expires_at})")
+    if enable_shell:
+        C.info("  ⚠ shell ENABLED — agent-shell on this bundle can run commands "
+               "on the user's machine (gated by their local exec-policy).")
+    else:
+        C.info("  • chat bridge only (no shell). Re-run with --enable-shell to "
+               "allow `starchild agent-shell` local command execution.")
     C.info("")
     C.info("First time on this device? Grab the starchild binary "
            "(auto-detects your OS):")

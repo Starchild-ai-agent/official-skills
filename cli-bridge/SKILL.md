@@ -1,6 +1,6 @@
 ---
 name: cli-bridge
-version: 0.2.1
+version: 0.2.2
 description: |
   Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.
 
@@ -119,9 +119,11 @@ bundle backed by it.
 
 ## Local shell via `agent-shell` (CLI ≥ v0.2.0)
 
-A `cli-login` bundle now also authorizes the agent to run shell commands
-on the **user's own machine** — for "is nginx running on my laptop",
-"organize ~/Downloads", and the like. The user starts a small daemon:
+A `cli-login` bundle **minted with `--enable-shell`** also authorizes the
+agent to run shell commands on the **user's own machine** — for "is nginx
+running on my laptop", "organize ~/Downloads", and the like. A plain bundle
+is a chat bridge only and grants no shell access (see "Shell is off by
+default" below). The user starts a small daemon:
 
 ```bash
 starchild agent-shell            # daemonizes; holds a WS open to your clawd
@@ -129,9 +131,14 @@ starchild agent-shell --foreground   # attach to the terminal for debugging
 starchild agent-shell-stop       # stop the daemon
 ```
 
+`agent-shell` refuses to start if the logged-in bundle wasn't granted shell
+— it tells the user to get a `--enable-shell` bundle rather than connecting
+a channel clawd would reject.
+
 The daemon is single-instance (pidfile + flock) and macOS/Linux only. It
-self-updates at startup and periodically, so a long-lived daemon picks up
-new CLI builds on its own.
+self-updates at startup and periodically; downloaded binaries are verified
+against an embedded Ed25519 release key before swapping, so a hostile or
+MITM'd update server can't push arbitrary code to the user's machine.
 
 How it works: the daemon dials `wss://<chatroom>/ws/cli-shell` with the
 bundle's `sc_…` code. sc-chatroom resolves the code and **reverse-proxies**
@@ -142,11 +149,22 @@ upgrade, opens its own upstream WS to clawd pinned with
 replay is rejected with 403). The AKM is injected server-side on the
 upstream hop — it never reaches the laptop. clawd holds the connection in
 its `ShellHubService`; the `local_shell` tool is then exposed to the LLM
-**only while a laptop is connected**, and pushes commands down the socket.
+**only while a shell-capable laptop is connected**, and pushes commands
+down the socket.
 
-The AKM is minted with `capabilities: ["shell"]` (always granted; the
-bundle also carries `x: ["shell"]` as a hint). Capability is authoritative
-on the AKM in clawd, not the bundle.
+### Shell is off by default (capability gate)
+
+`cli-login` does **not** grant shell unless `--enable-shell` is passed. The
+AKM is the authoritative capability source: clawd reads it on the
+`/ws/cli-shell` handshake and refuses every exec for a connection that
+doesn't carry `shell` (#264). So a leaked plain bundle is a chat credential,
+never local RCE.
+
+- Grant shell: `cli_login.py --label … --enable-shell` → AKM
+  `capabilities: ["shell"]`, bundle carries `x: ["shell"]`.
+- Upgrade an existing no-shell bundle: you can't flip it in place — mint a
+  new `--enable-shell` bundle, `starchild login` it, and `cli-revoke` the
+  old one. Privilege escalation always goes through a fresh issuance.
 
 ### What the agent knows up front (capability manifest)
 
@@ -219,10 +237,13 @@ Decision order: **built-in deny (always wins) → file `deny` → file
 - **Revocation:** `cli-revoke <sc_…>` kills the short code; the daemon's
   next reconnect then fails auth and the channel closes.
 
-> **Security note:** a running `agent-shell` plus a permissive policy is
-> effectively remote command execution on the user's machine, bounded by
-> the AKM TTL, the `sc_…` code's validity, and the policy file. Keep the
-> shipped default (deny-all) and widen deliberately.
+> **Security note:** a running `agent-shell` (on a `--enable-shell` bundle)
+> plus a permissive policy is effectively remote command execution on the
+> user's machine, bounded by the AKM TTL, the `sc_…` code's validity, and the
+> policy file. Defaults are conservative: shell is **off** unless explicitly
+> granted, the policy is **deny-all** until commands are opted in, and the
+> daemon's self-update verifies an **Ed25519 signature** before swapping
+> binaries. Widen deliberately.
 
 ## End-to-end smoke test
 
@@ -284,6 +305,17 @@ When the user asks "give me a cli key" / "create a starchild bundle" /
 "let me talk to you from my terminal", run:
 
   python3 skills/cli-bridge/scripts/cli_login.py --label "<inferred>"
+
+This is a chat bridge only — it does NOT let you run commands on their
+machine. ONLY add `--enable-shell` when the user explicitly asks for local
+shell access ("run commands on my laptop", "use agent-shell", "organize my
+Downloads"):
+
+  python3 skills/cli-bridge/scripts/cli_login.py --label "<inferred>" --enable-shell
+
+Treat `--enable-shell` as granting remote command execution on their
+machine — never add it by default or "to be helpful". If they later want
+shell, mint a new `--enable-shell` bundle and have them revoke the old one.
 
 Default the label to something like "untitled-YYYY-MM-DD" if the user
 doesn't suggest one. Show them the resulting bundle and tell them how

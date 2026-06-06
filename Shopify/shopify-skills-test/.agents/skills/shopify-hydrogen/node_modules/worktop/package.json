@@ -1,0 +1,103 @@
+{
+  "name": "worktop",
+  "version": "0.7.3",
+  "repository": "lukeed/worktop",
+  "description": "The next generation web framework for Cloudflare Workers",
+  "types": "router/index.d.ts",
+  "main": "router/index.mjs",
+  "license": "MIT",
+  "author": {
+    "name": "Luke Edwards",
+    "email": "luke.edwards05@gmail.com",
+    "url": "https://lukeed.com"
+  },
+  "exports": {
+    ".": {
+      "import": "./router/index.mjs",
+      "require": "./router/index.js"
+    },
+    "./kv": {
+      "import": "./kv/index.mjs",
+      "require": "./kv/index.js"
+    },
+    "./cors": {
+      "import": "./cors/index.mjs",
+      "require": "./cors/index.js"
+    },
+    "./cache": {
+      "import": "./cache/index.mjs",
+      "require": "./cache/index.js"
+    },
+    "./cookie": {
+      "import": "./cookie/index.mjs",
+      "require": "./cookie/index.js"
+    },
+    "./crypto": {
+      "import": "./crypto/index.mjs",
+      "require": "./crypto/index.js"
+    },
+    "./request": {
+      "import": "./request/index.mjs",
+      "require": "./request/index.js"
+    },
+    "./response": {
+      "import": "./response/index.mjs",
+      "require": "./response/index.js"
+    },
+    "./base64": {
+      "import": "./base64/index.mjs",
+      "require": "./base64/index.js"
+    },
+    "./utils": {
+      "import": "./utils/index.mjs",
+      "require": "./utils/index.js"
+    },
+    "./ws": {
+      "import": "./ws/index.mjs",
+      "require": "./ws/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "base64",
+    "cache",
+    "crypto",
+    "cookie",
+    "request",
+    "response",
+    "router",
+    "utils",
+    "cors",
+    "kv",
+    "ws"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
+  "scripts": {
+    "build": "node bin",
+    "test": "uvu src \".test.ts$\" -r ./bin/register",
+    "types": "tsc"
+  },
+  "dependencies": {
+    "regexparam": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "16.7.10",
+    "esbuild": "0.11.14",
+    "is-uuid": "1.0.2",
+    "kleur": "4.1.4",
+    "rewrite-imports": "2.0.3",
+    "typescript": "4.4.2",
+    "uvu": "0.5.1"
+  },
+  "keywords": [
+    "serviceworker",
+    "cloudflare",
+    "framework",
+    "workers",
+    "worker",
+    "http",
+    "api"
+  ]
+}

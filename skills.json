@@ -424,8 +424,8 @@
     {
       "name": "surprise-templates",
       "path": "surprise-templates/SKILL.md",
-      "version": "1.0.0",
-      "description": "Pre-built, high-quality HTML/CSS/JS templates for the Surprise Me feature.\nAgent selects a template based on user research signals, copies it to the output directory,\napplies a color theme, replaces placeholders with personalized data, and serves a preview."
+      "version": "1.1.0",
+      "description": "Pre-built HTML/CSS/JS templates for Surprise Me feature.\n\nAgent selects a template based on user research signals, randomly picks from matched candidates, applies a random color theme, replaces placeholders with personalized data, localizes UI text, and avoids repeating previously shown templates. 119 templates across 5 categories (wallet, developer, twitter, tools, cross-platform) + 20 color themes."
     },
     {
       "name": "taapi",

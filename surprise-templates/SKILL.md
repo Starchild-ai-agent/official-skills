@@ -1,6 +1,6 @@
 ---
 name: surprise-templates
-version: 1.0.0
+version: 1.1.0
 description: |
   Pre-built, high-quality HTML/CSS/JS templates for the Surprise Me feature.
   Agent selects a template based on user research signals, copies it to the output directory,
@@ -26,16 +26,35 @@ From the user research phase you will have signals such as:
 - Connected data sources: `wallet`, `twitter`, `github`, `email`
 - Interests: `defi`, `nft`, `trading`, `developer`, `productivity`, etc.
 - Mentioned tokens, tools, or topics
+- User's display language (zh-CN, en, ja, ko, etc.)
+- User's avatar URL or brand color (if available)
+- Previously delivered template IDs (from conversation history or user profile)
 
-### Step 2 — Match Template
+### Step 2 — Match & Randomly Select Template
 
 Compare user signals against each template's `matchSignals` array (see §4 Template Catalog).
 
-**Matching priority:**
-1. **Exact signal overlap** — count how many of the user's signals appear in the template's `matchSignals`. Higher overlap = better match.
-2. **Data source availability** — if user has `wallet` connected, prefer Category A templates; if `twitter`, prefer Category C; if `github`, prefer Category B.
-3. **Avoid repeats** — if the user has seen a template before, skip it.
-4. **Fallback** — Category D templates (standalone tools/utilities) work for any user.
+**Step 2a — Build candidate list:**
+1. Score every template by counting how many of the user's signals appear in its `matchSignals`.
+2. Keep all templates with score ≥ 2 (or ≥ 1 if fewer than 3 templates reach 2).
+3. Remove any template the user has already received (see §1.1 Anti-Repeat).
+
+**Step 2b — Randomly select from candidates:**
+- Do NOT pick the first match or the highest-scored match deterministically.
+- From the candidate list, **randomly select one template**. Use a mental coin-flip, current-second parity, or any non-deterministic method available to you.
+- If multiple templates share the same top score, they are equally valid — pick one at random.
+- The goal is: **two users with identical signals should usually get different templates**.
+
+**Step 2c — Data source preference (tie-breaking only):**
+- If you must narrow candidates further: `wallet` → prefer Category A/E; `twitter` → prefer Category C/E; `github` → prefer Category B/E.
+- This is a soft preference, not a hard filter. Randomness takes priority over category preference.
+
+**Step 2d — No-signal fallback (no wallet, no GitHub, no Twitter):**
+- When the user has NO connected data sources and NO specific interest signals:
+  1. Use the full Category D list (28 standalone tools) as the candidate pool.
+  2. **Randomly select one** from Category D. Do not default to the same template.
+  3. Additionally consider universally appealing templates: `morning-briefing`, `pomodoro`, `kanban`, `quick-notes`, `fear-greed`, `market-overview`, `crypto-quiz`.
+  4. If the user has mentioned any topic at all (even casually), use it to filter Category D by `matchSignals` before random selection.
 
 ### Step 3 — Copy Template to Output
 
@@ -43,20 +62,62 @@ Compare user signals against each template's `matchSignals` array (see §4 Templ
 cp -r skills/surprise-templates/templates/{template-id}/ output/surprise-me/
 ```
 
-### Step 4 — Apply Theme + Replace Placeholders
+### Step 4 — Randomly Select Theme & Apply
 
-1. Pick a theme from `skills/surprise-templates/themes/` (see §5 Theme Catalog)
-2. In `output/surprise-me/style.css`, replace CSS variable values with the theme's `colors` values
-3. In `output/surprise-me/index.html`, replace `{{PLACEHOLDER}}` tokens with personalized content (see §3 Placeholder Rules)
-4. Add Google Fonts `<link>` for the theme's `fonts.heading`, `fonts.body`, and `fonts.mono`
+**Step 4a — Theme randomization:**
+1. Consult the Theme Selection Guidelines (§5) to identify 3–5 themes that fit the template's category.
+2. **Randomly pick one** from those fitting themes. Do NOT always use the first suggested theme.
+3. If no category guideline applies, randomly pick from all 20 themes.
+4. Vary between dark/light themes across sessions for the same user.
 
-### Step 5 — Preview Serve
+**Step 4b — Apply theme + placeholders:**
+1. In `output/surprise-me/style.css`, replace CSS variable values with the chosen theme's `colors`
+2. In `output/surprise-me/index.html`, replace `{{PLACEHOLDER}}` tokens with personalized content (see §3 Placeholder Rules)
+3. Add Google Fonts `<link>` for the theme's `fonts.heading`, `fonts.body`, and `fonts.mono`
+4. Update `chartColors` in `script.js` if the template uses Chart.js
+
+### Step 5 — Personalize Beyond Placeholders
+
+After basic placeholder replacement, apply these additional personalizations:
+
+1. **Creative APP_TITLE** — Don't just use the template's default name. Craft a title that reflects the user's identity. Examples:
+   - `"DeFi Yield Optimizer"` → `"Alex 的 DeFi 收益雷达"` or `"Alex's Alpha Farm"`
+   - `"Tech Radar"` → `"Alex 的技术风向标"` or `"Alex's Stack Compass"`
+   - Incorporate the user's name, interests, or style into the title.
+
+2. **Realistic mock data** — Templates contain placeholder data (chart values, table rows, etc.). Adjust these to feel authentic:
+   - If user tracks ETH/SOL, use realistic price ranges for those tokens (not $999 or $123).
+   - If user is a developer, populate code snippets with languages from their tech stack.
+   - Match numerical ranges to real-world values (gas fees in gwei, APY in reasonable %, etc.).
+
+3. **Language localization** — Translate ALL visible UI text (headings, labels, buttons, tooltips, empty states) to the user's display language. This includes:
+   - Navigation items, card titles, chart labels, footer text
+   - Placeholder text in search bars and inputs
+   - Error messages and empty state descriptions
+
+4. **Avatar & brand color injection** (if available):
+   - If user has an avatar URL, inject it as a profile image in the header/sidebar.
+   - If user has a brand color, use it as `--accent-1` override on top of the selected theme.
+
+### Step 6 — Preview Serve
 
 ```bash
 cd output/surprise-me && python3 -m http.server 8080
 ```
 
 Open `http://localhost:8080` to verify, then deliver to user.
+
+---
+
+### 1.1 Anti-Repeat Mechanism
+
+To prevent the same user from seeing the same template on repeated "Surprise Me" requests:
+
+1. **Check history** — Before selecting, review the conversation history for any previously delivered template IDs. Also check if the user profile stores a `surprise_history` array.
+2. **Exclude seen templates** — Remove all previously delivered template IDs from the candidate list.
+3. **Cycle through categories** — If the user has exhausted all templates in their best-matching category, move to the next category (e.g., A → E → D).
+4. **Theme rotation** — Even if forced to reuse a template (all candidates exhausted), apply a different theme than last time.
+5. **Full reset** — If all 119 templates have been shown (unlikely), reset the history and start fresh.
 
 ---
 
@@ -354,18 +415,50 @@ And update `chartColors` in `script.js` where Chart.js datasets reference colors
 
 ## 7. Quick Reference — End-to-End Example
 
+### Example A — User with signals
+
 ```
 User signals: wallet connected, interests = ["defi", "yield"], tokens = ["ETH", "AAVE"]
+Language: zh-CN, Avatar: https://example.com/alex.png
+History: previously received "trading-intel"
 
-1. Match → defi-yield (Category A, matchSignals: wallet, defi, yield, farming, staking)
-2. Copy  → cp -r templates/defi-yield/ output/surprise-me/
-3. Theme → midnight-gold (finance vibe)
-4. Replace placeholders:
-   - {{APP_TITLE}} → "Your DeFi Yield Optimizer"
+1. Build candidates → score all templates against ["wallet", "defi", "yield"]
+   Candidates (score ≥ 2): defi-yield(3), stablecoin-yield(2), impermanent-loss(2),
+   funding-rate(2), dex-arb(2), portfolio-radar(2)
+   Exclude history: trading-intel (already seen)
+2. Random select → impermanent-loss (randomly picked from 6 candidates)
+3. Copy  → cp -r templates/impermanent-loss/ output/surprise-me/
+4. Random theme → from [midnight-gold, cyber-neon, deep-space, neon-tokyo],
+   randomly pick → deep-space
+5. Replace placeholders:
+   - {{APP_TITLE}} → "Alex 的无常损失计算器" (creative, localized title)
    - {{USER_NAME}} → "Alex"
    - {{TRACKED_TOKENS}} → ["ETH", "AAVE"]
    - {{HERO_IMAGE_URL}} → "./hero-bg.png"
-5. Apply theme colors to style.css :root block
-6. Add Google Fonts link for theme fonts
-7. Serve → cd output/surprise-me && python3 -m http.server 8080
+6. Personalize beyond placeholders:
+   - Translate all UI labels to zh-CN (按钮、标题、图表标签)
+   - Inject avatar as profile image in header
+   - Adjust mock data: use realistic ETH/AAVE price ranges
+7. Apply theme colors to style.css :root block
+8. Add Google Fonts link for theme fonts
+9. Serve → cd output/surprise-me && python3 -m http.server 8080
+```
+
+### Example B — User with no signals (fallback)
+
+```
+User signals: none (no wallet, no GitHub, no Twitter, no specific interests)
+Language: en
+
+1. No matching signals → use Category D (28 standalone tools) as candidate pool
+2. Random select → pomodoro (randomly picked from 28 candidates)
+3. Copy  → cp -r templates/pomodoro/ output/surprise-me/
+4. Random theme → from all 20 themes, randomly pick → lavender-dream
+5. Replace placeholders:
+   - {{APP_TITLE}} → "Your Focus Timer" (creative title)
+   - {{USER_NAME}} → "Explorer"
+   - {{HERO_IMAGE_URL}} → "./hero-bg.png"
+6. Personalize: adjust default session durations, translate if needed
+7. Apply theme + fonts
+8. Serve → cd output/surprise-me && python3 -m http.server 8080
 ```

@@ -1,0 +1,16 @@
+{
+  "id": "learning-path",
+  "name": "Learning Path Generator",
+  "category": "B",
+  "matchSignals": ["github", "learning", "path", "skills", "education"],
+  "description": "学习路径生成器：技术栈选择、学习路径时间线、推荐资源列表、进度追踪、技能雷达图",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "TECH_STACK": "目标技术栈（如 React、Python、DevOps）",
+    "USER_LEVEL": "当前水平（beginner/intermediate/advanced）"
+  },
+  "apis": [],
+  "themes": ["mint-garden", "forest-dew", "sage-paper"],
+  "features": ["dark-mode", "responsive", "timeline", "radar-chart", "progress-tracking"],
+  "catalogIds": ["B12"]
+}

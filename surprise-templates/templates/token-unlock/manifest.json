@@ -1,0 +1,20 @@
+{
+  "id": "token-unlock",
+  "name": "Token Unlock Calendar",
+  "category": "A",
+  "matchSignals": ["wallet", "token", "unlock", "vesting", "calendar"],
+  "description": "持有代币的即将到来的解锁事件，帮助预判价格影响",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组，如 [\"arbitrum\",\"optimism\",\"aptos\"]）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"},
+    {"name": "Built-in Mock Data", "endpoint": "N/A — embedded unlock schedules", "cors": true}
+  ],
+  "themes": ["midnight-gold", "deep-space", "aurora-borealis", "volcanic-ember", "arctic-frost"],
+  "features": ["dark-mode", "responsive", "calendar-view", "countdown", "mock-data"],
+  "catalogIds": ["A6"]
+}

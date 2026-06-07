@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Portfolio Time Machine" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Cabinet Grotesk (headings) + Satoshi (body) + JetBrains Mono (data) -->
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link
+    href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Minimal Hero (H7) ==================== -->
+  <header class="hero-minimal" role="banner">
+    <div class="container">
+      <div class="hero-minimal__row">
+        <div class="hero-minimal__left">
+          <span class="hero-minimal__label">TIME MACHINE</span>
+          <h1 class="hero-minimal__title"><span class="accent">{{APP_TITLE}}</span></h1>
+          <p class="hero-minimal__subtitle">Welcome back, <strong>{{USER_NAME}}</strong></p>
+        </div>
+        <div class="hero-minimal__right">
+          <div class="hero-minimal__kpi">
+            <span class="hero-minimal__kpi-label">CURRENT VALUE</span>
+            <span class="hero-minimal__kpi-value" id="hero-current">--</span>
+          </div>
+          <div class="hero-minimal__kpi">
+            <span class="hero-minimal__kpi-label">BEST SCENARIO</span>
+            <span class="hero-minimal__kpi-value hero-minimal__kpi-value--accent" id="hero-best">--</span>
+          </div>
+          <div class="hero-minimal__kpi">
+            <span class="hero-minimal__kpi-label">POTENTIAL GAIN</span>
+            <span class="hero-minimal__kpi-value hero-minimal__kpi-value--accent" id="hero-gain">--</span>
+          </div>
+        </div>
+      </div>
+      <time class="hero-minimal__time" id="hero-time" datetime="">Loading...</time>
+    </div>
+  </header>
+
+  <!-- ==================== Dashboard — Vertical Timeline ==================== -->
+  <main class="dashboard" role="main">
+    <div class="container">
+
+      <!-- Time Period Selector -->
+      <div class="time-selector" id="time-selector" role="tablist" aria-label="Select time period">
+        <button class="time-selector__btn" data-period="30" role="tab" aria-selected="false">1 Month</button>
+        <button class="time-selector__btn" data-period="90" role="tab" aria-selected="false">3 Months</button>
+        <button class="time-selector__btn time-selector__btn--active" data-period="180" role="tab" aria-selected="true">6 Months</button>
+        <button class="time-selector__btn" data-period="365" role="tab" aria-selected="false">1 Year</button>
+      </div>
+
+      <!-- Vertical Timeline -->
+      <div class="timeline-layout">
+        <div class="timeline-line" aria-hidden="true"></div>
+
+        <!-- Timeline Node 1: All-in Bitcoin -->
+        <div class="timeline-node">
+          <div class="timeline-node__dot" aria-hidden="true"></div>
+          <section class="timeline-card" aria-label="All-in BTC Scenario" data-token="bitcoin">
+            <div class="timeline-card__header">
+              <h2 class="timeline-card__title">
+                <svg class="timeline-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                All-in Bitcoin
+              </h2>
+              <span class="timeline-card__badge">BTC</span>
+            </div>
+            <div class="scenario-content" id="scenario-bitcoin">
+              <!-- Populated by script.js -->
+            </div>
+          </section>
+        </div>
+
+        <!-- Timeline Node 2: All-in Ethereum -->
+        <div class="timeline-node">
+          <div class="timeline-node__dot" aria-hidden="true"></div>
+          <section class="timeline-card" aria-label="All-in ETH Scenario" data-token="ethereum">
+            <div class="timeline-card__header">
+              <h2 class="timeline-card__title">
+                <svg class="timeline-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                All-in Ethereum
+              </h2>
+              <span class="timeline-card__badge">ETH</span>
+            </div>
+            <div class="scenario-content" id="scenario-ethereum">
+              <!-- Populated by script.js -->
+            </div>
+          </section>
+        </div>
+
+        <!-- Timeline Node 3: All-in Solana -->
+        <div class="timeline-node">
+          <div class="timeline-node__dot" aria-hidden="true"></div>
+          <section class="timeline-card" aria-label="All-in SOL Scenario" data-token="solana">
+            <div class="timeline-card__header">
+              <h2 class="timeline-card__title">
+                <svg class="timeline-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                </svg>
+                All-in Solana
+              </h2>
+              <span class="timeline-card__badge">SOL</span>
+            </div>
+            <div class="scenario-content" id="scenario-solana">
+              <!-- Populated by script.js -->
+            </div>
+          </section>
+        </div>
+
+        <!-- Timeline Node 4: Historical Performance Chart -->
+        <div class="timeline-node timeline-node--wide">
+          <div class="timeline-node__dot" aria-hidden="true"></div>
+          <section class="timeline-card" aria-label="Historical Price Chart">
+            <div class="timeline-card__header">
+              <h2 class="timeline-card__title">
+                <svg class="timeline-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+                </svg>
+                Historical Performance
+              </h2>
+              <div class="timeline-card__badge-group">
+                <span class="timeline-card__badge timeline-card__badge--live">
+                  <span class="timeline-card__badge-dot"></span>
+                  LIVE
+                </span>
+                <span class="timeline-card__badge">CoinGecko</span>
+              </div>
+            </div>
+            <div class="chart-container" id="chart-container">
+              <canvas id="price-chart" aria-label="Historical price comparison chart" role="img"></canvas>
+            </div>
+          </section>
+        </div>
+
+        <!-- Timeline Node 5: Returns Comparison Table -->
+        <div class="timeline-node timeline-node--wide">
+          <div class="timeline-node__dot" aria-hidden="true"></div>
+          <section class="timeline-card" aria-label="Returns Comparison">
+            <div class="timeline-card__header">
+              <h2 class="timeline-card__title">
+                <svg class="timeline-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/>
+                </svg>
+                Returns Comparison
+              </h2>
+              <span class="timeline-card__badge" id="table-period-badge">180 days</span>
+            </div>
+            <div class="comparison-table-wrap" id="comparison-table">
+              <!-- Populated by script.js -->
+            </div>
+          </section>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__container">
+      <p class="footer__text">
+        Historical data by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a>
+      </p>
+      <p class="footer__text footer__text--mono">Past performance does not guarantee future results</p>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script src="script.js"></script>
+
+</body>
+</html>

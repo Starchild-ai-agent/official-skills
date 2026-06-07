@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — NFT Community Radar" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Cormorant Garamond (heading) + Figtree (body) + Space Mono (data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Figtree:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Full-width Hero (H1) ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg" aria-hidden="true"></div>
+    <div class="hero__overlay" aria-hidden="true"></div>
+    <div class="hero__content">
+      <p class="hero__eyebrow">NFT Community Radar</p>
+      <h1 class="hero__title">{{APP_TITLE}}</h1>
+      <p class="hero__subtitle">Welcome, <strong>{{USER_NAME}}</strong> — Track community pulse across collections</p>
+      <div class="hero__metrics" id="hero-metrics">
+        <div class="hero__metric">
+          <span class="hero__metric-value" id="metric-activity">--</span>
+          <span class="hero__metric-label">Activity Index</span>
+        </div>
+        <div class="hero__metric">
+          <span class="hero__metric-value" id="metric-discussions">--</span>
+          <span class="hero__metric-label">Active Discussions</span>
+        </div>
+        <div class="hero__metric">
+          <span class="hero__metric-value" id="metric-eth">--</span>
+          <span class="hero__metric-label">ETH Price</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Main Content ==================== -->
+  <main class="main-content" role="main">
+
+    <!-- Section: Community Discussions Masonry -->
+    <section class="section" id="section-discussions">
+      <div class="section__header">
+        <h2 class="section__title">Community Discussions</h2>
+        <span class="section__badge">Live Feed</span>
+      </div>
+      <div class="masonry" id="discussions-masonry">
+        <div class="masonry__loading">Loading discussions…</div>
+      </div>
+    </section>
+
+    <!-- Section: Sentiment Analysis -->
+    <section class="section" id="section-sentiment">
+      <div class="section__header">
+        <h2 class="section__title">Collection Sentiment</h2>
+        <span class="section__badge">Analysis</span>
+      </div>
+      <div class="sentiment-grid" id="sentiment-grid">
+        <div class="sentiment-chart-wrap">
+          <canvas id="sentiment-chart" height="300"></canvas>
+        </div>
+        <div class="sentiment-breakdown" id="sentiment-breakdown"></div>
+      </div>
+    </section>
+
+    <!-- Section: Upcoming Events -->
+    <section class="section" id="section-events">
+      <div class="section__header">
+        <h2 class="section__title">Upcoming Events</h2>
+        <span class="section__badge">Calendar</span>
+      </div>
+      <div class="events-list" id="events-list">
+        <div class="masonry__loading">Loading events…</div>
+      </div>
+    </section>
+
+    <!-- Section: Top Collections -->
+    <section class="section" id="section-rankings">
+      <div class="section__header">
+        <h2 class="section__title">Trending Collections</h2>
+        <span class="section__badge">Rankings</span>
+      </div>
+      <div class="rankings-table-wrap">
+        <table class="rankings-table" id="rankings-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Collection</th>
+              <th>Floor</th>
+              <th>24h Vol</th>
+              <th>Holders</th>
+              <th>Sentiment</th>
+            </tr>
+          </thead>
+          <tbody id="rankings-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p class="site-footer__text">{{APP_TITLE}} · Curated by <strong>{{USER_NAME}}</strong> · ETH data from CoinGecko</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

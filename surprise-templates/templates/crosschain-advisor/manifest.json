@@ -1,0 +1,21 @@
+{
+  "id": "crosschain-advisor",
+  "name": "Cross-Chain Migration Advisor",
+  "category": "A",
+  "catalogIds": ["A21"],
+  "matchSignals": ["wallet", "bridge", "crosschain", "migration", "advisor"],
+  "description": "跨链迁移顾问：源链→目标链选择、桥接路由推荐、费用/速度/安全对比、最佳路径高亮",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "WALLET_ADDRESS": "钱包地址（可选）",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组，如 [\"bitcoin\",\"ethereum\",\"solana\"]）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"},
+    {"name": "Mock Bridge Data", "endpoint": "built-in", "cors": true}
+  ],
+  "themes": ["sky-frost", "arctic-steel", "deep-current"],
+  "features": ["dark-mode", "responsive", "comparison-table", "route-optimizer"]
+}

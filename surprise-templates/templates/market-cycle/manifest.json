@@ -1,0 +1,19 @@
+{
+  "id": "market-cycle",
+  "name": "Market Cycle Indicators",
+  "category": "A",
+  "matchSignals": ["wallet", "market-cycle", "macro", "indicator", "phase"],
+  "description": "宏观市场周期分析仪表盘：周期阶段判断、恐惧贪婪指数、MVRV Z-Score、Pi Cycle Top、200 周均线叠加",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"},
+    {"name": "Alternative.me Fear & Greed", "endpoint": "api.alternative.me/fng", "cors": true}
+  ],
+  "themes": ["midnight-gold", "deep-space", "cyber-neon"],
+  "features": ["dark-mode", "responsive", "charts", "gauges", "cycle-analysis"],
+  "catalogIds": ["A30"]
+}

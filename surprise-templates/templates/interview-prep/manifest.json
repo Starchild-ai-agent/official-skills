@@ -1,0 +1,17 @@
+{
+  "id": "interview-prep",
+  "name": "Technical Interview Prep",
+  "category": "B",
+  "matchSignals": ["github", "interview", "preparation", "coding", "algorithms"],
+  "description": "技术面试准备：分类题库、随机题目生成、进度追踪、面试技巧速查、localStorage 持久化",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TECH_STACK": "技术栈（如 JavaScript, Python, Go）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["midnight-gold", "deep-space", "matrix-green"],
+  "features": ["dark-mode", "responsive", "charts", "local-storage", "progress-tracking"],
+  "catalogIds": ["B11"]
+}

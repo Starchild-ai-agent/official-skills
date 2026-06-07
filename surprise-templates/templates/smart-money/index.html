@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Smart money & whale activity tracker" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Sora (headings) + Switzer (body) + JetBrains Mono (data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=switzer@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== H4 Asymmetric Hero ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="container hero__container">
+      <div class="hero__asymmetric">
+        <!-- Left: large content -->
+        <div class="hero__left">
+          <div class="hero__status-bar">
+            <div class="hero__pulse"><span class="hero__pulse-dot" aria-hidden="true"></span><span>MONITORING</span></div>
+            <time class="hero__time" id="hero-time" datetime="">Loading...</time>
+          </div>
+          <h1 class="hero__title">{{APP_TITLE}}</h1>
+          <p class="hero__subtitle">Welcome back, <strong>{{USER_NAME}}</strong></p>
+          <div class="hero__signal-badge" id="hero-signal-badge">
+            <span class="hero__signal-label">SIGNAL</span>
+            <span class="hero__signal-value" id="hero-signal">--</span>
+          </div>
+        </div>
+        <!-- Right: compact stats -->
+        <div class="hero__right">
+          <div class="hero__stat-card">
+            <span class="hero__stat-label">ACTIVE WALLETS</span>
+            <span class="hero__stat-value" id="hero-wallets">--</span>
+          </div>
+          <div class="hero__stat-card">
+            <span class="hero__stat-label">24H MOVES</span>
+            <span class="hero__stat-value" id="hero-moves">--</span>
+          </div>
+          <div class="hero__stat-card">
+            <span class="hero__stat-label">BUY/SELL</span>
+            <span class="hero__stat-value" id="hero-ratio">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== A19 Feed/Stream Layout ==================== -->
+  <main class="dashboard" role="main">
+    <div class="container">
+      <div class="feed-layout">
+
+        <!-- Main Feed Column -->
+        <div class="feed-main">
+          <div class="feed-section-header">
+            <h2 class="feed-section-title">
+              <svg class="feed-section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              Activity Feed
+            </h2>
+            <span class="feed-badge feed-badge--live"><span class="feed-badge-dot"></span>LIVE</span>
+          </div>
+          <div class="feed-stream" id="timeline">
+            <!-- Populated by script.js -->
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="feed-sidebar">
+          <!-- Signal Gauge -->
+          <div class="feed-item feed-item--gauge" aria-label="Signal Strength">
+            <div class="feed-item__header">
+              <h3 class="feed-item__title">Signal Strength</h3>
+              <span class="feed-badge">Composite</span>
+            </div>
+            <div class="signal-gauge" id="signal-gauge">
+              <canvas id="signal-canvas" aria-label="Smart money signal gauge" role="img"></canvas>
+              <div class="signal-gauge__value" id="signal-value">--</div>
+              <div class="signal-gauge__label" id="signal-label">Loading...</div>
+            </div>
+            <div class="signal-breakdown" id="signal-breakdown">
+              <!-- Populated by script.js -->
+            </div>
+          </div>
+
+          <!-- Holdings Chart -->
+          <div class="feed-item" aria-label="Institutional Holdings">
+            <div class="feed-item__header">
+              <h3 class="feed-item__title">Holdings Distribution</h3>
+              <span class="feed-badge">Institutions</span>
+            </div>
+            <div class="chart-container" id="holdings-chart-container">
+              <canvas id="holdings-chart" aria-label="Institutional holdings doughnut chart" role="img"></canvas>
+            </div>
+          </div>
+
+          <!-- Flow Chart -->
+          <div class="feed-item" aria-label="Token Flow">
+            <div class="feed-item__header">
+              <h3 class="feed-item__title">Smart Money Flow (7D)</h3>
+              <span class="feed-badge">Net Flow</span>
+            </div>
+            <div class="chart-container chart-container--bar" id="flow-chart-container">
+              <canvas id="flow-chart" aria-label="Token smart money flow bar chart" role="img"></canvas>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__container">
+      <p class="footer__text">Prices by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a> &bull; Smart money data is simulated</p>
+      <p class="footer__text footer__text--mono">Updates every 60s</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

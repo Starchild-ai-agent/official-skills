@@ -1,0 +1,20 @@
+{
+  "id": "onchain-timeline",
+  "name": "On-Chain Activity Timeline",
+  "category": "A",
+  "matchSignals": ["wallet", "onchain", "history", "timeline", "activity"],
+  "description": "链上活动时间线：交易历史、活动类型分布、月度热力图、里程碑事件",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "WALLET_ADDRESS": "钱包地址（可选）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"},
+    {"name": "Built-in Mock On-Chain Activity Data", "endpoint": "N/A — embedded on-chain activity simulation (transactions, contract interactions, token transfers, NFT mints)", "cors": true}
+  ],
+  "themes": ["midnight-gold", "monochrome-noir", "deep-space", "matrix-green", "cyber-neon"],
+  "features": ["dark-mode", "responsive", "charts", "timeline-ui", "canvas-heatmap", "mock-data"],
+  "catalogIds": ["A19"]
+}

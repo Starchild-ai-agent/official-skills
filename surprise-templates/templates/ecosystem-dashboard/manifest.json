@@ -1,0 +1,21 @@
+{
+  "id": "ecosystem-dashboard",
+  "name": "Ecosystem Dashboard",
+  "category": "A",
+  "catalogIds": ["A25"],
+  "matchSignals": ["wallet", "ecosystem", "chain", "base", "arbitrum"],
+  "description": "生态系统仪表盘：链选择侧边栏、链指标面板(TVL/活跃地址/Gas)、热门DApp列表、链对比",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "WALLET_ADDRESS": "钱包地址（可选）",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选）"
+  },
+  "apis": [
+    {"name": "DeFi Llama", "endpoint": "api.llama.fi", "cors": true},
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"}
+  ],
+  "themes": ["terminal-green", "matrix-dark", "emerald-light"],
+  "features": ["dark-mode", "responsive", "sidebar", "charts", "chain-comparison"]
+}

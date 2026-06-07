@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>{{APP_TITLE}} — ML Experiment Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;700&family=Lexend:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">🌙</button>
+
+  <!-- Compact Stats Bar (Hero) -->
+  <header class="stats-bar" id="statsBar">
+    <div class="stats-bar__item">
+      <div class="stats-bar__value" id="statTotal">0</div>
+      <div class="stats-bar__label">Experiments</div>
+    </div>
+    <div class="stats-bar__item">
+      <div class="stats-bar__value" id="statBest">—</div>
+      <div class="stats-bar__label">Best Model</div>
+    </div>
+    <div class="stats-bar__item">
+      <div class="stats-bar__value" id="statAvgAcc">0%</div>
+      <div class="stats-bar__label">Avg Accuracy</div>
+    </div>
+    <div class="stats-bar__item">
+      <div class="stats-bar__value" id="statRunning">0</div>
+      <div class="stats-bar__label">Running</div>
+    </div>
+  </header>
+
+  <!-- Experiments Table -->
+  <section class="section" id="sectionExperiments">
+    <h2 class="section__title">Experiment Log</h2>
+    <div class="exp-table-wrap">
+      <table class="exp-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Model</th>
+            <th>Dataset</th>
+            <th>Accuracy</th>
+            <th>Loss</th>
+            <th>Status</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody id="expTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <section class="section" id="sectionCharts">
+    <h2 class="section__title">Training Analytics</h2>
+    <div class="charts-grid">
+      <div class="chart-panel">
+        <div class="chart-panel__title">Loss vs Epoch</div>
+        <canvas id="lossChart"></canvas>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-panel__title">Model Comparison (Radar)</div>
+        <canvas id="radarChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Papers -->
+  <section class="section" id="sectionPapers">
+    <h2 class="section__title">Recommended Papers</h2>
+    <div class="papers-list" id="papersList"></div>
+  </section>
+
+  <!-- GitHub Repos -->
+  <section class="section" id="sectionRepos">
+    <h2 class="section__title">Trending ML Repositories</h2>
+    <div class="repos-grid" id="reposGrid"></div>
+  </section>
+
+  <footer class="footer">
+    {{APP_TITLE}} · Tracked by {{USER_NAME}}
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

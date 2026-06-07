@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixel Art Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@400;500;600;700&family=Figtree:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle__icon theme-toggle__icon--light">☀</span>
+    <span class="theme-toggle__icon theme-toggle__icon--dark">☾</span>
+  </button>
+
+  <div class="layout">
+    <!-- Toolbar -->
+    <aside class="toolbar">
+      <h1 class="toolbar__title">Pixel Editor</h1>
+
+      <div class="toolbar__section">
+        <div class="toolbar__label">Tools</div>
+        <div class="toolbar__tools">
+          <button class="tool-btn active" data-tool="pen" title="Pen">✏</button>
+          <button class="tool-btn" data-tool="eraser" title="Eraser">◻</button>
+          <button class="tool-btn" data-tool="fill" title="Fill">◧</button>
+        </div>
+      </div>
+
+      <div class="toolbar__section">
+        <div class="toolbar__label">Color</div>
+        <input class="toolbar__color" type="color" id="colorPicker" value="#e11d48" />
+        <div class="palette" id="palette"></div>
+      </div>
+
+      <div class="toolbar__section">
+        <div class="toolbar__label">Grid Size</div>
+        <div class="toolbar__sizes">
+          <button class="size-btn active" data-size="16">16×16</button>
+          <button class="size-btn" data-size="32">32×32</button>
+        </div>
+      </div>
+
+      <div class="toolbar__section">
+        <div class="toolbar__label">Actions</div>
+        <div class="toolbar__actions">
+          <button class="action-btn" id="undoBtn">Undo</button>
+          <button class="action-btn" id="redoBtn">Redo</button>
+          <button class="action-btn" id="clearBtn">Clear</button>
+          <button class="action-btn action-btn--primary" id="exportBtn">Export PNG</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Canvas -->
+    <main class="canvas-area">
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="pixelCanvas"></canvas>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

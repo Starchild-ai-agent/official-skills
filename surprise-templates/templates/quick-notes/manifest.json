@@ -1,0 +1,16 @@
+{
+  "id": "quick-notes",
+  "name": "Quick Notes",
+  "category": "D",
+  "matchSignals": ["productivity", "notes", "markdown", "quick", "writing"],
+  "description": "快速笔记：Split Screen 编辑器、实时 Markdown 预览、代码高亮、搜索/导出、快捷键",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["midnight-gold", "deep-space", "cyber-neon"],
+  "features": ["dark-mode", "responsive", "markdown", "syntax-highlighting", "local-storage"],
+  "catalogIds": ["D5"]
+}

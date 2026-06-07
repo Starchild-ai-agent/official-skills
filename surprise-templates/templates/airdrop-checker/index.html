@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Airdrop eligibility checker & tracker" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Clash Display (headings) + Switzer (body) + Fira Code (data) -->
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link
+    href="https://api.fontshare.com/v2/css?f[]=clash-display@400;500;600;700&f[]=switzer@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== H15 Score Hero ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="hero__crosshatch" aria-hidden="true"></div>
+    <div class="container hero__container">
+      <div class="hero__content">
+        <div class="hero__status-bar">
+          <div class="hero__pulse">
+            <span class="hero__pulse-dot" aria-hidden="true"></span>
+            <span>SCANNING</span>
+          </div>
+          <time class="hero__time" id="hero-time" datetime="">Loading...</time>
+        </div>
+        <p class="hero__eyebrow">Welcome back, <strong>{{USER_NAME}}</strong></p>
+        <h1 class="hero__title">{{APP_TITLE}}</h1>
+
+        <!-- Score Hero: large circular score as core visual -->
+        <div class="hero__score-block">
+          <div class="hero__score-ring" id="hero-score-ring">
+            <svg class="hero__score-svg" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="hero__score-track" cx="60" cy="60" r="52" />
+              <circle class="hero__score-fill" id="hero-score-arc" cx="60" cy="60" r="52" />
+            </svg>
+            <div class="hero__score-inner">
+              <span class="hero__score-value" id="hero-score">--</span>
+              <span class="hero__score-label">SCORE</span>
+            </div>
+          </div>
+          <div class="hero__score-stats">
+            <div class="hero__stat">
+              <span class="hero__stat-value text-up" id="hero-confirmed">--</span>
+              <span class="hero__stat-label">Confirmed</span>
+            </div>
+            <div class="hero__stat">
+              <span class="hero__stat-value" id="hero-pending">--</span>
+              <span class="hero__stat-label">Pending</span>
+            </div>
+            <div class="hero__stat">
+              <span class="hero__stat-value text-down" id="hero-expired">--</span>
+              <span class="hero__stat-label">Expired</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== A15 Checklist Layout ==================== -->
+  <main class="dashboard" role="main">
+    <div class="container">
+
+      <!-- Checklist Layout: left progress + right details -->
+      <div class="checklist-layout">
+
+        <!-- Left: Progress / General Checklist -->
+        <aside class="checklist-sidebar">
+          <section class="check-item-group" aria-label="Eligibility Checklist">
+            <div class="check-item-group__header">
+              <h2 class="check-item-group__title">
+                <svg class="check-item-group__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                General Eligibility
+              </h2>
+              <span class="check-item-group__badge" id="checklist-progress">--</span>
+            </div>
+            <div class="checklist" id="checklist">
+              <!-- Populated by script.js -->
+            </div>
+          </section>
+
+          <section class="check-item-group" aria-label="Boost Your Eligibility">
+            <div class="check-item-group__header">
+              <h2 class="check-item-group__title">
+                <svg class="check-item-group__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                Boost Actions
+              </h2>
+              <span class="check-item-group__badge">Actions</span>
+            </div>
+            <div class="actions-list" id="actions-list">
+              <!-- Populated by script.js -->
+            </div>
+          </section>
+        </aside>
+
+        <!-- Right: Airdrop Details -->
+        <div class="checklist-main">
+          <section class="check-item-group" aria-label="Airdrop Opportunities">
+            <div class="check-item-group__header">
+              <h2 class="check-item-group__title">
+                <svg class="check-item-group__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                </svg>
+                Airdrop Opportunities
+              </h2>
+              <div class="check-item-group__badges">
+                <span class="check-item-group__badge check-item-group__badge--live">
+                  <span class="check-item-group__badge-dot"></span>
+                  LIVE
+                </span>
+                <span class="check-item-group__badge" id="airdrop-count">--</span>
+              </div>
+            </div>
+            <div class="airdrop-list" id="airdrop-list">
+              <!-- Populated by script.js -->
+            </div>
+          </section>
+
+          <section class="check-item-group" aria-label="Claimed History">
+            <div class="check-item-group__header">
+              <h2 class="check-item-group__title">
+                <svg class="check-item-group__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                </svg>
+                Claimed History
+              </h2>
+              <span class="check-item-group__badge">Past</span>
+            </div>
+            <div class="claimed-list" id="claimed-list">
+              <!-- Populated by script.js -->
+            </div>
+          </section>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__container">
+      <p class="footer__text">
+        Airdrop data is simulated for demonstration &bull; Always verify eligibility on official project sites
+      </p>
+      <p class="footer__text footer__text--mono">Wallet: {{WALLET_ADDRESS}}</p>
+    </div>
+  </footer>
+
+  <!-- Script -->
+  <script src="script.js"></script>
+</body>
+</html>

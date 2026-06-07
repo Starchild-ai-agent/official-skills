@@ -422,6 +422,12 @@
       "description": "Buy Amazon and eBay products with USDC on Solana via SP3ND x402 payments.\n\nUse when paying for real-world goods with crypto (e.g. order this Amazon listing, buy eBay item, ship to Tokyo with USDC)."
     },
     {
+      "name": "surprise-templates",
+      "path": "surprise-templates/SKILL.md",
+      "version": "1.0.0",
+      "description": "Pre-built HTML/CSS/JS templates for Surprise Me feature.\n\nAgent selects a template based on user research signals, copies it to output, applies a color theme, replaces placeholders with personalized data, and localizes UI text. 119 templates across 5 categories (wallet, developer, twitter, tools, cross-platform) + 20 color themes."
+    },
+    {
       "name": "taapi",
       "path": "taapi/SKILL.md",
       "version": "2.0.3",

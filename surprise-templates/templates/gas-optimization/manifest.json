@@ -1,0 +1,16 @@
+{
+  "id": "gas-optimization",
+  "name": "Gas Optimization Cheatsheet",
+  "category": "B",
+  "matchSignals": ["github", "solidity", "gas", "optimization", "reference"],
+  "description": "Gas 优化速查表：优化技巧清单、代码对比、Gas 节省估算、Solidity 版本差异",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "SOLIDITY_VERSION": "Solidity 版本（如 0.8.x）",
+    "TARGET_CHAIN": "目标链（如 Ethereum, Arbitrum）"
+  },
+  "apis": [],
+  "themes": ["terminal-red", "dark-console", "hacker-crimson"],
+  "features": ["dark-mode", "responsive", "checklist", "code-diff", "calculator"],
+  "catalogIds": ["B25"]
+}

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Open Source Opportunity Finder" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Geist (heading) + Nunito (body) + Cascadia Code (data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/geist@1/dist/fonts/geist-sans/style.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@fontsource/cascadia-code@5/index.css" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Hero: Inline (H10) ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="container hero__container">
+      <div class="hero__inline">
+        <div class="hero__text">
+          <h1 class="hero__title">{{APP_TITLE}}</h1>
+          <p class="hero__subtitle">Welcome back, <strong>{{USER_NAME}}</strong> · <time id="hero-time" datetime="">Loading...</time></p>
+        </div>
+        <div class="hero__inline-stats">
+          <div class="hero__inline-stat skeleton" id="hero-count-card">
+            <span class="hero__inline-stat-value" id="hero-count">--</span>
+            <span class="hero__inline-stat-label">Opportunities</span>
+          </div>
+          <div class="hero__inline-stat skeleton" id="hero-featured-card">
+            <span class="hero__inline-stat-value hero__inline-stat-value--sm" id="hero-featured">--</span>
+            <span class="hero__inline-stat-label" id="hero-featured-desc">Top Pick</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Dashboard Grid (2 columns) ==================== -->
+  <main class="dashboard">
+    <div class="container">
+      <div class="dashboard__grid">
+
+        <!-- Left Column: Issues -->
+        <div class="dashboard__panel dashboard__panel--issues">
+          <div class="section__header">
+            <span class="section__tag">Opportunities</span>
+            <h2 class="section__title">Good First Issues</h2>
+            <p class="section__desc">Open issues matching your tech stack</p>
+          </div>
+          <div class="opportunities-list" id="issues-list">
+            <div class="opportunity-card skeleton" aria-hidden="true"><div class="skeleton-block skeleton-block--wide"></div></div>
+            <div class="opportunity-card skeleton" aria-hidden="true"><div class="skeleton-block skeleton-block--wide"></div></div>
+            <div class="opportunity-card skeleton" aria-hidden="true"><div class="skeleton-block skeleton-block--wide"></div></div>
+          </div>
+        </div>
+
+        <!-- Right Column: Charts + Repos + Difficulty -->
+        <div class="dashboard__panel dashboard__panel--sidebar">
+
+          <!-- Language Chart -->
+          <div class="dashboard__card">
+            <div class="section__header section__header--compact">
+              <span class="section__tag">Languages</span>
+              <h2 class="section__title section__title--sm">Language Distribution</h2>
+            </div>
+            <div class="chart-wrapper" id="lang-chart-wrapper">
+              <div class="chart-container" id="lang-chart-container">
+                <canvas id="lang-chart"></canvas>
+              </div>
+              <div class="chart-skeleton skeleton" id="lang-chart-skeleton">
+                <div class="skeleton-block skeleton-block--chart"></div>
+              </div>
+              <div class="chart-error" id="lang-chart-error" hidden>
+                <div class="error-state" id="lang-chart-error-content"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hot Repos -->
+          <div class="dashboard__card">
+            <div class="section__header section__header--compact">
+              <span class="section__tag">Trending</span>
+              <h2 class="section__title section__title--sm">Hot Repositories</h2>
+            </div>
+            <div class="repos-grid" id="repos-grid">
+              <div class="opportunity-card skeleton" aria-hidden="true"><div class="skeleton-block skeleton-block--wide"></div></div>
+            </div>
+          </div>
+
+          <!-- Difficulty -->
+          <div class="dashboard__card">
+            <div class="section__header section__header--compact">
+              <span class="section__tag">Assessment</span>
+              <h2 class="section__title section__title--sm">Contribution Difficulty</h2>
+            </div>
+            <div class="difficulty-grid" id="difficulty-grid"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer">
+    <div class="container footer__container">
+      <p class="footer__text">Data from GitHub API · 60 requests/hour (unauthenticated)</p>
+      <p class="footer__text footer__text--muted">Find your first open source contribution today</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

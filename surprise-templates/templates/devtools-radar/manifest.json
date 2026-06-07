@@ -1,0 +1,15 @@
+{
+  "id": "devtools-radar",
+  "name": "Developer Tools Radar",
+  "category": "C",
+  "matchSignals": ["twitter", "devtools", "releases", "updates", "radar"],
+  "description": "开发者工具雷达：工具发布 Bento 网格、分类、版本更新时间线、热度排行",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名（可选）"
+  },
+  "apis": [],
+  "themes": ["neutral-dark-emerald", "matrix-terminal", "hacker-green"],
+  "features": ["dark-mode", "responsive", "bento-grid", "categories", "timeline"],
+  "catalogIds": ["C19"]
+}

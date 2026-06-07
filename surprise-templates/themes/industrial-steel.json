@@ -1,0 +1,24 @@
+{
+  "id": "industrial-steel",
+  "name": "Industrial Steel",
+  "preview": "冷轧钢板的金属灰上，焊接火花的橙色与工业白形成硬朗对比",
+  "colors": {
+    "--bg-primary": "#18191c",
+    "--bg-secondary": "#202225",
+    "--bg-card": "rgba(32, 34, 37, 0.92)",
+    "--text-primary": "#e8e8ec",
+    "--text-secondary": "#8e9098",
+    "--accent-1": "#f57c00",
+    "--accent-2": "#eceff1",
+    "--accent-3": "#ffb74d",
+    "--border": "rgba(245, 124, 0, 0.12)",
+    "--glow": "0 0 16px rgba(245, 124, 0, 0.2), 0 0 32px rgba(245, 124, 0, 0.06)",
+    "--gradient-hero": "linear-gradient(135deg, #18191c 0%, #1e2024 50%, #18191c 100%)"
+  },
+  "fonts": {
+    "heading": "'Plus Jakarta Sans', sans-serif",
+    "body": "'Work Sans', sans-serif",
+    "mono": "'IBM Plex Mono', monospace"
+  },
+  "chartColors": ["#f57c00", "#eceff1", "#ffb74d", "#ff9800", "#b0bec5", "#ffe0b2"]
+}

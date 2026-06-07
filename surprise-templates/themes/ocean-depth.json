@@ -1,0 +1,24 @@
+{
+  "id": "ocean-depth",
+  "name": "Ocean Depth",
+  "preview": "深海蓝的沉静中透出青色生物光与珊瑚暖意，如潜入万米深渊",
+  "colors": {
+    "--bg-primary": "#0b1628",
+    "--bg-secondary": "#0f1e35",
+    "--bg-card": "rgba(15, 30, 53, 0.9)",
+    "--text-primary": "#d4e5f7",
+    "--text-secondary": "#7a9bb5",
+    "--accent-1": "#00bcd4",
+    "--accent-2": "#ff6f61",
+    "--accent-3": "#26c6da",
+    "--border": "rgba(0, 188, 212, 0.12)",
+    "--glow": "0 0 24px rgba(0, 188, 212, 0.25), 0 0 48px rgba(0, 188, 212, 0.08)",
+    "--gradient-hero": "linear-gradient(180deg, #0b1628 0%, #0d2137 40%, #143d5e 100%)"
+  },
+  "fonts": {
+    "heading": "'Outfit', sans-serif",
+    "body": "'Source Sans 3', sans-serif",
+    "mono": "'Fira Code', monospace"
+  },
+  "chartColors": ["#00bcd4", "#ff6f61", "#26c6da", "#ffab40", "#7c4dff", "#69f0ae"]
+}

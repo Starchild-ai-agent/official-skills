@@ -1,0 +1,20 @@
+{
+  "id": "competitor-analysis",
+  "name": "Competitor Token Analysis",
+  "category": "A",
+  "catalogIds": ["A29"],
+  "matchSignals": ["wallet", "competitor", "analysis", "comparison", "token"],
+  "description": "竞品代币分析：代币 vs 竞品选择器、并排对比、价格走势对比图、优劣势分析卡片",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "WALLET_ADDRESS": "钱包地址（可选）",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"}
+  ],
+  "themes": ["violet-frost", "indigo-night", "plum-dusk"],
+  "features": ["dark-mode", "responsive", "charts", "comparison", "token-selector"]
+}

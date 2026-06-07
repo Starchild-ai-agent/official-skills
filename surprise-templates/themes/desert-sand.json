@@ -1,0 +1,24 @@
+{
+  "id": "desert-sand",
+  "name": "Desert Sand",
+  "preview": "撒哈拉沙丘的温暖沙色，赭石岩层与天蓝绿洲的旷野诗意（浅色主题）",
+  "colors": {
+    "--bg-primary": "#f5f0e8",
+    "--bg-secondary": "#ebe4d8",
+    "--bg-card": "rgba(255, 252, 245, 0.85)",
+    "--text-primary": "#3d2e1e",
+    "--text-secondary": "#8a7560",
+    "--accent-1": "#bf6c30",
+    "--accent-2": "#2196a8",
+    "--accent-3": "#d4915a",
+    "--border": "rgba(191, 108, 48, 0.12)",
+    "--glow": "0 0 16px rgba(191, 108, 48, 0.12), 0 0 32px rgba(191, 108, 48, 0.04)",
+    "--gradient-hero": "linear-gradient(180deg, #f5f0e8 0%, #ede5d5 50%, #e8dcc8 100%)"
+  },
+  "fonts": {
+    "heading": "'Manrope', sans-serif",
+    "body": "'Source Sans 3', sans-serif",
+    "mono": "'IBM Plex Mono', monospace"
+  },
+  "chartColors": ["#bf6c30", "#2196a8", "#d4915a", "#e8a065", "#26a69a", "#c08050"]
+}

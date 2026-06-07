@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Framework Migration Guide" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Bitter (headings) + Lora (body) + IBM Plex Mono (code) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;700;800&family=Lora:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Hero (H7 Minimal) ==================== -->
+  <header class="hero" role="banner">
+    <div class="container hero__container">
+      <span class="hero__label">Migration Guide</span>
+      <h1 class="hero__title">{{SOURCE_FRAMEWORK}} <span class="hero__arrow" aria-hidden="true">→</span> {{TARGET_FRAMEWORK}}</h1>
+      <p class="hero__subtitle">Step-by-step migration path for <strong>{{PROJECT_NAME}}</strong></p>
+      <div class="hero__meta">
+        <span class="hero__badge hero__badge--steps">8 Steps</span>
+        <span class="hero__badge hero__badge--risk">Medium Risk</span>
+        <span class="hero__badge hero__badge--time">~2 weeks</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Compatibility Checklist ==================== -->
+  <section class="section section--checklist" id="checklist">
+    <div class="container">
+      <h2 class="section__title">Compatibility Checklist</h2>
+      <p class="section__desc">Verify these items before starting migration</p>
+      <div class="checklist" id="checklist-grid"></div>
+    </div>
+  </section>
+
+  <!-- ==================== Migration Timeline ==================== -->
+  <section class="section section--timeline" id="timeline">
+    <div class="container">
+      <h2 class="section__title">Migration Timeline</h2>
+      <p class="section__desc">Follow these steps in order for a smooth transition</p>
+      <div class="timeline" id="timeline-list"></div>
+    </div>
+  </section>
+
+  <!-- ==================== Code Comparison ==================== -->
+  <section class="section section--code" id="code-diff">
+    <div class="container">
+      <h2 class="section__title">Code Comparison</h2>
+      <p class="section__desc">Before & after — see how patterns translate</p>
+      <div class="code-diffs" id="code-diffs"></div>
+    </div>
+  </section>
+
+  <!-- ==================== Risk Assessment ==================== -->
+  <section class="section section--risk" id="risk">
+    <div class="container">
+      <h2 class="section__title">Risk Assessment</h2>
+      <p class="section__desc">Potential issues and mitigation strategies</p>
+      <div class="risk-grid" id="risk-grid"></div>
+    </div>
+  </section>
+
+  <!-- ==================== Resources ==================== -->
+  <section class="section section--resources" id="resources">
+    <div class="container">
+      <h2 class="section__title">Resources</h2>
+      <p class="section__desc">Official docs, guides, and community tools</p>
+      <div class="resources-list" id="resources-list"></div>
+    </div>
+  </section>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer">
+    <div class="container">
+      <p class="footer__text">{{APP_TITLE}} — Built with care for developers in transition</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

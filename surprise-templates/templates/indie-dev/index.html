@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Indie Developer Dashboard" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Merriweather Sans (heading) + Karla (body) + IBM Plex Mono (data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@400;500;600;700;800&family=Karla:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== H7: Minimal Hero ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="container hero__container">
+      <div class="hero__minimal">
+        <div class="hero__status-bar">
+          <div class="hero__pulse">
+            <span class="hero__pulse-dot" aria-hidden="true"></span>
+            <span>BUILDING</span>
+          </div>
+          <time class="hero__time" id="hero-time" datetime="">Loading...</time>
+        </div>
+        <h1 class="hero__title"><span class="accent">{{APP_TITLE}}</span></h1>
+        <p class="hero__subtitle">Good morning, <strong>{{USER_NAME}}</strong> &middot; Stack: <span class="hero__stack">{{TECH_STACK}}</span></p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== A19: Feed/Stream Layout ==================== -->
+  <div class="container">
+    <div class="feed-stream">
+
+      <!-- Feed Item: Hero Stats -->
+      <div class="feed-item feed-item--stats">
+        <div class="feed-item__stats">
+          <div class="feed-item__stat">
+            <span class="feed-item__stat-value" id="stat-inspiration">—</span>
+            <span class="feed-item__stat-label">Inspiration Index</span>
+          </div>
+          <div class="feed-item__stat">
+            <span class="feed-item__stat-value" id="stat-featured">—</span>
+            <span class="feed-item__stat-label">Featured Project</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feed Item: Trending Projects -->
+      <section class="feed-item section section--projects" id="section-projects">
+        <h2 class="section__title">Trending Indie Projects</h2>
+        <p class="section__desc">Inspiring solo-built products making waves in the community</p>
+        <div class="projects-feed" id="projects-grid"></div>
+      </section>
+
+      <!-- Feed Item: Revenue Milestones -->
+      <section class="feed-item section section--milestones" id="section-milestones">
+        <h2 class="section__title">Revenue Milestones</h2>
+        <p class="section__desc">The indie developer journey from first dollar to financial freedom</p>
+        <div class="milestones-timeline" id="milestones-timeline"></div>
+      </section>
+
+      <!-- Feed Item: Tech Stack Trends -->
+      <section class="feed-item section section--trends" id="section-trends">
+        <h2 class="section__title">Tech Stack Trends</h2>
+        <p class="section__desc">Most popular technologies among successful indie products</p>
+        <div class="chart-container chart-container--bar" id="trends-chart-container">
+          <div class="skeleton skeleton--chart" id="trends-skeleton" aria-label="Loading chart..."></div>
+          <canvas id="trends-chart" aria-label="Tech stack trends bar chart"></canvas>
+        </div>
+      </section>
+
+      <!-- Feed Item: Startup Idea Generator -->
+      <section class="feed-item section section--ideas" id="section-ideas">
+        <h2 class="section__title">Startup Idea Generator</h2>
+        <p class="section__desc">Random project ideas to spark your next build — click to generate more</p>
+        <div class="idea-card" id="idea-card">
+          <div class="idea-card__category" id="idea-category">Loading...</div>
+          <h3 class="idea-card__title" id="idea-title">—</h3>
+          <p class="idea-card__desc" id="idea-desc">—</p>
+          <div class="idea-card__meta">
+            <span class="idea-card__difficulty" id="idea-difficulty">—</span>
+            <span class="idea-card__market" id="idea-market">—</span>
+          </div>
+          <div class="idea-card__stack" id="idea-stack"></div>
+        </div>
+        <button class="btn btn--generate" id="btn-generate">Generate New Idea</button>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer">
+    <div class="container">
+      <p class="footer__text">
+        Built for <strong>{{USER_NAME}}</strong> &middot; Simulated indie community data &middot; <span class="footer__mono" id="footer-time"></span>
+      </p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

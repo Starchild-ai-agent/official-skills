@@ -1,0 +1,18 @@
+{
+  "id": "ct-alpha",
+  "name": "CT Alpha Feed",
+  "category": "C",
+  "matchSignals": ["twitter", "crypto-twitter", "alpha", "signals", "defi"],
+  "description": "CT Alpha 信息流：Alpha 信号时间线、信号来源分布、代币提及热力图、Alpha 质量评分",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TWITTER_HANDLE": "Twitter 用户名（如 @username）",
+    "TRACKED_TOKENS": "追踪的代币列表（逗号分隔）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": ["coingecko"],
+  "themes": ["midnight-gold", "deep-space", "cyber-neon"],
+  "features": ["dark-mode", "responsive", "charts", "doughnut-chart", "heatmap"],
+  "catalogIds": ["C11"]
+}

@@ -1,0 +1,317 @@
+/*
+ * ============================================
+ * Design Dials
+ * ============================================
+ * Surface  = 5 (Tinted Dark, deep charcoal)
+ * Accent   = 4 (Pink/Magenta, #f472b6)
+ * Type     = 3 (Monospace)
+ * Family   = 9 (Data-dense/Mission Control)
+ * ============================================
+ * Scene: "A ML engineer tracking experiments in
+ * a dark lab, pink-highlighted metrics on dark
+ * screens, methodical and data-driven"
+ * ============================================
+ */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  /* Surface — Deep Charcoal */
+  --bg-primary:#18181b;
+  --bg-secondary:#1e1e22;
+  --bg-card:#232328;
+  --bg-code:#1a1a1e;
+  --bg-row-hover:rgba(244,114,182,.04);
+  --border-color:#2e2e34;
+  --border-hover:#3e3e46;
+
+  /* Text */
+  --text-primary:#e4e4e7;
+  --text-secondary:#a1a1aa;
+  --text-tertiary:#71717a;
+  --text-inverse:#18181b;
+
+  /* Accent — Pink/Magenta */
+  --accent:#f472b6;
+  --accent-hover:#ec4899;
+  --accent-light:rgba(244,114,182,.1);
+  --accent-muted:rgba(244,114,182,.06);
+
+  /* Status */
+  --status-running:#facc15;
+  --status-complete:#4ade80;
+  --status-failed:#f87171;
+  --status-queued:#a1a1aa;
+
+  /* Shadows */
+  --shadow-sm:0 1px 3px rgba(0,0,0,.3);
+  --shadow-md:0 4px 14px rgba(0,0,0,.4);
+  --shadow-lg:0 8px 28px rgba(0,0,0,.5);
+
+  /* Radius */
+  --radius-sm:6px;
+  --radius-md:10px;
+  --radius-lg:14px;
+
+  /* Spacing */
+  --space-xs:4px;
+  --space-sm:8px;
+  --space-md:16px;
+  --space-lg:24px;
+  --space-xl:40px;
+  --space-2xl:64px;
+
+  /* Type */
+  --font-heading:'Azeret Mono','Menlo',monospace;
+  --font-body:'Lexend',system-ui,sans-serif;
+  --font-data:'Azeret Mono','Menlo',monospace;
+
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --duration:0.28s;
+}
+
+/* Light theme */
+[data-theme="light"]{
+  --bg-primary:#f9f9fb;
+  --bg-secondary:#f0f0f4;
+  --bg-card:#ffffff;
+  --bg-code:#f5f5f8;
+  --bg-row-hover:rgba(236,72,153,.04);
+  --border-color:#e0e0e6;
+  --border-hover:#d0d0d8;
+  --text-primary:#18181b;
+  --text-secondary:#52525b;
+  --text-tertiary:#a1a1aa;
+  --text-inverse:#ffffff;
+  --accent:#ec4899;
+  --accent-hover:#db2777;
+  --accent-light:rgba(236,72,153,.08);
+  --accent-muted:rgba(236,72,153,.04);
+  --shadow-sm:0 1px 3px rgba(0,0,0,.06);
+  --shadow-md:0 4px 14px rgba(0,0,0,.08);
+  --shadow-lg:0 8px 28px rgba(0,0,0,.1);
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:0.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:0.01ms!important;
+  }
+}
+
+html{font-size:16px;scroll-behavior:smooth}
+body{
+  font-family:var(--font-body);
+  background:var(--bg-primary);
+  color:var(--text-primary);
+  line-height:1.6;
+  letter-spacing:-0.01em;
+  -webkit-font-smoothing:antialiased;
+  min-height:100dvh;
+}
+
+/* --- Theme Toggle --- */
+.theme-toggle{
+  position:fixed;top:var(--space-md);right:var(--space-md);
+  z-index:200;
+  width:40px;height:40px;
+  border-radius:50%;border:1px solid var(--border-color);
+  background:var(--bg-card);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:18px;box-shadow:var(--shadow-sm);
+  transition:background var(--duration) var(--ease-out),border-color var(--duration) var(--ease-out);
+}
+.theme-toggle:hover{border-color:var(--accent);background:var(--accent-light)}
+
+/* --- Compact Stats Bar (Hero) --- */
+.stats-bar{
+  display:flex;
+  gap:1px;
+  background:var(--border-color);
+  border-bottom:1px solid var(--border-color);
+}
+.stats-bar__item{
+  flex:1;
+  padding:var(--space-lg) var(--space-xl);
+  background:var(--bg-secondary);
+  text-align:center;
+  min-width:140px;
+}
+.stats-bar__value{
+  font-family:var(--font-data);
+  font-size:1.6rem;font-weight:700;
+  letter-spacing:-0.03em;
+  color:var(--accent);
+}
+.stats-bar__label{
+  font-size:.7rem;
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--text-tertiary);
+  margin-top:2px;
+}
+@media(max-width:640px){
+  .stats-bar{flex-wrap:wrap}
+  .stats-bar__item{flex:1 1 50%;min-width:0}
+}
+
+/* --- Section --- */
+.section{
+  padding:var(--space-xl);
+  border-bottom:1px solid var(--border-color);
+}
+.section__title{
+  font-family:var(--font-heading);
+  font-size:1rem;font-weight:700;
+  letter-spacing:-0.02em;
+  margin-bottom:var(--space-lg);
+  display:flex;align-items:center;gap:var(--space-sm);
+}
+.section__title::before{
+  content:'';display:inline-block;
+  width:3px;height:18px;
+  background:var(--accent);
+  border-radius:2px;
+}
+
+/* --- Experiment Table --- */
+.exp-table-wrap{overflow-x:auto}
+.exp-table{
+  width:100%;border-collapse:collapse;
+  font-size:.84rem;
+}
+.exp-table th{
+  text-align:left;
+  padding:10px var(--space-md);
+  font-family:var(--font-data);
+  font-size:.68rem;text-transform:uppercase;
+  letter-spacing:0.08em;color:var(--text-tertiary);
+  border-bottom:2px solid var(--border-color);
+  font-weight:600;
+  white-space:nowrap;
+}
+.exp-table td{
+  padding:12px var(--space-md);
+  border-bottom:1px solid var(--border-color);
+  vertical-align:middle;
+  font-family:var(--font-data);
+  font-size:.82rem;
+}
+.experiment-row{
+  transition:background var(--duration) var(--ease-out),border-color var(--duration) var(--ease-out);
+  border-top:3px solid transparent;
+  opacity:0;transform:translateX(30px);
+}
+.experiment-row:hover{
+  background:var(--bg-row-hover);
+  border-top-color:var(--accent);
+}
+
+/* Status badges */
+.status{
+  display:inline-block;
+  padding:2px 8px;border-radius:4px;
+  font-size:.7rem;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.04em;
+}
+.status--running{background:rgba(250,204,21,.12);color:var(--status-running)}
+.status--complete{background:rgba(74,222,128,.12);color:var(--status-complete)}
+.status--failed{background:rgba(248,113,113,.12);color:var(--status-failed)}
+.status--queued{background:rgba(161,161,170,.1);color:var(--status-queued)}
+
+/* Metric highlight */
+.metric-best{color:var(--accent);font-weight:700}
+
+/* --- Charts --- */
+.charts-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:var(--space-lg);
+}
+@media(max-width:768px){.charts-grid{grid-template-columns:1fr}}
+
+.chart-panel{
+  background:var(--bg-card);
+  border:1px solid var(--border-color);
+  border-radius:var(--radius-md);
+  padding:var(--space-lg);
+  box-shadow:var(--shadow-sm);
+}
+.chart-panel__title{
+  font-family:var(--font-data);
+  font-size:.78rem;font-weight:600;
+  letter-spacing:-0.01em;
+  margin-bottom:var(--space-md);
+  color:var(--text-secondary);
+}
+.chart-panel canvas{width:100%!important;height:260px!important}
+
+/* --- Papers List --- */
+.papers-list{display:flex;flex-direction:column;gap:var(--space-md)}
+.paper-card{
+  background:var(--bg-card);
+  border:1px solid var(--border-color);
+  border-radius:var(--radius-md);
+  padding:var(--space-lg);
+  box-shadow:var(--shadow-sm);
+  transition:border-color var(--duration) var(--ease-out),transform var(--duration) var(--ease-out);
+}
+.paper-card:hover{
+  border-color:var(--accent);
+  transform:translateX(4px);
+}
+.paper-card__title{
+  font-family:var(--font-heading);
+  font-size:.9rem;font-weight:700;
+  letter-spacing:-0.02em;
+  margin-bottom:var(--space-xs);
+}
+.paper-card__meta{
+  font-family:var(--font-data);
+  font-size:.72rem;color:var(--text-tertiary);
+  margin-bottom:var(--space-sm);
+}
+.paper-card__abstract{
+  font-size:.84rem;color:var(--text-secondary);
+  line-height:1.6;
+}
+
+/* --- GitHub Repos --- */
+.repos-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:var(--space-md);
+}
+.repo-card{
+  background:var(--bg-card);
+  border:1px solid var(--border-color);
+  border-radius:var(--radius-md);
+  padding:var(--space-lg);
+  box-shadow:var(--shadow-sm);
+  transition:border-color var(--duration) var(--ease-out);
+}
+.repo-card:hover{border-color:var(--accent)}
+.repo-card__name{
+  font-family:var(--font-data);
+  font-size:.88rem;font-weight:700;
+  color:var(--accent);
+  margin-bottom:var(--space-xs);
+}
+.repo-card__desc{
+  font-size:.82rem;color:var(--text-secondary);
+  margin-bottom:var(--space-sm);
+  line-height:1.5;
+}
+.repo-card__stats{
+  display:flex;gap:var(--space-md);
+  font-family:var(--font-data);
+  font-size:.72rem;color:var(--text-tertiary);
+}
+
+/* --- Footer --- */
+.footer{
+  padding:var(--space-xl);
+  text-align:center;
+  border-top:1px solid var(--border-color);
+  color:var(--text-tertiary);
+  font-size:.82rem;
+}

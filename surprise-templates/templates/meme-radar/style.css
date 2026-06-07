@@ -1,0 +1,244 @@
+/* ============================================================
+   Meme Coin Radar — style.css
+   Layout: A16 Card Carousel / Horizontal Scroll
+   Hover: C26 rotate(1deg) + scale(1.02)
+   Entrance: D16 elastic scale(0.8) → scale(1.05) → scale(1)
+   Hero: H5 KPI Bar (compact)
+   Card: .meme-card (border-radius: 16px, playful)
+   ============================================================ */
+
+:root {
+  --text-xs: clamp(0.64rem,0.61rem + 0.15vw,0.72rem);
+  --text-sm: clamp(0.80rem,0.75rem + 0.24vw,0.94rem);
+  --text-base: clamp(1.00rem,0.91rem + 0.43vw,1.25rem);
+  --text-lg: clamp(1.25rem,1.11rem + 0.68vw,1.67rem);
+  --text-xl: clamp(1.56rem,1.36rem + 1.03vw,2.22rem);
+  --text-2xl: clamp(1.95rem,1.64rem + 1.56vw,2.96rem);
+}
+
+:root {
+  --space-3xs: clamp(0.25rem,0.23rem + 0.11vw,0.31rem);
+  --space-2xs: clamp(0.50rem,0.46rem + 0.22vw,0.63rem);
+  --space-xs: clamp(0.75rem,0.68rem + 0.33vw,0.94rem);
+  --space-s: clamp(1.00rem,0.91rem + 0.43vw,1.25rem);
+  --space-m: clamp(1.50rem,1.37rem + 0.65vw,1.88rem);
+  --space-l: clamp(2.00rem,1.83rem + 0.87vw,2.50rem);
+  --space-xl: clamp(3.00rem,2.74rem + 1.30vw,3.75rem);
+  --space-2xl: clamp(4.00rem,3.65rem + 1.74vw,5.00rem);
+  --space-3xl: clamp(6.00rem,5.48rem + 2.61vw,7.50rem);
+}
+
+/* Dark neon default */
+:root {
+  --color-bg: #0c0a14;
+  --color-surface: #16132a;
+  --color-surface-alt: #1a1630;
+  --color-surface-hover: #201c38;
+  --color-border: rgba(255,0,110,0.12);
+  --color-border-hover: rgba(255,0,110,0.25);
+  --color-text: #ede4f8;
+  --color-text-secondary: rgba(237,228,248,0.55);
+  --color-text-muted: rgba(237,228,248,0.3);
+  --color-accent: #ff006e;
+  --color-accent-subtle: rgba(255,0,110,0.08);
+  --color-danger: #ef5350;
+  --color-warning: #ffb74d;
+  --color-success: #66bb6a;
+  --color-bullish: #66bb6a;
+  --color-bearish: #ef5350;
+  --chart-1: #ff006e; --chart-2: #00e5ff; --chart-3: #ffb74d;
+  --chart-4: #66bb6a; --chart-5: #b388ff; --chart-6: #ff8a65;
+  --skeleton-a: rgba(255,255,255,0.03);
+  --skeleton-b: rgba(255,255,255,0.07);
+  --font-display: 'Sora',system-ui,sans-serif;
+  --font-body: 'Albert Sans',system-ui,sans-serif;
+  --font-mono: 'Space Mono','SF Mono',monospace;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --ease-out: cubic-bezier(0.23,1,0.32,1);
+  --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
+  --ease-elastic: cubic-bezier(0.68,-0.55,0.27,1.55);
+}
+
+[data-theme="light"] {
+  --color-bg: #faf6ff;
+  --color-surface: #ffffff;
+  --color-surface-alt: #f5f0fc;
+  --color-surface-hover: #ede6f8;
+  --color-border: #ddd4ec;
+  --color-border-hover: #c8b8e0;
+  --color-text: #1a1028;
+  --color-text-secondary: #5a4e6e;
+  --color-text-muted: #8a7ea0;
+  --color-accent: #d6006c;
+  --color-accent-subtle: rgba(214,0,108,0.06);
+  --color-danger: #c62828;
+  --color-warning: #e65100;
+  --color-success: #2e7d32;
+  --color-bullish: #2e7d32;
+  --color-bearish: #c62828;
+  --chart-1: #d6006c; --chart-2: #0097a7; --chart-3: #e65100;
+  --chart-4: #2e7d32; --chart-5: #7b1fa2; --chart-6: #d84315;
+  --skeleton-a: rgba(0,0,0,0.04);
+  --skeleton-b: rgba(0,0,0,0.08);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+body{min-height:100dvh;font-family:var(--font-body);font-size:var(--text-base);line-height:1.6;color:var(--color-text);background:var(--color-bg);overflow-x:hidden;transition:background .5s var(--ease-out),color .5s var(--ease-out)}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;line-height:1.1;letter-spacing:-0.03em}
+a{color:var(--color-accent);text-decoration:none}
+
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--color-border);border-radius:2px}
+
+.noise-overlay{position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:0.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+[data-theme="light"] .noise-overlay{opacity:.012}
+
+.container{width:100%;max-width:1280px;margin:0 auto;padding:0 var(--space-m)}
+
+/* ==================== Theme Toggle ==================== */
+.theme-toggle{position:fixed;top:var(--space-s);right:var(--space-s);z-index:100;width:38px;height:38px;display:grid;place-items:center;border-radius:50%;background:var(--color-surface);border:1px solid var(--color-border);cursor:pointer;transition:border-color .3s var(--ease-out)}
+.theme-toggle:hover{border-color:var(--color-accent)}
+.theme-toggle__icon{width:16px;height:16px;position:absolute;transition:opacity .3s,transform .3s var(--ease-spring)}
+.theme-toggle__sun{opacity:0;transform:scale(0.5)}
+.theme-toggle__moon{opacity:1;transform:scale(1)}
+[data-theme="light"] .theme-toggle__sun{opacity:1;transform:scale(1)}
+[data-theme="light"] .theme-toggle__moon{opacity:0;transform:scale(0.5)}
+
+/* ==================== KPI Bar Hero (H5) ==================== */
+.kpi-hero{padding:var(--space-m) 0 var(--space-s);border-bottom:1px solid var(--color-border)}
+.kpi-hero__top{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-s)}
+.kpi-hero__brand{display:flex;align-items:center;gap:var(--space-s)}
+.kpi-hero__pulse{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--color-accent);font-family:var(--font-mono);letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+.kpi-hero__pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--color-accent);animation:pulse-glow 2s ease-in-out infinite}
+@keyframes pulse-glow{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--color-accent)}50%{opacity:.5;box-shadow:0 0 0 5px transparent}}
+.kpi-hero__title{font-size:var(--text-lg);font-weight:800;color:var(--color-text);letter-spacing:-0.03em}
+.kpi-hero__subtitle{font-size:var(--text-xs);color:var(--color-text-muted)}
+.kpi-hero__subtitle strong{color:var(--color-text);font-weight:600}
+
+.kpi-hero__bar{display:flex;align-items:center;gap:var(--space-m);padding:var(--space-xs) var(--space-m);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-sm)}
+.kpi-hero__kpi{display:flex;flex-direction:column;gap:1px}
+.kpi-hero__kpi-label{font-family:var(--font-mono);font-size:9px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.1em}
+.kpi-hero__kpi-value{font-family:var(--font-mono);font-size:var(--text-base);font-weight:700;color:var(--color-text);font-variant-numeric:tabular-nums;letter-spacing:-0.02em}
+.kpi-hero__kpi-value--accent{color:var(--color-accent)}
+.kpi-hero__kpi-value--mono{font-size:var(--text-sm);color:var(--color-text-muted)}
+.kpi-hero__kpi-sep{width:1px;height:24px;background:var(--color-border)}
+
+/* ==================== Meme Main ==================== */
+.meme-main{padding:var(--space-xl) 0 var(--space-3xl)}
+
+.meme-section{margin-bottom:100px}
+.meme-section__header{margin-bottom:var(--space-s)}
+.meme-section__title{font-size:var(--text-xl);font-weight:800;color:var(--color-text);letter-spacing:-0.03em;margin-bottom:var(--space-3xs)}
+.meme-section__desc{font-size:var(--text-xs);color:var(--color-text-muted)}
+
+/* ==================== Carousel (Horizontal Scroll) ==================== */
+.carousel-wrap{position:relative;margin:0 calc(-1 * var(--space-m));padding:0 var(--space-m)}
+.carousel{display:flex;gap:var(--space-s);overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding:var(--space-xs) 0 var(--space-m)}
+.carousel::-webkit-scrollbar{height:3px}
+.carousel::-webkit-scrollbar-thumb{background:var(--color-accent);border-radius:2px}
+
+/* ==================== Meme Card (.meme-card) ==================== */
+.meme-card{flex-shrink:0;width:280px;scroll-snap-align:start;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius);padding:var(--space-m);opacity:0;transform:scale(0.8);transition:transform .35s var(--ease-elastic),box-shadow .35s var(--ease-out)}
+.meme-card:hover{transform:rotate(1deg) scale(1.02);box-shadow:0 12px 32px rgba(255,0,110,0.12)}
+
+.meme-card--table{width:auto;flex-shrink:1;padding:0;overflow:hidden;border-radius:var(--radius);opacity:1;transform:none}
+.meme-card--table:hover{transform:none}
+.meme-card--chart{width:auto;flex-shrink:1;padding:var(--space-m);opacity:1;transform:none}
+.meme-card--chart:hover{transform:none}
+
+.meme-card__emoji{font-size:2.5rem;margin-bottom:var(--space-xs);display:block}
+.meme-card__name{font-family:var(--font-display);font-size:var(--text-lg);font-weight:700;color:var(--color-text);letter-spacing:-0.02em;margin-bottom:var(--space-3xs)}
+.meme-card__symbol{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--space-xs)}
+.meme-card__price{font-family:var(--font-mono);font-size:var(--text-xl);font-weight:700;color:var(--color-text);font-variant-numeric:tabular-nums;margin-bottom:var(--space-2xs)}
+.meme-card__change{font-family:var(--font-mono);font-size:var(--text-sm);font-weight:700;margin-bottom:var(--space-xs)}
+.meme-card__stats{display:flex;flex-direction:column;gap:var(--space-3xs);padding-top:var(--space-xs);border-top:1px solid var(--color-border)}
+.meme-card__stat{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:var(--text-xs)}
+.meme-card__stat-label{color:var(--color-text-muted)}
+.meme-card__stat-value{font-weight:600;color:var(--color-text);font-variant-numeric:tabular-nums}
+
+.meme-card__header{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-s);padding-bottom:var(--space-2xs);border-bottom:1px solid var(--color-border)}
+.meme-card__title{font-size:var(--text-sm);font-weight:600;color:var(--color-text);font-family:var(--font-body);letter-spacing:-0.01em}
+.meme-card__badge{font-family:var(--font-mono);font-size:10px;padding:2px 6px;border-radius:4px;color:var(--color-text-muted);border:1px solid var(--color-border);text-transform:uppercase;letter-spacing:.04em}
+
+/* New coin cards in carousel */
+.meme-card--new{width:260px}
+.meme-card--new .meme-card__tag{display:inline-block;font-family:var(--font-mono);font-size:10px;color:var(--color-accent);background:var(--color-accent-subtle);padding:2px 8px;border-radius:4px;margin-top:var(--space-xs);letter-spacing:.04em}
+
+/* Change colors */
+.change--up{color:var(--color-bullish)}
+.change--down{color:var(--color-bearish)}
+
+/* ==================== Charts Row ==================== */
+.meme-charts-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-s);margin-bottom:100px}
+
+.chart-wrap{position:relative;overflow:hidden;border-radius:var(--radius-sm)}
+
+/* ==================== Table ==================== */
+.meme-table{width:100%;border-collapse:collapse;font-size:var(--text-sm)}
+.meme-table th{font-family:var(--font-mono);font-size:var(--text-xs);text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-muted);padding:var(--space-xs) var(--space-s);text-align:left;border-bottom:1px solid var(--color-border);background:var(--color-surface-alt)}
+.meme-table td{padding:var(--space-xs) var(--space-s);border-bottom:1px solid var(--color-border)}
+.meme-table tr:last-child td{border-bottom:none}
+.meme-table tr{transition:background .3s var(--ease-out)}
+.meme-table tr:hover td{background:var(--color-surface-hover)}
+.meme-table .rank{font-weight:700;color:var(--color-accent);font-family:var(--font-display)}
+.meme-table .price{font-family:var(--font-mono);font-weight:600}
+.meme-table .change{font-family:var(--font-mono);font-weight:700}
+.meme-table .mcap,.meme-table .volume{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-secondary)}
+.coin-name{display:flex;align-items:center;gap:var(--space-xs)}
+.coin-name img{width:24px;height:24px;border-radius:50%}
+.coin-name__text{font-weight:600;color:var(--color-text)}
+.coin-name__symbol{font-family:var(--font-mono);font-size:var(--text-xs);color:var(--color-text-muted);text-transform:uppercase}
+
+/* ==================== Skeleton ==================== */
+.skeleton-block{border-radius:var(--radius);background:linear-gradient(90deg,var(--skeleton-a) 25%,var(--skeleton-b) 50%,var(--skeleton-a) 75%);background-size:200% 100%;animation:skeleton-shimmer 1.5s ease-in-out infinite}
+.skeleton-block--table{height:320px}
+.skeleton-block--card{height:200px;min-width:260px;flex-shrink:0;scroll-snap-align:start}
+@keyframes skeleton-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+
+/* ==================== Error ==================== */
+.error-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-s);padding:var(--space-xl);text-align:center;color:var(--color-text-muted)}
+.error-state__icon{width:48px;height:48px;stroke:var(--color-danger)}
+.error-state__msg{font-size:var(--text-sm)}
+.error-state__retry{padding:var(--space-2xs) var(--space-m);border-radius:var(--radius-sm);background:var(--color-accent);color:#fff;font-size:var(--text-sm);font-weight:600;cursor:pointer;border:none;transition:opacity .2s}
+.error-state__retry:hover{opacity:0.85}
+
+/* ==================== Footer ==================== */
+.site-footer{padding:var(--space-l) 0;border-top:1px solid var(--color-border)}
+.site-footer__inner{display:flex;align-items:center;justify-content:space-between}
+.site-footer__text{font-size:var(--text-xs);color:var(--color-text-muted);font-family:var(--font-mono)}
+.site-footer__text--dim{opacity:0.6}
+
+/* ==================== Reduced Motion ==================== */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}
+  .meme-card{opacity:1;transform:none}
+  .meme-card:hover{transform:none}
+  .kpi-hero__pulse-dot{animation:none}
+}
+
+/* ==================== Responsive ==================== */
+@media(max-width:1024px){
+  .meme-charts-row{grid-template-columns:1fr}
+  .kpi-hero__top{flex-direction:column;align-items:flex-start;gap:var(--space-2xs)}
+  .kpi-hero__bar{flex-wrap:wrap;gap:var(--space-xs)}
+}
+@media(max-width:768px){
+  .meme-card{width:240px}
+  .meme-card--new{width:220px}
+  .meme-section{margin-bottom:80px}
+  .meme-charts-row{margin-bottom:80px}
+  .site-footer__inner{flex-direction:column;gap:var(--space-2xs);text-align:center}
+}
+@media(max-width:480px){
+  .kpi-hero__bar{flex-direction:column;align-items:flex-start}
+  .kpi-hero__kpi-sep{width:100%;height:1px}
+  .meme-card{width:220px}
+}
+
+/* ==================== Utilities ==================== */
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

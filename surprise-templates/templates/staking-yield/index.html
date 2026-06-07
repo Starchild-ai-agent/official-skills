@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staking Yield Calculator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Albert+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle__icon theme-toggle__icon--light">☀</span>
+    <span class="theme-toggle__icon theme-toggle__icon--dark">☾</span>
+  </button>
+
+  <div class="app">
+    <!-- Hero Comparison -->
+    <header class="hero">
+      <div class="hero__badge">Staking Calculator</div>
+      <h1 class="hero__title">Yield Comparison</h1>
+      <p class="hero__sub">Compare staking APY across protocols and simulate earnings</p>
+    </header>
+
+    <!-- Token + Amount Input -->
+    <section class="input-panel">
+      <div class="input-panel__row">
+        <div class="input-panel__field">
+          <label class="input-panel__label" for="tokenSelect">Token</label>
+          <select class="input-panel__select" id="tokenSelect">
+            <option value="eth">Ethereum (ETH)</option>
+            <option value="sol">Solana (SOL)</option>
+            <option value="ada">Cardano (ADA)</option>
+            <option value="dot">Polkadot (DOT)</option>
+            <option value="atom">Cosmos (ATOM)</option>
+            <option value="matic">Polygon (MATIC)</option>
+          </select>
+        </div>
+        <div class="input-panel__field">
+          <label class="input-panel__label" for="stakeAmount">Stake Amount</label>
+          <input class="input-panel__input" type="number" id="stakeAmount" value="10" step="any" />
+        </div>
+        <div class="input-panel__field">
+          <label class="input-panel__label" for="stakePeriod">Period (months)</label>
+          <input class="input-panel__input" type="number" id="stakePeriod" value="12" min="1" max="60" />
+        </div>
+        <div class="input-panel__field">
+          <label class="input-panel__label" for="compounding">Compounding</label>
+          <select class="input-panel__select" id="compounding">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- APY Comparison Table -->
+    <section class="comparison">
+      <h2 class="section-title">Protocol APY Comparison</h2>
+      <div class="table-wrap">
+        <table class="table" id="apyTable">
+          <thead>
+            <tr>
+              <th>Protocol</th>
+              <th>APY</th>
+              <th>Min Stake</th>
+              <th>Lock Period</th>
+              <th>Est. Yield</th>
+              <th>Total Value</th>
+            </tr>
+          </thead>
+          <tbody id="apyBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Yield Chart -->
+    <section class="chart-section">
+      <h2 class="section-title">Yield Simulation</h2>
+      <div class="chart-wrap">
+        <canvas id="yieldChart"></canvas>
+      </div>
+    </section>
+
+    <!-- Summary Cards -->
+    <section class="summary">
+      <h2 class="section-title">Best Options</h2>
+      <div class="summary__grid" id="summaryGrid"></div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

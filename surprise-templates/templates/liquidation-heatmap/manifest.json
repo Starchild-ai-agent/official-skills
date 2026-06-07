@@ -1,0 +1,20 @@
+{
+  "id": "liquidation-heatmap",
+  "name": "Liquidation Heatmap",
+  "category": "A",
+  "matchSignals": ["wallet", "liquidation", "leverage", "risk", "futures"],
+  "description": "清算价格分布热力图与杠杆风险监控仪表盘",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组，如 [\"bitcoin\",\"ethereum\",\"solana\"]）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"},
+    {"name": "Built-in Mock Liquidation Data", "endpoint": "N/A — embedded liquidation distribution data", "cors": true}
+  ],
+  "themes": ["monochrome-noir", "midnight-gold", "neon-tokyo", "matrix-green", "electric-blue"],
+  "features": ["dark-mode", "responsive", "canvas-heatmap", "gauge", "mock-data"],
+  "catalogIds": ["A12"]
+}

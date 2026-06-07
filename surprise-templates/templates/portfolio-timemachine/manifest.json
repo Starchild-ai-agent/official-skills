@@ -1,0 +1,20 @@
+{
+  "id": "portfolio-timemachine",
+  "name": "Portfolio Time Machine",
+  "category": "A",
+  "matchSignals": ["wallet", "portfolio", "investment", "historical"],
+  "description": "如果 6 个月前全仓 ETH/BTC，你现在会有 $X — 历史假设分析",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组，如 [\"bitcoin\",\"ethereum\",\"solana\"]）",
+    "PORTFOLIO_VALUE": "当前投资组合价值（数字，如 10000）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"}
+  ],
+  "themes": ["midnight-gold", "deep-space", "aurora-borealis"],
+  "features": ["dark-mode", "responsive", "charts", "historical-data"],
+  "catalogIds": ["A3"]
+}

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Real-time trading intelligence dashboard" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Cabinet Grotesk (headings) + Satoshi (body) + JetBrains Mono (data) -->
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link
+    href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay (fixed, pointer-events-none) -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- Mesh gradient background (fixed) -->
+  <div class="mesh-bg" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Hero Section ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="hero__grid-lines" aria-hidden="true"></div>
+    <div class="container hero__container">
+      <div class="hero__content">
+        <div class="hero__status-bar">
+          <div class="hero__pulse">
+            <span class="hero__pulse-dot" aria-hidden="true"></span>
+            <span>LIVE</span>
+          </div>
+          <time class="hero__time" id="hero-time" datetime="">Loading...</time>
+        </div>
+        <h1 class="hero__title">
+          <span class="hero__title-line">
+            <span class="accent">{{APP_TITLE}}</span>
+          </span>
+        </h1>
+        <p class="hero__subtitle">Welcome back, <strong>{{USER_NAME}}</strong></p>
+        <div class="hero__metrics" id="hero-metrics">
+          <div class="hero__metric">
+            <span class="hero__metric-label">PORTFOLIO</span>
+            <span class="hero__metric-value" data-counter="true">--</span>
+          </div>
+          <div class="hero__metric-divider" aria-hidden="true"></div>
+          <div class="hero__metric">
+            <span class="hero__metric-label">24H P&L</span>
+            <span class="hero__metric-value hero__metric-value--accent" data-counter="true">--</span>
+          </div>
+          <div class="hero__metric-divider" aria-hidden="true"></div>
+          <div class="hero__metric">
+            <span class="hero__metric-label">ACTIVE POSITIONS</span>
+            <span class="hero__metric-value" data-counter="true">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hero__scroll-indicator" aria-hidden="true">
+      <div class="hero__scroll-line"></div>
+    </div>
+  </header>
+
+  <!-- ==================== Dashboard — Asymmetric Bento Grid ==================== -->
+  <main class="dashboard" role="main">
+    <div class="container">
+
+      <!-- Row 1: Price Tracker (hero-sized, 8 cols) + Fear & Greed (4 cols) -->
+      <div class="bento bento--row-1">
+        <section class="card card--hero-wide" aria-label="Price Tracker" data-tilt>
+          <div class="card__bezel">
+            <div class="card__inner">
+              <div class="card__header">
+                <h2 class="card__title">
+                  <svg class="card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+                  </svg>
+                  Price Tracker
+                </h2>
+                <div class="card__badge-group">
+                  <span class="card__badge card__badge--live">
+                    <span class="card__badge-dot"></span>
+                    LIVE
+                  </span>
+                  <span class="card__badge">60s refresh</span>
+                </div>
+              </div>
+              <div class="price-grid" id="price-grid">
+                <!-- Populated by script.js -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card card--gauge" aria-label="Market Sentiment" data-tilt>
+          <div class="card__bezel">
+            <div class="card__inner">
+              <div class="card__header">
+                <h2 class="card__title">
+                  <svg class="card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+                  </svg>
+                  Fear &amp; Greed
+                </h2>
+                <span class="card__badge">5m refresh</span>
+              </div>
+              <div class="gauge-container" id="gauge-container">
+                <div class="gauge">
+                  <canvas class="gauge__canvas" id="gauge-canvas" aria-label="Fear and Greed Index gauge" role="img"></canvas>
+                  <div class="gauge__value" id="gauge-value" aria-live="polite">--</div>
+                </div>
+                <div class="gauge__label" id="gauge-label">Loading...</div>
+                <div class="gauge__updated" id="gauge-updated"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Row 2: Trending Tokens (5 cols) + Market Overview (7 cols) -->
+      <div class="bento bento--row-2">
+        <section class="card card--trending" aria-label="Trending Tokens" data-tilt>
+          <div class="card__bezel">
+            <div class="card__inner">
+              <div class="card__header">
+                <h2 class="card__title">
+                  <svg class="card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </svg>
+                  Trending
+                </h2>
+                <span class="card__badge">CoinGecko</span>
+              </div>
+              <div class="trending-list" id="trending-list">
+                <!-- Populated by script.js -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card card--market" aria-label="Market Overview" data-tilt>
+          <div class="card__bezel">
+            <div class="card__inner">
+              <div class="card__header">
+                <h2 class="card__title">
+                  <svg class="card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+                  </svg>
+                  Market Overview
+                </h2>
+                <span class="card__badge">Global</span>
+              </div>
+              <div class="market-stats" id="market-stats">
+                <!-- Populated by script.js -->
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__container">
+      <p class="footer__text">
+        Data by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a>
+        &amp; <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">Alternative.me</a>
+      </p>
+      <p class="footer__text footer__text--mono">Prices update every 60s</p>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script src="script.js"></script>
+
+</body>
+</html>

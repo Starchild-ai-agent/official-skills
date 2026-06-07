@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Competitor Monitor" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Urbanist (display) + Figtree (body) + JetBrains Mono (mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Hero (H14 Comparison) ==================== -->
+  <header class="hero" role="banner">
+    <div class="container hero__container">
+      <p class="hero__label">Competitor Intelligence</p>
+      <h1 class="hero__title">Monitor Your<br/>Competition</h1>
+      <p class="hero__subtitle">Track followers, engagement rates, posting frequency, and content strategies across competitors.</p>
+      <div class="hero__comparison" id="hero-comparison">
+        <!-- JS rendered -->
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Comparison Table ==================== -->
+  <section class="section" id="comparison">
+    <div class="container">
+      <h2 class="section__title">Side-by-Side Comparison</h2>
+      <p class="section__desc">Key metrics across all tracked competitors.</p>
+      <div class="comparison-table-wrap">
+        <table class="comparison-table" id="comparison-table">
+          <!-- JS rendered -->
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Activity Timeline ==================== -->
+  <section class="section" id="timeline">
+    <div class="container">
+      <h2 class="section__title">Activity Timeline</h2>
+      <p class="section__desc">Recent notable activities from tracked competitors.</p>
+      <div class="timeline-list" id="timeline-list">
+        <!-- JS rendered -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Content Strategy ==================== -->
+  <section class="section" id="strategy">
+    <div class="container">
+      <h2 class="section__title">Content Strategy Analysis</h2>
+      <p class="section__desc">Breakdown of content types and posting patterns.</p>
+      <div class="strategy-grid" id="strategy-grid">
+        <!-- JS rendered -->
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <p class="footer__text">Competitor Monitor — Built with mock data</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

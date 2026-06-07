@@ -1,0 +1,18 @@
+{
+  "id": "creator-analytics",
+  "name": "Creator Analytics Dashboard",
+  "category": "E",
+  "matchSignals": ["twitter", "github", "creator", "analytics", "content"],
+  "description": "创作者分析仪表盘：内容表现、受众分析、增长趋势、平台对比",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名 / 创作者名称",
+    "TWITTER_HANDLE": "Twitter 用户名（如 @username）",
+    "GITHUB_USERNAME": "GitHub 用户名",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["rose-studio", "warm-blush", "soft-coral"],
+  "features": ["dark-mode", "responsive", "charts", "analytics"],
+  "catalogIds": ["E13"]
+}

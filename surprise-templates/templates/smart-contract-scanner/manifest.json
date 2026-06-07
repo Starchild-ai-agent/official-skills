@@ -1,0 +1,17 @@
+{
+  "id": "smart-contract-scanner",
+  "name": "Smart Contract Security Scanner",
+  "category": "B",
+  "matchSignals": ["github", "solidity", "smart-contract", "security", "audit"],
+  "description": "智能合约安全扫描器：漏洞检测、安全评分、检查清单、漏洞类型分布、常见漏洞模式参考",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "CONTRACT_ADDRESS": "合约地址（可选，用于展示）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["cyber-neon", "deep-space", "midnight-gold"],
+  "features": ["dark-mode", "responsive", "charts", "security-audit"],
+  "catalogIds": ["B21"]
+}

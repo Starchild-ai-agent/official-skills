@@ -1,0 +1,22 @@
+{
+  "id": "defi-dev-console",
+  "name": "DeFi Developer Console",
+  "category": "E",
+  "matchSignals": ["github", "wallet", "defi", "solidity", "developer"],
+  "description": "DeFi 开发者控制台：TVL 排行、智能合约监控、收益策略、Gas 优化、协议发布",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "GITHUB_USERNAME": "GitHub 用户名（可选）",
+    "WALLET_ADDRESS": "钱包地址（可选）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "DeFi Llama", "endpoint": "api.llama.fi", "cors": true, "rateLimit": "300/5min"},
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"},
+    {"name": "Built-in Smart Contract Data", "endpoint": "mock", "cors": true}
+  ],
+  "themes": ["matrix-green", "deep-space", "midnight-gold"],
+  "features": ["dark-mode", "responsive", "charts", "terminal-ui", "theme-toggle"],
+  "catalogIds": ["E6"]
+}

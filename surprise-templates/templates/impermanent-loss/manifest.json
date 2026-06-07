@@ -1,0 +1,19 @@
+{
+  "id": "impermanent-loss",
+  "name": "Impermanent Loss Calculator",
+  "category": "A",
+  "matchSignals": ["wallet", "defi", "impermanent-loss", "liquidity", "calculator"],
+  "description": "无常损失计算器：LP 仓位模拟、IL vs HODL 对比、价格变动影响分析、盈亏平衡点计算",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组，如 [\"bitcoin\",\"ethereum\"]）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"}
+  ],
+  "themes": ["warm-clay", "desert-sand", "autumn-ember"],
+  "features": ["dark-mode", "responsive", "charts", "calculator", "real-time-updates"],
+  "catalogIds": ["A9"]
+}

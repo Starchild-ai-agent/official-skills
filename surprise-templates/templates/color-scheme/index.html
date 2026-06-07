@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Color Scheme Generator" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Outfit (heading) + Figtree (body) + IBM Plex Mono (data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Figtree:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Hero: Interactive (H15) ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="container-narrow hero__container">
+      <div class="hero__content">
+        <div class="hero__status-bar">
+          <time class="hero__time" id="hero-time" datetime="">Loading...</time>
+        </div>
+        <h1 class="hero__title">{{APP_TITLE}}</h1>
+        <p class="hero__subtitle">Welcome back, <strong>{{USER_NAME}}</strong></p>
+
+        <!-- Interactive Color Picker as hero core -->
+        <div class="hero__picker-row">
+          <div class="hero__color-input-wrap">
+            <label for="color-picker" class="hero__picker-label">Base Color</label>
+            <div class="hero__picker-group">
+              <input type="color" id="color-picker" class="hero__color-picker" value="#0ea5e9" />
+              <input type="text" id="color-hex" class="hero__hex-input" value="#0ea5e9" maxlength="7" spellcheck="false" />
+            </div>
+          </div>
+          <div class="hero__preview-strip" id="preview-strip" aria-label="Current scheme preview"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Scheme Selector ==================== -->
+  <section class="section section--schemes" id="section-schemes">
+    <div class="container-narrow">
+      <div class="section__header">
+        <span class="section__tag">Harmony</span>
+        <h2 class="section__title">Color Schemes</h2>
+      </div>
+      <div class="scheme-tabs" id="scheme-tabs">
+        <button class="scheme-tab active" data-scheme="complementary">Complementary</button>
+        <button class="scheme-tab" data-scheme="analogous">Analogous</button>
+        <button class="scheme-tab" data-scheme="triadic">Triadic</button>
+        <button class="scheme-tab" data-scheme="split-complementary">Split Comp.</button>
+        <button class="scheme-tab" data-scheme="tetradic">Tetradic</button>
+        <button class="scheme-tab" data-scheme="monochromatic">Monochromatic</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Color Cards ==================== -->
+  <section class="section section--colors" id="section-colors">
+    <div class="container-narrow">
+      <div class="section__header">
+        <span class="section__tag">Palette</span>
+        <h2 class="section__title">Generated Colors</h2>
+      </div>
+      <div class="format-toggle" id="format-toggle">
+        <button class="format-btn active" data-format="hex">HEX</button>
+        <button class="format-btn" data-format="rgb">RGB</button>
+        <button class="format-btn" data-format="hsl">HSL</button>
+      </div>
+      <div class="color-grid" id="color-grid"></div>
+    </div>
+  </section>
+
+  <!-- ==================== Contrast Checker ==================== -->
+  <section class="section section--contrast" id="section-contrast">
+    <div class="container-narrow">
+      <div class="section__header">
+        <span class="section__tag">Accessibility</span>
+        <h2 class="section__title">Contrast Checker</h2>
+      </div>
+      <div class="contrast-panel" id="contrast-panel">
+        <div class="contrast-inputs">
+          <div class="contrast-input-group">
+            <label for="contrast-fg">Foreground</label>
+            <div class="contrast-color-wrap">
+              <input type="color" id="contrast-fg" class="contrast-picker" value="#ffffff" />
+              <input type="text" id="contrast-fg-hex" class="contrast-hex" value="#ffffff" maxlength="7" spellcheck="false" />
+            </div>
+          </div>
+          <div class="contrast-input-group">
+            <label for="contrast-bg">Background</label>
+            <div class="contrast-color-wrap">
+              <input type="color" id="contrast-bg" class="contrast-picker" value="#0ea5e9" />
+              <input type="text" id="contrast-bg-hex" class="contrast-hex" value="#0ea5e9" maxlength="7" spellcheck="false" />
+            </div>
+          </div>
+        </div>
+        <div class="contrast-results" id="contrast-results">
+          <div class="contrast-preview" id="contrast-preview">
+            <span class="contrast-preview__large">Aa</span>
+            <span class="contrast-preview__small">The quick brown fox jumps over the lazy dog.</span>
+          </div>
+          <div class="contrast-scores" id="contrast-scores"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== CSS Export ==================== -->
+  <section class="section section--export" id="section-export">
+    <div class="container-narrow">
+      <div class="section__header">
+        <span class="section__tag">Export</span>
+        <h2 class="section__title">CSS Variables</h2>
+      </div>
+      <div class="export-panel">
+        <pre class="export-code" id="export-code"></pre>
+        <button class="export-copy-btn" id="export-copy-btn" type="button">Copy CSS</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer">
+    <div class="container-narrow footer__container">
+      <p class="footer__text">{{APP_TITLE}} · Crafted for designers</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

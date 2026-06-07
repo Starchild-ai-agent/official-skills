@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>{{APP_TITLE}} — Creator Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">☀️</button>
+
+  <!-- H4 Asymmetric Hero -->
+  <section class="hero" id="hero">
+    <div class="hero__left">
+      <div class="hero__avatar" id="heroAvatar">
+        <span class="hero__avatar-letter" id="avatarLetter">C</span>
+      </div>
+      <h1 class="hero__title">{{USER_NAME}}</h1>
+      <p class="hero__subtitle">Creator Analytics Dashboard</p>
+      <div class="hero__handles">
+        <span class="hero__handle hero__handle--twitter">{{TWITTER_HANDLE}}</span>
+        <span class="hero__handle hero__handle--github">{{GITHUB_USERNAME}}</span>
+      </div>
+    </div>
+    <div class="hero__right">
+      <div class="hero__stat-card">
+        <span class="hero__stat-label">Creator Score</span>
+        <span class="hero__stat-value" id="creatorScore">—</span>
+        <span class="hero__stat-badge" id="scoreBadge">Loading</span>
+      </div>
+      <div class="hero__stat-card">
+        <span class="hero__stat-label">Total Followers</span>
+        <span class="hero__stat-value" id="totalFollowers">—</span>
+      </div>
+      <div class="hero__stat-card">
+        <span class="hero__stat-label">Total Engagement</span>
+        <span class="hero__stat-value" id="totalEngagement">—</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- A9 Dashboard Grid -->
+  <main class="dashboard" id="dashboard">
+
+    <!-- Content Performance -->
+    <section class="analytics-card analytics-card--wide" id="cardPerformance">
+      <h2 class="analytics-card__title">Content Performance</h2>
+      <div class="perf-grid">
+        <div class="perf-item">
+          <span class="perf-item__label">Best Content Type</span>
+          <span class="perf-item__value" id="bestType">—</span>
+        </div>
+        <div class="perf-item">
+          <span class="perf-item__label">Best Post Time</span>
+          <span class="perf-item__value" id="bestTime">—</span>
+        </div>
+        <div class="perf-item">
+          <span class="perf-item__label">Avg. Engagement Rate</span>
+          <span class="perf-item__value" id="avgEngagement">—</span>
+        </div>
+        <div class="perf-item">
+          <span class="perf-item__label">Top Post Reach</span>
+          <span class="perf-item__value" id="topReach">—</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Audience Analysis -->
+    <section class="analytics-card" id="cardAudience">
+      <h2 class="analytics-card__title">Audience — Region</h2>
+      <div class="chart-wrap">
+        <canvas id="regionChart" width="300" height="300"></canvas>
+      </div>
+    </section>
+
+    <!-- Interest Distribution -->
+    <section class="analytics-card" id="cardInterests">
+      <h2 class="analytics-card__title">Audience — Interests</h2>
+      <div class="chart-wrap">
+        <canvas id="interestChart" width="300" height="300"></canvas>
+      </div>
+    </section>
+
+    <!-- Growth Trend -->
+    <section class="analytics-card analytics-card--wide" id="cardGrowth">
+      <h2 class="analytics-card__title">Follower Growth — 30 Days</h2>
+      <div class="chart-wrap chart-wrap--line">
+        <canvas id="growthChart" width="700" height="280"></canvas>
+      </div>
+    </section>
+
+    <!-- Content Suggestions -->
+    <section class="analytics-card" id="cardSuggestions">
+      <h2 class="analytics-card__title">Content Suggestions</h2>
+      <ul class="suggestion-list" id="suggestionList"></ul>
+    </section>
+
+    <!-- Platform Comparison -->
+    <section class="analytics-card" id="cardPlatform">
+      <h2 class="analytics-card__title">Platform Comparison</h2>
+      <div class="platform-compare">
+        <div class="platform-col" id="twitterCol">
+          <div class="platform-col__icon">𝕏</div>
+          <div class="platform-col__name">Twitter</div>
+          <div class="platform-col__stat"><span class="platform-col__label">Followers</span><span class="platform-col__val" id="twFollowers">—</span></div>
+          <div class="platform-col__stat"><span class="platform-col__label">Engagement</span><span class="platform-col__val" id="twEngagement">—</span></div>
+          <div class="platform-col__stat"><span class="platform-col__label">Influence</span><span class="platform-col__val" id="twInfluence">—</span></div>
+        </div>
+        <div class="platform-divider"></div>
+        <div class="platform-col" id="githubCol">
+          <div class="platform-col__icon">⌘</div>
+          <div class="platform-col__name">GitHub</div>
+          <div class="platform-col__stat"><span class="platform-col__label">Stars</span><span class="platform-col__val" id="ghStars">—</span></div>
+          <div class="platform-col__stat"><span class="platform-col__label">Contributions</span><span class="platform-col__val" id="ghContribs">—</span></div>
+          <div class="platform-col__stat"><span class="platform-col__label">Influence</span><span class="platform-col__val" id="ghInfluence">—</span></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

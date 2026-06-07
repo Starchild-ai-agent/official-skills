@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Liquidation heatmap & leverage risk monitor" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Atkinson Hyperlegible (body) + Fira Code (data) + Plus Jakarta Sans (display) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Atkinson+Hyperlegible:wght@400;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== H8 Full-bleed Dark Hero ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="hero__gradient-overlay" aria-hidden="true"></div>
+    <div class="hero__content">
+      <div class="container">
+        <div class="hero__top">
+          <div class="hero__pulse"><span class="hero__pulse-dot" aria-hidden="true"></span><span>RISK MONITOR</span></div>
+          <time class="hero__time" id="hero-time" datetime="">Loading...</time>
+        </div>
+        <h1 class="hero__title">{{APP_TITLE}}</h1>
+        <p class="hero__subtitle">Welcome back, <strong>{{USER_NAME}}</strong></p>
+        <div class="hero__stats-row">
+          <div class="hero__stat">
+            <span class="hero__stat-label">RISK SCORE</span>
+            <span class="hero__stat-value hero__stat-value--accent" id="hero-risk-score">--</span>
+          </div>
+          <div class="hero__stat-sep"></div>
+          <div class="hero__stat">
+            <span class="hero__stat-label">24H LIQUIDATED</span>
+            <span class="hero__stat-value" id="hero-liquidated">--</span>
+          </div>
+          <div class="hero__stat-sep"></div>
+          <div class="hero__stat">
+            <span class="hero__stat-label">LONG/SHORT</span>
+            <span class="hero__stat-value" id="hero-ls-ratio">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== A4 Full-bleed Hero + Stacked Sections ==================== -->
+  <main class="dashboard" role="main">
+
+    <!-- Section 1: Liquidation Heatmap (full-bleed) -->
+    <section class="data-block data-block--full" aria-label="Liquidation Price Distribution">
+      <div class="container">
+        <div class="data-block__header">
+          <h2 class="data-block__title">
+            <svg class="data-block__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/>
+            </svg>
+            Liquidation Heatmap
+          </h2>
+          <div class="data-block__badges">
+            <span class="data-block__badge" id="heatmap-token-label">BTC</span>
+            <span class="data-block__badge data-block__badge--live"><span class="data-block__badge-dot"></span>LIVE</span>
+          </div>
+        </div>
+        <div class="heatmap-container" id="heatmap-container">
+          <canvas id="heatmap-canvas" aria-label="Liquidation price distribution heatmap" role="img"></canvas>
+          <div class="heatmap-legend" id="heatmap-legend"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Long/Short + Risk Zones side by side -->
+    <section class="data-block" aria-label="Risk Analysis">
+      <div class="container">
+        <div class="data-block__split">
+          <!-- Long/Short Gauge -->
+          <div class="data-block__half">
+            <div class="data-block__header">
+              <h2 class="data-block__title">
+                <svg class="data-block__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+                Long/Short Ratio
+              </h2>
+              <span class="data-block__badge">Aggregate</span>
+            </div>
+            <div class="gauge-container" id="gauge-container">
+              <canvas id="gauge-canvas" aria-label="Long short ratio gauge" role="img"></canvas>
+              <div class="gauge__value" id="gauge-value">--</div>
+              <div class="gauge__label" id="gauge-label">Loading...</div>
+            </div>
+            <div class="gauge-breakdown" id="gauge-breakdown">
+              <!-- Populated by script.js -->
+            </div>
+          </div>
+
+          <!-- High Risk Zones -->
+          <div class="data-block__half">
+            <div class="data-block__header">
+              <h2 class="data-block__title">
+                <svg class="data-block__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>
+                </svg>
+                High Risk Zones
+              </h2>
+              <span class="data-block__badge data-block__badge--danger">WARNING</span>
+            </div>
+            <div class="risk-zones" id="risk-zones">
+              <!-- Populated by script.js -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Recent Large Liquidations -->
+    <section class="data-block" aria-label="Recent Large Liquidations">
+      <div class="container">
+        <div class="data-block__header">
+          <h2 class="data-block__title">
+            <svg class="data-block__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            Recent Large Liquidations
+          </h2>
+          <span class="data-block__badge">24H</span>
+        </div>
+        <div class="liq-list" id="liq-list">
+          <!-- Populated by script.js -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__container">
+      <p class="footer__text">Prices by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a> &bull; Liquidation data is simulated</p>
+      <p class="footer__text footer__text--mono">Updates every 60s</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

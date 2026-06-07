@@ -1,0 +1,15 @@
+{
+  "id": "tech-launches",
+  "name": "Tech Product Launch Feed",
+  "category": "C",
+  "matchSignals": ["twitter", "producthunt", "hackernews", "launches", "tech"],
+  "description": "科技产品发布流：产品卡片画廊、来源标签、分类筛选、趋势图",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名（可选）"
+  },
+  "apis": [],
+  "themes": ["cool-minimal", "rose-accent", "slate-night"],
+  "features": ["dark-mode", "responsive", "masonry", "categories", "voting"],
+  "catalogIds": ["C18"]
+}

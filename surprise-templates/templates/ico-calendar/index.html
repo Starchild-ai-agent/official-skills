@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ICO/IDO Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700&family=Nunito:wght@400;500;600&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle__icon theme-toggle__icon--light">☀</span>
+    <span class="theme-toggle__icon theme-toggle__icon--dark">☾</span>
+  </button>
+
+  <div class="app">
+    <!-- Countdown Hero -->
+    <header class="hero">
+      <div class="hero__badge">Token Sales</div>
+      <h1 class="hero__title">ICO / IDO Calendar</h1>
+      <p class="hero__sub">Track upcoming token sales and launches</p>
+      <div class="countdown" id="countdown">
+        <div class="countdown__label">Next Launch In</div>
+        <div class="countdown__digits">
+          <div class="countdown__unit"><span id="cdDays">00</span><small>Days</small></div>
+          <div class="countdown__sep">:</div>
+          <div class="countdown__unit"><span id="cdHours">00</span><small>Hours</small></div>
+          <div class="countdown__sep">:</div>
+          <div class="countdown__unit"><span id="cdMins">00</span><small>Min</small></div>
+          <div class="countdown__sep">:</div>
+          <div class="countdown__unit"><span id="cdSecs">00</span><small>Sec</small></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Calendar -->
+    <section class="calendar-section">
+      <div class="calendar-nav">
+        <button class="cal-nav-btn" id="prevMonth">&larr;</button>
+        <h2 class="cal-month" id="calMonth">June 2026</h2>
+        <button class="cal-nav-btn" id="nextMonth">&rarr;</button>
+      </div>
+      <div class="calendar" id="calendar"></div>
+    </section>
+
+    <!-- Project List -->
+    <section class="projects">
+      <h2 class="section-title">Upcoming Sales</h2>
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="ico">ICO</button>
+        <button class="filter-btn" data-filter="ido">IDO</button>
+        <button class="filter-btn" data-filter="ino">INO</button>
+      </div>
+      <div class="project-list" id="projectList"></div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

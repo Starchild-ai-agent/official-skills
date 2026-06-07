@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — DeFi Yield Optimizer" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Cabinet Grotesk (headings) + Satoshi (body) + JetBrains Mono (data) -->
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link
+    href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== KPI Bar Hero (H5) ==================== -->
+  <header class="kpi-bar" role="banner">
+    <div class="container">
+      <div class="kpi-bar__top">
+        <div class="kpi-bar__brand">
+          <span class="kpi-bar__label">YIELD SCANNER</span>
+          <h1 class="kpi-bar__title"><span class="accent">{{APP_TITLE}}</span></h1>
+          <p class="kpi-bar__subtitle">Welcome back, <strong>{{USER_NAME}}</strong></p>
+        </div>
+        <time class="kpi-bar__time" id="hero-time" datetime="">Loading...</time>
+      </div>
+      <div class="kpi-bar__strip">
+        <div class="kpi-bar__item">
+          <span class="kpi-bar__item-label">TOP APY</span>
+          <span class="kpi-bar__item-value kpi-bar__item-value--accent" id="hero-top-apy">--</span>
+        </div>
+        <div class="kpi-bar__divider" aria-hidden="true"></div>
+        <div class="kpi-bar__item">
+          <span class="kpi-bar__item-label">POOLS FOUND</span>
+          <span class="kpi-bar__item-value" id="hero-pools">--</span>
+        </div>
+        <div class="kpi-bar__divider" aria-hidden="true"></div>
+        <div class="kpi-bar__item">
+          <span class="kpi-bar__item-label">PROTOCOLS</span>
+          <span class="kpi-bar__item-value" id="hero-protocols">--</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Dashboard — Table-First Layout ==================== -->
+  <main class="dashboard" role="main">
+    <div class="container">
+
+      <!-- Primary: Yield Table (full width, the core) -->
+      <section class="section-block" aria-label="Yield Opportunities">
+        <div class="section-block__header">
+          <h2 class="section-block__title">
+            <svg class="section-block__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            Yield Opportunities
+          </h2>
+          <div class="section-block__badge-group">
+            <span class="section-block__badge section-block__badge--live">
+              <span class="section-block__badge-dot"></span>
+              LIVE
+            </span>
+            <span class="section-block__badge">DeFi Llama</span>
+          </div>
+        </div>
+        <div class="yield-table-wrap" id="yield-table">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+      <!-- Secondary row: Risk + Charts side by side -->
+      <div class="secondary-row">
+        <section class="section-block" aria-label="Protocol Risk Rating">
+          <div class="section-block__header">
+            <h2 class="section-block__title">
+              <svg class="section-block__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              Protocol Risk
+            </h2>
+            <span class="section-block__badge">TVL-based</span>
+          </div>
+          <div class="risk-cards" id="risk-cards">
+            <!-- Populated by script.js -->
+          </div>
+        </section>
+
+        <section class="section-block" aria-label="APY Distribution">
+          <div class="section-block__header">
+            <h2 class="section-block__title">
+              <svg class="section-block__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="8"/><rect x="14" y="6" width="3" height="12"/>
+              </svg>
+              APY Distribution
+            </h2>
+            <span class="section-block__badge">Top 10</span>
+          </div>
+          <div class="chart-container" id="apy-chart-container">
+            <canvas id="apy-chart" aria-label="APY distribution bar chart" role="img"></canvas>
+          </div>
+        </section>
+      </div>
+
+      <!-- Tertiary: Chain Distribution (full width) -->
+      <section class="section-block" aria-label="Chain Distribution">
+        <div class="section-block__header">
+          <h2 class="section-block__title">
+            <svg class="section-block__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 12V2"/>
+              <path d="M12 12l7.07 7.07"/>
+            </svg>
+            Chain Distribution
+          </h2>
+          <span class="section-block__badge">By Pool Count</span>
+        </div>
+        <div class="pie-container" id="pie-container">
+          <canvas id="chain-pie" aria-label="Chain distribution pie chart" role="img"></canvas>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__container">
+      <p class="footer__text">
+        Yield data by <a href="https://defillama.com" target="_blank" rel="noopener noreferrer">DeFi Llama</a>
+        &amp; prices by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a>
+      </p>
+      <p class="footer__text footer__text--mono">APY rates are variable and not guaranteed</p>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script src="script.js"></script>
+
+</body>
+</html>

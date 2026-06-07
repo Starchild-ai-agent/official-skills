@@ -1,0 +1,24 @@
+{
+  "id": "deep-space",
+  "name": "Deep Space",
+  "preview": "无垠太空的绝对黑暗中，星云紫与超新星蓝缓缓弥散",
+  "colors": {
+    "--bg-primary": "#06060e",
+    "--bg-secondary": "#0c0c1a",
+    "--bg-card": "rgba(12, 12, 26, 0.9)",
+    "--text-primary": "#d0d0e8",
+    "--text-secondary": "#6868a0",
+    "--accent-1": "#7c4dff",
+    "--accent-2": "#448aff",
+    "--accent-3": "#b388ff",
+    "--border": "rgba(124, 77, 255, 0.12)",
+    "--glow": "0 0 28px rgba(124, 77, 255, 0.2), 0 0 56px rgba(68, 138, 255, 0.08)",
+    "--gradient-hero": "linear-gradient(180deg, #06060e 0%, #10082a 40%, #080e20 70%, #06060e 100%)"
+  },
+  "fonts": {
+    "heading": "'Sora', sans-serif",
+    "body": "'DM Sans', sans-serif",
+    "mono": "'Fira Code', monospace"
+  },
+  "chartColors": ["#7c4dff", "#448aff", "#b388ff", "#536dfe", "#e040fb", "#82b1ff"]
+}

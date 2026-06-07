@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Interest Radar Topic Analysis" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Space Grotesk (heading) + Outfit (body) + JetBrains Mono (data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Hero: Chart Hero (H11) — Radar embedded ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__inner">
+      <div class="hero__text">
+        <p class="hero__eyebrow">Interest Analysis</p>
+        <h1 class="hero__title">
+          <span class="accent">{{APP_TITLE}}</span>
+        </h1>
+        <p class="hero__subtitle">Analyst: <strong>{{USER_NAME}}</strong> · <code class="hero__handle">{{TWITTER_HANDLE}}</code></p>
+      </div>
+      <div class="hero__chart-wrap">
+        <div class="skeleton-chart" aria-label="Loading radar chart"></div>
+        <canvas id="radar-chart" aria-label="Interest radar chart"></canvas>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Section: KPI Stats ==================== -->
+  <section class="section" id="section-kpi" aria-labelledby="kpi-heading">
+    <div class="container">
+      <div class="kpi-row" id="kpi-row">
+        <div class="kpi-card skeleton" data-kpi="diversity-score">
+          <span class="kpi-card__label">Diversity Score</span>
+          <span class="kpi-card__value" id="kpi-diversity">—</span>
+          <span class="kpi-card__sub">out of 100</span>
+        </div>
+        <div class="kpi-card skeleton" data-kpi="top-interest">
+          <span class="kpi-card__label">Top Interest</span>
+          <span class="kpi-card__value" id="kpi-top-interest">—</span>
+          <span class="kpi-card__sub" id="kpi-top-pct">—</span>
+        </div>
+        <div class="kpi-card skeleton" data-kpi="total-topics">
+          <span class="kpi-card__label">Topics Tracked</span>
+          <span class="kpi-card__value" id="kpi-total-topics">—</span>
+          <span class="kpi-card__sub">categories</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Section: Topic Details ==================== -->
+  <section class="section" id="section-topics" aria-labelledby="topics-heading">
+    <div class="container">
+      <h2 class="section__title" id="topics-heading">Topic Details</h2>
+      <p class="section__desc">Each topic with curated content recommendations based on your engagement patterns.</p>
+      <div class="topic-list" id="topic-grid">
+        <!-- Skeleton placeholders -->
+        <div class="topic-card skeleton"><div class="topic-card__skeleton-block"></div></div>
+        <div class="topic-card skeleton"><div class="topic-card__skeleton-block"></div></div>
+        <div class="topic-card skeleton"><div class="topic-card__skeleton-block"></div></div>
+        <div class="topic-card skeleton"><div class="topic-card__skeleton-block"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Section: Interest Trend ==================== -->
+  <section class="section" id="section-trend" aria-labelledby="trend-heading">
+    <div class="container">
+      <h2 class="section__title" id="trend-heading">Interest Trends</h2>
+      <p class="section__desc">How your interests have shifted over the past 30 days.</p>
+      <div class="chart-wrap">
+        <div class="chart-container chart-container--line" id="trend-chart-wrap">
+          <div class="skeleton-chart" aria-label="Loading trend chart"></div>
+          <canvas id="trend-chart" aria-label="Interest trend line chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Section: Recommended Accounts ==================== -->
+  <section class="section" id="section-recommend" aria-labelledby="recommend-heading">
+    <div class="container">
+      <h2 class="section__title" id="recommend-heading">Recommended Accounts</h2>
+      <p class="section__desc">Accounts aligned with your interest profile that you might want to follow.</p>
+      <div class="recommend-list" id="recommend-grid">
+        <div class="topic-card skeleton"><div class="topic-card__skeleton-block"></div></div>
+        <div class="topic-card skeleton"><div class="topic-card__skeleton-block"></div></div>
+        <div class="topic-card skeleton"><div class="topic-card__skeleton-block"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Error State ==================== -->
+  <div class="error-toast" id="error-toast" role="alert" aria-live="polite" hidden>
+    <span class="error-toast__icon" aria-hidden="true">⚠</span>
+    <span class="error-toast__msg" id="error-msg">Something went wrong.</span>
+    <button class="error-toast__close" id="error-close" type="button" aria-label="Dismiss error">✕</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

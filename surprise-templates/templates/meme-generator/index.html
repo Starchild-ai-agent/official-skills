@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meme Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Karla:wght@400;500;600&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle__icon theme-toggle__icon--light">☀</span>
+    <span class="theme-toggle__icon theme-toggle__icon--dark">☾</span>
+  </button>
+
+  <div class="app">
+    <!-- Hero -->
+    <header class="hero">
+      <div class="hero__emoji">😂</div>
+      <h1 class="hero__title">Meme Generator</h1>
+      <p class="hero__sub">Create and download custom memes</p>
+    </header>
+
+    <!-- Template Selection -->
+    <section class="templates">
+      <h2 class="section-title">Choose Template</h2>
+      <div class="template-grid" id="templateGrid"></div>
+    </section>
+
+    <!-- Editor -->
+    <section class="editor">
+      <div class="editor__canvas-wrap">
+        <canvas id="memeCanvas" width="500" height="500"></canvas>
+      </div>
+      <div class="editor__controls">
+        <div class="editor__field">
+          <label class="editor__label" for="topText">Top Text</label>
+          <input class="editor__input" type="text" id="topText" placeholder="TOP TEXT" />
+        </div>
+        <div class="editor__field">
+          <label class="editor__label" for="bottomText">Bottom Text</label>
+          <input class="editor__input" type="text" id="bottomText" placeholder="BOTTOM TEXT" />
+        </div>
+        <div class="editor__row">
+          <div class="editor__field">
+            <label class="editor__label" for="fontSize">Font Size</label>
+            <input class="editor__input editor__input--small" type="range" id="fontSize" min="20" max="60" value="36" />
+          </div>
+          <div class="editor__field">
+            <label class="editor__label" for="textColor">Color</label>
+            <input class="editor__color" type="color" id="textColor" value="#ffffff" />
+          </div>
+        </div>
+        <div class="editor__row">
+          <div class="editor__field">
+            <label class="editor__label" for="strokeColor">Stroke</label>
+            <input class="editor__color" type="color" id="strokeColor" value="#000000" />
+          </div>
+          <div class="editor__field">
+            <label class="editor__label" for="strokeWidth">Stroke Width</label>
+            <input class="editor__input editor__input--small" type="range" id="strokeWidth" min="0" max="8" value="3" />
+          </div>
+        </div>
+        <button class="editor__btn" id="downloadBtn">Download Meme</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

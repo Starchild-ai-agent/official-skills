@@ -1,0 +1,17 @@
+{
+  "id": "viral-analyzer",
+  "name": "Viral Tweet Analyzer",
+  "category": "C",
+  "matchSignals": ["twitter", "viral", "engagement", "analytics", "growth"],
+  "description": "病毒推文分析器：病毒潜力评分、高互动模式分析、互动率散点图、最佳推文模板生成器",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TWITTER_HANDLE": "Twitter 用户名（如 @username）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["cyber-neon", "deep-space", "midnight-gold"],
+  "features": ["dark-mode", "responsive", "charts", "scatter-plot"],
+  "catalogIds": ["C5"]
+}

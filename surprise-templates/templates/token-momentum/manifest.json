@@ -1,0 +1,19 @@
+{
+  "id": "token-momentum",
+  "name": "Token Momentum Scanner",
+  "category": "A",
+  "matchSignals": ["wallet", "momentum", "rsi", "macd", "technical-analysis"],
+  "description": "代币动量扫描器，RSI/MACD 技术指标分析与信号汇总",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组，如 [\"bitcoin\",\"ethereum\",\"solana\"]）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3/coins/{id}/market_chart", "cors": true, "rateLimit": "30/min"}
+  ],
+  "themes": ["monochrome-noir", "midnight-gold", "electric-blue", "neon-tokyo", "matrix-green"],
+  "features": ["dark-mode", "responsive", "charts", "dual-axis", "technical-indicators"],
+  "catalogIds": ["A13"]
+}

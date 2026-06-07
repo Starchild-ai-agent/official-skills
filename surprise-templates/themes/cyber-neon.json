@@ -1,0 +1,24 @@
+{
+  "id": "cyber-neon",
+  "name": "Cyber Neon",
+  "preview": "深黑底色上跳动的霓虹绿与电紫，赛博朋克都市的数字脉搏",
+  "colors": {
+    "--bg-primary": "#0a0a0f",
+    "--bg-secondary": "#12121a",
+    "--bg-card": "rgba(18, 18, 26, 0.85)",
+    "--text-primary": "#e0e0e8",
+    "--text-secondary": "#8888a0",
+    "--accent-1": "#39ff14",
+    "--accent-2": "#bf00ff",
+    "--accent-3": "#00e5ff",
+    "--border": "rgba(57, 255, 20, 0.15)",
+    "--glow": "0 0 20px rgba(57, 255, 20, 0.3), 0 0 60px rgba(57, 255, 20, 0.1)",
+    "--gradient-hero": "linear-gradient(135deg, #0a0a0f 0%, #1a0a2e 50%, #0a0a0f 100%)"
+  },
+  "fonts": {
+    "heading": "'Space Grotesk', sans-serif",
+    "body": "'DM Sans', sans-serif",
+    "mono": "'JetBrains Mono', monospace"
+  },
+  "chartColors": ["#39ff14", "#bf00ff", "#00e5ff", "#ff006e", "#ffbe0b", "#8338ec"]
+}

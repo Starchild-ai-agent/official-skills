@@ -1,0 +1,16 @@
+{
+  "id": "typing-test",
+  "name": "Typing Speed Test",
+  "category": "D",
+  "matchSignals": ["productivity", "typing", "speed", "test", "keyboard"],
+  "description": "打字速度测试：实时 WPM 与准确率统计、多种模式（文本/代码/数字）、时间选择、历史记录折线图",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["paper-ink", "warm-sand", "arctic-frost"],
+  "features": ["dark-mode", "responsive", "charts", "local-storage", "real-time-stats"],
+  "catalogIds": ["D26"]
+}

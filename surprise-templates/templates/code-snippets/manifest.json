@@ -1,0 +1,16 @@
+{
+  "id": "code-snippets",
+  "name": "Code Snippet Library",
+  "category": "B",
+  "matchSignals": ["github", "code", "snippets", "patterns", "reference"],
+  "description": "代码片段库：语法高亮展示、一键复制、语言筛选、自定义片段管理、收藏列表",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["midnight-gold", "deep-space", "cyber-neon"],
+  "features": ["dark-mode", "responsive", "syntax-highlighting", "clipboard-api", "local-storage"],
+  "catalogIds": ["B6"]
+}

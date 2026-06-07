@@ -1,0 +1,16 @@
+{
+  "id": "event-tracker",
+  "name": "Event Tracker",
+  "category": "C",
+  "matchSignals": ["twitter", "events", "tracking", "upcoming", "calendar"],
+  "description": "活动追踪器：月历视图、活动列表、倒计时、分类筛选",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名（可选）",
+    "EVENT_TYPES": "关注活动类型（如 Conference, Hackathon, AMA, Launch）"
+  },
+  "apis": [],
+  "themes": ["warm-natural", "forest-green", "ember-night"],
+  "features": ["dark-mode", "responsive", "calendar", "countdown", "filters"],
+  "catalogIds": ["C10"]
+}

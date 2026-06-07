@@ -1,0 +1,21 @@
+{
+  "id": "dex-arb",
+  "name": "DEX vs CEX Arbitrage",
+  "category": "A",
+  "matchSignals": ["wallet", "dex", "cex", "arbitrage", "price-spread"],
+  "description": "DEX 与 CEX 价差套利扫描器，发现跨平台套利机会",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组，如 [\"bitcoin\",\"ethereum\",\"solana\"]）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"},
+    {"name": "DeFi Llama", "endpoint": "api.llama.fi", "cors": true, "rateLimit": "none"},
+    {"name": "Built-in Mock DEX Price Data", "endpoint": "N/A — embedded DEX price data for Uniswap, SushiSwap, Curve", "cors": true}
+  ],
+  "themes": ["matrix-green", "midnight-gold", "monochrome-noir", "neon-tokyo", "electric-blue"],
+  "features": ["dark-mode", "responsive", "charts", "sortable-table", "mock-data"],
+  "catalogIds": ["A14"]
+}

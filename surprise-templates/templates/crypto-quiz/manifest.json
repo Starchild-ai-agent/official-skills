@@ -1,0 +1,15 @@
+{
+  "id": "crypto-quiz",
+  "name": "Crypto Knowledge Quiz",
+  "category": "D",
+  "matchSignals": ["education", "quiz", "crypto", "knowledge", "game"],
+  "description": "加密知识问答：随机题目、计分系统、进度条、结果评级与分享",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["lavender-play", "purple-glow", "soft-violet"],
+  "features": ["dark-mode", "responsive", "interactive", "localStorage"],
+  "catalogIds": ["D21"]
+}

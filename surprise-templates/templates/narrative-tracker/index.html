@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Narrative Tracker" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Newsreader (heading) + Source Sans 3 (body) + IBM Plex Mono (data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500;6..72,600;6..72,700;6..72,800&family=Source+Sans+3:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+
+  <!-- ==================== Hero: H10 Inline Hero ==================== -->
+  <header class="hero" role="banner">
+    <div class="container">
+      <div class="hero__inline">
+        <h1 class="hero__title"><span class="accent">{{APP_TITLE}}</span></h1>
+        <span class="hero__divider" aria-hidden="true"></span>
+        <p class="hero__meta">Analyst: <strong>{{USER_NAME}}</strong> · <code class="hero__handle">{{TWITTER_HANDLE}}</code></p>
+      </div>
+      <div class="hero__kpi-row" id="hero-kpi-row">
+        <div class="kpi-card skeleton" data-kpi="dominant">
+          <span class="kpi-card__label">Dominant Narrative</span>
+          <span class="kpi-card__value" id="kpi-dominant">—</span>
+          <span class="kpi-card__sub" id="kpi-dominant-score">—</span>
+        </div>
+        <div class="kpi-card skeleton" data-kpi="emerging">
+          <span class="kpi-card__label">Emerging Signal</span>
+          <span class="kpi-card__value" id="kpi-emerging">—</span>
+          <span class="kpi-card__sub" id="kpi-emerging-change">—</span>
+        </div>
+        <div class="kpi-card skeleton" data-kpi="narratives">
+          <span class="kpi-card__label">Active Narratives</span>
+          <span class="kpi-card__value" id="kpi-narratives">—</span>
+          <span class="kpi-card__sub">being tracked</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Full-width Narrative Sections (A17) ==================== -->
+  <div id="narrative-sections">
+    <!-- Each narrative rendered as a full-width section by JS -->
+    <div class="narrative-section skeleton" style="min-height:200px"></div>
+    <div class="narrative-section skeleton" style="min-height:200px"></div>
+  </div>
+
+  <!-- ==================== Section: Lifecycle Chart ==================== -->
+  <section class="section" id="section-lifecycle" aria-labelledby="lifecycle-heading">
+    <div class="container">
+      <h2 class="section__title" id="lifecycle-heading">Narrative Lifecycle</h2>
+      <p class="section__desc">Heat score evolution over the past 8 weeks — track narrative birth, peak, and decline.</p>
+      <div class="chart-wrap">
+        <div class="chart-container chart-container--line" id="lifecycle-chart-wrap">
+          <div class="skeleton-chart" aria-label="Loading lifecycle chart"></div>
+          <canvas id="lifecycle-chart" aria-label="Narrative lifecycle line chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Section: Token Associations ==================== -->
+  <section class="section" id="section-tokens" aria-labelledby="tokens-heading">
+    <div class="container">
+      <h2 class="section__title" id="tokens-heading">Narrative × Token</h2>
+      <p class="section__desc">Key tokens associated with each narrative and their performance correlation.</p>
+      <div class="token-grid" id="token-assoc-grid">
+        <div class="narrative-section skeleton" style="min-height:120px"></div>
+        <div class="narrative-section skeleton" style="min-height:120px"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="error-toast" id="error-toast" role="alert" aria-live="polite" hidden>
+    <span class="error-toast__icon" aria-hidden="true">⚠</span>
+    <span class="error-toast__msg" id="error-msg">Something went wrong.</span>
+    <button class="error-toast__close" id="error-close" type="button" aria-label="Dismiss error">✕</button>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

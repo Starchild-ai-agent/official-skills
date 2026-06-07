@@ -1,0 +1,24 @@
+{
+  "id": "neon-tokyo",
+  "name": "Neon Tokyo",
+  "preview": "雨夜新宿的纯黑街道上，霓虹粉与电青招牌倒映在湿漉漉的柏油路面",
+  "colors": {
+    "--bg-primary": "#050505",
+    "--bg-secondary": "#0f0f12",
+    "--bg-card": "rgba(15, 15, 18, 0.92)",
+    "--text-primary": "#f5f0f0",
+    "--text-secondary": "#807880",
+    "--accent-1": "#ff2d78",
+    "--accent-2": "#00f0ff",
+    "--accent-3": "#ff85b3",
+    "--border": "rgba(255, 45, 120, 0.15)",
+    "--glow": "0 0 20px rgba(255, 45, 120, 0.3), 0 0 60px rgba(0, 240, 255, 0.15)",
+    "--gradient-hero": "linear-gradient(135deg, #050505 0%, #150510 40%, #051015 70%, #050505 100%)"
+  },
+  "fonts": {
+    "heading": "'Space Grotesk', sans-serif",
+    "body": "'Outfit', sans-serif",
+    "mono": "'JetBrains Mono', monospace"
+  },
+  "chartColors": ["#ff2d78", "#00f0ff", "#ff85b3", "#7b61ff", "#ffdd57", "#00e5a0"]
+}

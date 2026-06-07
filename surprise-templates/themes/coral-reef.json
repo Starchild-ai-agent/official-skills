@@ -1,0 +1,24 @@
+{
+  "id": "coral-reef",
+  "name": "Coral Reef",
+  "preview": "深青色海水中的珊瑚群落，热带鱼的金色鳞片在暗流中闪烁",
+  "colors": {
+    "--bg-primary": "#0a1a1e",
+    "--bg-secondary": "#102428",
+    "--bg-card": "rgba(16, 36, 40, 0.9)",
+    "--text-primary": "#e0f0f0",
+    "--text-secondary": "#78a8a8",
+    "--accent-1": "#ff7043",
+    "--accent-2": "#ffd54f",
+    "--accent-3": "#4dd0e1",
+    "--border": "rgba(255, 112, 67, 0.12)",
+    "--glow": "0 0 20px rgba(255, 112, 67, 0.2), 0 0 40px rgba(77, 208, 225, 0.1)",
+    "--gradient-hero": "linear-gradient(180deg, #0a1a1e 0%, #0e2830 50%, #0a1a1e 100%)"
+  },
+  "fonts": {
+    "heading": "'Manrope', sans-serif",
+    "body": "'Nunito Sans', sans-serif",
+    "mono": "'Geist Mono', monospace"
+  },
+  "chartColors": ["#ff7043", "#ffd54f", "#4dd0e1", "#ff8a65", "#80deea", "#ffb74d"]
+}

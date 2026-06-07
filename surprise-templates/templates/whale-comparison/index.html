@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Whale Comparison Dashboard" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Cabinet Grotesk (headings) + Satoshi (body) + JetBrains Mono (data) -->
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link
+    href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400;500;700;800&f[]=satoshi@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay (fixed, pointer-events-none) -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Split Screen Layout ==================== -->
+  <div class="split-layout">
+
+    <!-- LEFT SIDEBAR — Fixed user info panel -->
+    <aside class="sidebar" role="complementary">
+      <div class="sidebar__inner">
+        <!-- Hero content in sidebar -->
+        <header class="sidebar__hero" role="banner">
+          <div class="sidebar__status">
+            <span class="sidebar__pulse-dot" aria-hidden="true"></span>
+            <span class="sidebar__status-text">WHALE INTEL</span>
+          </div>
+          <h1 class="sidebar__title">
+            <span class="accent">{{APP_TITLE}}</span>
+          </h1>
+          <p class="sidebar__subtitle">Welcome back, <strong>{{USER_NAME}}</strong></p>
+          <time class="sidebar__time" id="hero-time" datetime="">Loading...</time>
+        </header>
+
+        <!-- KPI metrics in sidebar -->
+        <div class="sidebar__metrics">
+          <div class="sidebar__metric">
+            <span class="sidebar__metric-label">SIMILARITY</span>
+            <span class="sidebar__metric-value sidebar__metric-value--accent" id="hero-similarity">--</span>
+          </div>
+          <div class="sidebar__metric">
+            <span class="sidebar__metric-label">WHALES MATCHED</span>
+            <span class="sidebar__metric-value" id="hero-matched">--</span>
+          </div>
+          <div class="sidebar__metric">
+            <span class="sidebar__metric-label">COMMON TOKENS</span>
+            <span class="sidebar__metric-value" id="hero-common">--</span>
+          </div>
+        </div>
+
+        <!-- Radar chart in sidebar -->
+        <div class="sidebar__radar">
+          <h2 class="sidebar__section-title">
+            <svg class="sidebar__section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            Holdings Radar
+          </h2>
+          <div class="radar-container" id="radar-container">
+            <canvas id="radar-chart" aria-label="Holdings comparison radar chart" role="img"></canvas>
+          </div>
+        </div>
+
+        <div class="sidebar__wallet">
+          <span class="sidebar__wallet-label">Wallet</span>
+          <span class="sidebar__wallet-addr">{{WALLET_ADDRESS}}</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT CONTENT — Scrollable -->
+    <main class="content" role="main">
+
+      <!-- Panel: Whale Matches -->
+      <section class="panel" aria-label="Whale Matches">
+        <div class="panel__header">
+          <h2 class="panel__title">
+            <svg class="panel__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Whale Matches
+          </h2>
+          <div class="panel__badge-group">
+            <span class="panel__badge panel__badge--live">
+              <span class="panel__badge-dot"></span>
+              SIMULATED
+            </span>
+            <span class="panel__badge">Top 5</span>
+          </div>
+        </div>
+        <div class="whale-list" id="whale-list">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+      <!-- Panel: Whale Activity Timeline -->
+      <section class="panel" aria-label="Whale Activity Timeline">
+        <div class="panel__header">
+          <h2 class="panel__title">
+            <svg class="panel__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            Recent Whale Activity
+          </h2>
+          <span class="panel__badge">Last 7 days</span>
+        </div>
+        <div class="timeline" id="whale-timeline">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__container">
+      <p class="footer__text">
+        Whale data is <strong>simulated</strong> for demonstration &mdash; prices by
+        <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script src="script.js"></script>
+
+</body>
+</html>

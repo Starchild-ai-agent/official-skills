@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Contract Reader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Victor+Mono:wght@400;500;600;700&family=Lexend:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle__icon theme-toggle__icon--light">☀</span>
+    <span class="theme-toggle__icon theme-toggle__icon--dark">☾</span>
+  </button>
+
+  <div class="layout">
+    <!-- Left: ABI Input -->
+    <div class="panel panel--input">
+      <header class="hero">
+        <h1 class="hero__title">Contract Reader</h1>
+        <p class="hero__sub">Paste ABI to explore contract functions</p>
+      </header>
+      <div class="abi-input">
+        <label class="abi-input__label" for="abiJson">ABI JSON</label>
+        <textarea class="abi-input__textarea" id="abiJson" placeholder='[{"type":"function","name":"transfer",...}]' rows="12"></textarea>
+        <div class="abi-input__actions">
+          <button class="btn btn--primary" id="parseBtn">Parse ABI</button>
+          <button class="btn btn--secondary" id="sampleBtn">Load Sample</button>
+          <button class="btn btn--secondary" id="clearBtn">Clear</button>
+        </div>
+      </div>
+
+      <!-- Function Filter -->
+      <div class="filter-bar" id="filterBar" style="display:none">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="read">Read</button>
+        <button class="filter-btn" data-filter="write">Write</button>
+        <button class="filter-btn" data-filter="event">Events</button>
+      </div>
+    </div>
+
+    <!-- Right: Function List -->
+    <div class="panel panel--output">
+      <div class="fn-list" id="fnList">
+        <div class="fn-list__empty">Paste an ABI JSON to see contract functions</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

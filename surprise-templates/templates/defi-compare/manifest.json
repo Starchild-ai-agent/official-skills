@@ -1,0 +1,17 @@
+{
+  "id": "defi-compare",
+  "name": "DeFi Protocol Comparison",
+  "category": "D",
+  "matchSignals": ["defi", "compare", "protocol", "tvl", "apy"],
+  "description": "DeFi 协议对比：双协议选择器、并排对比、Chart.js对比图与优劣势高亮",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "DeFi Llama", "endpoint": "api.llama.fi", "cors": true}
+  ],
+  "themes": ["violet-compare", "cool-analysis", "deep-indigo"],
+  "features": ["dark-mode", "responsive", "charts", "comparison"],
+  "catalogIds": ["D22"]
+}

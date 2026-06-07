@@ -1,0 +1,16 @@
+{
+  "id": "bookmark-manager",
+  "name": "Bookmark Manager",
+  "category": "D",
+  "matchSignals": ["productivity", "bookmarks", "organize", "links", "reading"],
+  "description": "书签管理器：分类侧边栏、书签卡片网格、实时搜索、一键复制 URL、favicon 获取",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["midnight-gold", "deep-space", "warm-earth"],
+  "features": ["dark-mode", "responsive", "clipboard-api", "favicon-api", "local-storage"],
+  "catalogIds": ["D4"]
+}

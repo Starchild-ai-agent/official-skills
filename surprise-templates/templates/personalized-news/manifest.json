@@ -1,0 +1,20 @@
+{
+  "id": "personalized-news",
+  "name": "Personalized Crypto News Feed",
+  "category": "A",
+  "catalogIds": ["A23"],
+  "matchSignals": ["wallet", "news", "personalized", "crypto", "feed"],
+  "description": "个性化加密新闻：按持有代币过滤、分类标签、情绪标签、来源可信度评分",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "WALLET_ADDRESS": "钱包地址（可选）",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选）"
+  },
+  "apis": [
+    {"name": "Mock News Data", "endpoint": "built-in", "cors": true}
+  ],
+  "themes": ["editorial-white", "ink-dark", "warm-paper"],
+  "features": ["dark-mode", "responsive", "news-feed", "sentiment-tags", "category-filter"]
+}

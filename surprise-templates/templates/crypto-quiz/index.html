@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crypto Knowledge Quiz</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle__icon theme-toggle__icon--light">☀</span>
+    <span class="theme-toggle__icon theme-toggle__icon--dark">☾</span>
+  </button>
+
+  <div class="app" id="app">
+    <!-- Start Screen -->
+    <div class="screen screen--start" id="startScreen">
+      <div class="hero">
+        <div class="hero__emoji">🧠</div>
+        <h1 class="hero__title">Crypto Quiz</h1>
+        <p class="hero__sub">Test your blockchain knowledge</p>
+        <div class="hero__stats">
+          <div class="hero__stat">
+            <span class="hero__stat-val" id="highScore">0</span>
+            <span class="hero__stat-label">Best Score</span>
+          </div>
+          <div class="hero__stat">
+            <span class="hero__stat-val">30</span>
+            <span class="hero__stat-label">Questions</span>
+          </div>
+        </div>
+        <button class="btn btn--start" id="startBtn">Start Quiz</button>
+      </div>
+    </div>
+
+    <!-- Quiz Screen -->
+    <div class="screen screen--quiz" id="quizScreen" style="display:none">
+      <div class="quiz-header">
+        <div class="quiz-header__progress">
+          <div class="progress-bar">
+            <div class="progress-bar__fill" id="progressFill"></div>
+          </div>
+          <span class="quiz-header__count" id="questionCount">1 / 10</span>
+        </div>
+        <div class="quiz-header__score">Score: <span id="currentScore">0</span></div>
+      </div>
+      <div class="question-card" id="questionCard">
+        <h2 class="question-card__text" id="questionText"></h2>
+        <div class="options" id="options"></div>
+      </div>
+    </div>
+
+    <!-- Result Screen -->
+    <div class="screen screen--result" id="resultScreen" style="display:none">
+      <div class="result">
+        <div class="result__emoji" id="resultEmoji">🏆</div>
+        <h2 class="result__title" id="resultTitle">Amazing!</h2>
+        <p class="result__score">You scored <span id="finalScore">0</span> / <span id="totalQuestions">10</span></p>
+        <div class="result__grade" id="resultGrade">A+</div>
+        <p class="result__msg" id="resultMsg"></p>
+        <div class="result__actions">
+          <button class="btn btn--start" id="retryBtn">Try Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

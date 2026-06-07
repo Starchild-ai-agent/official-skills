@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Developer Tools Radar" />
+  <title>{{APP_TITLE}}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="noise-overlay" aria-hidden="true"></div>
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/></svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+
+  <!-- Hero (H4 Asymmetric) -->
+  <header class="hero" role="banner">
+    <div class="container hero__container">
+      <div class="hero__left">
+        <p class="hero__label">Developer Tools Radar</p>
+        <h1 class="hero__title">What's New<br/>in DevTools</h1>
+        <p class="hero__subtitle">Track releases, updates, and trending tools across IDEs, CLIs, frameworks, and libraries.</p>
+      </div>
+      <div class="hero__right">
+        <div class="hero__stat-card"><span class="hero__stat-value">24</span><span class="hero__stat-label">New Releases</span></div>
+        <div class="hero__stat-card"><span class="hero__stat-value">8</span><span class="hero__stat-label">Major Updates</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filters -->
+  <section class="section" id="filters">
+    <div class="container">
+      <div class="filter-tabs" id="filter-tabs"></div>
+    </div>
+  </section>
+
+  <!-- Bento Grid (A1) -->
+  <section class="section" id="bento">
+    <div class="container">
+      <div class="bento-grid" id="bento-grid"></div>
+    </div>
+  </section>
+
+  <!-- Version Timeline -->
+  <section class="section" id="timeline">
+    <div class="container">
+      <h2 class="section__title">Version Update Timeline</h2>
+      <div class="timeline-list" id="timeline-list"></div>
+    </div>
+  </section>
+
+  <!-- Trending -->
+  <section class="section" id="trending">
+    <div class="container">
+      <h2 class="section__title">Trending This Week</h2>
+      <div class="trending-list" id="trending-list"></div>
+    </div>
+  </section>
+
+  <footer class="footer"><div class="container"><p class="footer__text">Developer Tools Radar — Built with mock data</p></div></footer>
+  <script src="script.js"></script>
+</body>
+</html>

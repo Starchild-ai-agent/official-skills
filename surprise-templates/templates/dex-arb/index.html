@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — DEX vs CEX arbitrage scanner" />
+  <title>{{APP_TITLE}}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Comparison Hero (H14) ==================== -->
+  <header class="comparison-hero" role="banner">
+    <div class="container">
+      <div class="comparison-hero__top">
+        <div class="comparison-hero__status">
+          <div class="comparison-hero__pulse"><span class="comparison-hero__pulse-dot" aria-hidden="true"></span><span>ARB SCANNER</span></div>
+          <time class="comparison-hero__time" id="hero-time" datetime="">Loading...</time>
+        </div>
+        <h1 class="comparison-hero__title">{{APP_TITLE}}</h1>
+        <p class="comparison-hero__subtitle">Welcome back, <strong>{{USER_NAME}}</strong></p>
+      </div>
+
+      <div class="comparison-hero__split">
+        <div class="comparison-hero__side comparison-hero__side--dex">
+          <span class="comparison-hero__side-label">DEX</span>
+          <div class="comparison-hero__side-stats">
+            <div class="comparison-hero__stat">
+              <span class="comparison-hero__stat-value" id="hero-dex-avg">--</span>
+              <span class="comparison-hero__stat-label">Avg Price</span>
+            </div>
+            <div class="comparison-hero__stat">
+              <span class="comparison-hero__stat-value" id="hero-dex-best">--</span>
+              <span class="comparison-hero__stat-label">Best DEX</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="comparison-hero__vs">
+          <span class="comparison-hero__vs-badge">VS</span>
+          <div class="comparison-hero__vs-spread">
+            <span class="comparison-hero__vs-spread-value" id="hero-best-spread">--</span>
+            <span class="comparison-hero__vs-spread-label">Best Spread</span>
+          </div>
+        </div>
+
+        <div class="comparison-hero__side comparison-hero__side--cex">
+          <span class="comparison-hero__side-label">CEX</span>
+          <div class="comparison-hero__side-stats">
+            <div class="comparison-hero__stat">
+              <span class="comparison-hero__stat-value" id="hero-cex-avg">--</span>
+              <span class="comparison-hero__stat-label">Avg Price</span>
+            </div>
+            <div class="comparison-hero__stat">
+              <span class="comparison-hero__stat-value" id="hero-pairs">--</span>
+              <span class="comparison-hero__stat-label">Pairs Scanned</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Comparison Layout ==================== -->
+  <main class="comparison-main" role="main">
+    <div class="container">
+
+      <!-- Comparison Row: DEX Panel vs CEX Panel -->
+      <section class="comparison-row" aria-label="Price Comparison">
+        <div class="comparison-row__header">
+          <h2 class="comparison-row__title">
+            <svg class="comparison-row__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+            </svg>
+            Price Spread Scanner
+          </h2>
+          <span class="comparison-row__badge comparison-row__badge--live"><span class="comparison-row__badge-dot"></span>SCANNING</span>
+        </div>
+
+        <div class="comparison-split">
+          <div class="compare-panel compare-panel--dex">
+            <div class="compare-panel__label">
+              <svg class="compare-panel__label-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              DEX Prices
+            </div>
+            <div class="compare-panel__content" id="dex-prices">
+              <!-- Populated by script.js -->
+            </div>
+          </div>
+
+          <div class="comparison-divider" aria-hidden="true">
+            <div class="comparison-divider__line"></div>
+            <span class="comparison-divider__label">SPREAD</span>
+            <div class="comparison-divider__line"></div>
+          </div>
+
+          <div class="compare-panel compare-panel--cex">
+            <div class="compare-panel__label">
+              <svg class="compare-panel__label-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 0 0-8 0v2"/></svg>
+              CEX Prices
+            </div>
+            <div class="compare-panel__content" id="cex-prices">
+              <!-- Populated by script.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Spread Table (full width) -->
+      <section class="compare-panel compare-panel--full" aria-label="Spread Details">
+        <div class="compare-panel__header">
+          <h2 class="compare-panel__title">
+            <svg class="compare-panel__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/>
+            </svg>
+            All Spreads
+          </h2>
+          <span class="compare-panel__badge">Detailed</span>
+        </div>
+        <div class="table-scroll" id="spread-table">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+      <!-- Charts: Spread History + Liquidity — side by side comparison -->
+      <div class="comparison-charts">
+        <section class="compare-panel compare-panel--chart" aria-label="Spread History">
+          <div class="compare-panel__header">
+            <h2 class="compare-panel__title">
+              <svg class="compare-panel__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+              </svg>
+              Spread History (24H)
+            </h2>
+            <span class="compare-panel__badge" id="spread-token-label">ETH</span>
+          </div>
+          <div class="chart-container" id="spread-chart-container">
+            <canvas id="spread-chart" aria-label="Price spread history line chart" role="img"></canvas>
+          </div>
+        </section>
+
+        <section class="compare-panel compare-panel--chart" aria-label="DEX Liquidity Depth">
+          <div class="compare-panel__header">
+            <h2 class="compare-panel__title">
+              <svg class="compare-panel__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2v20M2 12h20"/>
+              </svg>
+              DEX Liquidity
+            </h2>
+            <span class="compare-panel__badge">TVL</span>
+          </div>
+          <div class="liquidity-list" id="liquidity-list">
+            <!-- Populated by script.js -->
+          </div>
+        </section>
+      </div>
+
+      <!-- Gas vs Profit — comparison cards -->
+      <section aria-label="Gas Cost vs Arbitrage Profit">
+        <div class="comparison-row__header">
+          <h2 class="comparison-row__title">
+            <svg class="comparison-row__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>
+            </svg>
+            Gas Cost vs Arbitrage Profit
+          </h2>
+          <span class="compare-panel__badge">Net Analysis</span>
+        </div>
+        <div class="gas-grid" id="gas-analysis">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer" role="contentinfo">
+    <div class="container site-footer__container">
+      <p class="site-footer__text">CEX prices by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a> &bull; TVL by <a href="https://defillama.com" target="_blank" rel="noopener noreferrer">DeFi Llama</a> &bull; DEX prices simulated</p>
+      <p class="site-footer__text site-footer__text--dim">Updates every 60s</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

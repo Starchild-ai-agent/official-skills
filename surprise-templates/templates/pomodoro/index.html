@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Pomodoro Timer" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Geist (heading) + Figtree (body) + IBM Plex Mono (timer) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://api.fontshare.com/v2/css?f[]=geist@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+
+  <!-- Settings Panel -->
+  <div class="settings-overlay" id="settingsOverlay">
+    <div class="settings-panel">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button class="settings-close" id="settingsClose">&times;</button>
+      </div>
+      <div class="settings-body">
+        <label class="setting-row">
+          <span>Work Duration (min)</span>
+          <input type="number" id="settingWork" min="1" max="90" value="25" />
+        </label>
+        <label class="setting-row">
+          <span>Short Break (min)</span>
+          <input type="number" id="settingShort" min="1" max="30" value="5" />
+        </label>
+        <label class="setting-row">
+          <span>Long Break (min)</span>
+          <input type="number" id="settingLong" min="1" max="60" value="15" />
+        </label>
+        <label class="setting-row">
+          <span>Pomodoros before Long Break</span>
+          <input type="number" id="settingCycles" min="2" max="10" value="4" />
+        </label>
+        <button class="btn btn-primary" id="settingsSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <main class="app-container">
+    <!-- Hero / Timer Section -->
+    <section class="timer-section" data-animate="fade">
+      <h1 class="app-title">{{APP_TITLE}}</h1>
+      <p class="app-subtitle">Welcome, {{USER_NAME}}</p>
+
+      <!-- Mode Tabs -->
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-mode="work">Work</button>
+        <button class="mode-tab" data-mode="short">Short Break</button>
+        <button class="mode-tab" data-mode="long">Long Break</button>
+      </div>
+
+      <!-- Canvas Timer -->
+      <div class="timer-wrapper">
+        <canvas id="timerCanvas" width="320" height="320"></canvas>
+        <div class="timer-display">
+          <span class="timer-time" id="timerTime">25:00</span>
+          <span class="timer-label" id="timerLabel">FOCUS</span>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="timer-controls">
+        <button class="btn btn-control" id="btnStart">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
+          Start
+        </button>
+        <button class="btn btn-control" id="btnPause" style="display:none">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          Pause
+        </button>
+        <button class="btn btn-control btn-secondary" id="btnReset">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          Reset
+        </button>
+        <button class="btn btn-control btn-secondary" id="btnSkip">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,4 15,12 5,20"/><rect x="17" y="4" width="2" height="16"/></svg>
+          Skip
+        </button>
+        <button class="btn btn-control btn-secondary" id="btnSettings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Settings
+        </button>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section" data-animate="fade">
+      <h2 class="section-title">Today's Progress</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-value" id="statPomodoros">0</span>
+          <span class="stat-label">Pomodoros</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statFocusTime">0m</span>
+          <span class="stat-label">Focus Time</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statTasks">0</span>
+          <span class="stat-label">Tasks Done</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Task List Section -->
+    <section class="tasks-section" data-animate="fade">
+      <h2 class="section-title">Task List</h2>
+      <form class="task-form" id="taskForm">
+        <input type="text" id="taskInput" placeholder="Add a task…" autocomplete="off" />
+        <button type="submit" class="btn btn-primary">Add</button>
+      </form>
+      <ul class="task-list" id="taskList"></ul>
+      <p class="task-empty" id="taskEmpty">No tasks yet. Add one above to get started.</p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

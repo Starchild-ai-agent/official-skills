@@ -1,0 +1,24 @@
+{
+  "id": "sunset-gradient",
+  "name": "Sunset Gradient",
+  "preview": "地平线上燃烧的暖橙与粉紫交融，黄金时刻的天空调色盘",
+  "colors": {
+    "--bg-primary": "#1f1018",
+    "--bg-secondary": "#2a1520",
+    "--bg-card": "rgba(42, 21, 32, 0.88)",
+    "--text-primary": "#fce4d6",
+    "--text-secondary": "#c09888",
+    "--accent-1": "#ff6b35",
+    "--accent-2": "#c850c0",
+    "--accent-3": "#ffcb57",
+    "--border": "rgba(255, 107, 53, 0.12)",
+    "--glow": "0 0 24px rgba(255, 107, 53, 0.2), 0 0 48px rgba(200, 80, 192, 0.1)",
+    "--gradient-hero": "linear-gradient(135deg, #1f1018 0%, #3a1525 30%, #2a1830 70%, #1f1018 100%)"
+  },
+  "fonts": {
+    "heading": "'Outfit', sans-serif",
+    "body": "'Lato', sans-serif",
+    "mono": "'Source Code Pro', monospace"
+  },
+  "chartColors": ["#ff6b35", "#c850c0", "#ffcb57", "#ff8a65", "#ab47bc", "#ffd54f"]
+}

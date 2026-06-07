@@ -1,0 +1,17 @@
+{
+  "id": "enterprise-intel",
+  "name": "Enterprise Intelligence Dashboard",
+  "category": "E",
+  "matchSignals": ["email", "twitter", "enterprise", "competitor", "intelligence"],
+  "description": "企业情报仪表盘：公司概况、竞品对比、行业新闻、社交媒体分析",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "COMPANY_NAME": "目标公司名称",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["midnight-gold", "clean-slate", "warm-earth"],
+  "features": ["dark-mode", "responsive", "charts", "sidebar-navigation"],
+  "catalogIds": ["E9"]
+}

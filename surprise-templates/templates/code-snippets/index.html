@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Code Snippet Library" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Clash Display (heading) + Urbanist (body) + Fira Code (code) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link href="https://api.fontshare.com/v2/css?f[]=clash-display@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Prism.js for syntax highlighting -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism-tomorrow.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-rust.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-solidity.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Hero: Minimal (H7) ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="container hero__container">
+      <h1 class="hero__title">{{APP_TITLE}}</h1>
+      <p class="hero__subtitle">{{USER_NAME}}'s snippet library · <span id="stat-total">--</span> snippets · <span id="stat-langs">--</span> languages</p>
+    </div>
+  </header>
+
+  <!-- ==================== Split Screen Layout ==================== -->
+  <main class="split-screen">
+    <div class="container">
+      <div class="split-screen__layout">
+
+        <!-- Left: Snippet List -->
+        <div class="split-screen__left">
+          <!-- Search + Filter -->
+          <div class="split-screen__toolbar">
+            <div class="split-screen__search">
+              <svg class="split-screen__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+              </svg>
+              <input type="search" class="split-screen__search-input" id="search-input" placeholder="Search snippets..." autocomplete="off" />
+            </div>
+            <div class="filter-bar" id="filter-bar">
+              <!-- Filter tabs rendered by JS -->
+            </div>
+          </div>
+
+          <!-- Snippet Items -->
+          <div class="snippet-list" id="snippets-grid">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- Right: Code Preview -->
+        <div class="split-screen__right" id="preview-panel">
+          <div class="preview-empty" id="preview-empty">
+            <div class="preview-empty__icon">⌘</div>
+            <p class="preview-empty__text">Select a snippet to preview</p>
+          </div>
+          <div class="preview-content" id="preview-content" hidden>
+            <div class="preview-header">
+              <h3 class="preview-header__title" id="preview-title"></h3>
+              <div class="preview-header__actions">
+                <button class="preview-header__btn preview-header__btn--fav" id="preview-fav-btn" type="button" aria-label="Toggle favorite">★</button>
+                <button class="preview-header__btn preview-header__btn--copy" id="preview-copy-btn" type="button">Copy</button>
+              </div>
+            </div>
+            <span class="preview-lang" id="preview-lang"></span>
+            <pre class="preview-code"><code id="preview-code"></code></pre>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== Section: Add Custom Snippet ==================== -->
+  <section class="section section--add" id="section-add">
+    <div class="container">
+      <div class="section__header">
+        <span class="section__tag">Create</span>
+        <h2 class="section__title">Add Custom Snippet</h2>
+      </div>
+      <form class="add-form" id="add-form">
+        <div class="add-form__row">
+          <div class="add-form__field">
+            <label class="add-form__label" for="snippet-title">Title</label>
+            <input type="text" class="add-form__input" id="snippet-title" placeholder="e.g. Debounce Function" required />
+          </div>
+          <div class="add-form__field add-form__field--sm">
+            <label class="add-form__label" for="snippet-lang">Language</label>
+            <select class="add-form__select" id="snippet-lang" required>
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="rust">Rust</option>
+              <option value="solidity">Solidity</option>
+            </select>
+          </div>
+        </div>
+        <div class="add-form__field">
+          <label class="add-form__label" for="snippet-code">Code</label>
+          <textarea class="add-form__textarea" id="snippet-code" rows="6" placeholder="Paste your code here..." required></textarea>
+        </div>
+        <button type="submit" class="add-form__submit">Add Snippet</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer">
+    <div class="container footer__container">
+      <p class="footer__text">Syntax highlighting by Prism.js · Clipboard API for copy</p>
+      <p class="footer__text footer__text--muted">Build your personal code reference library</p>
+    </div>
+  </footer>
+
+  <!-- Toast notification -->
+  <div class="toast" id="toast" aria-live="polite" hidden>
+    <span class="toast__text" id="toast-text"></span>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

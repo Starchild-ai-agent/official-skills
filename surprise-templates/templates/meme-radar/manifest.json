@@ -1,0 +1,19 @@
+{
+  "id": "meme-radar",
+  "name": "Meme Coin Radar",
+  "category": "A",
+  "matchSignals": ["wallet", "meme", "degen", "trending", "social"],
+  "description": "Meme 币雷达：热门排行、社交热度、涨跌幅分析、新币发现",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko Trending", "endpoint": "api.coingecko.com/api/v3/search/trending", "cors": true, "rateLimit": "30/min"},
+    {"name": "CoinGecko Markets", "endpoint": "api.coingecko.com/api/v3/coins/markets?category=meme-token", "cors": true, "rateLimit": "30/min"}
+  ],
+  "themes": ["neon-tokyo", "cyber-neon", "deep-space", "electric-blue", "midnight-gold"],
+  "features": ["dark-mode", "responsive", "charts", "radar-chart", "real-time-updates"],
+  "catalogIds": ["A26"]
+}

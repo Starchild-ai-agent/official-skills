@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{APP_TITLE}} — Web3 Glossary</title>
+
+  <!-- Fonts: Lora (heading) + Source Sans 3 (body) + Fira Code (code terms) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Lora:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- GSAP 3 + ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" defer></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ─── Top Bar ─── -->
+  <header class="top-bar">
+    <div class="top-bar__brand">
+      <span class="top-bar__logo">◆</span>
+      <span class="top-bar__title">{{APP_TITLE}}</span>
+    </div>
+    <div class="top-bar__actions">
+      <span class="top-bar__user">{{USER_NAME}}</span>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+        <svg class="theme-toggle__icon theme-toggle__icon--sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg class="theme-toggle__icon theme-toggle__icon--moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ─── Hero: Inline Search ─── -->
+  <section class="hero" id="hero">
+    <h1 class="hero__heading">Web3 Glossary</h1>
+    <p class="hero__sub">Your reference guide to blockchain terminology</p>
+    <div class="hero__search-wrap">
+      <input type="search" id="searchInput" class="hero__search" placeholder="Search terms…" autocomplete="off" />
+      <button class="hero__random-btn" id="randomBtn" aria-label="Random term">Today's Term</button>
+    </div>
+    <div class="hero__tags" id="categoryTags">
+      <button class="tag tag--active" data-cat="all">All</button>
+      <button class="tag" data-cat="defi">DeFi</button>
+      <button class="tag" data-cat="nft">NFT</button>
+      <button class="tag" data-cat="layer2">Layer 2</button>
+      <button class="tag" data-cat="consensus">Consensus</button>
+      <button class="tag" data-cat="wallet">Wallet</button>
+      <button class="tag" data-cat="general">General</button>
+    </div>
+  </section>
+
+  <!-- ─── Main: Sidebar + Content ─── -->
+  <div class="layout">
+    <!-- Sidebar: A-Z Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar__nav" id="alphaNav" aria-label="Alphabetical navigation"></nav>
+    </aside>
+
+    <!-- Content: Term Cards -->
+    <main class="content" id="content">
+      <div class="terms-list" id="termsList"></div>
+      <p class="terms-empty" id="termsEmpty" style="display:none;">No terms match your search.</p>
+    </main>
+  </div>
+
+  <!-- ─── Footer ─── -->
+  <footer class="site-footer">
+    <p>Built for {{USER_NAME}} · Learn something new every day</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

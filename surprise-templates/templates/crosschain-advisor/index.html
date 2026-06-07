@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Cross-chain migration advisor with route comparison" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Outfit (headings) + Figtree (body) + JetBrains Mono (data) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Hero: H14 Comparison ==================== -->
+  <header class="hero" role="banner">
+    <div class="container hero__container">
+      <div class="hero__content">
+        <p class="hero__label">Cross-Chain Migration Advisor</p>
+        <h1 class="hero__title">Bridge <span class="hero__accent">Smarter</span></h1>
+        <p class="hero__subtitle">Compare routes, fees, and security across bridges — find the optimal path for your assets.</p>
+      </div>
+      <div class="hero__comparison">
+        <div class="hero__chain-card hero__chain-card--source">
+          <span class="hero__chain-label">Source</span>
+          <span class="hero__chain-name" id="hero-source">Ethereum</span>
+          <span class="hero__chain-gas" id="hero-source-gas">~$4.20 gas</span>
+        </div>
+        <div class="hero__arrow" aria-hidden="true">
+          <svg viewBox="0 0 48 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M0 12h44m-8-8 8 8-8 8"/></svg>
+        </div>
+        <div class="hero__chain-card hero__chain-card--target">
+          <span class="hero__chain-label">Target</span>
+          <span class="hero__chain-name" id="hero-target">Arbitrum</span>
+          <span class="hero__chain-gas" id="hero-target-gas">~$0.12 gas</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Chain Selector ==================== -->
+  <section class="section" id="chain-selector">
+    <div class="container">
+      <h2 class="section__title">Select Chains</h2>
+      <div class="chain-selector">
+        <div class="chain-selector__group">
+          <label class="chain-selector__label" for="source-chain">Source Chain</label>
+          <select class="chain-selector__select" id="source-chain">
+            <option value="ethereum">Ethereum</option>
+            <option value="polygon">Polygon</option>
+            <option value="bsc">BNB Chain</option>
+            <option value="avalanche">Avalanche</option>
+            <option value="optimism">Optimism</option>
+          </select>
+        </div>
+        <button class="chain-selector__swap" id="swap-chains" type="button" aria-label="Swap chains">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4 4 4m6 4v12m0 0 4-4m-4 4-4-4"/></svg>
+        </button>
+        <div class="chain-selector__group">
+          <label class="chain-selector__label" for="target-chain">Target Chain</label>
+          <select class="chain-selector__select" id="target-chain">
+            <option value="arbitrum">Arbitrum</option>
+            <option value="base">Base</option>
+            <option value="optimism">Optimism</option>
+            <option value="polygon">Polygon</option>
+            <option value="zksync">zkSync Era</option>
+          </select>
+        </div>
+      </div>
+      <div class="chain-selector__amount">
+        <label class="chain-selector__label" for="bridge-amount">Amount (USD)</label>
+        <input class="chain-selector__input" id="bridge-amount" type="number" value="1000" min="1" step="100" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Route Comparison Table (A8 Comparison) ==================== -->
+  <section class="section" id="route-comparison">
+    <div class="container">
+      <h2 class="section__title">Bridge Routes</h2>
+      <p class="section__subtitle">Ranked by overall score — cost, speed, and security weighted</p>
+      <div class="comparison-table-wrap">
+        <table class="comparison-table" id="routes-table">
+          <thead>
+            <tr>
+              <th>Bridge</th>
+              <th>Est. Fee</th>
+              <th>Speed</th>
+              <th>Security</th>
+              <th>Score</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="routes-tbody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Fee Breakdown Chart ==================== -->
+  <section class="section" id="fee-breakdown">
+    <div class="container">
+      <h2 class="section__title">Fee Breakdown</h2>
+      <div class="chart-container">
+        <canvas id="fee-chart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Best Path Highlight ==================== -->
+  <section class="section" id="best-path">
+    <div class="container">
+      <h2 class="section__title">Recommended Path</h2>
+      <div class="best-path-card" id="best-path-card">
+        <div class="best-path-card__badge">Best Route</div>
+        <div class="best-path-card__header">
+          <span class="best-path-card__bridge" id="best-bridge">—</span>
+          <span class="best-path-card__score" id="best-score">—</span>
+        </div>
+        <div class="best-path-card__details">
+          <div class="best-path-card__detail">
+            <span class="best-path-card__detail-label">Fee</span>
+            <span class="best-path-card__detail-value" id="best-fee">—</span>
+          </div>
+          <div class="best-path-card__detail">
+            <span class="best-path-card__detail-label">Time</span>
+            <span class="best-path-card__detail-value" id="best-time">—</span>
+          </div>
+          <div class="best-path-card__detail">
+            <span class="best-path-card__detail-label">Security</span>
+            <span class="best-path-card__detail-value" id="best-security">—</span>
+          </div>
+        </div>
+        <div class="best-path-card__steps" id="best-steps">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer">
+    <div class="container">
+      <p class="footer__text">Data simulated for demonstration · Prices via CoinGecko</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

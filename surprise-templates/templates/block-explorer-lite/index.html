@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Block Explorer Lite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;600;700&family=Lexend:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle__icon theme-toggle__icon--light">☀</span>
+    <span class="theme-toggle__icon theme-toggle__icon--dark">☾</span>
+  </button>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar__logo">
+        <span class="sidebar__logo-icon">◈</span>
+        <span class="sidebar__logo-text">Explorer</span>
+      </div>
+      <nav class="sidebar__nav">
+        <button class="sidebar__link active" data-view="search">Search</button>
+        <button class="sidebar__link" data-view="blocks">Blocks</button>
+        <button class="sidebar__link" data-view="txs">Transactions</button>
+        <button class="sidebar__link" data-view="stats">Stats</button>
+      </nav>
+      <div class="sidebar__chain">
+        <select class="sidebar__chain-select" id="chainSelect">
+          <option value="ethereum">Ethereum</option>
+          <option value="polygon">Polygon</option>
+          <option value="solana">Solana</option>
+        </select>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="content">
+      <!-- Tool Hero + Search -->
+      <header class="hero">
+        <h1 class="hero__title">Block Explorer</h1>
+        <p class="hero__sub">Search addresses, transactions, and blocks</p>
+        <div class="search-bar">
+          <input class="search-bar__input" type="text" id="searchInput" placeholder="Search by address or tx hash..." />
+          <button class="search-bar__btn" id="searchBtn">Search</button>
+        </div>
+      </header>
+
+      <!-- Results Panel -->
+      <section class="results" id="results" style="display:none">
+        <div class="result-card" id="resultCard"></div>
+      </section>
+
+      <!-- Recent Transactions -->
+      <section class="recent-txs" id="recentTxs">
+        <h2 class="section-title">Recent Transactions</h2>
+        <div class="tx-list" id="txList"></div>
+      </section>
+
+      <!-- Transaction Detail Modal -->
+      <div class="detail-panel" id="detailPanel" style="display:none">
+        <div class="detail-panel__header">
+          <h3 class="detail-panel__title">Transaction Details</h3>
+          <button class="detail-panel__close" id="closeDetail">×</button>
+        </div>
+        <div class="detail-panel__body" id="detailBody"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

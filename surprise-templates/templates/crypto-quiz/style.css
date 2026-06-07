@@ -1,0 +1,301 @@
+/* ============================================================
+   Crypto Knowledge Quiz — style.css
+
+   Design Dials
+   ─────────────────────────────────────
+   Surface    : 3 — Tinted Light (pale lavender)
+   Accent     : #9333ea (purple-600)
+   Skeleton   : A11 Centered
+   Hover      : C20 scale(1.03)
+   Entrance   : D14 fade+scale(0.9)
+   Hero       : H15 Interactive
+   Type       : Fredoka (display) + Nunito (body) + Space Mono (data)
+   ─────────────────────────────────────
+
+   Scene: A playful lavender classroom with purple highlights,
+   like a gamified learning app on a pastel desk.
+   Dark mode: Deep plum with violet glow.
+   ============================================================ */
+
+:root {
+  --text-xs:  clamp(0.64rem, 0.61rem + 0.15vw, 0.72rem);
+  --text-sm:  clamp(0.80rem, 0.75rem + 0.24vw, 0.94rem);
+  --text-base: clamp(1.00rem, 0.91rem + 0.43vw, 1.25rem);
+  --text-lg:  clamp(1.25rem, 1.11rem + 0.68vw, 1.67rem);
+  --text-xl:  clamp(1.56rem, 1.36rem + 1.03vw, 2.22rem);
+  --text-2xl: clamp(1.95rem, 1.64rem + 1.56vw, 2.96rem);
+  --text-3xl: clamp(2.44rem, 1.97rem + 2.35vw, 3.95rem);
+}
+
+:root {
+  --space-3xs: clamp(0.25rem, 0.23rem + 0.11vw, 0.31rem);
+  --space-2xs: clamp(0.50rem, 0.46rem + 0.22vw, 0.63rem);
+  --space-xs:  clamp(0.75rem, 0.68rem + 0.33vw, 0.94rem);
+  --space-s:   clamp(1.00rem, 0.91rem + 0.43vw, 1.25rem);
+  --space-m:   clamp(1.50rem, 1.37rem + 0.65vw, 1.88rem);
+  --space-l:   clamp(2.00rem, 1.83rem + 0.87vw, 2.50rem);
+  --space-xl:  clamp(3.00rem, 2.74rem + 1.30vw, 3.75rem);
+  --space-2xl: clamp(4.00rem, 3.65rem + 1.74vw, 5.00rem);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f3f0f8;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e8e0f0;
+  --text-primary: #1e1028;
+  --text-secondary: #5a4870;
+  --text-muted: #9a8aaa;
+  --border: #d8cce8;
+  --accent: #9333ea;
+  --accent-hover: #7e22ce;
+  --accent-subtle: rgba(147, 51, 234, 0.08);
+  --correct: #16a34a;
+  --wrong: #dc2626;
+  --shadow-sm: 0 1px 3px rgba(30,16,40,0.06);
+  --shadow-md: 0 4px 16px rgba(30,16,40,0.10);
+  --shadow-lg: 0 8px 32px rgba(30,16,40,0.12);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #160e22;
+  --bg-secondary: #1e1430;
+  --bg-tertiary: #281e3a;
+  --text-primary: #e8e0f0;
+  --text-secondary: #b0a0c4;
+  --text-muted: #6a5a80;
+  --border: #342a48;
+  --accent: #a855f7;
+  --accent-hover: #c084fc;
+  --accent-subtle: rgba(168, 85, 247, 0.12);
+  --correct: #4ade80;
+  --wrong: #f87171;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.35);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.45);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle {
+  position: fixed; top: var(--space-s); right: var(--space-s); z-index: 100;
+  width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.theme-toggle__icon { font-size: 1.2rem; }
+[data-theme="light"] .theme-toggle__icon--dark { display: none; }
+[data-theme="dark"] .theme-toggle__icon--light { display: none; }
+
+.app {
+  width: 100%;
+  max-width: 580px;
+  padding: var(--space-m);
+}
+
+.screen { text-align: center; }
+
+/* ---------- Start Screen ---------- */
+.hero__emoji { font-size: 4rem; margin-bottom: var(--space-s); }
+.hero__title {
+  font-family: 'Fredoka', sans-serif;
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: var(--space-3xs);
+}
+.hero__sub {
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-m);
+}
+.hero__stats {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-l);
+  margin-bottom: var(--space-l);
+}
+.hero__stat { text-align: center; }
+.hero__stat-val {
+  display: block;
+  font-family: 'Space Mono', monospace;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.hero__stat-label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.btn {
+  padding: var(--space-xs) var(--space-xl);
+  border: none;
+  border-radius: 14px;
+  font-family: 'Fredoka', sans-serif;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.btn--start {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+}
+.btn--start:hover {
+  transform: scale(1.03);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ---------- Quiz Screen ---------- */
+.quiz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-m);
+}
+.quiz-header__progress { flex: 1; margin-right: var(--space-s); }
+.progress-bar {
+  height: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: var(--space-3xs);
+}
+.progress-bar__fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+.quiz-header__count {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.quiz-header__score {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.question-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: var(--space-l);
+  box-shadow: var(--shadow-md);
+}
+.question-card__text {
+  font-family: 'Fredoka', sans-serif;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-m);
+  line-height: 1.4;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+.option-btn {
+  width: 100%;
+  padding: var(--space-xs) var(--space-s);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Nunito', sans-serif;
+  font-size: var(--text-base);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+.option-btn:hover {
+  transform: scale(1.03);
+  border-color: var(--accent);
+}
+.option-btn--correct {
+  border-color: var(--correct);
+  background: rgba(22, 163, 74, 0.1);
+  color: var(--correct);
+}
+.option-btn--wrong {
+  border-color: var(--wrong);
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--wrong);
+}
+.option-btn--disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ---------- Result Screen ---------- */
+.result__emoji { font-size: 4rem; margin-bottom: var(--space-s); }
+.result__title {
+  font-family: 'Fredoka', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: var(--space-xs);
+}
+.result__score {
+  font-size: var(--text-lg);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-s);
+}
+.result__score span {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  color: var(--accent);
+}
+.result__grade {
+  display: inline-block;
+  font-family: 'Fredoka', sans-serif;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-subtle);
+  padding: var(--space-xs) var(--space-m);
+  border-radius: 16px;
+  margin-bottom: var(--space-s);
+}
+.result__msg {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-l);
+}
+
+@media (max-width: 500px) {
+  .app { padding: var(--space-s); }
+  .question-card { padding: var(--space-m); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

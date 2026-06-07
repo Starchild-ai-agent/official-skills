@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Unit Converter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle__icon theme-toggle__icon--light">☀</span>
+    <span class="theme-toggle__icon theme-toggle__icon--dark">☾</span>
+  </button>
+
+  <div class="app" id="app">
+    <!-- Hero -->
+    <header class="hero">
+      <div class="hero__badge">Productivity Tool</div>
+      <h1 class="hero__title">Unit Converter</h1>
+      <p class="hero__subtitle">Fast, precise conversions across 5 categories</p>
+    </header>
+
+    <!-- Category Tabs -->
+    <nav class="categories" id="categories">
+      <button class="cat-btn active" data-cat="length">Length</button>
+      <button class="cat-btn" data-cat="weight">Weight</button>
+      <button class="cat-btn" data-cat="temperature">Temperature</button>
+      <button class="cat-btn" data-cat="currency">Currency</button>
+      <button class="cat-btn" data-cat="data">Data</button>
+    </nav>
+
+    <!-- Converter Panel -->
+    <section class="converter">
+      <div class="converter__row">
+        <div class="converter__field">
+          <label class="converter__label" for="fromValue">From</label>
+          <input class="converter__input" type="number" id="fromValue" value="1" step="any" />
+          <select class="converter__select" id="fromUnit"></select>
+        </div>
+        <button class="converter__swap" id="swapBtn" aria-label="Swap units">⇄</button>
+        <div class="converter__field">
+          <label class="converter__label" for="toValue">To</label>
+          <input class="converter__input converter__input--result" type="text" id="toValue" readonly />
+          <select class="converter__select" id="toUnit"></select>
+        </div>
+      </div>
+
+      <!-- Quick Units -->
+      <div class="quick-units" id="quickUnits"></div>
+    </section>
+
+    <!-- History -->
+    <section class="history">
+      <div class="history__header">
+        <h2 class="history__title">Conversion History</h2>
+        <button class="history__clear" id="clearHistory">Clear</button>
+      </div>
+      <ul class="history__list" id="historyList">
+        <li class="history__empty">No conversions yet</li>
+      </ul>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

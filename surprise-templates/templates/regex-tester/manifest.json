@@ -1,0 +1,16 @@
+{
+  "id": "regex-tester",
+  "name": "Regex Pattern Tester",
+  "category": "B",
+  "matchSignals": ["github", "regex", "pattern", "testing", "developer"],
+  "description": "正则表达式测试器：实时匹配高亮、捕获组解析、常用模式速查、标志选择器",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["cyber-neon", "midnight-gold", "matrix-green"],
+  "features": ["dark-mode", "responsive", "real-time-matching", "clipboard-api"],
+  "catalogIds": ["B8"]
+}

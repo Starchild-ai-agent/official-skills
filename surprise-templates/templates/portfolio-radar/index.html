@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Portfolio risk analysis radar" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: Outfit + Source Sans 3 + Fira Code -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <!-- Sun icon (shown in dark mode) -->
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <!-- Moon icon (shown in light mode) -->
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Full-width Chart Hero (H11) ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="container">
+      <div class="hero__content scroll-reveal">
+        <h1 class="hero__title">
+          <span class="accent">{{APP_TITLE}}</span>
+        </h1>
+        <p class="hero__subtitle">Welcome back, {{USER_NAME}}</p>
+        <div class="hero__portfolio-value" id="hero-portfolio-value">--</div>
+        <span class="hero__portfolio-change" id="hero-portfolio-change">--</span>
+        <time class="hero__time" id="hero-time" datetime="">Loading...</time>
+      </div>
+      <!-- Radar chart as hero visual -->
+      <div class="hero__radar scroll-reveal" aria-label="Risk Radar">
+        <div id="radar-chart-area">
+          <!-- Populated by script.js -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== Dashboard — Centered Single Column ==================== -->
+  <main class="dashboard" role="main">
+    <div class="container">
+
+      <!-- Panel: Asset Allocation + Diversification side by side -->
+      <div class="two-col-row">
+        <section class="card scroll-reveal" aria-label="Asset Allocation">
+          <div class="card__header">
+            <h2 class="card__title">
+              <svg class="card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>
+              </svg>
+              Asset Allocation
+            </h2>
+            <span class="card__badge">Portfolio</span>
+          </div>
+          <div id="allocation-chart-area">
+            <!-- Populated by script.js -->
+          </div>
+        </section>
+
+        <section class="card scroll-reveal" aria-label="Diversification Score">
+          <div class="card__header">
+            <h2 class="card__title">
+              <svg class="card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/>
+              </svg>
+              Diversification
+            </h2>
+            <span class="card__badge">HHI Score</span>
+          </div>
+          <div class="diversity-score">
+            <div class="diversity-score__ring">
+              <svg viewBox="0 0 160 160">
+                <circle class="diversity-score__ring-bg" cx="80" cy="80" r="68" />
+                <circle class="diversity-score__ring-fg" id="score-ring-fg" cx="80" cy="80" r="68" />
+              </svg>
+              <div class="diversity-score__value" id="diversity-value" aria-live="polite">--</div>
+            </div>
+            <div class="diversity-score__label" id="diversity-label">Loading...</div>
+            <p class="diversity-score__desc" id="diversity-desc">Analyzing portfolio diversification...</p>
+            <div class="diversity-score__breakdown" id="diversity-breakdown">
+              <!-- Populated by script.js -->
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Panel: Holdings Detail (full width) -->
+      <section class="card scroll-reveal" aria-label="Holdings Detail">
+        <div class="card__header">
+          <h2 class="card__title">
+            <svg class="card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 3v18h18"/><path d="M7 16h2v-4H7z"/><path d="M11 16h2V8h-2z"/><path d="M15 16h2v-6h-2z"/>
+            </svg>
+            Holdings Detail
+          </h2>
+          <span class="card__badge">Live</span>
+        </div>
+        <div class="holdings-table" id="holdings-table">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+      <!-- Panel: Market Overview (full width) -->
+      <section class="card scroll-reveal" aria-label="Market Overview">
+        <div class="card__header">
+          <h2 class="card__title">
+            <svg class="card__title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+            </svg>
+            Market Overview
+          </h2>
+          <span class="card__badge">Global</span>
+        </div>
+        <div class="market-stats" id="market-stats">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer" role="contentinfo">
+    <div class="container">
+      <p class="footer__text">
+        Data by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a>
+        &middot; Portfolio analysis updates every 120s
+      </p>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script src="script.js"></script>
+
+</body>
+</html>

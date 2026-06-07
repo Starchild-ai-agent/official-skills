@@ -1,0 +1,17 @@
+{
+  "id": "kol-tracker",
+  "name": "KOL Tracker",
+  "category": "C",
+  "matchSignals": ["twitter", "kol", "influencer", "opinion-leader", "tracking"],
+  "description": "KOL 追踪器：追踪加密 KOL 的最新观点、情绪分布、代币提及频率排行、共识信号分析",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TWITTER_HANDLE": "Twitter 用户名（如 @username）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [],
+  "themes": ["cyber-neon", "midnight-gold", "deep-space"],
+  "features": ["dark-mode", "responsive", "charts", "doughnut-chart", "bar-chart"],
+  "catalogIds": ["C7"]
+}

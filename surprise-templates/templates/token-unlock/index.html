@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — Token unlock calendar & vesting schedule tracker" />
+  <title>{{APP_TITLE}}</title>
+
+  <!-- Fonts: General Sans (headings) + Switzer (body) + JetBrains Mono (data) -->
+  <link rel="preconnect" href="https://api.fontshare.com" />
+  <link
+    href="https://api.fontshare.com/v2/css?f[]=general-sans@400;500;600;700&f[]=switzer@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- GSAP + ScrollTrigger -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Noise texture overlay -->
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <!-- ==================== Theme Toggle ==================== -->
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== H13 Countdown Hero ==================== -->
+  <header class="hero" role="banner">
+    <div class="hero__bg-image" aria-hidden="true"></div>
+    <div class="hero__grid-dots" aria-hidden="true"></div>
+    <div class="container hero__container">
+      <div class="hero__content">
+        <div class="hero__status-bar">
+          <div class="hero__pulse">
+            <span class="hero__pulse-dot" aria-hidden="true"></span>
+            <span>TRACKING</span>
+          </div>
+          <time class="hero__time" id="hero-time" datetime="">Loading...</time>
+        </div>
+        <p class="hero__eyebrow">Welcome back, <strong>{{USER_NAME}}</strong></p>
+        <h1 class="hero__title">{{APP_TITLE}}</h1>
+
+        <!-- Countdown Hero: large countdown digits as core visual -->
+        <div class="hero__countdown-block" id="hero-countdown-block">
+          <span class="hero__countdown-label">Next Unlock In</span>
+          <div class="hero__countdown-digits">
+            <div class="hero__digit-group">
+              <span class="hero__digit" id="cd-days">--</span>
+              <span class="hero__digit-unit">DAYS</span>
+            </div>
+            <span class="hero__digit-sep">:</span>
+            <div class="hero__digit-group">
+              <span class="hero__digit" id="cd-hours">--</span>
+              <span class="hero__digit-unit">HRS</span>
+            </div>
+            <span class="hero__digit-sep">:</span>
+            <div class="hero__digit-group">
+              <span class="hero__digit" id="cd-mins">--</span>
+              <span class="hero__digit-unit">MIN</span>
+            </div>
+          </div>
+          <span class="hero__countdown-token" id="cd-token-name">--</span>
+        </div>
+
+        <div class="hero__kpi-row">
+          <div class="hero__kpi">
+            <span class="hero__kpi-label">THIS MONTH VALUE</span>
+            <span class="hero__kpi-value" id="hero-month-value">--</span>
+          </div>
+          <div class="hero__kpi">
+            <span class="hero__kpi-label">EVENTS TRACKED</span>
+            <span class="hero__kpi-value" id="hero-events-count">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== A13 Calendar Layout ==================== -->
+  <main class="dashboard" role="main">
+    <div class="container">
+
+      <!-- KPI Strip -->
+      <div class="kpi-strip" id="kpi-strip">
+        <!-- Populated by script.js -->
+      </div>
+
+      <!-- Calendar Section (core) -->
+      <section class="cal-card" aria-label="Unlock Calendar">
+        <div class="cal-card__header">
+          <h2 class="cal-card__title">
+            <svg class="cal-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Unlock Calendar
+          </h2>
+          <div class="cal-card__nav">
+            <button class="cal-card__nav-btn" id="cal-prev" aria-label="Previous month">&larr;</button>
+            <span class="cal-card__month" id="cal-month-label">--</span>
+            <button class="cal-card__nav-btn" id="cal-next" aria-label="Next month">&rarr;</button>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendar-grid">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+      <!-- Below Calendar: Two-column list -->
+      <div class="below-cal">
+        <!-- Upcoming Unlocks -->
+        <section class="cal-card" aria-label="Upcoming Unlocks">
+          <div class="cal-card__header">
+            <h2 class="cal-card__title">
+              <svg class="cal-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Upcoming Unlocks
+            </h2>
+            <span class="cal-card__badge cal-card__badge--live">
+              <span class="cal-card__badge-dot"></span>
+              LIVE
+            </span>
+          </div>
+          <div class="unlock-list" id="unlock-list">
+            <!-- Populated by script.js -->
+          </div>
+        </section>
+
+        <!-- Impact Assessment -->
+        <section class="cal-card" aria-label="Impact Assessment">
+          <div class="cal-card__header">
+            <h2 class="cal-card__title">
+              <svg class="cal-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              Impact Assessment
+            </h2>
+            <span class="cal-card__badge">Analysis</span>
+          </div>
+          <div class="impact-summary" id="impact-summary">
+            <!-- Populated by script.js -->
+          </div>
+        </section>
+      </div>
+
+      <!-- Post-Unlock Performance -->
+      <section class="cal-card" aria-label="Post-Unlock Performance">
+        <div class="cal-card__header">
+          <h2 class="cal-card__title">
+            <svg class="cal-card__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            Post-Unlock Performance
+          </h2>
+          <span class="cal-card__badge">Historical</span>
+        </div>
+        <div class="performance-list" id="performance-list">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==================== Footer ==================== -->
+  <footer class="footer" role="contentinfo">
+    <div class="container footer__container">
+      <p class="footer__text">
+        Prices by <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer">CoinGecko</a>
+        &bull; Unlock schedules are simulated for demonstration
+      </p>
+      <p class="footer__text footer__text--mono">Data refreshes every 60s</p>
+    </div>
+  </footer>
+
+  <!-- Script -->
+  <script src="script.js"></script>
+</body>
+</html>

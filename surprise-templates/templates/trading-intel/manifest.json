@@ -1,0 +1,21 @@
+{
+  "id": "trading-intel",
+  "name": "Trading Intelligence Dashboard",
+  "category": "A",
+  "matchSignals": ["wallet", "defi", "trading", "crypto", "token"],
+  "description": "实时交易情报仪表盘：价格追踪、资金费率、市场情绪、Polymarket 预测",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "WALLET_ADDRESS": "钱包地址（可选）",
+    "TRACKED_TOKENS": "追踪的代币列表（JSON 数组，如 [\"bitcoin\",\"ethereum\",\"solana\"]）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"},
+    {"name": "Alternative.me Fear & Greed", "endpoint": "api.alternative.me/fng", "cors": true}
+  ],
+  "themes": ["cyber-neon", "midnight-gold", "deep-space", "matrix-green", "electric-blue"],
+  "features": ["dark-mode", "responsive", "charts", "real-time-updates"],
+  "catalogIds": ["A11", "E7"]
+}

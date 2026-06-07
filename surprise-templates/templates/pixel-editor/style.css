@@ -1,0 +1,243 @@
+/* ============================================================
+   Pixel Art Editor — style.css
+
+   Design Dials
+   ─────────────────────────────────────
+   Surface    : 2 — Pure White
+   Accent     : #e11d48 (rose-600)
+   Skeleton   : A3 Split Screen
+   Hover      : C9 box-shadow
+   Entrance   : D1 translateY(40px)
+   Hero       : H7 Minimal
+   Type       : Clash Display (display) + Figtree (body) + Space Mono (data)
+   ─────────────────────────────────────
+
+   Scene: A clean white studio with rose-red accents,
+   like a designer's canvas on a bright desk.
+   Dark mode: Dark atelier with warm rose glow.
+   ============================================================ */
+
+:root {
+  --text-xs:  clamp(0.64rem, 0.61rem + 0.15vw, 0.72rem);
+  --text-sm:  clamp(0.80rem, 0.75rem + 0.24vw, 0.94rem);
+  --text-base: clamp(1.00rem, 0.91rem + 0.43vw, 1.25rem);
+  --text-lg:  clamp(1.25rem, 1.11rem + 0.68vw, 1.67rem);
+  --text-xl:  clamp(1.56rem, 1.36rem + 1.03vw, 2.22rem);
+}
+
+:root {
+  --space-3xs: clamp(0.25rem, 0.23rem + 0.11vw, 0.31rem);
+  --space-2xs: clamp(0.50rem, 0.46rem + 0.22vw, 0.63rem);
+  --space-xs:  clamp(0.75rem, 0.68rem + 0.33vw, 0.94rem);
+  --space-s:   clamp(1.00rem, 0.91rem + 0.43vw, 1.25rem);
+  --space-m:   clamp(1.50rem, 1.37rem + 0.65vw, 1.88rem);
+  --space-l:   clamp(2.00rem, 1.83rem + 0.87vw, 2.50rem);
+}
+
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f8f8;
+  --bg-tertiary: #f0f0f0;
+  --text-primary: #1a1a1a;
+  --text-secondary: #525252;
+  --text-muted: #a3a3a3;
+  --border: #e5e5e5;
+  --accent: #e11d48;
+  --accent-hover: #be123c;
+  --accent-subtle: rgba(225, 29, 72, 0.08);
+  --canvas-bg: #f0f0f0;
+  --grid-line: #ddd;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-hover: 0 6px 20px rgba(225,29,72,0.15);
+}
+
+[data-theme="dark"] {
+  --bg-primary: #141414;
+  --bg-secondary: #1c1c1c;
+  --bg-tertiary: #242424;
+  --text-primary: #e5e5e5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #636363;
+  --border: #2a2a2a;
+  --accent: #fb7185;
+  --accent-hover: #f43f5e;
+  --accent-subtle: rgba(251, 113, 133, 0.10);
+  --canvas-bg: #1a1a1a;
+  --grid-line: #333;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.25);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.35);
+  --shadow-hover: 0 6px 20px rgba(251,113,133,0.2);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Figtree', sans-serif;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.theme-toggle {
+  position: fixed; top: var(--space-s); right: var(--space-s); z-index: 100;
+  width: 44px; height: 44px; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg-secondary); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.theme-toggle__icon { font-size: 1.2rem; }
+[data-theme="light"] .theme-toggle__icon--dark { display: none; }
+[data-theme="dark"] .theme-toggle__icon--light { display: none; }
+
+/* ---------- Layout ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100dvh;
+}
+
+/* ---------- Toolbar ---------- */
+.toolbar {
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  padding: var(--space-m) var(--space-s);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-m);
+  overflow-y: auto;
+}
+.toolbar__title {
+  font-family: 'Clash Display', sans-serif;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.toolbar__section { display: flex; flex-direction: column; gap: var(--space-2xs); }
+.toolbar__label {
+  font-family: 'Space Mono', monospace;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.toolbar__tools,
+.toolbar__sizes {
+  display: flex; gap: var(--space-3xs);
+}
+.tool-btn,
+.size-btn {
+  padding: var(--space-2xs) var(--space-xs);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.tool-btn:hover,
+.size-btn:hover {
+  box-shadow: var(--shadow-md);
+}
+.tool-btn.active,
+.size-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.toolbar__color {
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  background: none;
+  padding: 2px;
+}
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 3px;
+}
+.palette__swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.palette__swatch:hover {
+  box-shadow: var(--shadow-hover);
+  transform: scale(1.1);
+}
+
+.toolbar__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+.action-btn {
+  padding: var(--space-2xs) var(--space-xs);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: 'Figtree', sans-serif;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+.action-btn:hover { box-shadow: var(--shadow-md); }
+.action-btn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* ---------- Canvas Area ---------- */
+.canvas-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-m);
+}
+.canvas-wrap {
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: var(--space-xs);
+  box-shadow: var(--shadow-md);
+}
+#pixelCanvas {
+  display: block;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-xs);
+    gap: var(--space-xs);
+  }
+  .toolbar__section { flex: 1; min-width: 120px; }
+  .toolbar__actions { flex-direction: row; flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

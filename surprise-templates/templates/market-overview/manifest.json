@@ -1,0 +1,19 @@
+{
+  "id": "market-overview",
+  "name": "Market Overview Dashboard",
+  "category": "D",
+  "matchSignals": ["market", "overview", "crypto", "stocks", "forex"],
+  "description": "市场概览仪表盘：加密市场数据、全球指数、恐惧贪婪指数、热门代币排行",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3", "cors": true, "rateLimit": "30/min"},
+    {"name": "Alternative.me Fear & Greed", "endpoint": "api.alternative.me/fng", "cors": true}
+  ],
+  "themes": ["midnight-gold", "deep-space", "matrix-green"],
+  "features": ["dark-mode", "responsive", "real-time-updates", "charts"],
+  "catalogIds": ["D11"]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "dca-calculator",
+  "name": "DCA Calculator",
+  "category": "D",
+  "matchSignals": ["calculator", "dca", "investment", "strategy", "crypto"],
+  "description": "定投计算器：模拟 DCA 策略回测，对比一次性投入，可视化收益曲线与明细表格",
+  "placeholders": {
+    "APP_TITLE": "应用标题",
+    "USER_NAME": "用户名",
+    "TRACKED_TOKENS": "追踪的代币列表（逗号分隔）",
+    "HERO_IMAGE_URL": "主视觉图片 URL（可选，回退到 CSS 渐变）"
+  },
+  "apis": [
+    {"name": "CoinGecko", "endpoint": "api.coingecko.com/api/v3/coins/{id}/market_chart", "cors": true, "rateLimit": "30/min"}
+  ],
+  "themes": ["forest-dawn", "warm-sand", "olive-grove"],
+  "features": ["dark-mode", "responsive", "charts", "form-validation"],
+  "catalogIds": ["D12"]
+}

@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="{{APP_TITLE}} — On-chain activity timeline and wallet history" />
+  <title>{{APP_TITLE}}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="noise-overlay" aria-hidden="true"></div>
+
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light/dark theme">
+    <svg class="theme-toggle__icon theme-toggle__sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="M4.22 4.22l1.42 1.42"/><path d="M18.36 18.36l1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="M4.22 19.78l1.42-1.42"/><path d="M18.36 5.64l1.42-1.42"/>
+    </svg>
+    <svg class="theme-toggle__icon theme-toggle__moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  </button>
+
+  <!-- ==================== Minimal Hero (H7) ==================== -->
+  <header class="minimal-hero" role="banner">
+    <div class="container">
+      <div class="minimal-hero__row">
+        <div class="minimal-hero__text">
+          <h1 class="minimal-hero__title">{{APP_TITLE}}</h1>
+          <p class="minimal-hero__subtitle">Activity log for <strong>{{USER_NAME}}</strong></p>
+        </div>
+        <div class="minimal-hero__stats">
+          <div class="minimal-hero__stat">
+            <span class="minimal-hero__stat-value" id="hero-wallet-age">--</span>
+            <span class="minimal-hero__stat-label">Wallet Age</span>
+          </div>
+          <div class="minimal-hero__stat-divider" aria-hidden="true"></div>
+          <div class="minimal-hero__stat">
+            <span class="minimal-hero__stat-value" id="hero-total-txns">--</span>
+            <span class="minimal-hero__stat-label">Total Txns</span>
+          </div>
+          <div class="minimal-hero__stat-divider" aria-hidden="true"></div>
+          <div class="minimal-hero__stat">
+            <span class="minimal-hero__stat-value" id="hero-active-days">--</span>
+            <span class="minimal-hero__stat-label">Active Days</span>
+          </div>
+          <div class="minimal-hero__stat-divider" aria-hidden="true"></div>
+          <div class="minimal-hero__stat">
+            <time class="minimal-hero__stat-value minimal-hero__stat-value--mono" id="hero-time" datetime="">--</time>
+            <span class="minimal-hero__stat-label">Current Time</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="timeline-main" role="main">
+    <div class="container">
+
+      <!-- Vertical Timeline with center axis -->
+      <section class="timeline-section" aria-label="Activity Timeline">
+        <div class="timeline-section__header">
+          <h2 class="timeline-section__title">Activity Timeline</h2>
+          <p class="timeline-section__desc">Chronological record of on-chain interactions</p>
+        </div>
+        <div class="vertical-timeline" id="timeline">
+          <div class="vertical-timeline__axis" aria-hidden="true"></div>
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+      <!-- Activity Distribution + Stats -->
+      <div class="timeline-charts-row">
+        <section class="event-card event-card--chart" aria-label="Activity Breakdown">
+          <div class="event-card__header">
+            <h2 class="event-card__title">Activity Breakdown</h2>
+            <span class="event-card__badge">Distribution</span>
+          </div>
+          <div class="chart-row">
+            <div class="chart-wrap chart-wrap--doughnut" style="height:300px;position:relative;overflow:hidden;">
+              <canvas id="distribution-chart"></canvas>
+            </div>
+            <div class="stats-sidebar" id="stats-sidebar"></div>
+          </div>
+        </section>
+
+        <section class="event-card event-card--chart" aria-label="Activity Heatmap">
+          <div class="event-card__header">
+            <h2 class="event-card__title">Activity Heatmap</h2>
+            <span class="event-card__badge">12 Months</span>
+          </div>
+          <div class="chart-wrap chart-wrap--heatmap">
+            <canvas id="heatmap-canvas" width="900" height="160"></canvas>
+          </div>
+        </section>
+      </div>
+
+      <!-- Milestones -->
+      <section class="timeline-section" aria-label="Milestones">
+        <div class="timeline-section__header">
+          <h2 class="timeline-section__title">Milestones</h2>
+          <p class="timeline-section__desc">Key moments in your on-chain journey</p>
+        </div>
+        <div class="milestones-grid" id="milestones-grid">
+          <!-- Populated by script.js -->
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <p class="site-footer__text">Data: CoinGecko + simulated on-chain activity &middot; Not financial advice</p>
+      <p class="site-footer__text site-footer__text--dim">Built with Chart.js &amp; GSAP</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASCII Art Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Lexend:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <span class="theme-toggle__icon theme-toggle__icon--light">☀</span>
+    <span class="theme-toggle__icon theme-toggle__icon--dark">☾</span>
+  </button>
+
+  <div class="app">
+    <!-- Hero -->
+    <header class="hero">
+      <div class="hero__badge">Text Tool</div>
+      <h1 class="hero__title">ASCII Art</h1>
+      <p class="hero__sub">Transform text into ASCII art</p>
+    </header>
+
+    <!-- Controls -->
+    <section class="controls">
+      <div class="controls__row">
+        <div class="controls__field controls__field--wide">
+          <label class="controls__label" for="textInput">Text</label>
+          <input class="controls__input" type="text" id="textInput" value="Hello" maxlength="20" placeholder="Type something..." />
+        </div>
+        <div class="controls__field">
+          <label class="controls__label" for="fontSelect">Font</label>
+          <select class="controls__select" id="fontSelect">
+            <option value="banner">Banner</option>
+            <option value="standard" selected>Standard</option>
+            <option value="big">Big</option>
+            <option value="small">Small</option>
+            <option value="block">Block</option>
+          </select>
+        </div>
+        <div class="controls__field">
+          <label class="controls__label" for="widthInput">Width</label>
+          <input class="controls__input controls__input--small" type="number" id="widthInput" value="80" min="40" max="200" step="10" />
+        </div>
+      </div>
+    </section>
+
+    <!-- Preview -->
+    <section class="preview">
+      <div class="preview__header">
+        <h2 class="preview__title">Preview</h2>
+        <button class="preview__copy" id="copyBtn">Copy</button>
+      </div>
+      <pre class="preview__output" id="output"></pre>
+    </section>
+
+    <!-- Gallery -->
+    <section class="gallery">
+      <h2 class="section-title">Quick Examples</h2>
+      <div class="gallery__grid" id="gallery"></div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

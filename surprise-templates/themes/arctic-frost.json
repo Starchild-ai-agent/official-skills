@@ -1,0 +1,24 @@
+{
+  "id": "arctic-frost",
+  "name": "Arctic Frost",
+  "preview": "冰川白与霜蓝银的极地清冽，北极晨光下的冻土纯净（浅色主题）",
+  "colors": {
+    "--bg-primary": "#f0f4f8",
+    "--bg-secondary": "#e2e8f0",
+    "--bg-card": "rgba(255, 255, 255, 0.85)",
+    "--text-primary": "#1a2332",
+    "--text-secondary": "#5a6a7e",
+    "--accent-1": "#0ea5e9",
+    "--accent-2": "#94a3b8",
+    "--accent-3": "#38bdf8",
+    "--border": "rgba(14, 165, 233, 0.15)",
+    "--glow": "0 0 16px rgba(14, 165, 233, 0.12), 0 0 32px rgba(14, 165, 233, 0.04)",
+    "--gradient-hero": "linear-gradient(180deg, #f0f4f8 0%, #e0eaf4 50%, #d5e3f0 100%)"
+  },
+  "fonts": {
+    "heading": "'Geist', sans-serif",
+    "body": "'Manrope', sans-serif",
+    "mono": "'IBM Plex Mono', monospace"
+  },
+  "chartColors": ["#0ea5e9", "#94a3b8", "#38bdf8", "#0284c7", "#64748b", "#7dd3fc"]
+}

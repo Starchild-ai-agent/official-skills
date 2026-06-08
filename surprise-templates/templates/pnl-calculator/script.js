@@ -66,7 +66,7 @@
   }
 
   /* ---------- CoinGecko API ---------- */
-  const API_BASE = 'https://pro-api.coingecko.com/api/v3';
+  const API_BASE = 'https://api.coingecko.com/api/v3';
   const priceCache = {};
 
   async function fetchCurrentPrice(coinId) {

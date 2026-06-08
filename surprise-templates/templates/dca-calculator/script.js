@@ -61,7 +61,7 @@
   }
 
   /* ---------- CoinGecko API ---------- */
-  const API_BASE = 'https://pro-api.coingecko.com/api/v3';
+  const API_BASE = 'https://api.coingecko.com/api/v3';
 
   async function fetchMarketChart(coinId, fromTs, toTs) {
     const url = `${API_BASE}/coins/${coinId}/market_chart/range?vs_currency=usd&from=${fromTs}&to=${toTs}`;

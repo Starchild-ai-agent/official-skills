@@ -16,8 +16,8 @@
   };
 
   const API = {
-    trending: 'https://pro-api.coingecko.com/api/v3/search/trending',
-    memeMarkets: 'https://pro-api.coingecko.com/api/v3/coins/markets?vs_currency=usd&category=meme-token&order=market_cap_desc&per_page=15&page=1&sparkline=false',
+    trending: 'https://api.coingecko.com/api/v3/search/trending',
+    memeMarkets: 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&category=meme-token&order=market_cap_desc&per_page=15&page=1&sparkline=false',
   };
 
   const MEME_EMOJIS = ['🐕', '🐸', '🦊', '🐱', '🚀', '🌙', '💎', '🔥', '🤡', '👻', '🦍', '🐻'];

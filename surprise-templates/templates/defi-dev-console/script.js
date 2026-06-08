@@ -24,7 +24,7 @@
   const API = {
     defiTvl: () => 'https://api.llama.fi/protocols',
     ethPrice: () =>
-      'https://pro-api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true',
+      'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true',
   };
 
   /* ---------- Mock Data ---------- */

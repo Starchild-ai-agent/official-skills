@@ -207,7 +207,7 @@
   async function validatePrices() {
     try {
       const tokens = ['pepe', 'arbitrum', 'worldcoin', 'ondo-finance', 'starknet'];
-      const res = await fetch(`https://pro-api.coingecko.com/api/v3/simple/price?ids=${tokens.join(',')}&vs_currencies=usd&include_24hr_change=true`);
+      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${tokens.join(',')}&vs_currencies=usd&include_24hr_change=true`);
       if (!res.ok) return;
       const data = await res.json();
 

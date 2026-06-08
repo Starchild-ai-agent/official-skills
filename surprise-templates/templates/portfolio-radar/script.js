@@ -29,9 +29,9 @@
 
   const API = {
     prices: (ids) =>
-      `https://pro-api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`,
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=false&price_change_percentage=24h`,
     global: () =>
-      'https://pro-api.coingecko.com/api/v3/global',
+      'https://api.coingecko.com/api/v3/global',
   };
 
   /* SVG icons (Lucide) */

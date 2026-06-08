@@ -12,7 +12,7 @@
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const CONFIG = { maxRetries: 2, retryBaseDelay: 1500 };
-  const API = { ethPrice: 'https://pro-api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd' };
+  const API = { ethPrice: 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd' };
 
   let ethPriceUsd = 3450;
 

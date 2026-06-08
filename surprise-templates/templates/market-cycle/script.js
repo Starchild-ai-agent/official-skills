@@ -32,8 +32,8 @@
   };
 
   const API = {
-    btcPrice: () => 'https://pro-api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily',
-    btcCurrent: () => 'https://pro-api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_market_cap=true',
+    btcPrice: () => 'https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily',
+    btcCurrent: () => 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_market_cap=true',
     fearGreed: () => 'https://api.alternative.me/fng/?limit=1',
   };
 

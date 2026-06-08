@@ -35,7 +35,7 @@
   };
 
   const API = {
-    prices: (ids) => `https://pro-api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
+    prices: (ids) => `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
   };
 
   /* ---------- State ---------- */

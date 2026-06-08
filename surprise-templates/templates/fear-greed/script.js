@@ -24,9 +24,9 @@
     fng: (limit) =>
       `https://api.alternative.me/fng/?limit=${limit}&format=json`,
     globalMarket: () =>
-      'https://pro-api.coingecko.com/api/v3/global',
+      'https://api.coingecko.com/api/v3/global',
     coinPrice: (ids) =>
-      `https://pro-api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true`,
+      `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true`,
   };
 
   /* ---------- Lucide SVG Icons ---------- */

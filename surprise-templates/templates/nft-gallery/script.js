@@ -16,7 +16,7 @@
   };
 
   const API = {
-    ethPrice: 'https://pro-api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd',
+    ethPrice: 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd',
   };
 
   let ethPriceUsd = 3450;

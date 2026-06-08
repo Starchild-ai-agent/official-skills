@@ -93,7 +93,7 @@
   /* ---------- Fetch Prices ---------- */
   async function fetchPrices() {
     try {
-      const res = await fetch('https://pro-api.coingecko.com/api/v3/simple/price?ids=ethereum,solana,chainlink,uniswap,aave&vs_currencies=usd&include_24hr_change=true');
+      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,solana,chainlink,uniswap,aave&vs_currencies=usd&include_24hr_change=true');
       if (!res.ok) throw new Error('CoinGecko error');
       const data = await res.json();
       renderPrices(data);

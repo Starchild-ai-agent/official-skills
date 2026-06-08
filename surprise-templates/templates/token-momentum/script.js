@@ -165,7 +165,7 @@
 
     for (const id of CONFIG.trackedTokens) {
       try {
-        const url = `https://pro-api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=30&interval=daily`;
+        const url = `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=30&interval=daily`;
         const data = await fetchWithRetry(url);
         const prices = data.prices.map((p) => p[1]);
         const labels = data.prices.map((p) => new Date(p[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));

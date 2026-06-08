@@ -23,9 +23,9 @@
 
   const API = {
     solPrice: () =>
-      'https://pro-api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true',
+      'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true',
     solEcosystem: () =>
-      'https://pro-api.coingecko.com/api/v3/coins/markets?vs_currency=usd&category=solana-ecosystem&order=market_cap_desc&per_page=10&sparkline=false&price_change_percentage=24h',
+      'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&category=solana-ecosystem&order=market_cap_desc&per_page=10&sparkline=false&price_change_percentage=24h',
   };
 
   /* ---------- Mock Data ---------- */

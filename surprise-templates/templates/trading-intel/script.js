@@ -38,11 +38,11 @@
 
   const API = {
     prices: (ids) =>
-      `https://pro-api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=true&price_change_percentage=24h,7d`,
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&sparkline=true&price_change_percentage=24h,7d`,
     trending: () =>
-      'https://pro-api.coingecko.com/api/v3/search/trending',
+      'https://api.coingecko.com/api/v3/search/trending',
     global: () =>
-      'https://pro-api.coingecko.com/api/v3/global',
+      'https://api.coingecko.com/api/v3/global',
     fearGreed: () =>
       'https://api.alternative.me/fng/?limit=1',
   };

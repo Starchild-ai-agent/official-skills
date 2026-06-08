@@ -7,7 +7,7 @@
   'use strict';
 
   /* ---------- Constants ---------- */
-  const COINGECKO_BASE = 'https://pro-api.coingecko.com/api/v3';
+  const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
   const FNG_API = 'https://api.alternative.me/fng/?limit=1';
   const REFRESH_INTERVAL = 60000; // 60s
   const TRACKED_COINS = ['bitcoin', 'ethereum', 'solana', 'binancecoin', 'ripple', 'cardano', 'dogecoin', 'avalanche-2'];

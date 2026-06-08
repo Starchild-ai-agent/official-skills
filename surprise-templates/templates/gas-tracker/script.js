@@ -38,7 +38,7 @@
     gasOracle: () =>
       'https://api.etherscan.io/api?module=gastracker&action=gasoracle',
     ethPrice: () =>
-      'https://pro-api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currency=usd',
+      'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currency=usd',
   };
 
   /* Common transaction gas limits */

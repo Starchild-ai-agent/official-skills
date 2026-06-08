@@ -56,7 +56,7 @@
   }
 
   /* ---------- CoinGecko API ---------- */
-  const API_BASE = 'https://pro-api.coingecko.com/api/v3';
+  const API_BASE = 'https://api.coingecko.com/api/v3';
 
   async function fetchCoinData(coinId) {
     const res = await fetch(`${API_BASE}/coins/${coinId}?localization=false&tickers=false&community_data=true&developer_data=false&sparkline=false`);

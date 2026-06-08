@@ -1,6 +1,6 @@
 ---
 name: surprise-templates
-version: 1.2.0
+version: 1.2.1
 description: |
   Pre-built, high-quality HTML/CSS/JS templates for the Surprise Me feature.
   Agent selects a template based on user research signals, copies it to the output directory,

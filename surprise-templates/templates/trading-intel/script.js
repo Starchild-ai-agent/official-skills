@@ -699,7 +699,7 @@
               <div class="trending-item__name">${coin.name}</div>
               <div class="trending-item__symbol">${coin.symbol}</div>
             </div>
-            <div class="trending-item__price">${coin.data?.price ? formatUSD(parseFloat(coin.data.price.replace(/[$,]/g, ''))) : '--'}</div>
+            <div class="trending-item__price">${coin.data?.price != null ? formatUSD(parseFloat(coin.data.price)) : '--'}</div>
             <div class="trending-item__change ${getTextClass(priceChange)}">${priceChange != null ? formatPercent(priceChange) : '--'}</div>
           </div>`;
       });

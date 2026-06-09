@@ -512,6 +512,12 @@
       "description": "AI video generation: text-to-video, image-to-video, video-to-video, model selection.\n\nUse when generating a short video clip from a prompt or reference (e.g. 5s clip of a cat in rain, animate this photo, restyle this video)."
     },
     {
+      "name": "video-analysis",
+      "path": "video-analysis/SKILL.md",
+      "version": "1.1.0",
+      "description": "Video understanding for any model — native passthrough for small files,\nframe extraction + audio transcription fallback for large files.\n\nUse when the user asks to analyze, describe, or understand a video file\n(e.g. \"what's in this video\", \"summarize this clip\", \"transcribe this recording\")."
+    },
+    {
       "name": "wallet",
       "path": "wallet/SKILL.md",
       "version": "3.5.1",

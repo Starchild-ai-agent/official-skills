@@ -1,6 +1,6 @@
 ---
 name: video-analysis
-version: 1.0.0
+version: 1.1.0
 description: |
   Video understanding for any model — native passthrough for small files,
   frame extraction + audio transcription fallback for large files.
@@ -26,7 +26,7 @@ Analyze video files using either **native model understanding** or **frame extra
 analyze_video(path, question)
       │
       ├─ file_size ≤ threshold (default 20MB)
-      │     → Send video to a supports_video model (e.g. Gemini 3.5 Flash)
+      │     → Send video to a supports_video model (default Gemini 3.1 Flash Lite)
       │     → Model sees full video natively (best quality)
       │
       └─ file_size > threshold
@@ -38,11 +38,38 @@ analyze_video(path, question)
 
 ## Quick Start
 
-```python
-exec(open('skills/video-analysis/analyze.py').read())
+⚠️ **Invocation — do NOT use dotted imports.** The directory name contains a
+hyphen (`video-analysis`), so `from skills.video-analysis.exports import ...`
+is a **Python syntax error** (`-` is parsed as minus). This is true for every
+hyphenated skill, not just this one. Use one of the two patterns below.
 
+**Pattern A — from workspace root (recommended for scripts):**
+```bash
+cd /data/workspace/skills/video-analysis && \
+  python3 -c "from exports import analyze_video; \
+    import json; \
+    print(json.dumps(analyze_video('output/videos/clip.mp4', \
+      question='What happens in this video?'), ensure_ascii=False))"
+```
+Note: pass the video path **workspace-relative** (analyze.py resolves it
+against `WORKSPACE_DIR`), even though you cd into the skill dir.
+
+**Pattern B — inside a starchild-clawd script:**
+```python
+from core.skill_tools import video_analysis
+result = video_analysis.analyze_video("output/videos/clip.mp4",
+                                      question="What happens in this video?")
+```
+
+❌ **Do NOT** `exec(open('skills/video-analysis/analyze.py').read())` — analyze.py
+uses `__file__` at import time, which is undefined under `exec`, so it crashes.
+Load it by file path with `importlib.util.spec_from_file_location` if you must
+avoid both patterns above.
+
+```python
+# result keys (same for both patterns):
 # Analyze a video — auto-selects native or extraction mode
-result = analyze_video("output/videos/clip.mp4", question="What happens in this video?")
+# result = analyze_video("output/videos/clip.mp4", question="What happens in this video?")
 
 # result keys:
 #   success: bool
@@ -81,15 +108,22 @@ info = video_analysis.get_video_info("output/videos/my_video.mp4")
 For videos under the size threshold, the skill sends the full video to a model
 that supports native video input. The model sees every frame and hears the audio.
 
-**Default model:** `google/gemini-3.5-flash` — best balance of quality and cost.
+**Default model:** `google/gemini-3.1-flash-lite` — best price/quality for video.
 
-**Cost reference:**
+**Model benchmark** (6MB clip, vs `gemini-3.1-pro-preview` baseline):
 
-| Video Size | Approximate Cost (Gemini Flash) |
-|------------|-------------------------------|
-| 5 MB       | ~$0.02                        |
-| 10 MB      | ~$0.04                        |
-| 20 MB      | ~$0.07                        |
+| Model                       | Tier   | Cost     | Time  | Accuracy | Notes                          |
+|-----------------------------|--------|----------|-------|----------|--------------------------------|
+| google/gemini-3.1-flash-lite | budget | ~$0.0014 | 8.1s  | ~88%     | ⭐ Default — cheapest + fastest |
+| google/gemini-3.5-flash     | std    | ~$0.0152 | 11.8s | ~85%     | More detail, higher cost       |
+| qwen/qwen3.6-plus           | budget | ~$0.0058 | 44.2s | ~95%     | Accurate but slow              |
+| qwen/qwen3.6-flash          | budget | ~$0.0027 | 16.6s | ~80%     | Misreads subjects sometimes    |
+| google/gemini-3.1-pro-preview | std  | ~$0.0199 | 19.7s | 100%     | Baseline (best, most expensive)|
+
+flash-lite identifies the full scene, action sequence, and transitions
+correctly at ~14x lower cost than the Pro baseline. For maximum accuracy
+(exact character names, fine detail), switch `default_model` to
+`gemini-3.1-pro-preview` or `gemini-3.5-flash` in `config.yaml`.
 
 ## Extraction Mode (large videos)
 
@@ -109,7 +143,7 @@ Edit `skills/video-analysis/config.yaml` to customize:
 
 ```yaml
 # Model for native video understanding
-default_model: google/gemini-3.5-flash
+default_model: google/gemini-3.1-flash-lite
 
 # Size threshold: native (≤) vs extraction (>)
 # Set to 0 → always extraction. Set to 100 → always native.
@@ -127,7 +161,8 @@ extraction:
 
 | Model                         | Alias    | Tier     | Notes              |
 |-------------------------------|----------|----------|--------------------|
-| google/gemini-3.5-flash       | gemini35 | standard | ⭐ Default, best value |
+| google/gemini-3.1-flash-lite  | flash31  | budget   | ⭐ Default, best price/quality |
+| google/gemini-3.5-flash       | gemini35 | standard | More detail, higher cost |
 | google/gemini-3.1-flash-lite  | flash31  | budget   | Cheapest option    |
 | google/gemini-3.1-pro-preview | gemini   | standard | Highest quality    |
 | qwen/qwen3.6-flash            | qwenf    | budget   | Good alternative   |

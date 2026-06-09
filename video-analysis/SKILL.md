@@ -123,7 +123,7 @@ that supports native video input. The model sees every frame and hears the audio
 flash-lite identifies the full scene, action sequence, and transitions
 correctly at ~14x lower cost than the Pro baseline. For maximum accuracy
 (exact character names, fine detail), switch `default_model` to
-`gemini-3.1-pro-preview` or `gemini-3.5-flash` in `config.yaml`.
+`gemini-3.1-pro-preview` or `gemini-3.5-flash` in `config/video-analysis.yaml`.
 
 ## Extraction Mode (large videos)
 
@@ -139,7 +139,15 @@ to the current chat model as image attachments + context text.
 
 ## Configuration
 
-Edit `skills/video-analysis/config.yaml` to customize:
+Edit **`config/video-analysis.yaml`** (in the workspace) to customize. This file
+is created automatically on first use, only needs the keys you want to override,
+and **survives skill updates**.
+
+> Do NOT edit `skills/video-analysis/config.yaml` — that's the factory default
+> and is overwritten on every skill auto-update. The user file overlays it.
+
+Both the standalone skill and the chat "send a video" flow read this same config,
+so one edit changes the model everywhere. Available keys:
 
 ```yaml
 # Model for native video understanding
@@ -193,7 +201,7 @@ via Phase 1 (base64 content block injection) — no need for this skill.
 | Problem | Fix |
 |---------|-----|
 | "File not found" | Check path is workspace-relative (e.g. `output/videos/x.mp4`) |
-| Native mode returns error | Check `default_model` in config.yaml is valid |
+| Native mode returns error | Check `default_model` in config/video-analysis.yaml is valid |
 | No audio transcription | Video may have no audio track; check `has_audio` in result |
-| Too few frames extracted | Lower `scene_threshold` in config.yaml (e.g. 0.15) |
+| Too few frames extracted | Lower `scene_threshold` in config/video-analysis.yaml (e.g. 0.15) |
 | Too many frames / high cost | Reduce `max_frames` or raise `scene_threshold` |

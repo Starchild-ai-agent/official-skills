@@ -15,15 +15,85 @@ import time
 import yaml
 
 SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(SKILL_DIR, "config.yaml")
 WORKSPACE = os.environ.get("WORKSPACE_DIR", "/data/workspace")
+
+# Factory defaults ship inside the skill folder. They are OVERWRITTEN on every
+# skill auto-update, so users must NOT edit this file — it is a template only.
+SKILL_DEFAULT_CONFIG = os.path.join(SKILL_DIR, "config.yaml")
+
+# User config lives in the workspace and PERSISTS across skill updates. It only
+# needs the keys the user wants to override; everything else falls back to the
+# shipped defaults. This is the file users should edit.
+USER_CONFIG_PATH = os.path.join(WORKSPACE, "config", "video-analysis.yaml")
 
 # ── helpers ──────────────────────────────────────────────────────────
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    """Recursively overlay `override` onto `base` (override wins)."""
+    out = dict(base)
+    for k, v in (override or {}).items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)
+        else:
+            out[k] = v
+    return out
+
+
 def _load_config() -> dict:
-    """Load config.yaml (hot-reload on every call)."""
-    with open(CONFIG_PATH) as f:
-        return yaml.safe_load(f)
+    """Load shipped defaults, then overlay the user's workspace config.
+
+    Hot-reloads on every call. The user file (workspace/config/video-analysis.yaml)
+    survives skill updates; the skill's own config.yaml is the factory default
+    and gets overwritten on update, so it is treated as a template only.
+    """
+    try:
+        with open(SKILL_DEFAULT_CONFIG) as f:
+            cfg = yaml.safe_load(f) or {}
+    except Exception:
+        cfg = {}
+    try:
+        if os.path.isfile(USER_CONFIG_PATH):
+            with open(USER_CONFIG_PATH) as f:
+                user = yaml.safe_load(f) or {}
+            cfg = _deep_merge(cfg, user)
+    except Exception:
+        pass
+    return cfg
+
+
+def _seed_user_config() -> None:
+    """Create a commented user-config template on first use (best-effort).
+
+    Writes workspace/config/video-analysis.yaml with every override key present
+    but commented out, so the active config still comes from shipped defaults
+    until the user uncomments a line. No-op if the file already exists.
+    """
+    try:
+        if os.path.isfile(USER_CONFIG_PATH):
+            return
+        os.makedirs(os.path.dirname(USER_CONFIG_PATH), exist_ok=True)
+        template = (
+            "# Video Analysis — user overrides (persists across skill updates).\n"
+            "# Uncomment and edit only the keys you want to change. Anything left\n"
+            "# commented falls back to the skill's shipped defaults.\n"
+            "\n"
+            "# Model for native video understanding (must support video input).\n"
+            "# default_model: google/gemini-3.1-flash-lite\n"
+            "\n"
+            "# Videos <= this size (MB) use native mode; larger ones use frame\n"
+            "# extraction + audio transcription.\n"
+            "# native_size_limit_mb: 20\n"
+            "\n"
+            "# extraction:\n"
+            "#   max_frames: 30\n"
+            "#   short_video_interval_sec: 2\n"
+            "#   scene_threshold: 0.3\n"
+            "#   transcribe_audio: true\n"
+        )
+        with open(USER_CONFIG_PATH, "w") as f:
+            f.write(template)
+    except Exception:
+        pass
 
 
 def _resolve_path(path: str) -> str:
@@ -390,6 +460,7 @@ def analyze_video(path: str, question: str = "", caller_id: str = "") -> dict:
           success, mode ("native"|"extraction"), analysis (if native),
           frame_paths + transcript (if extraction), tokens, elapsed_sec, etc.
     """
+    _seed_user_config()
     config = _load_config()
     abs_path = _resolve_path(path)
 

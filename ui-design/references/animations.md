@@ -16,6 +16,94 @@ Guidelines and timing standards for UI animation. These are constraints and prin
 
 ---
 
+## Animation Decision Framework (integrated from emil-design-eng)
+
+Before writing animation code, answer these in order:
+
+1. **Should this animate at all?**
+
+| Frequency | Decision |
+|---|---|
+| 100+ times/day (keyboard shortcuts, command palette toggles) | No animation |
+| Tens of times/day (hover/list navigation) | Keep near-instant or minimal |
+| Occasional (modal/drawer/toast) | Standard animation |
+| Rare or first-time | Can add delight |
+
+2. **What is the purpose?**
+
+Valid purposes only: feedback, state indication, spatial continuity, preventing jarring transitions, explanatory storytelling. If no clear purpose, remove the animation.
+
+3. **Which easing and duration fit?**
+
+- UI entrances/exits: prefer strong `ease-out`
+- On-screen morph/movement: `ease-in-out` (custom curve)
+- Hover/color transitions: `ease`
+- Constant motion only: `linear`
+- Avoid `ease-in` for entrances (feels sluggish)
+
+### Mandatory interaction motion rule
+
+If a page has interactions, motion design is required.
+
+Minimum bar for interactive UI:
+- press feedback (`:active` scale 0.95-0.98)
+- visible state transitions (open/close/select/sort/filter)
+- reduced-motion fallback
+
+### Practical implementation patterns
+
+#### Press feedback (required for pressable controls)
+
+```css
+.button {
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.button:active {
+  transform: scale(0.97);
+}
+```
+
+#### Never animate from `scale(0)`
+
+```css
+/* Bad */
+.entering { transform: scale(0); }
+
+/* Better */
+.entering {
+  transform: scale(0.95);
+  opacity: 0;
+}
+```
+
+#### Origin-aware popover motion
+
+```css
+/* Radix UI */
+.popover {
+  transform-origin: var(--radix-popover-content-transform-origin);
+}
+```
+
+#### Interruptible UI: transitions over keyframes
+
+```css
+.toast {
+  transition: transform 280ms cubic-bezier(0.23, 1, 0.32, 1), opacity 200ms ease;
+}
+```
+
+#### Touch-safe hover animations
+
+```css
+@media (hover: hover) and (pointer: fine) {
+  .card:hover { transform: translateY(-2px); }
+}
+```
+
+---
+
 ## Easing Philosophy
 
 Choose easing curves that match your design's atmosphere. Define them as CSS custom properties, but use your own names and values — don't copy the same curves every time.

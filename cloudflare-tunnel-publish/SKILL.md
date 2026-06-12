@@ -1,6 +1,6 @@
 ---
 name: cloudflare-tunnel-publish
-version: 1.2.0
+version: 1.2.1
 description: |
   Publish a local service to a user-owned custom domain via Cloudflare Tunnel.
 
@@ -353,6 +353,34 @@ Set `deliver="local"` so routine healthy runs stay silent. The watchdog writes t
 
 **Tell the user explicitly:**
 > 🔔 你的服务现在在容器里跑。Starchild 的容器可能因为更新、内存或迁移**任何时候**自动重启，重启后所有进程都会死。我已经把启动脚本写进 `workspace/setup.sh`，下次容器起来会自动拉起服务和隧道——你不用管。如果哪天访问域名变成 502/521/530，那就是服务还没拉起来或者启动失败，让我看一眼 `logs/startup.log` 和 `logs/cloudflared.log` 就能定位。
+
+### Ready-made watchdog script (`scripts/watchdog.sh`)
+
+This skill now ships a generic, tested `scripts/watchdog.sh` so you don't have
+to hand-write the self-heal block. It's project-agnostic — it reads `hostname`
+and `port` straight from `.cf_state.json`, so the same file works for any domain
+published with this skill.
+
+What it does each run:
+- Checks the **public** URL first. Healthy → logs one line to `logs/watchdog.log` and exits **silently**.
+- Public down → decides the culprit: local app dead → runs `start_services.sh` (brings back app **and** tunnel); only the tunnel dead → kills the stale `cloudflared` and relaunches `run_tunnel.sh`.
+- Re-checks after a few seconds and **prints to stdout only when it actually took recovery action** — so a `command`-mode scheduled task stays silent (zero push cost) on healthy runs and pushes a one-line alert only on a real incident.
+
+Schedule it right after a successful publish:
+```
+scheduled_task(
+  action="schedule",
+  schedule="every 2 minutes",
+  command="cd /data/workspace && bash skills/cloudflare-tunnel-publish/scripts/watchdog.sh",
+  title="<hostname> tunnel watchdog")
+```
+- Use a **relative** command with `cd /data/workspace &&`. An absolute
+  `/data/workspace/...` path can be normalized by the scheduler into a
+  non-existent `/data/skills/...` (the `workspace/` segment gets dropped),
+  making every run fail silently. `cd` + relative path is immune.
+- The interval may be normalized (e.g. "every 2 minutes" → 3 min) — fine.
+- Verify with `scheduled_task(action="list")` and confirm the first run is
+  silent via `tail logs/watchdog.log` (expect `ok https://...`).
 
 ### Plan limits
 - **Free plan is enough.** No upsell needed.

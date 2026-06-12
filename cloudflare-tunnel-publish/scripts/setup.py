@@ -4,6 +4,17 @@ create the DNS CNAME, and save everything to .cf_state.json.
 Usage:
   python3 setup.py --hostname app.example.com --port 8080
   python3 setup.py --hostname app.example.com --port 8080 --service-host 127.0.0.1
+
+  # Recommended: record how to (re)start the local app so keepalive.sh can bring
+  # the WHOLE site back by itself after a container restart or an app crash:
+  python3 setup.py --hostname app.example.com --port 8080 \
+      --app-cmd "python3 server.py" --app-dir projects/myapp
+
+setup.py is CONFIG-TIME, not start-time. It calls the Cloudflare API to
+create/reuse the tunnel + DNS and writes .cf_state.json. Run it ONCE per domain
+(or again only when reconfiguring). NEVER put setup.py in workspace/setup.sh —
+on every restart it would re-hit the API and may rotate the run_token. Boot and
+self-heal are handled by keepalive.sh, which only READS .cf_state.json.
 """
 from __future__ import annotations
 
@@ -89,6 +100,11 @@ def main() -> int:
     p.add_argument("--hostname", required=True, help="Public hostname, e.g. app.example.com")
     p.add_argument("--port", required=True, type=int, help="Local port to expose")
     p.add_argument("--service-host", default="localhost", help="Local host (default: localhost)")
+    p.add_argument("--app-cmd", default="", help="Command to (re)start the local app, e.g. 'python3 server.py'. "
+                                                 "Recorded in state so keepalive.sh can restart the app after a "
+                                                 "restart/crash. Omit if the app is managed elsewhere.")
+    p.add_argument("--app-dir", default="", help="Working dir for --app-cmd, relative to /data/workspace "
+                                                 "(default: workspace root).")
     args = p.parse_args()
 
     state = load_state()
@@ -130,6 +146,9 @@ def main() -> int:
     print(f"✅ DNS: {args.hostname} CNAME {cname_target} (proxied)")
 
     # 5. Persist
+    app_dir = args.app_dir.strip()
+    if app_dir and not app_dir.startswith("/"):
+        app_dir = f"/data/workspace/{app_dir}"
     update_state(
         hostname=args.hostname,
         port=args.port,
@@ -137,9 +156,18 @@ def main() -> int:
         tunnel_id=tunnel["id"],
         tunnel_name=tunnel_name,
         run_token=run_token,
+        app_cmd=args.app_cmd.strip(),
+        app_dir=app_dir,
     )
-    print(f"\n→ State saved. Next: bash skills/cloudflare-tunnel-publish/scripts/run_tunnel.sh")
-    print(f"→ After ~10s, check: curl -I https://{args.hostname}")
+    if args.app_cmd.strip():
+        print(f"✅ Recorded app_cmd → keepalive.sh can auto-restart the app")
+    else:
+        print("ℹ️  No --app-cmd given: keepalive.sh will guard the tunnel only "
+              "(it can't restart your app if it dies). Re-run with --app-cmd to enable full self-heal.")
+    print(f"\n→ State saved. Start (and self-heal) the whole site with ONE script:")
+    print(f"    bash skills/cloudflare-tunnel-publish/scripts/keepalive.sh")
+    print(f"→ After ~15s, check: curl -I https://{args.hostname}")
+    print(f"→ For durability, add keepalive.sh to workspace/setup.sh AND schedule it. See SKILL.md.")
     return 0
 
 

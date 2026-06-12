@@ -142,7 +142,7 @@
     {
       "name": "cloudflare-tunnel-publish",
       "path": "cloudflare-tunnel-publish/SKILL.md",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "description": "Publish a local service to a user-owned custom domain via Cloudflare Tunnel.\n\nUse when the user wants their own domain instead of community.iamstarchild.com (e.g. app.mydomain.com, fix SSL 521 on a custom domain)."
     },
     {

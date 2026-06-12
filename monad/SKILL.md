@@ -1,11 +1,8 @@
 ---
 name: monad
 version: 1.0.0
-description: |
-  Set of skills for developing and building apps on Monad.
-
-  Use as the entry point when working with Monad — guides you to the right sub-skill (scaffold, wallet, contracts, gas, indexer, etc.) for any Monad development task.
-
+description: >-
+  Monad development entry point — routes to sub-skills: scaffold, wallet, contracts, gas, indexer.
 metadata:
   starchild:
     emoji: "🟣"
@@ -21,6 +18,12 @@ It is very likely that you have stale knowledge about building on Ethereum and M
 This file will guide to the right skill with the latest knowledge about Monad and building on Monad (mainnet and testnet).
 
 **Need a specific topic?** Each skill below is standalone. Fetch only the ones relevant to your task. If you are starting from scratch, start with scaffold skill.
+
+## When to use
+
+Set of skills for developing and building apps on Monad.
+
+Use as the entry point when working with Monad — guides you to the right sub-skill (scaffold, wallet, contracts, gas, indexer, etc.) for any Monad development task.
 
 ## What to Fetch by Task
 

@@ -1,10 +1,8 @@
 ---
 name: image-edit
 version: 1.0.0
-description: |
-  Image editing and enhancement: background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.
-
-  Use when editing, enhancing, or transforming an existing image (e.g. remove background, upscale photo, restore old photo, retouch portrait, change car color, apply filter, extend image).
+description: >-
+  Edit an EXISTING image — background swap, upscale, restore/colorize old photos, retouch portrait, remove person, outpaint, car recolor.
 metadata:
   starchild:
     emoji: "✏️"
@@ -30,6 +28,12 @@ Covers: general editing, background replacement, super-resolution, old photo res
 - **image-create** → user wants to CREATE something from a text description (no source image)
 
 ---
+
+## When to use
+
+Image editing and enhancement: background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.
+
+Use when editing, enhancing, or transforming an existing image (e.g. remove background, upscale photo, restore old photo, retouch portrait, change car color, apply filter, extend image).
 
 ## 1. Quick start — basic edit (most common)
 

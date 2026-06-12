@@ -1,12 +1,8 @@
 ---
 name: video-analysis
 version: 1.1.0
-description: |
-  Video understanding for any model — native passthrough for small files,
-  frame extraction + audio transcription fallback for large files.
-
-  Use when the user asks to analyze, describe, or understand a video file
-  (e.g. "what's in this video", "summarize this clip", "transcribe this recording").
+description: >-
+  Analyze / summarize / transcribe a video file — native passthrough for small files, frame+audio extraction for large.
 metadata:
   starchild:
     emoji: "🎥"
@@ -19,6 +15,14 @@ disable-model-invocation: false
 # Video Analysis
 
 Analyze video files using either **native model understanding** or **frame extraction + transcription**.
+
+## When to use
+
+Video understanding for any model — native passthrough for small files,
+frame extraction + audio transcription fallback for large files.
+
+Use when the user asks to analyze, describe, or understand a video file
+(e.g. "what's in this video", "summarize this clip", "transcribe this recording").
 
 ## How It Works
 

@@ -1,10 +1,8 @@
 ---
 name: image-ecommerce
 version: 1.0.0
-description: |
-  E-commerce product photography: white-background hero shots, lifestyle scenes, flat lay, detail close-ups, packaging shots, group/collection displays, scale references, seasonal/holiday themes, 360-degree views, comparison layouts, infographics, and platform-optimized images (Amazon, Shopify, Taobao, Instagram, Xiaohongshu, Etsy, eBay).
-
-  Use when generating professional product photos for e-commerce listings, catalogs, or marketing (e.g. product hero shot, Amazon listing image, lifestyle product photo, product on white background, product detail close-up, seasonal product campaign).
+description: >-
+  E-commerce product photos — white-background hero shots, lifestyle scenes, flat lay, packaging; Amazon/Shopify/Taobao/Etsy ready.
 metadata:
   starchild:
     emoji: "🛍️"
@@ -32,6 +30,12 @@ Covers: white-background hero shots, lifestyle product scenes, flat lay arrangem
 - **image-tryon** → user wants to try on clothing/accessories on a person
 
 ---
+
+## When to use
+
+E-commerce product photography: white-background hero shots, lifestyle scenes, flat lay, detail close-ups, packaging shots, group/collection displays, scale references, seasonal/holiday themes, 360-degree views, comparison layouts, infographics, and platform-optimized images (Amazon, Shopify, Taobao, Instagram, Xiaohongshu, Etsy, eBay).
+
+Use when generating professional product photos for e-commerce listings, catalogs, or marketing (e.g. product hero shot, Amazon listing image, lifestyle product photo, product on white background, product detail close-up, seasonal product campaign).
 
 ## 1. Quick start — single product photo (most common)
 

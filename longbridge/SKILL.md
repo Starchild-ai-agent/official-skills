@@ -1,10 +1,8 @@
 ---
 name: longbridge
 version: 1.0.0
-description: |
-  Longbridge / LongPort (长桥证券) — US/HK/A-share stocks. Account, positions, orders, quotes, history, and order placement.
-
-  Use when the user wants to check or trade a Longbridge / 长桥 account (e.g. "Longbridge balance", "buy 100 700.HK on Longbridge", "my 长桥 positions"). Cloud API via the official longport SDK, runs in the container.
+description: >-
+  Longbridge / LongPort (长桥证券) — US/HK/A-share trading: account, positions, orders, quotes; cloud longport SDK.
 author: starchild
 tags: [longbridge, longport, 长桥证券, broker, us-stocks, hk-stocks, trading]
 metadata:
@@ -21,6 +19,12 @@ metadata:
         package: longport
 user-invocable: true
 ---
+
+## When to use
+
+Longbridge / LongPort (长桥证券) — US/HK/A-share stocks. Account, positions, orders, quotes, history, and order placement.
+
+Use when the user wants to check or trade a Longbridge / 长桥 account (e.g. "Longbridge balance", "buy 100 700.HK on Longbridge", "my 长桥 positions"). Cloud API via the official longport SDK, runs in the container.
 
 ## What this is
 

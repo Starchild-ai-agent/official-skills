@@ -1,10 +1,8 @@
 ---
 name: futu
 version: 1.0.0
-description: |
-  Futu / moomoo (富途/moomoo) — HK/US/A-share/SG stocks via a LOCAL OpenD gateway. Account, positions, orders, quotes, history, order placement.
-
-  Use when the user wants to check or trade a Futu / moomoo / 富途 account (e.g. "Futu positions", "buy 100 HK.00700 on moomoo", "富途 账户资产"). Requires a running OpenD gateway — NOT a cloud key.
+description: >-
+  Futu / moomoo (富途) — HK/US/A-share/SG trading via LOCAL OpenD gateway; NOT a cloud key.
 author: starchild
 tags: [futu, moomoo, 富途, opend, broker, hk-stocks, us-stocks, trading]
 metadata:
@@ -16,6 +14,12 @@ metadata:
         package: futu-api
 user-invocable: true
 ---
+
+## When to use
+
+Futu / moomoo (富途/moomoo) — HK/US/A-share/SG stocks via a LOCAL OpenD gateway. Account, positions, orders, quotes, history, order placement.
+
+Use when the user wants to check or trade a Futu / moomoo / 富途 account (e.g. "Futu positions", "buy 100 HK.00700 on moomoo", "富途 账户资产"). Requires a running OpenD gateway — NOT a cloud key.
 
 ## What this is — read this first
 

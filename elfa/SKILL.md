@@ -5,12 +5,18 @@ description: |
   ELFA AI — real-time crypto social intelligence and automated condition-engine skills for AI agents.
 
   Track trending tokens, surface narratives, search mentions, run market analysis, and build automated trigger-based workflows.
+description: >-
+  ELFA AI crypto social intelligence — trending tokens, narratives, mention search, automated trigger workflows.
 ---
 
 # ELFA AI (Official Onboarding Entry)
 
 This is an **official onboarding entry** for discovering ELFA skills in the Starchild catalog.
 The full ELFA skill implementation lives in ELFA's upstream repository.
+
+## When to use
+
+
 
 ## What ELFA Does
 

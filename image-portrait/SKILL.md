@@ -1,10 +1,8 @@
 ---
 name: image-portrait
 version: 1.0.0
-description: |
-  Identity-consistent portrait generation: professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.
-
-  Use when generating styled portraits from a reference photo (e.g. professional headshot, anime avatar, cyberpunk portrait, travel photo, dating profile photo, ID photo).
+description: >-
+  Identity-consistent portraits FROM a reference photo — headshots, avatars, ID photos, anime/themed styles.
 metadata:
   starchild:
     emoji: "📸"
@@ -25,6 +23,12 @@ Covers: professional headshots, dating/social photos, artistic style transfers, 
 **Core principle:** call the provided script. Do not re-implement proxy/billing plumbing.
 
 ---
+
+## When to use
+
+Identity-consistent portrait generation: professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.
+
+Use when generating styled portraits from a reference photo (e.g. professional headshot, anime avatar, cyberpunk portrait, travel photo, dating profile photo, ID photo).
 
 ## 1. Quick start — single portrait (most common)
 

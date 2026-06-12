@@ -1,11 +1,8 @@
 ---
 name: market-structure-ta
 version: 1.0.1
-description: |
-  Market structure analysis with Wyckoff, SMC/ICT, Al Brooks, and classical price action — outputs structured trade scripts with levels, entry, stop, R:R.
-
-  Use when the user wants real technical analysis on a ticker (e.g. "market structure analysis on NVDA", "Wyckoff phase for BTC", "where's the order block on SOL", "SMC analysis").
-
+description: >-
+  Market-structure TA — Wyckoff, SMC/ICT order blocks, Al Brooks price action → trade script with entry/stop/R:R.
 metadata:
   starchild:
     emoji: "📐"
@@ -17,6 +14,12 @@ user-invocable: true
 disable-model-invocation: false
 
 ---
+
+## When to use
+
+Market structure analysis with Wyckoff, SMC/ICT, Al Brooks, and classical price action — outputs structured trade scripts with levels, entry, stop, R:R.
+
+Use when the user wants real technical analysis on a ticker (e.g. "market structure analysis on NVDA", "Wyckoff phase for BTC", "where's the order block on SOL", "SMC analysis").
 
 ## What This Skill Is For
 

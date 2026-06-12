@@ -1,10 +1,8 @@
 ---
 name: image-3d
 version: 1.0.0
-description: |
-  3D-style image generation: 3D characters, product renders, isometric dioramas, 3D icons, 3D text, interior design renders, architectural visualization, 3D scenes, game assets.
-
-  Use when generating 3D-style 2D images from text descriptions or reference photos (e.g. 3D character design, isometric diorama, 3D product render, interior design visualization, architectural render, 3D app icon, 3D text effect, game asset render).
+description: >-
+  3D-style images — characters, isometric dioramas, product/interior/architectural renders, 3D icons & text, game assets.
 metadata:
   starchild:
     emoji: "🧊"
@@ -37,6 +35,12 @@ Covers: 3D character design (chibi, realistic, cartoon, fantasy), 3D product ren
 - **image-portrait** → user wants a portrait with face/identity preserved
 
 ---
+
+## When to use
+
+3D-style image generation: 3D characters, product renders, isometric dioramas, 3D icons, 3D text, interior design renders, architectural visualization, 3D scenes, game assets.
+
+Use when generating 3D-style 2D images from text descriptions or reference photos (e.g. 3D character design, isometric diorama, 3D product render, interior design visualization, architectural render, 3D app icon, 3D text effect, game asset render).
 
 ## 1. Quick start — text-to-3D image (most common)
 

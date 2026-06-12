@@ -1,11 +1,8 @@
 ---
 name: image-bg-remove
 version: 1.0.0
-description: |
-  Background removal: transparent PNGs, cutouts, product photos, portraits, pets, group photos.
-  Uses dedicated Bria RMBG 2.0 model — no prompt needed, fast (~3s), cheap ($0.01).
-
-  Use when removing backgrounds, creating transparent PNGs, making cutouts, extracting foreground subjects, or preparing images for compositing.
+description: >-
+  Background removal — transparent PNG cutouts of products, portraits, pets; no prompt needed, ~3s, $0.01 (Bria RMBG 2.0).
 metadata:
   starchild:
     emoji: "✂️"
@@ -28,6 +25,13 @@ Covers: portrait background removal (ID photos, headshots), product cutouts (e-c
 **Key difference from other image skills:** this skill uses a **dedicated background removal model** (`fal-ai/bria/background/remove` — Bria RMBG 2.0), not the general-purpose nanopro/gpt models. No prompt is needed — just provide an image.
 
 ---
+
+## When to use
+
+Background removal: transparent PNGs, cutouts, product photos, portraits, pets, group photos.
+Uses dedicated Bria RMBG 2.0 model — no prompt needed, fast (~3s), cheap ($0.01).
+
+Use when removing backgrounds, creating transparent PNGs, making cutouts, extracting foreground subjects, or preparing images for compositing.
 
 ## 1. Quick start — local file (most common)
 

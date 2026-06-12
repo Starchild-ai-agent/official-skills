@@ -1,6 +1,6 @@
 ---
 name: cloudflare-tunnel-publish
-version: 1.2.0
+version: 1.2.1
 description: |
   Publish a local service to a user-owned custom domain via Cloudflare Tunnel.
 
@@ -135,13 +135,16 @@ If a tunnel with the same name exists, reuse it instead of erroring.
 
 ### Phase 7 — Start cloudflared
 
-Run `bash skills/cloudflare-tunnel-publish/scripts/run_tunnel.sh`. It:
-- Downloads the `cloudflared` binary to `workspace/bin/cloudflared` if missing
-- Reads run_token from `workspace/.cf_state.json`
-- Launches `cloudflared tunnel run --token <TOKEN>` in background via `bash(background=true)`
-- Returns the bash session_id so we can poll/log later
+Run `bash skills/cloudflare-tunnel-publish/scripts/keepalive.sh` — this is the
+canonical way to bring the site up. `keepalive.sh` is the single start+heal
+brain (see "Keeping it alive" below): it reads `.cf_state.json`, starts the app
+(if you recorded `--app-cmd`) and the tunnel, and verifies the public URL.
+`run_tunnel.sh` is the lower-level tunnel-only launcher that `keepalive.sh`
+calls — it downloads `cloudflared` to `workspace/bin/` if missing, reads the
+run_token from `.cf_state.json`, and runs `cloudflared tunnel run`.
 
-Save the session_id to state. Tell the user the tunnel daemon is running.
+Tell the user the site is up. The SAME `keepalive.sh` is what you'll wire into
+boot + a schedule for durability — don't hand-roll a separate starter.
 
 ### Phase 8 — Verify
 
@@ -221,138 +224,114 @@ curl -sS "https://dns.google/resolve?name=hello.example.com&type=A" | python3 -m
 - `Status: 3` (NXDOMAIN) + `Authority: ns.trs-dns.com` (or similar registry NS) → TLD propagation pending ⏳
 - `Status: 0` but no `Answer` → CNAME exists but Cloudflare orange-cloud not yet routing → wait 30s
 
-### ⚠️ Container restarts will kill your tunnel
-**This is the #1 issue users hit after deployment.** The Starchild container can restart for several reasons:
-- User-triggered restart
-- Platform agent updates (auto-applied; can happen any time)
-- Out-of-memory crash
-- Container migration
+## Keeping it alive — one script, two triggers
 
-When the container restarts, **every background process dies** — including:
-- Your local service (Flask app, static server, dashboard, dev server, etc.)
-- The `cloudflared` tunnel client
+This is the part agents get wrong. "Publish" is easy; keeping a tunnel site up
+for weeks is the real job. The Starchild container restarts without warning
+(platform updates, OOM, migration, user reboot), and `cloudflared` *also* dies
+on its own mid-life (network blip, edge reset, QUIC failure) while the container
+keeps running. Either one leaves `https://yourdomain.com` returning
+**502 / 521 / 530 / 1033** until something restarts the processes. DNS and the
+Cloudflare-side tunnel config survive (they live on Cloudflare's servers) — only
+the local processes need relaunching.
 
-DNS records and the Cloudflare-side Tunnel config persist (they live on Cloudflare's servers), but the connection drops. Result: `https://yourdomain.com` will return **502 / 521 / 530** until both processes are restarted.
+**The design: ONE idempotent recovery brain (`scripts/keepalive.sh`) called from
+TWO triggers.** Do not write per-project starter/healer scripts — that's how the
+two copies drift apart. `keepalive.sh` ships with this skill and is generic: it
+reads `hostname`, `port`, `app_cmd`, `app_dir` from `.cf_state.json`, so the same
+file works for any domain. The calling agent writes ZERO project-specific shell.
 
-**The fix: register the services in `workspace/setup.sh`.** This file runs every time the container starts. Use a dedicated `scripts/start_services.sh` to keep it organized and idempotent.
+What `keepalive.sh` does each run:
+1. Probe the **public** URL (reachability, not just PID — a `cloudflared` process
+   can be alive but disconnected).
+2. Healthy → log one line, exit **silently**.
+3. Down → diagnose: local app port closed → restart app (via `app_cmd`) **and**
+   tunnel; only the tunnel dead → restart just the tunnel. Then re-verify with a
+   few retries (covers cold-start warm-up).
+4. Report on **state transitions only** (tracked in `run/keepalive.state`):
+   newly-recovered or newly-failed prints one line; steady-state (healthy, or
+   already-known-down) is silent. So a scheduled task pushes signal, never spam.
 
-**Pattern:** PID-file based, idempotent (safe to re-run), uses `setsid` so the recorded PID survives bash exit.
+### Step 1 — record how to start the app (at setup time)
 
-```bash
-# scripts/start_services.sh
-#!/usr/bin/env bash
-set -uo pipefail
-WS=/data/workspace
-LOGDIR="$WS/logs"; PIDDIR="$WS/run"
-mkdir -p "$LOGDIR" "$PIDDIR"
-
-is_alive() { [ -f "$1" ] && [ -d "/proc/$(cat "$1" 2>/dev/null)" ]; }
-
-start_service() {
-  local name="$1" wd="$2" cmd="$3"
-  local pidfile="$PIDDIR/$name.pid"
-  is_alive "$pidfile" && return 0
-  cd "$wd" || return 1
-  setsid bash -c "exec $cmd" >> "$LOGDIR/$name.log" 2>&1 < /dev/null &
-  echo $! > "$pidfile"
-}
-
-# 1. Local service (your app on some port)
-start_service myapp "$WS/output/myapp" "exec python3 -m http.server 8765 --bind 127.0.0.1"
-
-# 2. Cloudflare Tunnel
-start_service cloudflared "$WS" "exec bash $WS/skills/cloudflare-tunnel-publish/scripts/run_tunnel.sh"
+Pass `--app-cmd` / `--app-dir` to `setup.py` so keepalive can restart the app,
+not just the tunnel:
 ```
-
-**Hook into `workspace/setup.sh`** (created on first container boot, runs on every boot):
-```bash
-# Auto-restart user-facing services. Background — never blocks setup.
-bash /data/workspace/scripts/start_services.sh &
-disown
+python3 setup.py --hostname app.example.com --port 8765 \
+    --app-cmd "python3 server.py" --app-dir projects/myapp
 ```
+If you omit `--app-cmd`, keepalive guards the **tunnel only** and cannot revive a
+crashed app. Always record it unless the app is supervised elsewhere.
 
-**Critical implementation details (don't skip these — learned the hard way):**
-- ✅ Use `setsid bash -c "exec ..."` — without `exec`, `$!` records the wrapper bash PID, which exits immediately and orphans the real process beyond tracking.
-- ✅ Pass the command **without** a leading `exec` from the caller — the wrapper already adds one. Calling `start_service x dir "exec foo"` becomes `bash -c "exec exec foo"` which fails with `exec: exec: not found`.
-- ✅ Redirect stdin from `/dev/null` so the service doesn't block on terminal input after detach.
-- ✅ Background the entire `start_services.sh` call from `setup.sh` with `&` and `disown` — otherwise `cloudflared` (which runs forever) blocks `setup.sh`, blocking the agent from starting.
-- ✅ The PID-file check makes the script idempotent — safe to re-run mid-session for testing without spawning duplicates.
-- ✅ For local app services, add a port reachability guard before spawn (e.g., if `127.0.0.1:<port>` is already open, log `already reachable` and skip starting). This avoids false startup failures when the app is already running under another supervisor.
-- ❌ Don't use `nohup` from the agent toolkit — the runtime explicitly rejects it for orphan-process reasons.
-- ❌ Don't rely on `pgrep` — not installed in the Starchild container. Use `[ -d /proc/$PID ]` instead.
+### Step 2 — start the site
 
-**Port collision is a silent failure.** The Starchild workspace can have OTHER projects/sessions still listening on common ports (8000, 8080, 8765, etc.). When your service `bind()` fails with `Address already in use`, it exits immediately — but `curl localhost:<port>` still returns 200, because **someone else's app is answering on that port**. You'll think the tunnel is working, then realize the wrong content is being served. Mitigations:
-- Use a high, project-unique port (e.g. `18765` instead of `8765`)
-- Always `tail logs/<service>.log` after first launch to catch `OSError: [Errno 98]`
-- Verify with the inode-based port-owner check (see `check_status.py` or the snippet in Phase 8) that the listening process is yours
-
-**Verify content, not just status code.** After tunnel comes up, fetch the actual page and confirm it's YOUR content — `curl https://yourdomain.com | head` and check the title/markup. A 200 from an unrelated workspace process can mislead for hours.
-
-**Verification after setup:**
-```bash
-# Right after editing setup.sh, run start_services.sh manually once to test
-bash /data/workspace/scripts/start_services.sh
-# Then verify both PIDs are alive
-for f in /data/workspace/run/*.pid; do
-  pid=$(cat "$f")
-  echo "$f → pid=$pid → $([ -d /proc/$pid ] && echo ALIVE || echo DEAD)"
-done
-# And re-run to confirm idempotency (should say "already running")
-bash /data/workspace/scripts/start_services.sh
-tail -5 /data/workspace/logs/startup.log
 ```
+bash skills/cloudflare-tunnel-publish/scripts/keepalive.sh
+```
+Idempotent: starts whatever is down, no-op when healthy.
 
-### ⚠️ setup.sh alone is NOT enough — you also need a watchdog
+### Step 3 — survive container restarts (boot trigger)
 
-`setup.sh` only runs **once, at container boot**. It does nothing if a process dies **while the container keeps running** — and that is the most common real-world failure:
-
-- `cloudflared` can exit on its own (network blip, edge disconnect, upstream reset, `quic` failure) hours after a clean start. The container stays up, but the tunnel process is gone → domain returns **530 / 1033** even though `setup.sh` ran fine at boot.
-- The local app can crash (unhandled exception, OOM-kill of a single process) without taking down the container.
-
-In this situation `bash_process(action='list')` shows the tunnel session as `exited`, and re-running `run_tunnel.sh` fixes it instantly — but you only find out because the user complained that the domain went down. **For "long-term stable" requests, a boot-time script is the floor, not the goal.** Add a watchdog.
-
-**The watchdog: a self-healing cron that re-runs `start_services.sh` every few minutes.** Because `start_services.sh` is idempotent (PID-file + port guard), running it on a schedule is safe — it's a no-op when everything is healthy and an auto-repair when something died. This closes the mid-life-death gap that `setup.sh` cannot.
-
-Make the watchdog check **liveness AND reachability**, not just the PID — a `cloudflared` process can be alive but disconnected. Add this to the END of `start_services.sh` so the same script both starts and heals:
-
+Add keepalive to `workspace/setup.sh` (runs on every container boot):
 ```bash
-# --- self-heal: if the public URL is unreachable, force-restart the tunnel ---
-# Runs every invocation (boot + cron). Idempotent: only acts when actually broken.
-HOST=$(python3 -c "import json;print(json.load(open('$WS/.cf_state.json'))['hostname'])")
-if ! curl -fsS --max-time 10 "https://$HOST/" >/dev/null 2>&1; then
-  log "WARN $HOST unreachable — restarting tunnel"
-  pf="$PIDDIR/cloudflared.pid"
-  if is_alive "$pf"; then kill "$(cat "$pf")" 2>/dev/null || true; sleep 2; fi
-  rm -f "$pf"
-  start_service "cloudflared" "$WS" "bash $WS/skills/cloudflare-tunnel-publish/scripts/run_tunnel.sh"
-  sleep 6
-  curl -fsS --max-time 10 "https://$HOST/" >/dev/null 2>&1 \
-    && log "recovered: https://$HOST" \
-    || log "ERROR still down after restart: https://$HOST"
+# Bring the tunnel site back after a restart. keepalive.sh only READS
+# .cf_state.json — no Cloudflare API call, no token needed at boot.
+if [ -f /data/workspace/.cf_state.json ]; then
+  bash /data/workspace/skills/cloudflare-tunnel-publish/scripts/keepalive.sh &
+  disown
 fi
 ```
 
-Then register the watchdog as a **scheduled task in `command` mode** (cheap — direct bash, no LLM call):
+> 🚫 **NEVER put `setup.py` in `setup.sh`.** `setup.py` is config-time: it calls
+> the Cloudflare API, may rotate the run_token, and overwrites `.cf_state.json`.
+> Running it on every boot is wasteful, can hit rate limits, breaks if the API
+> token was removed, and can change a working config. Boot must only *read* state
+> — that's exactly what `keepalive.sh` does. The name "setup" tempts you to put
+> it in "setup.sh"; resist it.
 
+### Step 4 — survive mid-life process death (watchdog trigger)
+
+Schedule the SAME script as a cheap `command`-mode task:
 ```
 scheduled_task(action="schedule",
-  title="tunnel watchdog",
-  schedule="every 5 minutes",
-  command="bash /data/workspace/scripts/start_services.sh",
-  deliver="local")   # local = silent, no push spam; it only logs
+  schedule="every 2 minutes",
+  command="cd /data/workspace && bash skills/cloudflare-tunnel-publish/scripts/keepalive.sh",
+  title="<hostname> keepalive")
 ```
+- Use a **relative** command with `cd /data/workspace &&`. An absolute
+  `/data/workspace/...` path can be normalized by the scheduler into a
+  non-existent `/data/skills/...` (the `workspace/` segment gets dropped), so
+  every run fails silently. `cd` + relative path is immune. (Confirmed in a real
+  run.)
+- Keep `deliver` at its default so the transition-only alerts actually reach the
+  user. keepalive is already silent on healthy runs, so there's no spam to
+  suppress — and a real outage should ping you.
+- The interval may be normalized (e.g. "every 2 minutes" → 3 min) — fine.
 
-Set `deliver="local"` so routine healthy runs stay silent. The watchdog writes to `logs/startup.log`, so a healthy day shows only `already reachable` / `already running` lines, and any real recovery is timestamped there.
+### Verify durability (do all of this before claiming "stable")
 
-**Checklist for a genuinely durable deployment (do all three):**
-1. ✅ `start_services.sh` with PID-file + port guard + a reachability self-heal block (above).
-2. ✅ Hooked into `setup.sh` (survives container restart).
-3. ✅ A `scheduled_task` watchdog every 3–5 min in `command` mode (survives mid-life process death). **This is the piece that makes it "long-term stable" — skipping it means the tunnel will eventually die and stay dead until the user notices.**
+```bash
+# 1. start + idempotency
+bash skills/cloudflare-tunnel-publish/scripts/keepalive.sh   # brings up
+bash skills/cloudflare-tunnel-publish/scripts/keepalive.sh   # silent no-op
+tail -5 logs/keepalive.log                                   # ok https://...
+# 2. boot wired
+grep keepalive setup.sh
+# 3. watchdog registered + command stored correctly (relative path!)
+#    scheduled_task(action="list")
+```
+**Don't claim "long-term stable" after only editing `setup.sh`.** That covers
+restarts but not mid-life death. Confirm BOTH triggers (boot + schedule) point at
+keepalive.sh, and that the first run logged `ok https://...`.
 
-**Don't claim "long-term stable" after only editing `setup.sh`.** That covers container restarts but leaves the most common failure (silent mid-life tunnel exit) completely unguarded. Verify the watchdog is registered (`scheduled_task(action="list")`) before telling the user it's stable.
+**Port collision is a silent failure.** Other workspace projects may already hold
+common ports (8000/8080/8765). If your app's `bind()` fails with `Address already
+in use` it exits, but `curl localhost:<port>` still returns 200 — someone else's
+app is answering. Use a high, project-unique port and verify the page is *your*
+content (`curl https://yourdomain.com | head`), not just a 200.
 
 **Tell the user explicitly:**
-> 🔔 你的服务现在在容器里跑。Starchild 的容器可能因为更新、内存或迁移**任何时候**自动重启，重启后所有进程都会死。我已经把启动脚本写进 `workspace/setup.sh`，下次容器起来会自动拉起服务和隧道——你不用管。如果哪天访问域名变成 502/521/530，那就是服务还没拉起来或者启动失败，让我看一眼 `logs/startup.log` 和 `logs/cloudflared.log` 就能定位。
+> 🔔 你的站点跑在容器里。容器可能因更新/内存/迁移**随时**重启，隧道进程偶尔也会自己掉线（域名变 502/521/530/1033）。我已经把一个自愈脚本写进了 `workspace/setup.sh`（开机自动拉起）并设了每几分钟一次的巡检（掉线自动重拉、恢复/失败才通知你）。两层都指向同一个脚本，你基本不用管。真打不开时让我看一眼 `logs/keepalive.log` 和 `logs/cloudflared.log` 就能定位。
 
 ### Plan limits
 - **Free plan is enough.** No upsell needed.
@@ -371,7 +350,8 @@ Set `deliver="local"` so routine healthy runs stay silent. The watchdog writes t
   "tunnel_id": "...",
   "tunnel_name": "starchild-app-example-com",
   "run_token": "...",
-  "cloudflared_session_id": "bash-..."
+  "app_cmd": "python3 server.py",
+  "app_dir": "/data/workspace/projects/myapp"
 }
 ```
 

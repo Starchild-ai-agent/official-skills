@@ -1,6 +1,6 @@
 ---
 name: image-ecommerce
-version: 1.0.0
+version: 1.0.1
 description: >-
   E-commerce product photos — white-background hero shots, lifestyle scenes, flat lay, packaging; Amazon/Shopify/Taobao/Etsy ready.
 metadata:

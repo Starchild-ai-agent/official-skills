@@ -1,6 +1,6 @@
 ---
 name: image-bg-remove
-version: 1.0.0
+version: 1.0.1
 description: >-
   Background removal — transparent PNG cutouts of products, portraits, pets; no prompt needed, ~3s, $0.01 (Bria RMBG 2.0).
 metadata:

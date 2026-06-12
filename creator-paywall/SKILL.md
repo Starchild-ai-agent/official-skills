@@ -3,7 +3,7 @@ name: creator-paywall
 description: >-
   Crypto subscription paywall — SIWE wallet login + on-chain ETH/ERC20 payment to gate creator apps (收款/订阅付费); not fiat/Stripe.
 author: starchild
-version: 1.0.0
+version: 1.0.1
 tags: [paywall, subscription, crypto, evm, siwe, wallet, payments, monetization, creator]
 ---
 

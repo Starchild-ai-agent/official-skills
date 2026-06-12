@@ -1,6 +1,6 @@
 ---
 name: image-create
-version: 1.0.0
+version: 1.0.1
 description: >-
   Text-to-image with NO reference photo — logos, posters, illustrations, memes, game art, social content, 3D renders.
 metadata:

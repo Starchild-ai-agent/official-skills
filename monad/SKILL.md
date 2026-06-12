@@ -1,6 +1,6 @@
 ---
 name: monad
-version: 1.0.0
+version: 1.0.1
 description: >-
   Monad development entry point — routes to sub-skills: scaffold, wallet, contracts, gas, indexer.
 metadata:

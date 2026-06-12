@@ -1,6 +1,6 @@
 ---
 name: temp-files
-version: 1.0.2
+version: 1.0.3
 description: >-
   Workroom file relay between agents — hand off files/dirs/zips with TTL via /temp-files; distinct from backup skill.
 metadata:

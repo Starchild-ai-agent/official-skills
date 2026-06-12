@@ -2,7 +2,7 @@
 name: pancakeswap
 description: >-
   PancakeSwap on BSC/BNB Chain — CAKE swaps, LP, yield farming, syrup pools, fee collection, PCS Hub.
-version: 1.0.0
+version: 1.0.1
 metadata:
   starchild:
     emoji: "🥞"

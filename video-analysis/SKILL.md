@@ -1,6 +1,6 @@
 ---
 name: video-analysis
-version: 1.1.0
+version: 1.1.1
 description: >-
   Analyze / summarize / transcribe a video file — native passthrough for small files, frame+audio extraction for large.
 metadata:

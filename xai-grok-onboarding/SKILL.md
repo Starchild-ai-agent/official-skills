@@ -1,6 +1,6 @@
 ---
 name: xai-grok-onboarding
-version: 1.3.2
+version: 1.3.3
 description: >-
   Sign in with an xAI account (X Premium / SuperGrok) via OAuth device code — "use my SuperGrok", "log in with Grok".
 author: starchild

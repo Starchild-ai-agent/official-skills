@@ -1,6 +1,6 @@
 ---
 name: shopify
-version: 1.0.0
+version: 1.0.1
 description: >-
   Shopify development — Admin GraphQL, Storefront, Hydrogen, Liquid, Polaris, Functions, POS: build, query, validate.
 metadata:

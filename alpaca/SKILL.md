@@ -1,6 +1,6 @@
 ---
 name: alpaca
-version: 1.0.0
+version: 1.0.1
 description: >-
   Alpaca brokerage — trade & monitor US stocks/ETFs (paper + live): positions, orders, quotes; cloud API.
 author: starchild

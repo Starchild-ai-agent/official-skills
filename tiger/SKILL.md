@@ -1,6 +1,6 @@
 ---
 name: tiger
-version: 1.0.0
+version: 1.0.1
 description: >-
   Tiger Brokers (老虎证券) — US/HK/A-share trading (paper + live): account, positions, orders; cloud tigeropen SDK.
 author: starchild

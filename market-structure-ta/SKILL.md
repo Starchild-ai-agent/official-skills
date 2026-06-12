@@ -1,6 +1,6 @@
 ---
 name: market-structure-ta
-version: 1.0.1
+version: 1.0.2
 description: >-
   Market-structure TA — Wyckoff, SMC/ICT order blocks, Al Brooks price action → trade script with entry/stop/R:R.
 metadata:

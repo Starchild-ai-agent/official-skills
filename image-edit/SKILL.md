@@ -1,6 +1,6 @@
 ---
 name: image-edit
-version: 1.0.0
+version: 1.0.1
 description: >-
   Edit an EXISTING image — background swap, upscale, restore/colorize old photos, retouch portrait, remove person, outpaint, car recolor.
 metadata:

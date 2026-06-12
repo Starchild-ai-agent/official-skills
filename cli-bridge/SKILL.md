@@ -1,6 +1,6 @@
 ---
 name: cli-bridge
-version: 0.2.2
+version: 0.2.3
 description: >-
   Authorize the local starchild CLI / agent-shell — mint, list, revoke CLI bridge codes for local shell access.
 delivery: script

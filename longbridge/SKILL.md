@@ -1,6 +1,6 @@
 ---
 name: longbridge
-version: 1.0.0
+version: 1.0.1
 description: >-
   Longbridge / LongPort (长桥证券) — US/HK/A-share trading: account, positions, orders, quotes; cloud longport SDK.
 author: starchild

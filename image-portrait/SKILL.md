@@ -1,6 +1,6 @@
 ---
 name: image-portrait
-version: 1.0.0
+version: 1.0.1
 description: >-
   Identity-consistent portraits FROM a reference photo — headshots, avatars, ID photos, anime/themed styles.
 metadata:

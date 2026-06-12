@@ -1,6 +1,6 @@
 ---
 name: elfa
-version: 1.0.0
+version: 1.0.1
 description: |
   ELFA AI — real-time crypto social intelligence and automated condition-engine skills for AI agents.
 

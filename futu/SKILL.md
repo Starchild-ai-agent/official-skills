@@ -1,6 +1,6 @@
 ---
 name: futu
-version: 1.0.0
+version: 1.0.1
 description: >-
   Futu / moomoo (富途) — HK/US/A-share/SG trading via LOCAL OpenD gateway; NOT a cloud key.
 author: starchild

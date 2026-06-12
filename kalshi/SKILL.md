@@ -1,6 +1,6 @@
 ---
 name: kalshi
-version: 1.0.2
+version: 1.0.3
 description: >-
   Kalshi US-regulated prediction markets — binary event contracts on politics, economy, sports, weather (CPI, elections).
 allowed-tools: Bash, Read, Write, WebFetch

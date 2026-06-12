@@ -1,6 +1,6 @@
 ---
 name: image-3d
-version: 1.0.0
+version: 1.0.1
 description: >-
   3D-style images — characters, isometric dioramas, product/interior/architectural renders, 3D icons & text, game assets.
 metadata:

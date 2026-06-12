@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.4.0
+version: 2.4.1
 description: >-
   Scrape JS-heavy/anti-bot pages + social data (YouTube transcript, TikTok, Instagram, Reddit) — when web_fetch fails/403/Cloudflare.
 metadata:

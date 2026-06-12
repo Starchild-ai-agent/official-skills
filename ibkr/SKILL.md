@@ -1,6 +1,6 @@
 ---
 name: ibkr
-version: 1.0.0
+version: 1.0.1
 description: >-
   Interactive Brokers (IBKR) — global stocks/ETFs/forex/futures via LOCAL TWS or IB Gateway; NOT a cloud key.
 author: starchild

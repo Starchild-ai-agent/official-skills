@@ -1,6 +1,6 @@
 ---
 name: twelvedata
-version: 2.0.4
+version: 2.0.5
 description: >-
   Stocks, forex, commodities quotes & history (AAPL, EUR/USD, gold) — traditional markets, NOT crypto.
 delivery: script

@@ -1,6 +1,6 @@
 ---
 name: ui-design
-version: 1.2.0
+version: 1.2.1
 description: >-
   UI/UX quality gate for every visual output — landing pages, dashboards, web apps; MUST pair with project-builder.
 metadata:

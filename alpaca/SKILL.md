@@ -1,10 +1,8 @@
 ---
 name: alpaca
-version: 1.0.0
-description: |
-  Alpaca brokerage — US stocks & ETFs. Account, positions, orders, quotes, history, and order placement (paper + live).
-
-  Use when the user wants to check or trade a US-stock account on Alpaca (e.g. "Alpaca buying power", "buy 1 AAPL on Alpaca paper", "my Alpaca positions"). Cloud API, runs directly in the container.
+version: 1.0.1
+description: >-
+  Alpaca brokerage — trade & monitor US stocks/ETFs (paper + live): positions, orders, quotes; cloud API.
 author: starchild
 tags: [alpaca, broker, us-stocks, etf, trading, paper-trading]
 metadata:
@@ -20,6 +18,12 @@ metadata:
         package: alpaca-py
 user-invocable: true
 ---
+
+## When to use
+
+Alpaca brokerage — US stocks & ETFs. Account, positions, orders, quotes, history, and order placement (paper + live).
+
+Use when the user wants to check or trade a US-stock account on Alpaca (e.g. "Alpaca buying power", "buy 1 AAPL on Alpaca paper", "my Alpaca positions"). Cloud API, runs directly in the container.
 
 ## What this is
 

@@ -1,10 +1,8 @@
 ---
 name: cli-bridge
-version: 0.2.2
-description: |
-  Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.
-
-  Use when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine).
+version: 0.2.3
+description: >-
+  Authorize the local starchild CLI / agent-shell — mint, list, revoke CLI bridge codes for local shell access.
 delivery: script
 metadata:
   starchild:
@@ -41,6 +39,12 @@ short code — never the AKM secret, never the Fly machine id.
                                           | (Fly internal)       |
                                           +----------------------+
 ```
+
+## When to use
+
+Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.
+
+Use when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine).
 
 ## Why a short code instead of the raw AKM?
 

@@ -1,7 +1,8 @@
 ---
 name: temp-files
-version: 1.0.2
-description: Workroom file relay — agents hand off files, directories, and zipped bundles to each other through the sc-agent-backup /temp-files subsystem. TTL, sliding renewal, internal short links. Distinct semantics from the backup skill.
+version: 1.0.3
+description: >-
+  Workroom file relay between agents — hand off files/dirs/zips with TTL via /temp-files; distinct from backup skill.
 metadata:
   starchild:
     emoji: "🔁"
@@ -30,6 +31,10 @@ path are derived from the JWT:
 **`user_id = JWT.userInfoID`, `agent_scope = JWT.containerId`** (defaults to
 `default`). You cannot reach, see, or delete relay files belonging to another
 user or another agent.
+
+## When to use
+
+Workroom file relay — agents hand off files, directories, and zipped bundles to each other through the sc-agent-backup /temp-files subsystem. TTL, sliding renewal, internal short links. Distinct semantics from the backup skill.
 
 ## Difference vs. the `backup` skill (must read)
 

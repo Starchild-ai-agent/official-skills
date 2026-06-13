@@ -1,17 +1,9 @@
 ---
 name: creator-paywall
-description: |
-  Drop-in crypto subscription paywall for creator products: EVM wallet login (SIWE) + on-chain
-  payment verification. Users sign in with their wallet, pay a monthly/yearly subscription by
-  transferring tokens (ETH/Base/BSC, any ERC20 incl. custom tokens) to the creator's Starchild
-  agent wallet, and get gated access — verified on-chain with no payment processor or third-party
-  account.
-
-  Use when a creator wants to add "sign up → pay → use" monetization to something they built
-  (e.g. "add a paywall", "let users pay to subscribe", "gate my app behind a crypto payment",
-  "收款", "订阅付费", "wallet login + subscription"). Not for fiat/Stripe, not for pay-per-use metering.
+description: >-
+  Crypto subscription paywall — SIWE wallet login + on-chain ETH/ERC20 payment to gate creator apps (收款/订阅付费); not fiat/Stripe.
 author: starchild
-version: 1.0.0
+version: 1.0.1
 tags: [paywall, subscription, crypto, evm, siwe, wallet, payments, monetization, creator]
 ---
 

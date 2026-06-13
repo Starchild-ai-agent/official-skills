@@ -1,10 +1,8 @@
 ---
 name: kalshi
-version: 1.0.2
-description: |
-  Kalshi prediction markets: binary event contracts on politics, economy, sports, weather.
-
-  Use when trading or browsing US regulated event markets (e.g. CPI above 3%, NHL Edmonton vs Florida, jobs report > 200k, election odds).
+version: 1.0.3
+description: >-
+  Kalshi US-regulated prediction markets — binary event contracts on politics, economy, sports, weather (CPI, elections).
 allowed-tools: Bash, Read, Write, WebFetch
 homepage: https://kalshi.com
 metadata:
@@ -42,6 +40,12 @@ Trade and query the first CFTC-regulated prediction market exchange. Binary yes/
 **Demo URL:** `https://external-api.demo.kalshi.co/trade-api/v2`
 
 Get your API key at https://kalshi.com/account/api-keys (Premier or Market Maker tier required)
+
+## When to use
+
+Kalshi prediction markets: binary event contracts on politics, economy, sports, weather.
+
+Use when trading or browsing US regulated event markets (e.g. CPI above 3%, NHL Edmonton vs Florida, jobs report > 200k, election odds).
 
 ## Key Concepts
 

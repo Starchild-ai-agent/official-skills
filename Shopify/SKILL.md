@@ -1,12 +1,8 @@
 ---
 name: shopify
-version: 1.0.0
-description: |
-  Shopify development skills: Admin GraphQL, Storefront, Hydrogen, Liquid, Polaris, Functions, POS, and more.
-
-  Use when building, querying, or validating code for Shopify's development ecosystem (e.g. Admin API queries, Hydrogen components, Liquid themes, checkout extensions).
-
-  Skills are installable via the `npx skill` CLI and provide Claude Code with API-specific context, documentation search, and code validation for each Shopify surface.
+version: 1.0.1
+description: >-
+  Shopify development — Admin GraphQL, Storefront, Hydrogen, Liquid, Polaris, Functions, POS: build, query, validate.
 metadata:
   starchild:
     emoji: "🛍️"
@@ -25,6 +21,14 @@ disable-model-invocation: false
 > **Note:** This repo is generated upstream — we do not accept contributions or pull requests here.
 
 A collection of agent skills verified to work with Shopify's development ecosystem. Skills are installable via the `npx skill` CLI and provide Claude Code with API-specific context, documentation search, and code validation for each Shopify surface.
+
+## When to use
+
+Shopify development skills: Admin GraphQL, Storefront, Hydrogen, Liquid, Polaris, Functions, POS, and more.
+
+Use when building, querying, or validating code for Shopify's development ecosystem (e.g. Admin API queries, Hydrogen components, Liquid themes, checkout extensions).
+
+Skills are installable via the `npx skill` CLI and provide Claude Code with API-specific context, documentation search, and code validation for each Shopify surface.
 
 ## What are agent skills?
 

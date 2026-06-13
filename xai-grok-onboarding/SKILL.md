@@ -1,10 +1,8 @@
 ---
 name: xai-grok-onboarding
-version: 1.3.2
-description: |
-  Connect an xAI account (X Premium / X Premium+ / SuperGrok / SuperGrok Heavy) via OAuth 2.0 device-code login.
-
-  Use when the user wants to sign in with their xAI account (e.g. "use my SuperGrok", "log in with Grok", "connect my X Premium").
+version: 1.3.3
+description: >-
+  Sign in with an xAI account (X Premium / SuperGrok) via OAuth device code — "use my SuperGrok", "log in with Grok".
 author: starchild
 delivery: script
 protected: true

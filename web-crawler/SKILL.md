@@ -1,14 +1,8 @@
 ---
 name: web-crawler
-version: 2.4.0
-description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
-  Reddit, Threads, plus robust web-page fallback extraction.
-
-
-  Use when extracting public posts, transcripts, or pages JS-heavy enough to block
-  plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403, anti-bot, cloudflare, JS-heavy page.
-
-  '
+version: 2.4.1
+description: >-
+  Scrape JS-heavy/anti-bot pages + social data (YouTube transcript, TikTok, Instagram, Reddit) — when web_fetch fails/403/Cloudflare.
 metadata:
   starchild:
     emoji: "\U0001F577\uFE0F"
@@ -51,6 +45,17 @@ metadata:
 user-invocable: true
 disable-model-invocation: false
 ---
+
+## When to use
+
+Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
+Reddit, Threads, plus robust web-page fallback extraction.
+
+
+Use when extracting public posts, transcripts, or pages JS-heavy enough to block
+plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403, anti-bot, cloudflare, JS-heavy page.
+
+
 
 ## Preferred entry: call exports.py (don't hand-roll requests)
 Ready-made helpers live in `skills/web-crawler/exports.py`. Prefer them over

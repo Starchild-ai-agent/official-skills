@@ -1,10 +1,8 @@
 ---
 name: twelvedata
-version: 2.0.4
-description: |
-  Stocks, forex, and commodities prices: real-time quotes and historical bars.
-
-  Use when looking up traditional-market prices (e.g. AAPL quote, EUR/USD chart, gold price, SPY history). Not for crypto.
+version: 2.0.5
+description: >-
+  Stocks, forex, commodities quotes & history (AAPL, EUR/USD, gold) — traditional markets, NOT crypto.
 delivery: script
 metadata:
   starchild:
@@ -22,6 +20,12 @@ disable-model-invocation: false
 # Twelve Data
 
 Stocks, forex, and commodities price data. **Traditional markets only — not for crypto.**
+
+## When to use
+
+Stocks, forex, and commodities prices: real-time quotes and historical bars.
+
+Use when looking up traditional-market prices (e.g. AAPL quote, EUR/USD chart, gold price, SPY history). Not for crypto.
 
 ## Script Usage
 

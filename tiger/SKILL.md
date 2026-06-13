@@ -1,10 +1,8 @@
 ---
 name: tiger
-version: 1.0.0
-description: |
-  Tiger Brokers (TigerOpen) — US/HK/A-share stocks. Account, positions, orders, quotes, history, and order placement (paper + live).
-
-  Use when the user wants to check or trade a Tiger / 老虎证券 account (e.g. "Tiger account assets", "buy 100 700.HK on Tiger", "my Tiger positions"). Cloud API via the official tigeropen SDK, runs in the container.
+version: 1.0.1
+description: >-
+  Tiger Brokers (老虎证券) — US/HK/A-share trading (paper + live): account, positions, orders; cloud tigeropen SDK.
 author: starchild
 tags: [tiger, 老虎证券, tigeropen, broker, us-stocks, hk-stocks, trading]
 metadata:
@@ -21,6 +19,12 @@ metadata:
         package: tigeropen
 user-invocable: true
 ---
+
+## When to use
+
+Tiger Brokers (TigerOpen) — US/HK/A-share stocks. Account, positions, orders, quotes, history, and order placement (paper + live).
+
+Use when the user wants to check or trade a Tiger / 老虎证券 account (e.g. "Tiger account assets", "buy 100 700.HK on Tiger", "my Tiger positions"). Cloud API via the official tigeropen SDK, runs in the container.
 
 ## What this is
 

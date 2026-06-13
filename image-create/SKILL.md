@@ -1,10 +1,8 @@
 ---
 name: image-create
-version: 1.0.0
-description: |
-  Pure text-to-image generation for all creative scenarios: logo design, poster design, illustration, meme, game assets, social media content, 3D rendering, education, fashion, food, pet, wedding, holiday marketing, and artistic styles.
-
-  Use when generating images from text descriptions without a reference photo (e.g. design a logo, create a poster, generate game art, make a meme, 3D render).
+version: 1.0.1
+description: >-
+  Text-to-image with NO reference photo — logos, posters, illustrations, memes, game art, social content, 3D renders.
 metadata:
   starchild:
     emoji: "🎨"
@@ -29,6 +27,12 @@ Covers: logo design, poster design, illustration, meme creation, game assets, so
 - **image-portrait** → user wants a portrait with their face/identity preserved from a reference photo
 
 ---
+
+## When to use
+
+Pure text-to-image generation for all creative scenarios: logo design, poster design, illustration, meme, game assets, social media content, 3D rendering, education, fashion, food, pet, wedding, holiday marketing, and artistic styles.
+
+Use when generating images from text descriptions without a reference photo (e.g. design a logo, create a poster, generate game art, make a meme, 3D render).
 
 ## 1. Quick start — basic generation (most common)
 

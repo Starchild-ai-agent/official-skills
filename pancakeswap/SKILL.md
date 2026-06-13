@@ -1,11 +1,8 @@
 ---
 name: pancakeswap
 description: >-
-  PancakeSwap DeFi operations — token swaps, liquidity provision, yield farming,
-  fee collection, reward harvesting, and PCS Hub integration. Use when the user
-  mentions PancakeSwap, CAKE, swapping on BSC/BNB Chain, LP positions, farming,
-  staking, syrup pools, or any PancakeSwap-related DeFi action.
-version: 1.0.0
+  PancakeSwap on BSC/BNB Chain — CAKE swaps, LP, yield farming, syrup pools, fee collection, PCS Hub.
+version: 1.0.1
 metadata:
   starchild:
     emoji: "🥞"
@@ -26,6 +23,13 @@ disable-model-invocation: false
 This skill is a directory. Read the specific guide for the user's request using `read_file`.
 
 All guides live under this skill folder, organized into three plugins:
+
+## When to use
+
+PancakeSwap DeFi operations — token swaps, liquidity provision, yield farming,
+fee collection, reward harvesting, and PCS Hub integration. Use when the user
+mentions PancakeSwap, CAKE, swapping on BSC/BNB Chain, LP positions, farming,
+staking, syrup pools, or any PancakeSwap-related DeFi action.
 
 ## How to Use
 

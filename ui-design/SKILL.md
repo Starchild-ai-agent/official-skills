@@ -1,17 +1,8 @@
 ---
 name: ui-design
-version: 1.2.0
-description: |
-  UI/UX quality gate and build guide for every visual output — landing pages, dashboards,
-  web apps, portfolios, and tools. ui-design remains the main entry point.
-
-  Integration model: ui-design main trunk + taste-skill overlay.
-  - ui-design owns engineering quality (track selection, component-library strategy,
-    accessibility, responsiveness, theming, performance, preview delivery)
-  - taste-skill is invoked inside the ui-design workflow for style decisions
-    (Brief Inference, Design Dials, Anti-slop hard rules)
-
-  MUST USE together with project-builder whenever a project produces visual HTML/CSS/JS.
+version: 1.2.1
+description: >-
+  UI/UX quality gate for every visual output — landing pages, dashboards, web apps; MUST pair with project-builder.
 metadata:
   starchild:
     emoji: 🎨
@@ -27,6 +18,19 @@ This skill is the **single entry point** for visual work.
 Use it for any user-facing HTML/CSS/JS output: landing pages, dashboards, product UI, internal tools, and portfolio pages.
 
 ---
+
+## When to use
+
+UI/UX quality gate and build guide for every visual output — landing pages, dashboards,
+web apps, portfolios, and tools. ui-design remains the main entry point.
+
+Integration model: ui-design main trunk + taste-skill overlay.
+- ui-design owns engineering quality (track selection, component-library strategy,
+accessibility, responsiveness, theming, performance, preview delivery)
+- taste-skill is invoked inside the ui-design workflow for style decisions
+(Brief Inference, Design Dials, Anti-slop hard rules)
+
+MUST USE together with project-builder whenever a project produces visual HTML/CSS/JS.
 
 ## Step 1 — Pick the build track
 

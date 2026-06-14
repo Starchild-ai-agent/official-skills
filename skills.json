@@ -422,12 +422,6 @@
       "description": "Buy Amazon and eBay products with USDC on Solana via SP3ND x402 payments.\n\nUse when paying for real-world goods with crypto (e.g. order this Amazon listing, buy eBay item, ship to Tokyo with USDC)."
     },
     {
-      "name": "ui-templates",
-      "path": "ui-templates/SKILL.md",
-      "version": "1.0.0",
-      "description": "Human-designed UI template library with 425+ templates from 6 professional sources (HTML5 UP, StyleShout, Start Bootstrap, Tooplate, ThemeFisher, TemplateMo) across 36 categories.\n\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, restaurants, blogs, etc. All templates are real human-designed HTML/CSS/JS — no AI-generated slop."
-    },
-    {
       "name": "taapi",
       "path": "taapi/SKILL.md",
       "version": "2.0.3",
@@ -486,6 +480,12 @@
       "path": "ui-design/SKILL.md",
       "version": "1.2.0",
       "description": "UI/UX quality gate and build guide for every visual output — landing pages, dashboards,\nweb apps, portfolios, and tools. ui-design remains the main entry point.\n\nIntegration model: ui-design main trunk + taste-skill overlay.\n- ui-design owns engineering quality (track selection, component-library strategy,\n  accessibility, responsiveness, theming, performance, preview delivery)\n- taste-skill is invoked inside the ui-design workflow for style decisions\n  (Brief Inference, Design Dials, Anti-slop hard rules)\n\nMUST USE together with project-builder whenever a project produces visual HTML/CSS/JS."
+    },
+    {
+      "name": "ui-templates",
+      "path": "ui-templates/SKILL.md",
+      "version": "1.0.0",
+      "description": "Human-designed UI template library with 425+ templates from 6 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
     },
     {
       "name": "us-stock",

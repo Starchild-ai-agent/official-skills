@@ -1,0 +1,89 @@
+[
+  {
+    "id": "tooplate-wedding_lite",
+    "source": "tooplate",
+    "dir": "tooplate/2131_wedding_lite",
+    "name": "Wedding Lite",
+    "title": "Wedding Lite - Free Bootstrap 5 HTML Template",
+    "category": "wedding",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 4234,
+    "indexPath": "tooplate/2131_wedding_lite/index.html",
+    "description": "Wedding invitation with Bootstrap 5. Heart icon preloader. Navbar with couple names and heart icon. Hero with invitation text and Save the Date card. Love Story with bride/groom photos and social links. Wedding details timeline. Wedding party members. Gallery with Magnific Popup. RSVP form. Contact form with Google Maps. Amatic SC and Playfair Display fonts.",
+    "colorScheme": "light",
+    "primaryColor": "#ff6899",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "preloader",
+      "lightbox",
+      "gallery",
+      "contact-form",
+      "google-maps",
+      "social-links",
+      "smooth-scroll",
+      "rsvp-form"
+    ],
+    "sections": [
+      "navigation",
+      "hero",
+      "story",
+      "wedding-details",
+      "people",
+      "gallery",
+      "rsvp",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-5",
+      "bootstrap-icons",
+      "google-fonts",
+      "jquery",
+      "magnific-popup"
+    ],
+    "matchSignals": [
+      "wedding",
+      "invitation",
+      "love",
+      "couple",
+      "bride",
+      "groom",
+      "rsvp",
+      "gallery",
+      "lightbox",
+      "save-the-date",
+      "timeline",
+      "elegant",
+      "romantic",
+      "pink-accent",
+      "serif-font",
+      "heart-icon"
+    ],
+    "colorPalette": {
+      "background": "#ffffff",
+      "text": "#717275",
+      "accent": "#ff6899"
+    },
+    "typography": {
+      "fontFamily": "Amatic SC, Playfair Display",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "style": "Decorative Amatic SC with elegant Playfair Display"
+    },
+    "layoutDetails": "Single-page with navbar. Hero with save-the-date. Bride/groom profiles. Event timeline. Gallery. RSVP form. Contact with map.",
+    "visualStyle": "Elegant romantic wedding with pink accent, decorative fonts, heart icons. Photo gallery with lightbox.",
+    "breakpoints": [
+      576,
+      768,
+      992,
+      1200
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2131_wedding_lite.zip"
+  }
+]

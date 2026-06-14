@@ -1,0 +1,176 @@
+[
+  {
+    "id": "templatemo-sentra",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_518_sentra",
+    "name": "Sentra",
+    "title": "Sentra - Free Bootstrap Theme",
+    "category": "charity",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 3804,
+    "indexPath": "templatemo/templatemo_518_sentra/index.html",
+    "description": "Charity/nonprofit single-page template with a full-width hero banner featuring a large background image and centered call-to-action text with a donate button. Fixed top navigation bar with smooth scroll links. Sections include About with mission statement and feature icons, Causes section with image cards showing fundraising progress bars and donation goals, Events section with upcoming event listings, Team section with circular member photos and role descriptions, Testimonials area with client quotes, and Contact section with a form. Owl Carousel for testimonials sliding. Lightbox for image viewing. Warm, inviting color scheme with green accent suitable for charitable organizations.",
+    "colorScheme": "light",
+    "primaryColor": "#27ae60",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "fixed-navigation",
+      "smooth-scroll",
+      "contact-form",
+      "owl-carousel",
+      "lightbox",
+      "progress-bars",
+      "team-section",
+      "testimonials"
+    ],
+    "sections": [
+      "navigation",
+      "hero",
+      "about",
+      "causes",
+      "events",
+      "team",
+      "testimonials",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap",
+      "jquery",
+      "owl-carousel",
+      "font-awesome",
+      "lightbox",
+      "google-fonts"
+    ],
+    "matchSignals": [
+      "charity",
+      "nonprofit",
+      "donation",
+      "causes",
+      "fundraising",
+      "events",
+      "team",
+      "testimonials",
+      "one-page",
+      "green",
+      "volunteer",
+      "ngo",
+      "progress-bar",
+      "bootstrap"
+    ],
+    "colorPalette": {
+      "background": "#ffffff",
+      "text": "#333333",
+      "accent": "#27ae60 (green)",
+      "secondary": "#f5f5f5 (light gray)",
+      "dark": "#222222 (dark footer)"
+    },
+    "typography": {
+      "fontFamily": "'Open Sans', Arial, sans-serif",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "letterSpacing": "normal",
+      "textTransform": "uppercase on section titles",
+      "style": "Open Sans with clear hierarchy, warm and approachable"
+    },
+    "layoutDetails": "Fixed top navbar with anchor links. Full-width hero with CTA button. Causes in card grid with progress bars. Events in list format. Team in circular photo grid. Testimonials in carousel.",
+    "visualStyle": "Warm nonprofit aesthetic with green accent, white backgrounds, progress bar fundraising indicators, circular team photos, and inviting typography.",
+    "breakpoints": [
+      768,
+      992,
+      1200
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_518_sentra.zip"
+  },
+  {
+    "id": "templatemo-upright",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_555_upright",
+    "name": "Upright",
+    "title": "Upright",
+    "category": "charity",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 7818,
+    "indexPath": "templatemo/templatemo_555_upright/index.html",
+    "description": "Charity/nonprofit single-page template with a fixed left sidebar navigation and parallax image column. The sidebar contains the brand name, icon-based nav links (Home, Gallery, About, Contact) with triangle-right active indicators, and a footer credit. The main content area scrolls vertically with parallax background images that change per section. Home section features two-column text blocks with large FontAwesome icons, media list posts with dates, and a testimonial slider. Gallery section displays a filterable image grid with Magnific Popup lightbox. About section has team member cards with circular photos and social links. Contact section includes a styled form with map placeholder. Clean, modern layout with blue accent color on white backgrounds.",
+    "colorScheme": "light",
+    "primaryColor": "#006699",
+    "colorPalette": {
+      "background": "#ffffff",
+      "text": "#666666",
+      "accent": "#006699 (blue primary)",
+      "secondary": "#009999 (teal secondary)",
+      "border": "#cccccc",
+      "navBackground": "#f2f2f2"
+    },
+    "typography": {
+      "fontFamily": "Kumbh Sans",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "style": "Clean sans-serif with consistent weight, modern geometric feel"
+    },
+    "layout": "sidebar",
+    "layoutDetails": "Fixed left sidebar (nav + brand) with scrollable main content area. Parallax image column between sidebar and content. Sections stack vertically. Bootstrap grid for internal layouts.",
+    "visualStyle": "Clean, modern with parallax depth. Blue accent on white. Card-based team section, media list posts, filterable gallery grid. Subtle transitions on hover.",
+    "features": [
+      "responsive",
+      "parallax",
+      "lightbox",
+      "image-filter",
+      "slider",
+      "contact-form",
+      "social-links",
+      "smooth-scroll"
+    ],
+    "sections": [
+      "header",
+      "home",
+      "gallery",
+      "about",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap",
+      "font-awesome",
+      "google-fonts",
+      "magnific-popup",
+      "slick-carousel",
+      "jquery"
+    ],
+    "breakpoints": [
+      576,
+      768,
+      992,
+      1200
+    ],
+    "matchSignals": [
+      "charity",
+      "nonprofit",
+      "sidebar",
+      "parallax",
+      "gallery",
+      "lightbox",
+      "team",
+      "contact-form",
+      "single-page",
+      "blue-accent",
+      "modern",
+      "clean",
+      "filterable-gallery",
+      "testimonials",
+      "media-list"
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_555_upright.zip"
+  }
+]

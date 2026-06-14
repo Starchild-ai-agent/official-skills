@@ -1,0 +1,262 @@
+[
+  {
+    "id": "templatemo-pro_audio",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_429_pro_audio",
+    "name": "Pro Audio",
+    "title": "Pro Audio - Free Responsive Template",
+    "category": "music",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 1430,
+    "indexPath": "templatemo/templatemo_429_pro_audio/index.html",
+    "description": "Music and audio single-page template with a dark gradient header and vibrant blue accents. Centered uppercase site name with gradient background. Horizontal navigation with icon-labeled links. Home section displays a split layout with album artwork left and text right with gradient CTA button. Subscribe section with centered email form. Albums section shows a 2x2 grid of album cards with circular artwork images, names, artists, and genre labels. About section with framed image. Services section with three icon cards. Contact section has Google Maps and form side by side. Uses Oswald for headings and Open Sans for body.",
+    "colorScheme": "dark",
+    "primaryColor": "#00bfff",
+    "colorPalette": {
+      "background": "#1a1a2e",
+      "surface": "#16213e",
+      "text": "#cccccc",
+      "headings": "#ffffff",
+      "accent": "#00bfff",
+      "gradient": "linear-gradient blue tones"
+    },
+    "typography": {
+      "fontFamily": "Oswald, Open Sans",
+      "headingWeight": "400",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "letterSpacing": "normal",
+      "textTransform": "uppercase (headings, nav)",
+      "style": "Condensed display heading (Oswald) with clean body (Open Sans)"
+    },
+    "layout": "single-page",
+    "layoutDetails": "Single-page scrolling layout with fixed navigation. Gradient header background. Split hero layout. 2x2 album grid with circular images. Side-by-side contact form and map. Decorative border images between sections.",
+    "visualStyle": "Dark music-themed with gradient backgrounds and blue accents. Circular album artwork. Gradient CTA buttons. Decorative section dividers. Professional audio/music industry aesthetic.",
+    "features": [
+      "responsive",
+      "email-subscription",
+      "contact-form",
+      "google-maps",
+      "gradient-buttons",
+      "circular-images",
+      "responsive-menu"
+    ],
+    "sections": [
+      "header",
+      "navigation",
+      "home",
+      "subscribe",
+      "albums",
+      "about",
+      "services",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-3",
+      "font-awesome",
+      "google-fonts",
+      "jquery"
+    ],
+    "breakpoints": [
+      768,
+      992,
+      1200
+    ],
+    "matchSignals": [
+      "music",
+      "audio",
+      "band",
+      "album",
+      "sound",
+      "dark-theme",
+      "gradient",
+      "circular-images",
+      "entertainment",
+      "podcast",
+      "radio",
+      "subscription",
+      "oswald",
+      "blue-accent",
+      "recording"
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_429_pro_audio.zip"
+  },
+  {
+    "id": "templatemo-sonic",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_394_sonic",
+    "name": "Sonic",
+    "title": "Sonic Responsive Template",
+    "category": "music",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 2725,
+    "indexPath": "templatemo/templatemo_394_sonic/index.html",
+    "description": "Creative single-page template with a distinctive fixed left sidebar navigation and a main content area that scrolls on the right. The sidebar features a vertical menu with colorful section indicators (each menu item has a unique color: blue, yellow, purple, green, pink) and the site logo at the top. Hero section with a full-width FlexSlider image carousel. Content sections include About Us with company description, Services with four icon-based feature cards each with a distinct color, Portfolio section with image thumbnails and prettyPhoto lightbox, and Contact section with a form and embedded Google Maps. Each section is visually distinguished by its accent color. Open Sans typography. Multi-colored, vibrant design with a dark sidebar.",
+    "colorScheme": "mixed",
+    "primaryColor": "#38a9e3",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "fixed-sidebar",
+      "image-slider",
+      "lightbox",
+      "contact-form",
+      "google-maps",
+      "smooth-scroll",
+      "color-coded-sections"
+    ],
+    "sections": [
+      "sidebar-navigation",
+      "hero-slider",
+      "about",
+      "services",
+      "portfolio",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap",
+      "jquery",
+      "flexslider",
+      "prettyphoto",
+      "google-maps-api",
+      "font-awesome",
+      "google-fonts"
+    ],
+    "matchSignals": [
+      "creative",
+      "sidebar",
+      "colorful",
+      "portfolio",
+      "services",
+      "contact",
+      "google-maps",
+      "one-page",
+      "multi-color",
+      "vibrant",
+      "dark-sidebar",
+      "flexslider",
+      "lightbox",
+      "unique-layout"
+    ],
+    "colorPalette": {
+      "background": "#fafafa (off-white)",
+      "text": "#495054 (dark gray)",
+      "accent": "#38a9e3 (blue)",
+      "secondary": "#e9b144 (yellow)",
+      "tertiary": "#974dea (purple)",
+      "quaternary": "#38e395 (green)",
+      "quinary": "#e3387c (pink)",
+      "sidebar": "#313639 (dark charcoal)"
+    },
+    "typography": {
+      "fontFamily": "'Open Sans', Arial, Helvetica Neue, sans-serif",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Open Sans with clean readability, professional weight hierarchy"
+    },
+    "layoutDetails": "Fixed left sidebar with colorful vertical menu. Right content area scrolls independently. FlexSlider hero. Services in 4-column grid with color-coded cards. Portfolio with lightbox. Contact with Google Maps.",
+    "visualStyle": "Vibrant creative with multi-colored section accents, dark fixed sidebar, colorful service cards, and distinctive color-coded navigation. Playful yet professional.",
+    "breakpoints": [
+      581,
+      767,
+      991
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_394_sonic.zip"
+  },
+  {
+    "id": "tooplate-modern_musician",
+    "source": "tooplate",
+    "dir": "tooplate/2155_modern_musician",
+    "name": "Modern Musician",
+    "title": "Modern Musician - Free HTML CSS Template",
+    "category": "music",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 380,
+    "indexPath": "tooplate/2155_modern_musician/index.html",
+    "description": "Music creator personal brand template with muted teal color scheme. Hero features an integrated audio player with play/pause, progress bar, volume slider, and track info, alongside an album cover with audio visualizer bars and Now Playing card. About with portrait and bio. Services with three SVG-icon cards. Portfolio with work cards. Testimonials. Contact with form. System fonts with Georgia serif headings. No framework - pure CSS with custom properties.",
+    "colorScheme": "light",
+    "primaryColor": "#5b7a8a",
+    "colorPalette": {
+      "background": "#fafcfd",
+      "backgroundAlt": "#f0f5f7",
+      "text": "#2c3e44",
+      "textLight": "#5f7a84",
+      "accent": "#5b7a8a",
+      "accentDark": "#3d5561",
+      "border": "#dce6ea"
+    },
+    "typography": {
+      "fontFamily": "system-ui (body), Georgia (headings)",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "1rem",
+      "letterSpacing": "normal",
+      "textTransform": "uppercase (section labels)",
+      "style": "Editorial serif headings with clean system font body."
+    },
+    "layout": "single-page",
+    "layoutDetails": "Single-page scrolling with max-width 1100px container. Two-column hero with audio player and album showcase. Alternating section backgrounds. Pure CSS with custom properties.",
+    "visualStyle": "Refined, editorial music portfolio with muted teal palette. Audio player integration, album cover with visualizer bars. Serif headings.",
+    "features": [
+      "responsive",
+      "audio-player",
+      "audio-visualizer",
+      "contact-form",
+      "smooth-scroll",
+      "mobile-menu",
+      "css-custom-properties"
+    ],
+    "sections": [
+      "header",
+      "hero",
+      "about",
+      "services",
+      "portfolio",
+      "testimonials",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "vanilla-css",
+      "vanilla-js",
+      "google-fonts"
+    ],
+    "breakpoints": [
+      480,
+      768,
+      1024
+    ],
+    "matchSignals": [
+      "music",
+      "musician",
+      "audio",
+      "producer",
+      "artist",
+      "creative",
+      "portfolio",
+      "personal-brand",
+      "audio-player",
+      "album",
+      "sound",
+      "studio",
+      "freelancer",
+      "educator",
+      "entertainment"
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2155_modern_musician.zip"
+  }
+]

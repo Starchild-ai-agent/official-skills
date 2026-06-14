@@ -1,0 +1,330 @@
+[
+  {
+    "id": "templatemo-letter",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_510_letter",
+    "name": "Letter",
+    "title": "Letter - Simple Sign Up Form",
+    "category": "component",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 1545,
+    "indexPath": "templatemo/templatemo_510_letter/index.html",
+    "description": "Minimal single-page sign-up/coming-soon template with fullscreen CSS background slideshow cycling through 6 images using fade-in/out keyframe animations. Particles.js overlay creates floating particle effect across the entire viewport. Content is vertically centered on the right side: large 'Letter' heading (4rem), description paragraph, email subscription form with input field and Subscribe button in a single row, and 4 social media icon links (Facebook, Google+, Twitter, LinkedIn). Footer link with copyright text at the bottom. The entire page is a single viewport with no scrolling, designed as a pre-launch or newsletter signup landing.",
+    "colorScheme": "dark",
+    "primaryColor": "#ffff00",
+    "layout": "fullscreen",
+    "features": [
+      "responsive",
+      "particles-js",
+      "background-slideshow",
+      "css-animations",
+      "subscribe-form",
+      "social-links",
+      "fullscreen"
+    ],
+    "sections": [
+      "background-slideshow",
+      "content",
+      "subscribe-form",
+      "social-links",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-4",
+      "font-awesome",
+      "google-fonts",
+      "particles-js"
+    ],
+    "matchSignals": [
+      "coming-soon",
+      "signup",
+      "subscribe",
+      "newsletter",
+      "pre-launch",
+      "landing",
+      "minimal",
+      "fullscreen",
+      "particles",
+      "animated-background",
+      "dark-theme",
+      "email-capture",
+      "launch",
+      "teaser",
+      "one-page",
+      "letter"
+    ],
+    "colorPalette": {
+      "background": "CSS slideshow background images with crossfade",
+      "text": "#ffffff (white, all text)",
+      "heading": "#ffffff (white, heading)",
+      "linkHover": "#ffff00 (yellow, link hover)",
+      "formBg": "transparent (form input with white border)",
+      "button": "#ffffff (white, subscribe button)",
+      "particles": "rgba(255,255,255,0.5) (semi-transparent white particles)"
+    },
+    "typography": {
+      "fontFamily": "Open Sans",
+      "headingWeight": "400",
+      "bodyWeight": "300",
+      "bodySize": "24px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Large lightweight sans-serif for dramatic fullscreen readability"
+    },
+    "layoutDetails": "Fullscreen viewport (100vh) with no scrolling. CSS keyframe background slideshow with 6 images cycling via opacity transitions. Particles.js canvas overlay at z-index 1000. Content at z-index 1001 using flexbox centering. Right-aligned content on xl-6 column. Responsive at 1140px, 600px, 576px.",
+    "visualStyle": "Dramatic fullscreen coming-soon aesthetic with crossfading background images and floating particle overlay. White text on dark imagery creates high contrast. Minimal content focused on email capture. Cinematic and atmospheric.",
+    "breakpoints": [
+      1140,
+      600,
+      576
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_510_letter.zip"
+  },
+  {
+    "id": "templatemo-masonry",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_434_masonry",
+    "name": "Masonry",
+    "title": "Masonry Responsive Template",
+    "category": "component",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 2111,
+    "indexPath": "templatemo/templatemo_434_masonry/index.html",
+    "description": "Single-page masonry image gallery template with fullscreen background image and dark overlay. Top header bar with 'Masonry Free Template' brand text on left and 5 social icons (Facebook, Twitter, Behance, Dribbble, Google+) on right. Banner section with centered heading, description paragraph about the template, and email subscription form with input and Subscribe button. Main content area displays a 3-column masonry grid of 9 image thumbnails, each with a title overlay at the bottom and a hover effect revealing a centered plus icon, date, title, and short description. Footer with centered social icons row and copyright text. Page loader animation on initial load. Clean and focused gallery layout with no additional navigation or content sections.",
+    "colorScheme": "dark",
+    "primaryColor": "#66bbee",
+    "layout": "grid",
+    "features": [
+      "responsive",
+      "masonry-grid",
+      "hover-overlay",
+      "subscribe-form",
+      "social-links",
+      "page-loader",
+      "fullscreen-background"
+    ],
+    "sections": [
+      "header",
+      "banner",
+      "masonry-gallery",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-3",
+      "font-awesome",
+      "google-fonts",
+      "masonry-js",
+      "jquery"
+    ],
+    "matchSignals": [
+      "masonry",
+      "gallery",
+      "portfolio",
+      "grid",
+      "photography",
+      "images",
+      "showcase",
+      "dark-theme",
+      "minimal",
+      "creative",
+      "photo-gallery",
+      "visual",
+      "thumbnails",
+      "hover-effect",
+      "subscribe",
+      "artistic"
+    ],
+    "colorPalette": {
+      "background": "fullscreen background image with dark overlay",
+      "overlay": "rgba(0,0,0,0.7) (dark overlay)",
+      "primary": "#66bbee (light blue, links and accents)",
+      "green": "#66ee66 (green, brand text accent)",
+      "text": "#ffffff (white, text on dark bg)",
+      "heading": "#ffffff (white, headings)",
+      "hoverBg": "rgba(0,0,0,0.8) (dark, image hover overlay)",
+      "footerBg": "#222222 (dark, footer)"
+    },
+    "typography": {
+      "fontFamily": "Roboto (Light, Regular, Bold via @font-face)",
+      "headingWeight": "700 (robotobold)",
+      "bodyWeight": "300 (robotolight)",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Self-hosted Roboto with light body and bold headings for clean gallery presentation"
+    },
+    "layoutDetails": "Fullscreen background with fixed dark overlay. Container-based content. 3-column masonry grid (col-md-4) with equal-width thumbnails. Hover overlays with centered content. Subscribe form with inline layout. Responsive collapses to 2-column at 768px.",
+    "visualStyle": "Dark and moody gallery aesthetic with fullscreen background image. Masonry grid with hover reveal effects creates an immersive portfolio experience. Minimal UI keeps focus on imagery. Blue and green text accents on dark backgrounds.",
+    "breakpoints": [
+      768
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_434_masonry.zip"
+  },
+  {
+    "id": "templatemo-timeline",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_427_timeline",
+    "name": "Timeline",
+    "title": "Timeline - Free Responsive Template",
+    "category": "component",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 2053,
+    "indexPath": "templatemo/templatemo_427_timeline/index.html",
+    "description": "Single-page template built around a vertical timeline component. Hero section features a fullscreen background image with 4 animated icon links (Game, Video, Music, Support) in a horizontal row. Services section uses a vertical timeline with alternating left/right content blocks, each with a circular icon node on the center line and a text card. Projects section mirrors the timeline layout but with image cards showing project thumbnails, titles, and dates. A CTA banner separates sections. Google Map section. Contact section with a form. Fixed top navbar with smooth scrolling.",
+    "colorScheme": "mixed",
+    "primaryColor": "#27ae60",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "timeline",
+      "smooth-scroll",
+      "fixed-navbar",
+      "google-map",
+      "contact-form",
+      "animated-icons"
+    ],
+    "sections": [
+      "header",
+      "hero-banner",
+      "services-timeline",
+      "cta",
+      "projects-timeline",
+      "map",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-3",
+      "font-awesome",
+      "google-maps-api"
+    ],
+    "matchSignals": [
+      "timeline",
+      "chronological",
+      "events",
+      "projects",
+      "portfolio",
+      "history",
+      "milestones",
+      "creative",
+      "vertical-timeline",
+      "icons",
+      "services",
+      "modern",
+      "component",
+      "interactive",
+      "animated",
+      "showcase"
+    ],
+    "colorPalette": {
+      "background": "#ffffff",
+      "text": "#666666",
+      "accent": "#27ae60 (green)",
+      "blue": "#3498db",
+      "dark": "#333333",
+      "cta-bg": "#2c3e50"
+    },
+    "typography": {
+      "fontFamily": "system default (sans-serif)",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Standard sans-serif with bold headings and clean body text"
+    },
+    "layoutDetails": "Single-page with vertical timeline as primary layout pattern. Timeline uses alternating left/right cards with center line and circular icon nodes. Hero has icon row. CTA banner between sections.",
+    "visualStyle": "Clean with timeline as visual centerpiece. Green accent color. Alternating white and dark sections. Circular icon nodes on timeline. Project cards with image thumbnails.",
+    "breakpoints": [
+      480,
+      768,
+      992
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_427_timeline.zip"
+  },
+  {
+    "id": "tooplate-input",
+    "source": "tooplate",
+    "dir": "tooplate/2105_input",
+    "name": "Input",
+    "title": "Input HTML Form Pack by Tooplate",
+    "category": "component",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 2546,
+    "indexPath": "tooplate/2105_input/index.html",
+    "description": "Compact form component pack template built on Bootstrap 4 and Materialize CSS. Presents a single dark-background page with the title 'INPUT' in large uppercase text. Below, a collection of styled form input components are showcased including text fields, email inputs, password fields, and textareas using Materialize CSS styling with floating labels and underline-style inputs. The page serves as a form element showcase/starter kit rather than a complete website. Minimal layout with centered content and a simple footer with copyright text.",
+    "colorScheme": "dark",
+    "primaryColor": "#26a69a",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "materialize-inputs",
+      "floating-labels",
+      "form-components"
+    ],
+    "sections": [
+      "header",
+      "form-showcase",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-4",
+      "materialize-css",
+      "google-fonts"
+    ],
+    "breakpoints": [
+      400,
+      767
+    ],
+    "matchSignals": [
+      "component",
+      "form",
+      "input",
+      "ui-kit",
+      "starter",
+      "materialize",
+      "dark-theme",
+      "form-elements",
+      "text-field",
+      "showcase",
+      "minimal",
+      "utility",
+      "snippet",
+      "boilerplate",
+      "form-pack",
+      "css-components"
+    ],
+    "colorPalette": {
+      "background": "#000000 (black)",
+      "text": "#ffffff",
+      "accent": "#26a69a (teal/materialize)",
+      "inputBorder": "#9CF",
+      "muted": "#b0afaf",
+      "border": "#dee2e6"
+    },
+    "typography": {
+      "fontFamily": "Open Sans",
+      "headingWeight": "600",
+      "bodyWeight": "300",
+      "bodySize": "14px",
+      "letterSpacing": "normal",
+      "textTransform": "uppercase (title)",
+      "style": "Clean sans-serif with light body weight. Large uppercase title. Materialize-style floating label inputs."
+    },
+    "layoutDetails": "Single centered column layout. Large title at top. Form input components stacked vertically. Simple footer at bottom.",
+    "visualStyle": "Dark minimal component showcase. Black background with teal Materialize accent. Underline-style form inputs with floating labels. No images or decorative elements.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2105_input.zip"
+  }
+]

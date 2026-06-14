@@ -1,0 +1,91 @@
+[
+  {
+    "id": "tooplate-forge_reality",
+    "source": "tooplate",
+    "dir": "tooplate/2158_forge_reality",
+    "name": "Forge Reality",
+    "title": "FORGE - Industrial Coworking Space",
+    "category": "coworking",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 1371,
+    "indexPath": "tooplate/2158_forge_reality/index.html",
+    "description": "Industrial-themed coworking space template with a bold dark aesthetic and no framework dependencies. Features a dramatic hero section with rotating background images and large display typography. The features section presents six stat cards with animated counters and progress bars. A spaces section showcases six workspace types in a grid with hover effects. Pricing section includes a monthly/yearly toggle with three tiered plan cards plus an enterprise CTA. Amenities section lists eight facility features. Contact section combines address info, an embedded Google Map, and a multi-field contact form. Closes with a bold CTA section and a comprehensive dark footer with newsletter signup.",
+    "colorScheme": "dark",
+    "primaryColor": "#E63946",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "animated-counters",
+      "pricing-toggle",
+      "contact-form",
+      "google-maps",
+      "hover-effects",
+      "css-variables",
+      "smooth-scroll",
+      "mobile-menu"
+    ],
+    "sections": [
+      "navigation",
+      "hero",
+      "features",
+      "spaces",
+      "pricing",
+      "amenities",
+      "contact",
+      "cta",
+      "footer"
+    ],
+    "techStack": [
+      "google-fonts",
+      "css-variables",
+      "vanilla-js"
+    ],
+    "breakpoints": [
+      768,
+      1024,
+      1200
+    ],
+    "matchSignals": [
+      "coworking",
+      "workspace",
+      "office",
+      "industrial",
+      "dark-theme",
+      "pricing",
+      "membership",
+      "startup",
+      "business",
+      "modern",
+      "bold",
+      "red-accent",
+      "amenities",
+      "contact-form",
+      "corporate",
+      "space-rental"
+    ],
+    "colorPalette": {
+      "background": "#0A0A0A (near-black)",
+      "surface": "#2C2C2C (concrete gray)",
+      "text": "#F5F5F5 (off-white)",
+      "accent": "#E63946 (industrial red)",
+      "accentSecondary": "#FF6B35 (industrial orange)",
+      "steel": "#404040",
+      "border": "#1A1A1A"
+    },
+    "typography": {
+      "fontFamily": "Inter, Bebas Neue",
+      "headingWeight": "900",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "textTransform": "uppercase (headings)",
+      "style": "Industrial display headings in Bebas Neue with heavy weight. Clean Inter body text. Strong typographic hierarchy."
+    },
+    "layoutDetails": "Full-width hero with rotating backgrounds. Six-column feature cards grid. Six-card workspace showcase. Three-column pricing cards with toggle. Two-column contact layout with map and form.",
+    "visualStyle": "Dark industrial aesthetic. Red and orange accent colors against near-black backgrounds. Bold typography with Bebas Neue display font. Card-based layouts with subtle hover animations.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2158_forge_reality.zip"
+  }
+]

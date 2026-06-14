@@ -1,0 +1,412 @@
+[
+  {
+    "id": "templatemo-motor",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_463_motor",
+    "name": "Motor",
+    "title": "Motor Website Template",
+    "category": "automotive",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 1947,
+    "indexPath": "templatemo/templatemo_463_motor/index.html",
+    "description": "Automotive/car showcase template with bold red (#b53636) accent color. Preloader animation on page load. Hero section with image carousel/slider showcasing vehicles with performance-themed headings. Content sections with car-related imagery in grid layout (9 images total). One-column and multi-column content blocks. Light gray (#EAE9EF) body background. Open Sans font with italic variant. Dark overlay effects on images. Bootstrap grid with responsive carousel.",
+    "colorScheme": "light",
+    "primaryColor": "#b53636",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "carousel",
+      "preloader",
+      "image-gallery"
+    ],
+    "sections": [
+      "preloader",
+      "hero",
+      "content",
+      "gallery",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap",
+      "jquery",
+      "font-awesome",
+      "google-fonts"
+    ],
+    "matchSignals": [
+      "automotive",
+      "car",
+      "vehicle",
+      "motor",
+      "speed",
+      "red-accent",
+      "carousel",
+      "preloader",
+      "showcase",
+      "dealership",
+      "racing",
+      "bold",
+      "dynamic",
+      "transport"
+    ],
+    "colorPalette": {
+      "background": "#EAE9EF (light lavender gray)",
+      "text": "#B4B4B4 (silver gray)",
+      "heading": "#333333 (dark gray)",
+      "accent": "#b53636 (bold red)",
+      "hoverAccent": "#d54a4a (lighter red)",
+      "overlay": "rgba(0,0,0,0.7)"
+    },
+    "typography": {
+      "fontFamily": "Open Sans",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Clean sans-serif with italic variant, automotive branding feel"
+    },
+    "layoutDetails": "Bootstrap grid layout. Hero carousel/slider with vehicle images. Content in single and multi-column layouts. Preloader overlay. 5 responsive breakpoints.",
+    "visualStyle": "Bold automotive aesthetic with red accents on light lavender-gray background. Dark overlays on images create dramatic vehicle showcase effect.",
+    "breakpoints": [
+      500,
+      630,
+      767,
+      991,
+      1199
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_463_motor.zip"
+  },
+  {
+    "id": "templatemo-verticard",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_533_verticard",
+    "name": "Verticard",
+    "title": "VertiCard by TemplateMo",
+    "category": "automotive",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 1135,
+    "indexPath": "templatemo/templatemo_533_verticard/index.html",
+    "description": "Minimal vertical card-style personal template with a narrow centered layout (max 600px). Features a top brand heading with italic subtitle, a right-side vertical navigation with decorative line markers, and a rounded white card containing a full-width image and text content. The card has generous border-radius (20px) on a light gray (#eeeeee) background. Multi-page structure with Intro, Gallery, and Contact pages. Gallery page uses Magnific Popup for image lightbox. Extremely minimal design with teal accent color, no hero section, no parallax — just clean card-based content presentation.",
+    "colorScheme": "light",
+    "primaryColor": "#61AEAE",
+    "colorPalette": {
+      "background": "#eeeeee (light gray page)",
+      "card": "#ffffff",
+      "text": "#6C6D6E",
+      "accent": "#61AEAE (teal)",
+      "secondary": "#0099CC (blue link)",
+      "navActive": "#61AEAE"
+    },
+    "typography": {
+      "fontFamily": "Open Sans",
+      "headingWeight": "600",
+      "bodyWeight": "400",
+      "bodySize": "18px",
+      "letterSpacing": "normal",
+      "style": "Clean sans-serif with larger body text for readability, minimal typographic hierarchy"
+    },
+    "layout": "single-page",
+    "layoutDetails": "Narrow centered container (max 600px). Vertical card layout with rounded corners. Right-side absolute-positioned navigation. No full-width sections. Minimal vertical stacking.",
+    "visualStyle": "Ultra-minimal card design. Light gray background with white rounded card. Teal accent color. No shadows, no gradients, no complex layouts. Focus on content within a single card container.",
+    "features": [
+      "responsive",
+      "lightbox",
+      "multi-page"
+    ],
+    "sections": [
+      "header",
+      "content-card",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap",
+      "google-fonts",
+      "magnific-popup"
+    ],
+    "breakpoints": [
+      576,
+      768
+    ],
+    "matchSignals": [
+      "minimal",
+      "card",
+      "personal",
+      "portfolio",
+      "vertical",
+      "narrow-layout",
+      "teal",
+      "clean",
+      "simple",
+      "automotive",
+      "gallery",
+      "lightbox",
+      "rounded-card",
+      "centered"
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_533_verticard.zip"
+  },
+  {
+    "id": "tooplate-garage",
+    "source": "tooplate",
+    "dir": "tooplate/2079_garage",
+    "name": "Garage",
+    "title": "Garage Bootstrap Template",
+    "category": "automotive",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 5187,
+    "indexPath": "tooplate/2079_garage/index.html",
+    "description": "Automotive dealership template built on Bootstrap 3 with a dark, premium feel. Opens with a full-width image carousel showcasing luxury vehicles with model names and descriptions. Below, a tabbed vehicle listing section with Most Recent and Most Popular tabs displays car cards with images, model names, year, mileage, and pricing in a masonry-style grid using Isotope. Each card features a hover overlay effect. A contact section includes a styled form. The footer displays the Garage brand, copyright, and social media links. Uses BebasNeue display font for headings with a gold/amber accent color scheme against dark backgrounds.",
+    "colorScheme": "dark",
+    "primaryColor": "#C59E47",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "carousel",
+      "tabs",
+      "isotope-grid",
+      "hover-effects",
+      "contact-form",
+      "social-links"
+    ],
+    "sections": [
+      "navigation",
+      "hero-carousel",
+      "vehicle-listings",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-3",
+      "jquery",
+      "font-awesome",
+      "isotope"
+    ],
+    "breakpoints": [
+      480,
+      767,
+      991,
+      1199
+    ],
+    "matchSignals": [
+      "automotive",
+      "car",
+      "dealership",
+      "vehicle",
+      "luxury",
+      "garage",
+      "dark-theme",
+      "gold-accent",
+      "carousel",
+      "listing",
+      "showroom",
+      "premium",
+      "auto",
+      "motor",
+      "classic-cars",
+      "inventory"
+    ],
+    "colorPalette": {
+      "background": "#191919 (dark charcoal)",
+      "surface": "#262626",
+      "text": "#ffffff",
+      "accent": "#C59E47 (gold/amber)",
+      "secondary": "#F8C72D (bright gold)",
+      "navBg": "#020243 (deep navy)",
+      "muted": "#6D6D6D"
+    },
+    "typography": {
+      "fontFamily": "BebasNeue Regular",
+      "headingWeight": "bold",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "letterSpacing": "normal",
+      "textTransform": "uppercase (headings)",
+      "style": "Display condensed headings in BebasNeue. Gold accent color on interactive elements and highlights."
+    },
+    "layoutDetails": "Full-width hero carousel with vehicle slides. Tabbed content area with Isotope masonry grid for vehicle cards. Contact form section. Sticky top navigation bar.",
+    "visualStyle": "Dark premium automotive aesthetic. Gold/amber accent against charcoal backgrounds. Image-heavy vehicle showcases with hover overlays. Condensed display typography.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2079_garage.zip"
+  },
+  {
+    "id": "tooplate-parallax_depth",
+    "source": "tooplate",
+    "dir": "tooplate/2144_parallax_depth",
+    "name": "Parallax Depth",
+    "title": "Parallax Depth Experience from Tooplate website",
+    "category": "automotive",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 71,
+    "indexPath": "tooplate/2144_parallax_depth/index.html",
+    "description": "Immersive parallax experience template with multi-layer scrolling depth effects. Hero with parallax layers (background, floating rectangles, glowing orbs) that move at different speeds. Custom mouse follower cursor. Stars background. SVG hexagonal logo with gradient fills. About section with orbit animation (three concentric rotating rings with dots). Features section with numbered info boxes. Gallery with hover-reveal cards. Stats with animated counters. Contact form. Section navigation with 3D pyramid and hexagon buttons. Orbitron, Space Grotesk, and Inter fonts. Neon cyan and magenta color scheme on dark background.",
+    "colorScheme": "dark",
+    "primaryColor": "#00d9ff",
+    "colorPalette": {
+      "background": "#0a0a0f",
+      "text": "#ffffff",
+      "primary": "#00d9ff (cyan)",
+      "secondary": "#ff00ea (magenta)",
+      "glow": "#00ffcc (green)",
+      "scrollbar": "gradient cyan-to-magenta"
+    },
+    "typography": {
+      "fontFamily": "Inter (body), Space Grotesk (headings), Orbitron (display)",
+      "headingWeight": "700",
+      "bodyWeight": "300",
+      "bodySize": "16px",
+      "letterSpacing": "0.02em",
+      "textTransform": "uppercase (titles)",
+      "style": "Three-tier font system: display for hero, geometric for headings, clean for body. Neon glow effects on key text."
+    },
+    "layout": "single-page",
+    "layoutDetails": "Single-page scrolling with multi-layer parallax hero. Section navigation with prev/next buttons. Full-width sections with gradient backgrounds. Custom scrollbar. Mouse follower cursor.",
+    "visualStyle": "Immersive dark parallax experience with multi-layer depth, neon cyan/magenta accents, floating geometric elements, orbit animations, and 3D navigation buttons. Cinematic and futuristic.",
+    "features": [
+      "responsive",
+      "parallax-layers",
+      "mouse-follower",
+      "orbit-animation",
+      "counter-animation",
+      "contact-form",
+      "custom-scrollbar",
+      "section-navigation",
+      "stars-background"
+    ],
+    "sections": [
+      "hero",
+      "about",
+      "features",
+      "gallery",
+      "stats",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "vanilla-css",
+      "vanilla-js",
+      "google-fonts"
+    ],
+    "breakpoints": [
+      480,
+      768,
+      1024,
+      1200
+    ],
+    "matchSignals": [
+      "automotive",
+      "parallax",
+      "immersive",
+      "dark-theme",
+      "futuristic",
+      "depth",
+      "layers",
+      "neon",
+      "experience",
+      "interactive",
+      "3d",
+      "cinematic",
+      "creative",
+      "showcase",
+      "landing"
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2144_parallax_depth.zip"
+  },
+  {
+    "id": "tooplate-the_card",
+    "source": "tooplate",
+    "dir": "tooplate/2109_the_card",
+    "name": "The Card",
+    "title": "The Card HTML5 Template by tooplate.com",
+    "category": "automotive",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 3246,
+    "indexPath": "tooplate/2109_the_card/index.html",
+    "description": "Card-style single-page with split-screen page loader, dark header box, horizontal nav controlling sections via JS transitions. Dark textbox intro and about. 12-image gallery with Goliath hover effect and Magnific Popup lightbox. Contact form. Decorative barcode SVG and Slick carousel at bottom. Parallax backgrounds.",
+    "colorScheme": "dark",
+    "primaryColor": "#3399cc",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "preloader",
+      "parallax",
+      "lightbox",
+      "gallery",
+      "carousel",
+      "contact-form",
+      "hover-effects",
+      "page-transitions"
+    ],
+    "sections": [
+      "header",
+      "navigation",
+      "intro",
+      "about",
+      "gallery",
+      "contact",
+      "carousel",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap",
+      "google-fonts",
+      "jquery",
+      "magnific-popup",
+      "slick-carousel"
+    ],
+    "matchSignals": [
+      "card-style",
+      "creative",
+      "portfolio",
+      "gallery",
+      "lightbox",
+      "dark-theme",
+      "parallax",
+      "preloader",
+      "hover-effects",
+      "carousel",
+      "page-transitions",
+      "barcode",
+      "unique-layout",
+      "contact-form",
+      "automotive",
+      "modern"
+    ],
+    "colorPalette": {
+      "background": "parallax images",
+      "overlay": "rgba(0,0,0,0.7)",
+      "text": "#ffffff",
+      "accent": "#3399cc"
+    },
+    "typography": {
+      "fontFamily": "Open Sans",
+      "headingWeight": "600",
+      "bodyWeight": "300",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "style": "Light body on dark translucent backgrounds"
+    },
+    "layoutDetails": "Single-page with JS section transitions. Dark translucent boxes over parallax. 12-image gallery. Bottom carousel.",
+    "visualStyle": "Dark atmospheric card-style with translucent boxes over parallax. Goliath hover effects.",
+    "breakpoints": [
+      576,
+      768,
+      992,
+      1200
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2109_the_card.zip"
+  }
+]

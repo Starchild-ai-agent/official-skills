@@ -1,0 +1,490 @@
+[
+  {
+    "id": "templatemo-botany",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_391_botany",
+    "name": "Botany",
+    "title": "Botany Template",
+    "category": "nature",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 2142,
+    "indexPath": "templatemo/templatemo_391_botany/index.html",
+    "description": "Nature-themed sidebar template with fullscreen botanical background images and dark transparent overlays. Left sidebar (3-col) with dark semi-transparent background, centered logo image, vertical navigation (Home, About, Services, Portfolio, Contact), search form with Go button, and 3 social media image icons. Right content (9-col) with FlexSlider image carousel (3 slides), then 3 article blocks each with left-floated thumbnail, heading, description, and orange View More button. Multi-page with About, Services, Portfolio, and Contact pages, each with different fullscreen botanical background. Footer with centered copyright on dark bar. CSS table-cell layout for equal-height columns on desktop.",
+    "colorScheme": "dark",
+    "primaryColor": "#f55b1f",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "flexslider",
+      "sidebar-navigation",
+      "multi-page",
+      "fullscreen-background",
+      "search-box",
+      "social-links",
+      "equal-height-columns"
+    ],
+    "sections": [
+      "sidebar",
+      "slider",
+      "articles",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-3",
+      "font-awesome",
+      "flexslider",
+      "jquery"
+    ],
+    "matchSignals": [
+      "nature",
+      "botanical",
+      "garden",
+      "plants",
+      "green",
+      "dark-theme",
+      "sidebar",
+      "multi-page",
+      "slider",
+      "organic",
+      "eco",
+      "landscape",
+      "outdoor",
+      "photography",
+      "blog",
+      "orange-accent"
+    ],
+    "colorPalette": {
+      "background": "#222222 (dark gray body)",
+      "sidebarBg": "rgba(0,0,0,0.4) (dark sidebar)",
+      "containerBg": "rgba(0,0,0,0.5) (dark container)",
+      "text": "#ffffff (white)",
+      "heading": "#f55b1f (orange)",
+      "accent": "#f55b1f (orange)",
+      "accentHover": "#CCFF66 (lime green)",
+      "btnPrimary": "#f55b1f (orange)",
+      "footerBg": "rgba(0,0,0,0.5)"
+    },
+    "typography": {
+      "fontFamily": "Arial, sans-serif",
+      "headingWeight": "400",
+      "bodyWeight": "400",
+      "bodySize": "14px (implied)",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "System sans-serif on dark botanical backgrounds"
+    },
+    "layoutDetails": "Bootstrap 3 grid, CSS table-cell for equal-height sidebar/content on desktop, stacks at 991px",
+    "visualStyle": "Nature-themed dark template with botanical backgrounds and orange accent sidebar navigation",
+    "breakpoints": [
+      480,
+      991
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_391_botany.zip"
+  },
+  {
+    "id": "templatemo-green",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_449_green",
+    "name": "Green",
+    "title": "Green Template",
+    "category": "nature",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 2822,
+    "indexPath": "templatemo/templatemo_449_green/index.html",
+    "description": "Multi-page nature-themed template with a dark teal/ocean color scheme. Top navigation with logo image and 4-page links (Home, About, Gallery, Contact). Home page has a hero section with teal background and decorative pattern image, featuring a large Oswald-font title, subtitle, text content, and a green button with thick left border. Middle row has 3 columns: a teal gradient card, a white info card with icon, and an image with text overlay. Bottom section has a large image with text description on the left, and a tabbed sidebar (Popular/Recent) with thumbnail-text list items on the right. Dark ocean background image covers the body.",
+    "colorScheme": "dark",
+    "primaryColor": "#0a4651",
+    "layout": "multi-page",
+    "features": [
+      "responsive",
+      "tabs",
+      "gradient-cards",
+      "thumbnail-lists"
+    ],
+    "sections": [
+      "header",
+      "hero",
+      "feature-cards",
+      "content-with-sidebar",
+      "tabs",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap",
+      "font-awesome",
+      "google-fonts",
+      "jquery-ui"
+    ],
+    "matchSignals": [
+      "nature",
+      "green",
+      "teal",
+      "ocean",
+      "dark-theme",
+      "multi-page",
+      "sidebar",
+      "tabs",
+      "thumbnail-list",
+      "organic",
+      "environment",
+      "eco",
+      "gradient",
+      "oswald-font"
+    ],
+    "colorPalette": {
+      "background": "#01090c (near-black body with ocean bg image)",
+      "text": "#8cd2de (light teal on dark), #ffffff (white)",
+      "heading": "#ffffff (white titles)",
+      "accent": "#0a4651 (dark teal)",
+      "button": "#25596e (teal button bg)",
+      "card-gradient": "linear-gradient(#0d636f, #08353f)"
+    },
+    "typography": {
+      "fontFamily": "Open Sans, Oswald",
+      "headingWeight": "700",
+      "bodyWeight": "300",
+      "bodySize": "13px",
+      "letterSpacing": "-2px (large titles)",
+      "textTransform": "uppercase (buttons)",
+      "style": "Dual font pairing: Oswald for display titles, Open Sans for body"
+    },
+    "layoutDetails": "Bootstrap container. Multi-page structure. jQuery UI tabs for Popular/Recent sidebar. Gradient cards with box shadows. Background image with fixed attachment.",
+    "visualStyle": "Dark oceanic/nature theme with teal gradients, decorative background patterns, and a mix of dark and white content cards.",
+    "breakpoints": [
+      768,
+      992
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_449_green.zip"
+  },
+  {
+    "id": "templatemo-nature",
+    "source": "templatemo",
+    "dir": "templatemo/templatemo_398_nature",
+    "name": "Nature",
+    "title": "Nature CSS Template",
+    "category": "nature",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 2632,
+    "indexPath": "templatemo/templatemo_398_nature/index.html",
+    "description": "Nature-themed single-page template with unique panel-based navigation. Sidebar menu with hamburger toggle reveals navigation links (Home, About, Services, Testimonial, Contact). Each section uses a split layout: left side shows a nature background image, right side displays content text. 6 images used as section backgrounds. Minimal design relying on nature photography for visual impact.",
+    "colorScheme": "light",
+    "primaryColor": "#333333",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "sidebar-navigation",
+      "testimonials",
+      "contact-form",
+      "split-layout"
+    ],
+    "sections": [
+      "home",
+      "about",
+      "services",
+      "testimonial",
+      "contact"
+    ],
+    "techStack": [
+      "jquery",
+      "google-fonts"
+    ],
+    "matchSignals": [
+      "nature",
+      "environment",
+      "green",
+      "organic",
+      "split-layout",
+      "sidebar",
+      "panel",
+      "photography",
+      "minimal",
+      "clean",
+      "eco",
+      "landscape",
+      "natural",
+      "simple"
+    ],
+    "colorPalette": {
+      "background": "#ffffff (white)",
+      "text": "#333333 (dark gray)",
+      "heading": "#000000 (black)",
+      "overlay": "rgba(0,0,0,0.5)",
+      "lightText": "rgba(255,255,255,0.75)"
+    },
+    "typography": {
+      "fontFamily": "Open Sans",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Simple sans-serif, content takes backseat to nature photography"
+    },
+    "layoutDetails": "Unique split-panel layout with image on left and text on right for each section. Sidebar hamburger menu. No Bootstrap framework.",
+    "visualStyle": "Nature-focused with photography-driven design. Split panels create magazine-like reading experience.",
+    "breakpoints": [],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/templatemo--templatemo_398_nature.zip"
+  },
+  {
+    "id": "tooplate-aqua_nova",
+    "source": "tooplate",
+    "dir": "tooplate/2138_aqua_nova",
+    "name": "Aqua Nova",
+    "title": "Aqua Nova - Ocean Explorer Portfolio",
+    "category": "nature",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 89,
+    "indexPath": "tooplate/2138_aqua_nova/index.html",
+    "description": "Ocean explorer portfolio template with an immersive underwater theme. Features a deep ocean gradient background transitioning from dark navy (#0f172a) through ocean blue (#1e40af) to aqua teal (#0891b2) and deep teal (#115e59). Animated floating bubbles and ocean particles drift across the viewport via CSS keyframes. A fixed glassmorphism navigation bar with backdrop blur sits at the top. The hero section displays a large headline with gradient text effects. An about section shows explorer info with icon cards in a grid. A research section presents content with images. An equipment section showcases gear. A contact section includes a form and contact details with icon items. The footer features stats counters and social links. Built with CSS custom properties for the ocean color palette. Outfit and Playfair Display fonts create a modern-elegant contrast.",
+    "colorScheme": "dark",
+    "primaryColor": "#0891b2",
+    "layout": "single-page",
+    "layoutDetails": "Full-width stacked sections on a continuous ocean gradient background. Fixed glassmorphism navigation. Animated particle background layer. Content sections with semi-transparent cards. Grid-based card layouts for about and equipment.",
+    "visualStyle": "Immersive underwater theme with deep ocean gradients, floating bubble animations, glassmorphism navigation, and gradient text effects. Rich color palette inspired by ocean depths. Modern and atmospheric with particle effects.",
+    "features": [
+      "responsive",
+      "animation",
+      "glassmorphism",
+      "gradient-background",
+      "floating-particles",
+      "CSS-custom-properties",
+      "contact-form",
+      "counter-stats"
+    ],
+    "sections": [
+      "navigation",
+      "hero",
+      "about",
+      "research",
+      "equipment",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "vanilla-css",
+      "google-fonts",
+      "CSS-variables",
+      "CSS-keyframes"
+    ],
+    "breakpoints": [
+      768
+    ],
+    "matchSignals": [
+      "ocean",
+      "underwater",
+      "nature",
+      "explorer",
+      "portfolio",
+      "dark",
+      "gradient",
+      "animated",
+      "particles",
+      "glassmorphism",
+      "immersive",
+      "marine",
+      "aqua",
+      "teal",
+      "environmental",
+      "science"
+    ],
+    "colorPalette": {
+      "background": "linear-gradient(#0f172a to #1e40af to #0891b2 to #115e59)",
+      "text": "#f8fafc (pearl white)",
+      "accent": "#0891b2 (aqua teal)",
+      "coral": "#f97316 (orange accent)",
+      "seafoam": "#10b981 (green)",
+      "wave": "#3b82f6 (blue)"
+    },
+    "typography": {
+      "fontFamily": "Outfit, Playfair Display",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Modern sans-serif (Outfit) paired with elegant serif (Playfair Display) for contrast. Clean body text with decorative headings. Gradient text effects on hero elements."
+    },
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2138_aqua_nova.zip"
+  },
+  {
+    "id": "tooplate-earth",
+    "source": "tooplate",
+    "dir": "tooplate/2113_earth",
+    "name": "Earth",
+    "title": "Earth - Free HTML5 Bootstrap Theme",
+    "category": "nature",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 8343,
+    "indexPath": "tooplate/2113_earth/index.html",
+    "description": "Nature/environment themed template with a tabbed content layout. Hero section with large Earth heading and nature imagery. Icon-based navigation with four tabs (Homepage, About Us, Our Gallery, Contact Us) using custom icon images. Tabbed content sections that switch between: intro with nature descriptions, about page with feature highlights, image gallery with slider and thumbnails, and contact form (name, email, message). Image slider with thumbnail navigation. Roboto font. Light theme with pale yellow (#faf5b2) accents on white backgrounds. Clean, educational nature aesthetic.",
+    "colorScheme": "light",
+    "primaryColor": "#faf5b2",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "tabbed-navigation",
+      "image-slider",
+      "thumbnails",
+      "contact-form"
+    ],
+    "sections": [
+      "hero",
+      "tab-navigation",
+      "intro",
+      "about",
+      "gallery",
+      "contact"
+    ],
+    "techStack": [
+      "html5",
+      "css3",
+      "jquery",
+      "google-fonts"
+    ],
+    "matchSignals": [
+      "nature",
+      "environment",
+      "earth",
+      "ecology",
+      "green",
+      "tabbed",
+      "gallery",
+      "slider",
+      "thumbnails",
+      "educational",
+      "clean",
+      "light-theme",
+      "organic",
+      "sustainability",
+      "wildlife",
+      "conservation"
+    ],
+    "colorPalette": {
+      "background": "#ffffff white",
+      "text": "#7a7a7a medium gray",
+      "heading": "#1e1e1e near-black",
+      "accent": "#faf5b2 pale yellow",
+      "sectionBg": "#f4f4f4 light gray",
+      "navBg": "#111111 near-black",
+      "border": "#333333",
+      "muted": "#6a6a6a"
+    },
+    "typography": {
+      "fontFamily": "Roboto, Open Sans",
+      "headingWeight": "500",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Clean sans-serif (Roboto/Open Sans). Medium weight headings. Nature-appropriate clean typography."
+    },
+    "layoutDetails": "Single-page with icon-based tab navigation. Content switches between tabs without page reload. Gallery tab has image slider with thumbnail strip. Contact tab has centered form. Tabs use JavaScript show/hide.",
+    "visualStyle": "Clean nature theme with pale yellow (#faf5b2) accents. Icon-based tab navigation. Image slider with thumbnails. Educational and informational feel. Light, airy design with nature photography. Organic and approachable.",
+    "breakpoints": [
+      750,
+      991
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2113_earth.zip"
+  },
+  {
+    "id": "tooplate-eco_lume",
+    "source": "tooplate",
+    "dir": "tooplate/2145_eco_lume",
+    "name": "Eco Lume",
+    "title": "EcoLume - Where Nature Meets Innovation",
+    "category": "nature",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 59,
+    "indexPath": "tooplate/2145_eco_lume/index.html",
+    "description": "Eco-technology landing page with a dark green (#0a1a0a) futuristic design. Animated particle system background in the hero section. Navigation with smooth scroll to Features, About, and Contact sections. Features section showcases ecosystem solutions with icon cards covering circular economy, bioenergy, neural networks, and symbiotic architecture. About section with company mission and stats. Contact form with name, email, company, and message fields. Space Grotesk font for a tech-forward feel. Green (#00ff88) and cyan (#00d4ff) neon accents on deep dark backgrounds. Gradient overlays and radial background effects.",
+    "colorScheme": "dark",
+    "primaryColor": "#00ff88",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "particle-animation",
+      "gradient-backgrounds",
+      "contact-form",
+      "smooth-scroll",
+      "animated-hero"
+    ],
+    "sections": [
+      "navigation",
+      "hero",
+      "features",
+      "about",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "html5",
+      "css3",
+      "javascript",
+      "google-fonts"
+    ],
+    "matchSignals": [
+      "eco",
+      "green-tech",
+      "sustainability",
+      "nature",
+      "dark-theme",
+      "futuristic",
+      "particles",
+      "neon",
+      "technology",
+      "innovation",
+      "startup",
+      "environment",
+      "clean-energy",
+      "modern",
+      "landing-page",
+      "gradient"
+    ],
+    "colorPalette": {
+      "background": "#0a1a0a deep dark green",
+      "text": "#e8fff0 light mint",
+      "heading": "#ffffff white",
+      "accent": "#00ff88 neon green",
+      "secondary": "#00d4ff cyan",
+      "tertiary": "#ffeb3b warm yellow",
+      "cardBg": "#1a2f1a dark forest",
+      "gradient": "linear-gradient(135deg, #0a1a0a, #1a2f1a)"
+    },
+    "typography": {
+      "fontFamily": "Space Grotesk, Inter",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Tech-forward sans-serif (Space Grotesk) with Inter for body. Bold headings with neon green accents. Futuristic and innovative feel."
+    },
+    "layoutDetails": "Single-page with smooth scroll navigation. Hero with animated particle system canvas. Features in card grid with gradient icon backgrounds. About section with stat counters. Contact form centered. Dark gradient backgrounds throughout.",
+    "visualStyle": "Futuristic dark eco-tech aesthetic with neon green (#00ff88) and cyan (#00d4ff) accents on deep dark green. Animated particle system. Radial gradient overlays. Card-based features with gradient icons. Premium, innovative startup feel.",
+    "breakpoints": [
+      480,
+      500,
+      768,
+      1400
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2145_eco_lume.zip"
+  }
+]

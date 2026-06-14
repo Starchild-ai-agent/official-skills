@@ -1,0 +1,86 @@
+[
+  {
+    "id": "tooplate-inner_peace",
+    "source": "tooplate",
+    "dir": "tooplate/2143_inner_peace",
+    "name": "Inner Peace",
+    "title": "Inner Peace - Mindfulness & Mental Wellness",
+    "category": "wellness",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 226,
+    "indexPath": "tooplate/2143_inner_peace/index.html",
+    "description": "Mindfulness and mental wellness template with a calming, nature-inspired design and no framework dependencies. Features a hero section with layered floating elements and the headline 'Find Your Inner Peace' with a CTA button. The about section presents three floating info cards (Rewire Your Brain, Instant Calm, Peak Performance) with icons, plus a feature showcase with checkmark list items. The practices section displays four mindfulness practice cards with step-by-step descriptions and duration/level metadata. A resources section organizes content into guided sessions, courses, and tools categories. Contact section includes info cards and a styled form. Footer with navigation links and social icons. Uses calming blue-green gradient palette with smooth CSS transitions.",
+    "colorScheme": "light",
+    "primaryColor": "#2D5A87",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "floating-cards",
+      "contact-form",
+      "smooth-scroll",
+      "css-variables",
+      "gradient-backgrounds"
+    ],
+    "sections": [
+      "navigation",
+      "hero",
+      "about",
+      "practices",
+      "resources",
+      "contact",
+      "footer"
+    ],
+    "techStack": [
+      "vanilla-js",
+      "css-variables",
+      "css-grid"
+    ],
+    "breakpoints": [
+      480,
+      768,
+      769
+    ],
+    "matchSignals": [
+      "wellness",
+      "mindfulness",
+      "meditation",
+      "mental-health",
+      "yoga",
+      "calm",
+      "peace",
+      "self-care",
+      "health",
+      "relaxation",
+      "spiritual",
+      "therapy",
+      "breathing",
+      "nature",
+      "holistic",
+      "zen"
+    ],
+    "colorPalette": {
+      "background": "#F7F7F7 (light gray)",
+      "text": "#2A2A3E (dark navy)",
+      "accent": "#2D5A87 (deep blue)",
+      "secondary": "#4A7C8A (teal)",
+      "tertiary": "#6B9B7A (sage green)",
+      "highlight": "#F1E5AC (warm gold)",
+      "gradient": "linear-gradient(135deg, #2D5A87, #4A7C8A)"
+    },
+    "typography": {
+      "fontFamily": "Segoe UI",
+      "headingWeight": "bold",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "System sans-serif with calm, readable styling. Bold headings with regular body weight. Nature-inspired color accents."
+    },
+    "layoutDetails": "Full-width hero with floating decorative elements. Three-column info cards. Four-column practice cards grid. Three-category resource grid. Two-column contact layout with form and info.",
+    "visualStyle": "Calming wellness aesthetic. Light background with blue-green-sage gradient accents. Floating card animations. Soft shadows and rounded corners. Nature-inspired color palette.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2143_inner_peace.zip"
+  }
+]

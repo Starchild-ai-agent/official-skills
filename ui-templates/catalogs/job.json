@@ -1,0 +1,93 @@
+[
+  {
+    "id": "tooplate-gotto_job",
+    "source": "tooplate",
+    "dir": "tooplate/2134_gotto_job",
+    "name": "Gotto Job",
+    "title": "Gotto Online Job Portal",
+    "category": "job",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 2954,
+    "indexPath": "tooplate/2134_gotto_job/index.html",
+    "description": "Online job portal template built on Bootstrap 5 with a clean, professional design. Features a hero section with a large search form and animated background. A categories section displays job category cards with icons and job counts. An about section highlights platform statistics. The main job listings section shows job cards with company logos, titles, locations, salary ranges, and Apply buttons. A recent jobs section follows with similar card layouts. A testimonials section uses Owl Carousel for client review slides. A CTA section encourages employers to post jobs. Footer includes company info, quick links, and social media.",
+    "colorScheme": "light",
+    "primaryColor": "#5d52ba",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "search-form",
+      "job-listings",
+      "category-cards",
+      "owl-carousel",
+      "testimonials",
+      "video-embed",
+      "social-links"
+    ],
+    "sections": [
+      "hero",
+      "categories",
+      "about",
+      "job-listings",
+      "recent-jobs",
+      "testimonials",
+      "cta",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-5",
+      "jquery",
+      "owl-carousel",
+      "bootstrap-icons",
+      "google-fonts"
+    ],
+    "breakpoints": [
+      480,
+      991,
+      992,
+      1025
+    ],
+    "matchSignals": [
+      "job",
+      "career",
+      "recruitment",
+      "hiring",
+      "employment",
+      "portal",
+      "job-board",
+      "search",
+      "listing",
+      "purple-accent",
+      "professional",
+      "corporate",
+      "hr",
+      "talent",
+      "apply",
+      "vacancy"
+    ],
+    "colorPalette": {
+      "background": "#ffffff",
+      "sectionBg": "#f0f8ff (light blue tint)",
+      "text": "#000000",
+      "accent": "#5d52ba (purple)",
+      "cta": "#f65129 (orange-red)",
+      "socialIcon": "#7f73eb (light purple)",
+      "muted": "#717275",
+      "border": "#e9eaeb"
+    },
+    "typography": {
+      "fontFamily": "League Spartan",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Modern geometric sans-serif (League Spartan) throughout. Bold headings with clean body text."
+    },
+    "layoutDetails": "Full-width hero with centered search form. Multi-column category card grid. Job listing cards with action buttons. Carousel testimonials. Two-column footer layout.",
+    "visualStyle": "Clean professional job portal. White background with light blue section accents. Purple primary color with orange-red CTA buttons. Card-based layouts with subtle shadows.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2134_gotto_job.zip"
+  }
+]

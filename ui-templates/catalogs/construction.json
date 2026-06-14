@@ -1,0 +1,89 @@
+[
+  {
+    "id": "tooplate-constructive",
+    "source": "tooplate",
+    "dir": "tooplate/2102_constructive",
+    "name": "Constructive",
+    "title": "Constructive HTML Template",
+    "category": "construction",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 4706,
+    "indexPath": "tooplate/2102_constructive/index.html",
+    "description": "Construction company template with a sidebar navigation layout. Left sidebar with company logo and main navigation links that stays fixed. Content area features fullscreen background images that change per section with smooth transitions. Four main sections: hero with company intro and construction imagery, services/about section with project descriptions, gallery/portfolio with construction project photos, and contact section with a form (name, email, message). Preloader animation. Cyan (#33ccff) accent color on dark (#222222) backgrounds. Open Sans font. Responsive with sidebar collapsing on mobile.",
+    "colorScheme": "dark",
+    "primaryColor": "#33ccff",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "sidebar-navigation",
+      "background-transitions",
+      "contact-form",
+      "preloader",
+      "carousel"
+    ],
+    "sections": [
+      "sidebar-nav",
+      "hero",
+      "services",
+      "gallery",
+      "contact"
+    ],
+    "techStack": [
+      "bootstrap-4",
+      "jquery",
+      "google-fonts"
+    ],
+    "matchSignals": [
+      "construction",
+      "building",
+      "contractor",
+      "sidebar",
+      "dark-theme",
+      "cyan-accent",
+      "industrial",
+      "architecture",
+      "engineering",
+      "project",
+      "gallery",
+      "preloader",
+      "fullscreen-bg",
+      "company",
+      "corporate",
+      "services"
+    ],
+    "colorPalette": {
+      "background": "#222222 dark gray",
+      "text": "#ffffff white",
+      "heading": "#ffffff white",
+      "accent": "#33ccff bright cyan",
+      "sidebarBg": "#000000c4 semi-transparent black",
+      "overlay": "rgba(0,0,0,0.7)",
+      "border": "#33ccff",
+      "muted": "#999999"
+    },
+    "typography": {
+      "fontFamily": "Open Sans",
+      "headingWeight": "400",
+      "bodyWeight": "300",
+      "bodySize": "16px",
+      "letterSpacing": "normal",
+      "textTransform": "none",
+      "style": "Clean sans-serif (Open Sans) with light weight. Airy feel on dark backgrounds. Professional construction industry typography."
+    },
+    "layoutDetails": "Sidebar layout with fixed left navigation. Content area fills remaining width. Fullscreen background images per section with CSS transitions. Sidebar collapses to hamburger on mobile. Sections stack vertically in content area.",
+    "visualStyle": "Dark industrial aesthetic with bright cyan (#33ccff) accents. Fixed sidebar navigation. Fullscreen construction photography backgrounds with transitions. Preloader animation. Bold contrast between dark backgrounds and cyan highlights.",
+    "breakpoints": [
+      500,
+      600,
+      640,
+      767,
+      991,
+      1199,
+      1400
+    ],
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/tooplate--2102_constructive.zip"
+  }
+]

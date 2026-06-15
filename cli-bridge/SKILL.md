@@ -1,8 +1,8 @@
 ---
 name: cli-bridge
-version: 0.2.3
+version: 0.3.0
 description: |
-  Authorize the local starchild CLI plus its agent-shell local-exec channel to this agent. Manage short-code bundles that connect the CLI to this agent.
+  Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.
 
   Use when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine).
 delivery: script
@@ -237,6 +237,65 @@ Decision order: **built-in deny (always wins) → file `deny` → file
 - **Revocation:** `cli-revoke <sc_…>` kills the short code; the daemon's
   next reconnect then fails auth and the channel closes.
 
+## File transfer via `agent-shell` (CLI ≥ v0.3.0)
+
+When the bundle is minted with `--enable-files`, the same `agent-shell`
+daemon also serves **file transfer** between the user's machine and the
+agent's workspace. Content streams disk→disk and never passes through the
+chat, so **large/binary files (10MB+ PDFs, images, archives) work**.
+
+Three agent-facing tools + one user command:
+- `request_upload(laptop_path)` — agent pulls a file FROM the laptop into
+  `workspace/uploads/` ("take my ~/big.pdf and summarize it").
+- `write_local_file(src, dst)` — agent sends a workspace file TO the laptop
+  ("save workspace/output/report.pdf to my ~/Downloads"). `src` is a
+  workspace path, not inline content.
+- `read_local_file(path)` — read a **small text** file for the agent to see
+  (config/log snippet). Large/binary files go through `request_upload`.
+- `starchild push <file>` — user proactively uploads a local file into the
+  agent's `workspace/uploads/`; it's announced to the agent in its prompt.
+
+```bash
+python3 skills/cli-bridge/scripts/cli_login.py --label "laptop" --enable-files
+# combine with shell if you want both:
+python3 skills/cli-bridge/scripts/cli_login.py --label "laptop" --enable-shell --enable-files
+```
+
+`files` is an **independent capability** from `shell` — a bundle can have
+either, both, or neither. Like shell, it's off by default and authoritative
+on the AKM (clawd refuses transfer frames for a connection without it).
+
+### File path policy (laptop-side, layered)
+
+Transfers are gated on the laptop by a path policy, strictest-first:
+
+1. **Built-in protected paths are ALWAYS refused** (even under `--yolo`):
+   `~/.ssh`, `~/.aws`, shell rc (`.zshrc`/`.bashrc`/…), `.config/starchild`,
+   launchd/systemd/cron, `.git/hooks`, browser cookie stores, `.env`, ssh
+   keys. Writing those would be persistent RCE; reading them leaks creds.
+2. **Dedicated transfer dir** (`~/starchild-transfer`, auto-created) — always
+   allowed for read + write. The safe default workspace; prefer it.
+3. **Outside that dir** — denied unless the path matches a `read_allow` /
+   `write_allow` glob in `~/.config/starchild/file-policy.toml`, **or** the
+   daemon was started with `--yolo`:
+
+   ```bash
+   starchild agent-shell --yolo   # allow ANY path (built-in deny still applies)
+   ```
+
+   ```yaml
+   # ~/.config/starchild/file-policy.toml  (YAML allow-globs)
+   read_allow:
+     - "~/Documents/*.md"
+   write_allow:
+     - "~/exports/*.csv"
+   ```
+
+Other guarantees: written files get mode **0644** (never executable);
+writes are atomic (temp file + rename, no half-written target); symlinks
+that escape the transfer dir are refused; per-transfer cap is 100 MiB,
+streamed in chunks so large files don't blow the WS frame limit.
+
 > **Security note:** a running `agent-shell` (on a `--enable-shell` bundle)
 > plus a permissive policy is effectively remote command execution on the
 > user's machine, bounded by the AKM TTL, the `sc_…` code's validity, and the
@@ -307,15 +366,20 @@ When the user asks "give me a cli key" / "create a starchild bundle" /
   python3 skills/cli-bridge/scripts/cli_login.py --label "<inferred>"
 
 This is a chat bridge only — it does NOT let you run commands on their
-machine. ONLY add `--enable-shell` when the user explicitly asks for local
-shell access ("run commands on my laptop", "use agent-shell", "organize my
-Downloads"):
+machine or touch their files. Two independent opt-in capabilities, each
+granting local access — only add them when the user explicitly asks:
+
+- `--enable-shell` → run commands ("run commands on my laptop", "use
+  agent-shell", "organize my Downloads"). Remote command execution.
+- `--enable-files` → read/write files ("save this to my laptop", "read my
+  ~/notes.md"). Reads/writes files on their machine.
 
   python3 skills/cli-bridge/scripts/cli_login.py --label "<inferred>" --enable-shell
+  python3 skills/cli-bridge/scripts/cli_login.py --label "<inferred>" --enable-files
 
-Treat `--enable-shell` as granting remote command execution on their
-machine — never add it by default or "to be helpful". If they later want
-shell, mint a new `--enable-shell` bundle and have them revoke the old one.
+Treat both as granting access to their machine — never add either by
+default or "to be helpful". If they later want a capability, mint a new
+bundle with the flag and have them revoke the old one.
 
 Default the label to something like "untitled-YYYY-MM-DD" if the user
 doesn't suggest one. Show them the resulting bundle and tell them how

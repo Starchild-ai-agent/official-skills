@@ -1,7 +1,7 @@
 ---
-name: blockfill
-version: 0.1.0
-description: "Local-first smart execution daemon for Binance Futures and OKX Swap. API keys never leave your machine — no cloud, no key leaks. Built-in maker/TWAP execution, multi-exchange support, persistent WebSocket connections. Place, query, and cancel execution tickets via CLI or Python SDK."
+name: blockfill-agent-execution
+version: 1.0.2
+description: "AI-agent-ready Python SDK and local execution engine for crypto perpetual futures order execution. Work large orders through TWAP and maker-style strategies on Binance Futures and OKX Swap while exchange API keys stay on your own machine — self-custodial, no third-party order routing. Declare a target position and BlockFill executes it; place, query, and cancel execution tickets from one Python API."
 delivery: script
 metadata:
     starchild:
@@ -11,24 +11,25 @@ user-invocable: true
 disable-model-invocation: false
 ---
 
-## What is blockfill
+## What is BlockFill Agent Execution
 
-blockfill is a **local-first smart execution daemon** for crypto trading. It runs entirely on your machine — your API keys are stored locally and never transmitted to any third-party server.
+BlockFill Agent Execution is an **AI-agent-ready Python SDK and local execution engine** for crypto perpetual futures order execution. It enables AI agents, trading systems, and developers to execute large crypto perpetual futures orders through TWAP and maker-style strategies on **Binance Futures** and **OKX Swap**, while keeping exchange API keys on the user's own machine.
 
-**Why blockfill**:
+You declare a target position; BlockFill works the order over a time window using `maker` (PostOnly resting + IOC fallback) or `twap` (taker-sliced) strategies, cutting execution slippage vs. naïve market orders. One Python API, one local daemon, two exchanges supported today — one `bf.place(...)` call per target position.
 
-- **Secure** — API keys stay local, no cloud dependency
-- **Smart execution** — built-in maker/TWAP strategies, handles order slicing and timing automatically
-- **Multi-exchange** — Binance Futures and OKX Swap from a single daemon
-- **Self-healing** — daemon auto-restarts executors on panic; supervises per-exchange WS connections
-- **AI-native** — CLI + Python SDK designed for programmatic use by scripts and AI agents
+**Why BlockFill Agent Execution**:
+
+- **Self-custodial by design** — exchange API keys stay on your machine (`~/.blockfill/config.toml`, chmod 0600). The local daemon signs orders locally and sends them directly to the exchange — no key custody, no order routing, no order-flow visibility by a third party.
+- **Designed for AI agents** — built to be called by AI agents, trading copilots, MCP servers, and strategy systems. The agent decides the trading intent; BlockFill is the execution layer that turns it into placed orders.
+- **Smart execution** — built-in `maker`/`twap` strategies handle order slicing and timing automatically, cutting execution slippage vs. naïve market orders.
+- **Multi-exchange** — Binance Futures and OKX Swap from a single daemon.
+- **One simple API** — `from blockfill import Blockfill`, then one `bf.place(...)` call per target position to place, query, and cancel execution tickets.
 
 **Key concepts**:
 
 - **Ticket**: an execution order (`exchange + symbol + strategy + target_position + time_constraint_ms`)
-- **Daemon**: background process that manages exchange WS connections and executes tickets
-- **CLI**: `blockfill` binary — human and agent interface to the daemon
-- **Python SDK**: `from blockfill import Blockfill` — zero-overhead programmatic interface
+- **Daemon**: local background process that signs and places orders through your own exchange API keys, and supervises per-exchange connections
+- **Python SDK**: `from blockfill import Blockfill` — programmatic interface for AI agents and scripts
 
 ---
 
@@ -74,7 +75,7 @@ Each exchange uses its **own native symbol format** — they are not the same.
 | `binance-futures` | Lowercase, concatenated (Binance native)              | `btcusdt`, `ethusdt`, `solusdt`, `dogeusdt`                         |
 | `okx-swap`        | Dash-separated, includes contract suffix (OKX native) | `BTC-USDT-SWAP`, `ETH-USDT-SWAP`, `SOL-USDT-SWAP`, `DOGE-USDT-SWAP` |
 
-Use the exact format the target exchange expects — blockfill does NOT
+Use the exact format the target exchange expects — BlockFill does NOT
 cross-translate.
 
 ---

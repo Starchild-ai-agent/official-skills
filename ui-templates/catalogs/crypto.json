@@ -1,0 +1,1295 @@
+[
+  {
+    "id": "web3-airdrop-checker",
+    "source": "web3",
+    "dir": "web3/airdrop-checker",
+    "name": "Airdrop Checker",
+    "title": "CLAIMR — Airdrop Checker",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 40,
+    "indexPath": "web3/airdrop-checker/index.html",
+    "description": "Airdrop eligibility checker with dark UI. Navbar with CLAIMR branding, nav links (Check, Upcoming, Archive, Guide), Connect Wallet button. Hero with wallet address input and demo wallet buttons. Results show eligible airdrops as cards with token info, value, status, claim buttons. Upcoming airdrops timeline. Stats bar. Chart.js analytics.",
+    "colorScheme": "dark",
+    "primaryColor": "#6c5ce7",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "wallet-connect",
+      "search",
+      "charts",
+      "animation"
+    ],
+    "sections": [
+      "navbar",
+      "hero",
+      "wallet-input",
+      "results",
+      "upcoming-airdrops",
+      "stats"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "vanilla-js"
+    ],
+    "matchSignals": [
+      "airdrop",
+      "claim",
+      "eligibility",
+      "wallet",
+      "crypto",
+      "web3",
+      "token",
+      "free-tokens",
+      "checker"
+    ],
+    "colorPalette": {
+      "background": "#0a0a0f",
+      "text": "#ffffff",
+      "accent": "#6c5ce7",
+      "cardBg": "rgba(255,255,255,0.03)",
+      "success": "#00d4aa"
+    },
+    "typography": {
+      "fontFamily": "Plus Jakarta Sans + JetBrains Mono",
+      "headingWeight": "800",
+      "bodyWeight": "400",
+      "bodySize": "15px",
+      "style": "Modern geometric sans-serif with monospace for addresses"
+    },
+    "layoutDetails": "Single-page vertical scroll. Centered content. Hero with wallet input, results grid below.",
+    "visualStyle": "Dark crypto UI with purple accent. Glassmorphic cards. Clean and modern.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--airdrop-checker.zip"
+  },
+  {
+    "id": "web3-block-explorer",
+    "source": "web3",
+    "dir": "web3/block-explorer",
+    "name": "Block Explorer",
+    "title": "GraphiteChain — Block Explorer",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 44,
+    "indexPath": "web3/block-explorer/index.html",
+    "description": "Blockchain explorer with light theme. Header with GraphiteChain branding and nav (Home, Blocks, Transactions, Tokens, Validators). Search section with filter dropdown and input. Token price ticker with CoinGecko data. Network stats cards (block height, transactions, gas, validators). Two-column latest blocks and transactions tables.",
+    "colorScheme": "light",
+    "primaryColor": "#2d3436",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "search",
+      "real-time-data",
+      "tables",
+      "filter"
+    ],
+    "sections": [
+      "header",
+      "search",
+      "price-ticker",
+      "network-stats",
+      "latest-blocks",
+      "latest-transactions"
+    ],
+    "techStack": [
+      "google-fonts",
+      "vanilla-js",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "blockchain",
+      "explorer",
+      "block",
+      "transaction",
+      "etherscan",
+      "validator",
+      "on-chain",
+      "search",
+      "crypto"
+    ],
+    "colorPalette": {
+      "background": "#f5f5f5",
+      "text": "#2d3436",
+      "accent": "#2d3436",
+      "cardBg": "#ffffff",
+      "border": "#e0e0e0"
+    },
+    "typography": {
+      "fontFamily": "system-ui, sans-serif",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Clean system font stack with monospace for hashes"
+    },
+    "layoutDetails": "Full-width header, centered container. Search prominent at top. Two-column grid for blocks/transactions.",
+    "visualStyle": "Professional, data-heavy. Light theme. Etherscan-inspired clean layout.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--block-explorer.zip"
+  },
+  {
+    "id": "web3-crypto-currency-landing",
+    "source": "web3",
+    "dir": "web3/crypto-currency-landing",
+    "name": "Crypto Currency Landing",
+    "title": "BITNexus — Crypto Currency Landing Page",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 1872,
+    "indexPath": "web3/crypto-currency-landing/index.html",
+    "description": "Full-featured cryptocurrency landing page with dark theme. BITNexus branding, nav (Home, Features, Services, Blog, FAQ). Hero with headline and CTA buttons. Features icon cards. Services section. Blog article cards. FAQ accordion. Footer with social links. Remix Icons, Google Fonts (Lato, Outfit, Poppins). Professional marketing design with gradient accents.",
+    "colorScheme": "dark",
+    "primaryColor": "#6c5ce7",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "smooth-scroll",
+      "accordion",
+      "animation",
+      "social-links"
+    ],
+    "sections": [
+      "navbar",
+      "hero",
+      "features",
+      "services",
+      "blog",
+      "faq",
+      "footer"
+    ],
+    "techStack": [
+      "remix-icons",
+      "google-fonts",
+      "vanilla-js"
+    ],
+    "matchSignals": [
+      "crypto",
+      "cryptocurrency",
+      "landing",
+      "bitcoin",
+      "ethereum",
+      "blockchain",
+      "trading",
+      "investment",
+      "marketing",
+      "web3"
+    ],
+    "colorPalette": {
+      "background": "#0a0a1a",
+      "text": "#ffffff",
+      "accent": "#6c5ce7",
+      "gradient": "linear-gradient(purple to blue)"
+    },
+    "typography": {
+      "fontFamily": "Outfit + Lato + Poppins",
+      "headingWeight": "700-900",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "style": "Triple font pairing. Bold geometric headings with clean body text."
+    },
+    "layoutDetails": "Single-page scroll with anchor navigation. Full-width sections with centered containers.",
+    "visualStyle": "Dark crypto marketing page. Gradient accents, icon cards, professional layout.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--crypto-currency-landing.zip"
+  },
+  {
+    "id": "web3-crypto-news",
+    "source": "web3",
+    "dir": "web3/crypto-news",
+    "name": "Crypto News",
+    "title": "CryptoWire — Crypto News Aggregator",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 36,
+    "indexPath": "web3/crypto-news/index.html",
+    "description": "Crypto news aggregator with editorial design. Scrolling price ticker. Header with CryptoWire branding, category nav (All News, Market, DeFi, NFT, Regulation, Technology), search. Two-column: main with featured breaking story and news grid, sidebar with trending topics, market chart, newsletter signup. Playfair Display serif headings. Chart.js for market data.",
+    "colorScheme": "light",
+    "primaryColor": "#e74c3c",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "search",
+      "charts",
+      "newsletter",
+      "category-filter",
+      "ticker"
+    ],
+    "sections": [
+      "ticker",
+      "header",
+      "featured-story",
+      "news-grid",
+      "sidebar",
+      "trending",
+      "market-chart"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "vanilla-js"
+    ],
+    "matchSignals": [
+      "news",
+      "crypto",
+      "aggregator",
+      "blog",
+      "magazine",
+      "editorial",
+      "articles",
+      "market",
+      "defi",
+      "nft"
+    ],
+    "colorPalette": {
+      "background": "#f8f9fa",
+      "text": "#2d3436",
+      "accent": "#e74c3c",
+      "cardBg": "#ffffff",
+      "heading": "#1a1a2e"
+    },
+    "typography": {
+      "fontFamily": "Playfair Display + Source Sans 3 + Roboto Mono",
+      "headingWeight": "700-800",
+      "bodyWeight": "400",
+      "bodySize": "15px",
+      "style": "Editorial serif+sans-serif pairing. Newspaper-inspired."
+    },
+    "layoutDetails": "Two-column: main content (70%) + sidebar (30%). Featured story at top, news grid below.",
+    "visualStyle": "Editorial, newspaper-like. Light theme with red accent. Serif headings for authority.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--crypto-news.zip"
+  },
+  {
+    "id": "web3-crypto-portfolio",
+    "source": "web3",
+    "dir": "web3/crypto-portfolio",
+    "name": "Crypto Portfolio",
+    "title": "CRYPTOFOLIO — Portfolio Dashboard",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 48,
+    "indexPath": "web3/crypto-portfolio/index.html",
+    "description": "Crypto portfolio dashboard with dark theme. Navbar with CRYPTOFOLIO branding, search, nav (Dashboard, Analytics, History), wallet address button. Hero stats: Total Balance, 24h P&L, Best Performer, Assets Held. Portfolio donut chart. Holdings table with coin icons, prices, 24h changes, sparklines. Transaction history. Animated entrance. Real-time CoinGecko data.",
+    "colorScheme": "dark",
+    "primaryColor": "#6c5ce7",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "charts",
+      "search",
+      "real-time-data",
+      "animation",
+      "wallet-connect"
+    ],
+    "sections": [
+      "navbar",
+      "hero-stats",
+      "portfolio-chart",
+      "holdings-table",
+      "transactions"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "portfolio",
+      "crypto",
+      "dashboard",
+      "holdings",
+      "balance",
+      "wallet",
+      "assets",
+      "tracker",
+      "investment",
+      "pnl"
+    ],
+    "colorPalette": {
+      "background": "#0b0b11",
+      "text": "#ffffff",
+      "accent": "#6c5ce7",
+      "green": "#00d4aa",
+      "red": "#ff4757",
+      "cardBg": "rgba(255,255,255,0.04)"
+    },
+    "typography": {
+      "fontFamily": "Inter + Bebas Neue",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Clean sans-serif with condensed display font for large numbers"
+    },
+    "layoutDetails": "Full-width navbar, centered container. Stats row at top, chart and table below.",
+    "visualStyle": "Dark fintech dashboard. Purple accent, glassmorphic cards. Data-rich with charts.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--crypto-portfolio.zip"
+  },
+  {
+    "id": "web3-crypto-trade-frontend",
+    "source": "web3",
+    "dir": "web3/crypto-trade-frontend",
+    "name": "Crypto Trade Frontend",
+    "title": "CryptoTrade — Trading Platform",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 20332,
+    "indexPath": "web3/crypto-trade-frontend/index.html",
+    "description": "Professional crypto trading platform. Header with CryptoTrade branding, nav (Trade, Markets, Portfolio, Earn), Connect Wallet. Ticker strip with live prices. Three-column grid: left market list with search, center candlestick chart (Lightweight Charts) with timeframe tabs and order book, right order panel with Buy/Sell tabs and order form. Real-time data.",
+    "colorScheme": "dark",
+    "primaryColor": "#6c5ce7",
+    "layout": "dashboard",
+    "features": [
+      "responsive",
+      "charts",
+      "search",
+      "real-time-data",
+      "order-book",
+      "wallet-connect"
+    ],
+    "sections": [
+      "header",
+      "ticker",
+      "market-list",
+      "candlestick-chart",
+      "order-book",
+      "order-form"
+    ],
+    "techStack": [
+      "lightweight-charts",
+      "vanilla-js",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "trading",
+      "exchange",
+      "crypto",
+      "candlestick",
+      "order-book",
+      "buy",
+      "sell",
+      "market",
+      "binance",
+      "coinbase",
+      "dex",
+      "trade"
+    ],
+    "colorPalette": {
+      "background": "#0a0a14",
+      "text": "#e0e0e0",
+      "accent": "#6c5ce7",
+      "green": "#00d4aa",
+      "red": "#ff4757",
+      "panelBg": "rgba(255,255,255,0.03)"
+    },
+    "typography": {
+      "fontFamily": "system-ui, sans-serif",
+      "headingWeight": "600",
+      "bodyWeight": "400",
+      "bodySize": "13px",
+      "style": "Compact data-dense typography for trading interface"
+    },
+    "layoutDetails": "Three-column trading grid. Left: market list. Center: chart + order book. Right: order form.",
+    "visualStyle": "Professional trading terminal. Dark theme, data-dense. Binance/Coinbase-inspired.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--crypto-trade-frontend.zip"
+  },
+  {
+    "id": "web3-crypto-web3-investment",
+    "source": "web3",
+    "dir": "web3/crypto-web3-investment",
+    "name": "Crypto Web3 Investment",
+    "title": "Sample Invest — Web3 Investment Platform",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 1016,
+    "indexPath": "web3/crypto-web3-investment/index.html",
+    "description": "Web3 investment platform with Bootstrap 4. Sign Up/Sign In modals. Navigation with auth buttons. Hero promoting crypto investment. Features icon cards. Investment plans/pricing. Market data tables with DataTables. Dashboard section. Footer with social icons. Font Awesome, Line Awesome, Simple Line Icons.",
+    "colorScheme": "dark",
+    "primaryColor": "#007bff",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "modal",
+      "form",
+      "data-tables",
+      "social-links",
+      "authentication"
+    ],
+    "sections": [
+      "modals",
+      "navbar",
+      "hero",
+      "features",
+      "pricing",
+      "market-data",
+      "dashboard",
+      "footer"
+    ],
+    "techStack": [
+      "bootstrap-4",
+      "font-awesome",
+      "datatables",
+      "jquery"
+    ],
+    "matchSignals": [
+      "investment",
+      "crypto",
+      "web3",
+      "trading",
+      "platform",
+      "business",
+      "finance",
+      "bootstrap"
+    ],
+    "colorPalette": {
+      "background": "#1a1a2e",
+      "text": "#ffffff",
+      "accent": "#007bff",
+      "cardBg": "rgba(255,255,255,0.05)"
+    },
+    "typography": {
+      "fontFamily": "Lato",
+      "headingWeight": "700-900",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "style": "Clean sans-serif. Bootstrap styling with Lato override."
+    },
+    "layoutDetails": "Single-page with modals. Bootstrap grid. Full-width sections with container centering.",
+    "visualStyle": "Dark business template. Bootstrap-based, professional. Third-party template.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--crypto-web3-investment.zip"
+  },
+  {
+    "id": "web3-defi-tracker",
+    "source": "web3",
+    "dir": "web3/defi-tracker",
+    "name": "DeFi Tracker",
+    "title": "DeFiScope — DeFi Portfolio Tracker",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 44,
+    "indexPath": "web3/defi-tracker/index.html",
+    "description": "DeFi portfolio tracker with sidebar nav. Left sidebar with DeFiScope branding, nav sections (Overview: Dashboard, Protocols; Analytics: Yield Rates, DeFi Tokens). Topbar with hamburger, page title, refresh time, wallet connect. Dashboard: portfolio value chart, protocol allocation donut, top DeFi protocols table (Aave, Uniswap, Lido) with TVL, APY, chain info. Green accent.",
+    "colorScheme": "dark",
+    "primaryColor": "#10b981",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "sidebar-navigation",
+      "charts",
+      "real-time-data",
+      "wallet-connect",
+      "multi-page"
+    ],
+    "sections": [
+      "sidebar",
+      "topbar",
+      "dashboard-cards",
+      "portfolio-chart",
+      "protocol-table",
+      "yield-rates"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "defi",
+      "portfolio",
+      "tracker",
+      "protocol",
+      "tvl",
+      "yield",
+      "aave",
+      "uniswap",
+      "lido",
+      "dashboard",
+      "analytics"
+    ],
+    "colorPalette": {
+      "background": "#0f1117",
+      "text": "#e2e8f0",
+      "accent": "#10b981",
+      "cardBg": "#1a1d27",
+      "sidebarBg": "#141720",
+      "border": "#2a2d3a"
+    },
+    "typography": {
+      "fontFamily": "Plus Jakarta Sans + Fira Code",
+      "headingWeight": "700-800",
+      "bodyWeight": "400-500",
+      "bodySize": "14px",
+      "style": "Modern geometric sans-serif with monospace for data"
+    },
+    "layoutDetails": "Two-column: collapsible sidebar (240px) + main content. Dashboard grid layout.",
+    "visualStyle": "Dark fintech dashboard. Green accent for positive values. Clean data presentation.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--defi-tracker.zip"
+  },
+  {
+    "id": "web3-defi-yield",
+    "source": "web3",
+    "dir": "web3/defi-yield",
+    "name": "DeFi Yield",
+    "title": "FORGEFI — DeFi Yield Farm",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 40,
+    "indexPath": "web3/defi-yield/index.html",
+    "description": "DeFi yield farming platform. Navbar with FORGEFI branding, nav (Farms, Pools, Swap, Bridge, Docs), Connect Wallet. Hero stats: TVL ($1.24B), Total Yield Distributed, Active Farms. Liquidity pools with sortable cards showing token pairs, APY, TVL, Stake/Unstake buttons. Expandable pool details with deposit/withdraw forms. Bebas Neue display font.",
+    "colorScheme": "dark",
+    "primaryColor": "#6c5ce7",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "wallet-connect",
+      "form",
+      "animation",
+      "expandable-cards"
+    ],
+    "sections": [
+      "navbar",
+      "hero-stats",
+      "liquidity-pools",
+      "pool-cards"
+    ],
+    "techStack": [
+      "google-fonts",
+      "vanilla-js"
+    ],
+    "matchSignals": [
+      "defi",
+      "yield",
+      "farming",
+      "liquidity",
+      "pool",
+      "staking",
+      "apy",
+      "tvl",
+      "swap",
+      "bridge"
+    ],
+    "colorPalette": {
+      "background": "#0b0b11",
+      "text": "#ffffff",
+      "accent": "#6c5ce7",
+      "green": "#00d4aa",
+      "orange": "#ff9f43",
+      "cardBg": "rgba(255,255,255,0.04)"
+    },
+    "typography": {
+      "fontFamily": "Inter + Bebas Neue",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Clean sans-serif with condensed display font for TVL/APY"
+    },
+    "layoutDetails": "Single-page vertical scroll. Navbar, stats row, pool cards list. Expandable details.",
+    "visualStyle": "Dark DeFi platform. Purple accent, clean cards. Uniswap/PancakeSwap-inspired.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--defi-yield.zip"
+  },
+  {
+    "id": "web3-dex-aggregator",
+    "source": "web3",
+    "dir": "web3/dex-aggregator",
+    "name": "DEX Aggregator",
+    "title": "NEXSWAP — DEX Aggregator",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 44,
+    "indexPath": "web3/dex-aggregator/index.html",
+    "description": "DEX aggregator with cyberpunk aesthetic. Scanline overlay. Navbar with NEXSWAP in Orbitron font, nav (Swap, Routes, Analytics, Docs), glowing Connect Wallet. Stats bar (24h Volume, Total Trades, DEXs Connected, Best Rate). Swap card with token selectors and route comparison from multiple DEXs (Uniswap, SushiSwap, 1inch, Curve). Recent trades table. Neon green accent.",
+    "colorScheme": "dark",
+    "primaryColor": "#00ff88",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "wallet-connect",
+      "charts",
+      "animation",
+      "real-time-data"
+    ],
+    "sections": [
+      "navbar",
+      "stats-bar",
+      "swap-card",
+      "route-comparison",
+      "recent-trades",
+      "analytics"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "vanilla-js"
+    ],
+    "matchSignals": [
+      "dex",
+      "aggregator",
+      "swap",
+      "uniswap",
+      "sushiswap",
+      "1inch",
+      "route",
+      "best-price",
+      "defi",
+      "exchange"
+    ],
+    "colorPalette": {
+      "background": "#0a0a0f",
+      "text": "#e0e0e0",
+      "accent": "#00ff88",
+      "secondary": "#6c5ce7",
+      "cardBg": "rgba(255,255,255,0.03)"
+    },
+    "typography": {
+      "fontFamily": "Orbitron + Space Grotesk",
+      "headingWeight": "700-900",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Sci-fi display font with geometric body. Cyberpunk aesthetic."
+    },
+    "layoutDetails": "Single-page centered. Stats bar, swap card, route comparison, trades table.",
+    "visualStyle": "Cyberpunk/sci-fi. Neon green on black. Scanline overlay, glowing effects.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--dex-aggregator.zip"
+  },
+  {
+    "id": "web3-gas-tracker",
+    "source": "web3",
+    "dir": "web3/gas-tracker",
+    "name": "Gas Tracker",
+    "title": "GasLens — Ethereum Gas Tracker",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 60,
+    "indexPath": "web3/gas-tracker/index.html",
+    "description": "Ethereum gas tracker with sidebar dashboard. Sidebar with GasLens branding, nav (Overview, History, Estimator, Multi-Chain), ETH price. Topbar with menu toggle, page title, network selector, live indicator. Three gas tier cards (Slow/Standard/Fast) with Gwei prices. Gas history chart. Transaction cost estimator. Multi-chain gas comparison. Dark theme with blue accent.",
+    "colorScheme": "dark",
+    "primaryColor": "#3b82f6",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "sidebar-navigation",
+      "charts",
+      "real-time-data",
+      "multi-page",
+      "estimator"
+    ],
+    "sections": [
+      "sidebar",
+      "topbar",
+      "gas-tiers",
+      "history-chart",
+      "estimator",
+      "multi-chain"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "vanilla-js"
+    ],
+    "matchSignals": [
+      "gas",
+      "ethereum",
+      "gwei",
+      "tracker",
+      "fee",
+      "transaction-cost",
+      "estimator",
+      "eth",
+      "multi-chain"
+    ],
+    "colorPalette": {
+      "background": "#0f1219",
+      "text": "#e2e8f0",
+      "accent": "#3b82f6",
+      "success": "#22c55e",
+      "warning": "#f59e0b",
+      "danger": "#ef4444",
+      "sidebarBg": "#111827",
+      "cardBg": "#1e293b"
+    },
+    "typography": {
+      "fontFamily": "Inter + JetBrains Mono",
+      "headingWeight": "600-700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Clean sans-serif with monospace for gas prices"
+    },
+    "layoutDetails": "Sidebar (260px) + main content. Multi-section dashboard with tab navigation.",
+    "visualStyle": "Dark dashboard. Blue accent with traffic-light gas tiers (green/yellow/red).",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--gas-tracker.zip"
+  },
+  {
+    "id": "web3-market-overview",
+    "source": "web3",
+    "dir": "web3/market-overview",
+    "name": "Market Overview",
+    "title": "CRYPTOVIEW — Market Overview",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 44,
+    "indexPath": "web3/market-overview/index.html",
+    "description": "Crypto market overview with sidebar. Narrow icon sidebar with CRYPTOVIEW branding, nav icons (Markets, Watchlist, Portfolio, Settings), LIVE indicator. Hero strip with title and connection status. Search bar. Market stats row (Market Cap, Volume, BTC Dominance, Active Coins). Sortable market table with rank, price, change, cap, volume, sparklines. Anton display font. IBM Plex Mono for data. Real-time CoinGecko.",
+    "colorScheme": "dark",
+    "primaryColor": "#e74c3c",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "search",
+      "charts",
+      "real-time-data",
+      "sortable-table",
+      "sidebar-navigation"
+    ],
+    "sections": [
+      "sidebar",
+      "hero",
+      "search",
+      "market-stats",
+      "market-table"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "market",
+      "overview",
+      "crypto",
+      "prices",
+      "coinmarketcap",
+      "coingecko",
+      "rankings",
+      "market-cap",
+      "volume"
+    ],
+    "colorPalette": {
+      "background": "#0a0a0f",
+      "text": "#ffffff",
+      "accent": "#e74c3c",
+      "green": "#00d4aa",
+      "sidebarBg": "#111111",
+      "cardBg": "rgba(255,255,255,0.04)"
+    },
+    "typography": {
+      "fontFamily": "Anton + Barlow Condensed + IBM Plex Mono",
+      "headingWeight": "400",
+      "bodyWeight": "500",
+      "bodySize": "14px",
+      "style": "Bold display font with condensed body and monospace data"
+    },
+    "layoutDetails": "Narrow icon sidebar (60px) + full main content. Hero strip, search, stats, data table.",
+    "visualStyle": "Dark, industrial. Red accent. Bold typography with monospace data. Bloomberg-inspired.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--market-overview.zip"
+  },
+  {
+    "id": "web3-nftai-marketplace",
+    "source": "web3",
+    "dir": "web3/nftai-marketplace",
+    "name": "NFTAI Marketplace",
+    "title": "NFTAI — NFT Marketplace Template",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": true,
+    "sizeKB": 15860,
+    "indexPath": "web3/nftai-marketplace/index.html",
+    "description": "Full-featured NFT marketplace with preloader. Fixed header with nav, search, wallet connect. Hero with featured collection. Live auction section with countdown timers. Top sellers with creator profiles. Explore section with filterable NFT grid (Art, Music, Domain, Virtual, Trading Cards). NFT cards show image, title, creator, ETH price, likes. Footer with newsletter and social links. Professional themesflat.com template.",
+    "colorScheme": "dark",
+    "primaryColor": "#5142fc",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "preloader",
+      "search",
+      "filter",
+      "countdown",
+      "wallet-connect",
+      "newsletter"
+    ],
+    "sections": [
+      "preloader",
+      "header",
+      "hero",
+      "live-auctions",
+      "top-sellers",
+      "explore-nfts",
+      "footer"
+    ],
+    "techStack": [
+      "vanilla-js",
+      "custom-css"
+    ],
+    "matchSignals": [
+      "nft",
+      "marketplace",
+      "auction",
+      "opensea",
+      "collection",
+      "digital-art",
+      "ethereum",
+      "crypto",
+      "web3",
+      "mint"
+    ],
+    "colorPalette": {
+      "background": "#14141f",
+      "text": "#ffffff",
+      "accent": "#5142fc",
+      "cardBg": "#1a1a2e",
+      "border": "#2a2a3e"
+    },
+    "typography": {
+      "fontFamily": "system-ui, sans-serif",
+      "headingWeight": "700",
+      "bodyWeight": "400",
+      "bodySize": "16px",
+      "style": "Clean system fonts. NFT marketplace standard."
+    },
+    "layoutDetails": "Single-page scroll. Full-width sections with container centering. Grid for NFT cards.",
+    "visualStyle": "Dark NFT marketplace. Purple accent. Card-based grid. OpenSea-inspired layout.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--nftai-marketplace.zip"
+  },
+  {
+    "id": "web3-onchain-dashboard",
+    "source": "web3",
+    "dir": "web3/onchain-dashboard",
+    "name": "On-Chain Dashboard",
+    "title": "ChainPulse — On-Chain Data Dashboard",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 32,
+    "indexPath": "web3/onchain-dashboard/index.html",
+    "description": "On-chain data dashboard with minimal header layout. Top header with ChainPulse branding and live data indicator. Global stats bar (Total Market Cap, 24h Volume, BTC Dominance, ETH Dominance, Active Cryptos). Chain selector tabs. Main grid with price chart, top gainers/losers cards, and market dominance donut chart. Trending tokens section. DM Sans typography with Space Mono for data. Clean, data-focused design.",
+    "colorScheme": "dark",
+    "primaryColor": "#6366f1",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "charts",
+      "real-time-data",
+      "tabs",
+      "animation"
+    ],
+    "sections": [
+      "header",
+      "global-stats",
+      "chain-selector",
+      "price-chart",
+      "gainers-losers",
+      "dominance-chart",
+      "trending"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "on-chain",
+      "dashboard",
+      "analytics",
+      "market-cap",
+      "dominance",
+      "trending",
+      "crypto",
+      "data",
+      "metrics"
+    ],
+    "colorPalette": {
+      "background": "#0f0f14",
+      "text": "#e2e8f0",
+      "accent": "#6366f1",
+      "green": "#22c55e",
+      "red": "#ef4444",
+      "cardBg": "#1a1a24"
+    },
+    "typography": {
+      "fontFamily": "DM Sans + Space Mono",
+      "headingWeight": "600-700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Modern sans-serif with monospace for data. Clean and minimal."
+    },
+    "layoutDetails": "Single-page with header. Global stats bar, then grid layout for charts and cards.",
+    "visualStyle": "Dark, minimal dashboard. Indigo accent. Data-focused with charts. Clean and modern.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--onchain-dashboard.zip"
+  },
+  {
+    "id": "web3-staking-platform",
+    "source": "web3",
+    "dir": "web3/staking-platform",
+    "name": "Staking Platform",
+    "title": "STAKEHAUS — Staking Protocol",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 40,
+    "indexPath": "web3/staking-platform/index.html",
+    "description": "Staking protocol with sidebar layout. Narrow icon sidebar with STAKEHAUS branding and nav icons. Main content with hero strip 'STAKE YOUR ASSETS'. Stats row: Total Value Staked ($847.2M), Average APY (8.42%), Total Rewards Paid. Staking pool cards with token info, APY, TVL, lock period, and Stake button. Each card expandable with staking form. Anton display font. Barlow Condensed body. IBM Plex Mono for data.",
+    "colorScheme": "dark",
+    "primaryColor": "#e74c3c",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "sidebar-navigation",
+      "wallet-connect",
+      "form",
+      "expandable-cards",
+      "animation"
+    ],
+    "sections": [
+      "sidebar",
+      "hero",
+      "stats-row",
+      "staking-pools",
+      "pool-cards"
+    ],
+    "techStack": [
+      "google-fonts",
+      "vanilla-js"
+    ],
+    "matchSignals": [
+      "staking",
+      "stake",
+      "protocol",
+      "apy",
+      "yield",
+      "rewards",
+      "validator",
+      "ethereum",
+      "crypto",
+      "defi"
+    ],
+    "colorPalette": {
+      "background": "#0a0a0f",
+      "text": "#ffffff",
+      "accent": "#e74c3c",
+      "green": "#00d4aa",
+      "sidebarBg": "#111111",
+      "cardBg": "rgba(255,255,255,0.04)"
+    },
+    "typography": {
+      "fontFamily": "Anton + Barlow Condensed + IBM Plex Mono",
+      "headingWeight": "400",
+      "bodyWeight": "500",
+      "bodySize": "14px",
+      "style": "Bold display font with condensed body and monospace data"
+    },
+    "layoutDetails": "Narrow icon sidebar (60px) + main content. Hero strip, stats row, pool cards.",
+    "visualStyle": "Dark, industrial. Red accent. Bold typography. Lido/Rocket Pool-inspired.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--staking-platform.zip"
+  },
+  {
+    "id": "web3-token-analytics",
+    "source": "web3",
+    "dir": "web3/token-analytics",
+    "name": "Token Analytics",
+    "title": "TokenScope — Crypto Token Analytics",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 64,
+    "indexPath": "web3/token-analytics/index.html",
+    "description": "Token analytics platform with sidebar. Left sidebar with TokenScope branding, nav sections (Analytics: Search Tokens, Trending, Compare; Market: Rankings). Topbar with search input and dropdown suggestions. Token detail view with price chart, key metrics (market cap, volume, supply, ATH), price change percentages, and description. Trending tokens grid. Compare view for side-by-side token analysis. Nunito typography with Source Code Pro for data.",
+    "colorScheme": "dark",
+    "primaryColor": "#8b5cf6",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "sidebar-navigation",
+      "charts",
+      "search",
+      "real-time-data",
+      "multi-page",
+      "comparison"
+    ],
+    "sections": [
+      "sidebar",
+      "topbar",
+      "token-search",
+      "token-detail",
+      "trending",
+      "compare",
+      "rankings"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "token",
+      "analytics",
+      "crypto",
+      "research",
+      "compare",
+      "trending",
+      "market-cap",
+      "price",
+      "chart",
+      "metrics"
+    ],
+    "colorPalette": {
+      "background": "#0f1117",
+      "text": "#e2e8f0",
+      "accent": "#8b5cf6",
+      "green": "#22c55e",
+      "red": "#ef4444",
+      "cardBg": "#1a1d27",
+      "sidebarBg": "#141720"
+    },
+    "typography": {
+      "fontFamily": "Nunito + Source Code Pro",
+      "headingWeight": "700-800",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Rounded sans-serif with monospace for data. Friendly yet professional."
+    },
+    "layoutDetails": "Sidebar (240px) + main content. Multi-view: search, detail, trending, compare, rankings.",
+    "visualStyle": "Dark analytics platform. Purple accent. Multi-view dashboard. CoinGecko-inspired.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--token-analytics.zip"
+  },
+  {
+    "id": "web3-token-swap",
+    "source": "web3",
+    "dir": "web3/token-swap",
+    "name": "Token Swap",
+    "title": "SwapX — Decentralized Token Swap",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 36,
+    "indexPath": "web3/token-swap/index.html",
+    "description": "Decentralized token swap interface. Header with SwapX branding, nav (Swap, Pools, Farm, Bridge), Connect Wallet. Side panel with popular tokens list. Central swap card with You Pay/You Receive inputs, token selectors, balance display, MAX button, and swap direction toggle. Slippage settings. Price impact and route info. Exchange rate display. Real-time token prices from CoinGecko. Dark theme with purple accent.",
+    "colorScheme": "dark",
+    "primaryColor": "#6c5ce7",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "wallet-connect",
+      "form",
+      "real-time-data",
+      "animation"
+    ],
+    "sections": [
+      "header",
+      "popular-tokens",
+      "swap-card",
+      "settings",
+      "price-info"
+    ],
+    "techStack": [
+      "google-fonts",
+      "vanilla-js",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "swap",
+      "token",
+      "dex",
+      "uniswap",
+      "exchange",
+      "defi",
+      "trade",
+      "liquidity",
+      "bridge",
+      "farm"
+    ],
+    "colorPalette": {
+      "background": "#0a0a14",
+      "text": "#ffffff",
+      "accent": "#6c5ce7",
+      "green": "#00d4aa",
+      "cardBg": "rgba(255,255,255,0.04)"
+    },
+    "typography": {
+      "fontFamily": "system-ui, sans-serif",
+      "headingWeight": "600",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Clean system fonts. Compact swap interface typography."
+    },
+    "layoutDetails": "Header, then two-column: side panel (popular tokens) + central swap card.",
+    "visualStyle": "Dark swap interface. Purple accent. Clean card-based. Uniswap-inspired.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--token-swap.zip"
+  },
+  {
+    "id": "web3-wallet-dashboard",
+    "source": "web3",
+    "dir": "web3/wallet-dashboard",
+    "name": "Wallet Dashboard",
+    "title": "MochiWallet — Multi-Chain Dashboard",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 48,
+    "indexPath": "web3/wallet-dashboard/index.html",
+    "description": "Multi-chain wallet dashboard with playful design. Floating background shapes. Left sidebar with MochiWallet branding (mochi emoji), nav groups (Main: Dashboard, Assets, Activity, Contacts; Tools: Settings), network status. Topbar with search, notifications, wallet address. Dashboard: total balance card with sparkline, chain breakdown cards (Ethereum, Polygon, Arbitrum), recent transactions list, portfolio allocation chart. Comfortaa + Nunito fonts. Pastel gradient accents.",
+    "colorScheme": "dark",
+    "primaryColor": "#a78bfa",
+    "layout": "sidebar",
+    "features": [
+      "responsive",
+      "sidebar-navigation",
+      "charts",
+      "search",
+      "wallet-connect",
+      "animation"
+    ],
+    "sections": [
+      "sidebar",
+      "topbar",
+      "balance-card",
+      "chain-cards",
+      "transactions",
+      "portfolio-chart"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "wallet",
+      "dashboard",
+      "multi-chain",
+      "ethereum",
+      "polygon",
+      "arbitrum",
+      "balance",
+      "assets",
+      "transactions",
+      "portfolio"
+    ],
+    "colorPalette": {
+      "background": "#0f0f1a",
+      "text": "#ffffff",
+      "accent": "#a78bfa",
+      "green": "#34d399",
+      "cardBg": "rgba(255,255,255,0.05)",
+      "sidebarBg": "#141425"
+    },
+    "typography": {
+      "fontFamily": "Comfortaa + Nunito",
+      "headingWeight": "600-700",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Rounded, playful fonts. Friendly and approachable."
+    },
+    "layoutDetails": "Sidebar (240px) + main content. Topbar with search. Dashboard grid with cards and charts.",
+    "visualStyle": "Dark with pastel accents. Playful, rounded design. Friendly wallet UI. Rainbow-inspired.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--wallet-dashboard.zip"
+  },
+  {
+    "id": "web3-whale-tracker",
+    "source": "web3",
+    "dir": "web3/whale-tracker",
+    "name": "Whale Tracker",
+    "title": "WHALEWATCHER — On-Chain Whale Tracker",
+    "category": "crypto",
+    "hasIndex": true,
+    "hasCss": true,
+    "hasJs": true,
+    "hasImages": false,
+    "sizeKB": 36,
+    "indexPath": "web3/whale-tracker/index.html",
+    "description": "On-chain whale tracker with industrial aesthetic. Noise texture overlay. Header with whale emoji branding, tab nav (LIVE FEED, TOP WALLETS, FLOW ANALYSIS, CONCENTRATION), live indicator. Scrolling price ticker. Live feed tab shows large transaction cards with chain, amount, from/to addresses, and timestamp. Top wallets tab with ranked whale addresses. Flow analysis with exchange inflow/outflow charts. Concentration tab with supply distribution. Barlow Condensed + IBM Plex Mono fonts.",
+    "colorScheme": "dark",
+    "primaryColor": "#f59e0b",
+    "layout": "single-page",
+    "features": [
+      "responsive",
+      "charts",
+      "real-time-data",
+      "tabs",
+      "ticker",
+      "animation"
+    ],
+    "sections": [
+      "header",
+      "ticker",
+      "live-feed",
+      "top-wallets",
+      "flow-analysis",
+      "concentration"
+    ],
+    "techStack": [
+      "chart-js",
+      "google-fonts",
+      "coingecko-api"
+    ],
+    "matchSignals": [
+      "whale",
+      "tracker",
+      "large-transactions",
+      "on-chain",
+      "flow",
+      "exchange",
+      "concentration",
+      "crypto",
+      "analytics"
+    ],
+    "colorPalette": {
+      "background": "#0a0a0f",
+      "text": "#e0e0e0",
+      "accent": "#f59e0b",
+      "green": "#22c55e",
+      "red": "#ef4444",
+      "cardBg": "rgba(255,255,255,0.03)"
+    },
+    "typography": {
+      "fontFamily": "Barlow Condensed + IBM Plex Mono",
+      "headingWeight": "700-800",
+      "bodyWeight": "400",
+      "bodySize": "14px",
+      "style": "Condensed industrial font with monospace for addresses and amounts"
+    },
+    "layoutDetails": "Single-page with tab navigation. Header, ticker, then tab content areas.",
+    "visualStyle": "Dark, industrial. Amber accent. Noise texture. Military/terminal aesthetic.",
+    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--whale-tracker.zip"
+  }
+]

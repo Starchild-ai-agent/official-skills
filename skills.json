@@ -484,8 +484,8 @@
     {
       "name": "ui-templates",
       "path": "ui-templates/SKILL.md",
-      "version": "1.0.0",
-      "description": "Human-designed UI template library with 425+ templates from 6 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
+      "version": "1.1.0",
+      "description": "Human-designed UI template library with 447 templates from 7 professional sources (Web3, HTML5 UP, StyleShout, Start Bootstrap, Tooplate, ThemeFisher, TemplateMo) across 37 categories.\n\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, restaurants, blogs, etc. All templates are real human-designed HTML/CSS/JS — no AI-generated slop."
     },
     {
       "name": "us-stock",

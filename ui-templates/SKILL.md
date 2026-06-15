@@ -1,11 +1,11 @@
 ---
 name: ui-templates
-version: 1.0.0
+version: 1.1.0
 description: |
-  Human-designed UI template library with 425+ templates from 6 professional sources.
-  Use for any web page creation: landing pages, portfolios, business sites, dashboards, etc.
+  Human-designed UI template library with 447 templates from 7 professional sources.
+  Use for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.
   All templates are real human-designed HTML/CSS/JS — no AI-generated slop.
-tags: [templates, ui, web, landing-page, portfolio, business, surprise-me]
+tags: [templates, ui, web, landing-page, portfolio, business, crypto, web3, surprise-me]
 tools: [read_file, write_file, bash, preview_serve]
 triggers:
   - "[SURPRISE_ME]"
@@ -17,7 +17,7 @@ triggers:
 
 # UI Templates — Human-Designed Template Library
 
-> 425+ pre-built HTML/CSS/JS templates from 6 professional template libraries.
+> 447 pre-built HTML/CSS/JS templates from 7 professional template libraries.
 > All templates are human-designed with real design quality — NOT AI-generated.
 > The agent MUST use an existing template as the starting point. Never write HTML/CSS/JS from scratch.
 
@@ -103,9 +103,10 @@ When customizing a template, focus on content replacement while preserving the h
 
 ## 3. Template Sources & Quality Tiers
 
-**Source quality preference**: `html5up` > `styleshout` > `startbootstrap` > `tooplate` > `themefisher` > `templatemo`
+**Source quality preference**: `web3` > `html5up` > `styleshout` > `startbootstrap` > `tooplate` > `themefisher` > `templatemo`
 
 ### Tier 1 — Premium (prefer these)
+- **Web3** (19 templates): Crypto/DeFi/NFT dashboards and tools. Dark themes, real-time data, Chart.js. Best for blockchain projects.
 - **HTML5 UP** (44 templates): Clean, modern, responsive. Best overall design quality. Pure HTML/CSS/JS.
 - **StyleShout** (36 templates): Professional, polished. Great for portfolios and personal sites.
 - **Start Bootstrap** (28 templates): Bootstrap-based, well-structured. Good for business sites.
@@ -119,7 +120,7 @@ When customizing a template, focus on content replacement while preserving the h
 
 ---
 
-## 4. Category Reference (35+ categories)
+## 4. Category Reference (36+ categories)
 
 | Category       | Description                          | Count | Example Use Case                    |
 |----------------|--------------------------------------|-------|-------------------------------------|
@@ -158,6 +159,7 @@ When customizing a template, focus on content replacement while preserving the h
 | `job`          | Job / Career                         | 1     | Job portals                         |
 | `wellness`     | Wellness / Meditation                | 1     | Meditation, mental health           |
 | `component`    | UI components                        | 4     | Forms, admin panel components       |
+| `crypto`       | Crypto / DeFi / NFT / Web3           | 19    | Trading platforms, wallets, DeFi    |
 
 ---
 
@@ -216,7 +218,7 @@ Full example of an enriched catalog entry:
 
 ## 6. Important Notes
 
-- **All 425+ templates are usable** — every template has an `index.html` file. Use `indexPath` to find it under `ui-templates/`.
+- **All 447 templates are usable** — every template has an `index.html` file. Use `indexPath` to find it under `ui-templates/`.
 - **Category catalogs** — read `catalogs/{category}.json` for enriched metadata. Templates not yet enriched can be found in `ui-templates/catalog.json`.
 - **Keep the human design** — these templates look good because humans designed them. Don't over-modify the CSS structure.
 - **Use colorPalette for customization** — when the user has brand colors, use `colorPalette` to understand which CSS colors to replace.

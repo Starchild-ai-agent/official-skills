@@ -1,71 +1,5 @@
 [
   {
-    "id": "web3-airdrop-checker",
-    "source": "web3",
-    "dir": "web3/airdrop-checker",
-    "name": "Airdrop Checker",
-    "title": "CLAIMR — Airdrop Checker",
-    "category": "crypto",
-    "hasIndex": true,
-    "hasCss": true,
-    "hasJs": true,
-    "hasImages": false,
-    "sizeKB": 40,
-    "indexPath": "web3/airdrop-checker/index.html",
-    "description": "Airdrop eligibility checker with dark UI. Navbar with CLAIMR branding, nav links (Check, Upcoming, Archive, Guide), Connect Wallet button. Hero with wallet address input and demo wallet buttons. Results show eligible airdrops as cards with token info, value, status, claim buttons. Upcoming airdrops timeline. Stats bar. Chart.js analytics.",
-    "colorScheme": "dark",
-    "primaryColor": "#6c5ce7",
-    "layout": "single-page",
-    "features": [
-      "responsive",
-      "wallet-connect",
-      "search",
-      "charts",
-      "animation"
-    ],
-    "sections": [
-      "navbar",
-      "hero",
-      "wallet-input",
-      "results",
-      "upcoming-airdrops",
-      "stats"
-    ],
-    "techStack": [
-      "chart-js",
-      "google-fonts",
-      "vanilla-js"
-    ],
-    "matchSignals": [
-      "airdrop",
-      "claim",
-      "eligibility",
-      "wallet",
-      "crypto",
-      "web3",
-      "token",
-      "free-tokens",
-      "checker"
-    ],
-    "colorPalette": {
-      "background": "#0a0a0f",
-      "text": "#ffffff",
-      "accent": "#6c5ce7",
-      "cardBg": "rgba(255,255,255,0.03)",
-      "success": "#00d4aa"
-    },
-    "typography": {
-      "fontFamily": "Plus Jakarta Sans + JetBrains Mono",
-      "headingWeight": "800",
-      "bodyWeight": "400",
-      "bodySize": "15px",
-      "style": "Modern geometric sans-serif with monospace for addresses"
-    },
-    "layoutDetails": "Single-page vertical scroll. Centered content. Hero with wallet input, results grid below.",
-    "visualStyle": "Dark crypto UI with purple accent. Glassmorphic cards. Clean and modern.",
-    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--airdrop-checker.zip"
-  },
-  {
     "id": "web3-block-explorer",
     "source": "web3",
     "dir": "web3/block-explorer",
@@ -688,76 +622,6 @@
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--dex-aggregator.zip"
   },
   {
-    "id": "web3-gas-tracker",
-    "source": "web3",
-    "dir": "web3/gas-tracker",
-    "name": "Gas Tracker",
-    "title": "GasLens — Ethereum Gas Tracker",
-    "category": "crypto",
-    "hasIndex": true,
-    "hasCss": true,
-    "hasJs": true,
-    "hasImages": false,
-    "sizeKB": 60,
-    "indexPath": "web3/gas-tracker/index.html",
-    "description": "Ethereum gas tracker with sidebar dashboard. Sidebar with GasLens branding, nav (Overview, History, Estimator, Multi-Chain), ETH price. Topbar with menu toggle, page title, network selector, live indicator. Three gas tier cards (Slow/Standard/Fast) with Gwei prices. Gas history chart. Transaction cost estimator. Multi-chain gas comparison. Dark theme with blue accent.",
-    "colorScheme": "dark",
-    "primaryColor": "#3b82f6",
-    "layout": "sidebar",
-    "features": [
-      "responsive",
-      "sidebar-navigation",
-      "charts",
-      "real-time-data",
-      "multi-page",
-      "estimator"
-    ],
-    "sections": [
-      "sidebar",
-      "topbar",
-      "gas-tiers",
-      "history-chart",
-      "estimator",
-      "multi-chain"
-    ],
-    "techStack": [
-      "chart-js",
-      "google-fonts",
-      "vanilla-js"
-    ],
-    "matchSignals": [
-      "gas",
-      "ethereum",
-      "gwei",
-      "tracker",
-      "fee",
-      "transaction-cost",
-      "estimator",
-      "eth",
-      "multi-chain"
-    ],
-    "colorPalette": {
-      "background": "#0f1219",
-      "text": "#e2e8f0",
-      "accent": "#3b82f6",
-      "success": "#22c55e",
-      "warning": "#f59e0b",
-      "danger": "#ef4444",
-      "sidebarBg": "#111827",
-      "cardBg": "#1e293b"
-    },
-    "typography": {
-      "fontFamily": "Inter + JetBrains Mono",
-      "headingWeight": "600-700",
-      "bodyWeight": "400",
-      "bodySize": "14px",
-      "style": "Clean sans-serif with monospace for gas prices"
-    },
-    "layoutDetails": "Sidebar (260px) + main content. Multi-section dashboard with tab navigation.",
-    "visualStyle": "Dark dashboard. Blue accent with traffic-light gas tiers (green/yellow/red).",
-    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--gas-tracker.zip"
-  },
-  {
     "id": "web3-market-overview",
     "source": "web3",
     "dir": "web3/market-overview",
@@ -906,16 +770,15 @@
     "hasImages": false,
     "sizeKB": 42,
     "indexPath": "web3/onchain-dashboard/index.html",
-    "description": "Professional on-chain intelligence dashboard inspired by Dune Analytics and Arkham Intelligence. Fixed sidebar navigation with ONCHAIN branding and gradient icon. Sticky topbar with monospace search box (supports address/tx hash/token search with keyboard shortcut '/'), live indicator, real-time clock, and Connect Wallet button. Network overview section with chain selector tabs (Ethereum, BSC, Polygon, Arbitrum) and four stat cards: Block Height, TPS, Gas Price with low/avg/fast tiers, and Total Market Cap. Bento grid layout below: wide transaction volume bar chart with 24H/7D/30D period controls, gas tracker line chart with 3-line overlay (low/avg/fast), hot tokens table with rank/icon/price/24h change/market cap/volume/7D sparkline, DeFi TVL rankings with gradient progress bars, whale activity live feed with buy/sell/transfer icons and auto-updating entries, and market dominance doughnut chart. Full-width My Portfolio section at bottom with Connect Wallet flow: once connected shows three tabs — Holdings (token balances with allocation bars), Transactions (send/receive/swap/approve history with type badges), and P&L Chart (30-day portfolio value line chart with gradient fill). All data fetched from CoinGecko API with comprehensive fallback datasets. Inter + JetBrains Mono typography. Deep midnight navy background with electric cyan and violet accents.",
+    "description": "Professional on-chain intelligence dashboard inspired by Dune Analytics and Arkham Intelligence. Single-page layout with sticky topbar containing ONCHAIN branding with gradient icon, monospace search box (supports address/tx hash/token search with keyboard shortcut '/'), live indicator, real-time clock, and Connect Wallet button. Network overview section with chain selector tabs (Ethereum, BSC, Polygon, Arbitrum) and four stat cards: Block Height, TPS, Gas Price with low/avg/fast tiers, and Total Market Cap. Bento grid layout below: wide transaction volume bar chart with 24H/7D/30D period controls, gas tracker line chart with 3-line overlay (low/avg/fast), hot tokens table with rank/icon/price/24h change/market cap/volume/7D sparkline, DeFi TVL rankings with gradient progress bars, whale activity live feed with buy/sell/transfer icons and auto-updating entries, and market dominance doughnut chart. Full-width My Portfolio section at bottom with Connect Wallet flow: once connected shows three tabs — Holdings (token balances with allocation bars), Transactions (send/receive/swap/approve history with type badges), and P&L Chart (30-day portfolio value line chart with gradient fill). All data fetched from CoinGecko API with comprehensive fallback datasets. Inter + JetBrains Mono typography. Deep midnight navy background with electric cyan and violet accents. Footer with system status.",
     "colorScheme": "dark",
     "primaryColor": "#00d4ff",
-    "layout": "sidebar",
+    "layout": "single-page",
     "features": [
       "responsive",
       "charts",
       "real-time-data",
       "search",
-      "sidebar-navigation",
       "tabs",
       "animation",
       "bento-grid",
@@ -926,7 +789,6 @@
       "transaction-history"
     ],
     "sections": [
-      "sidebar",
       "topbar",
       "network-overview",
       "chain-selector",
@@ -939,7 +801,8 @@
       "my-portfolio",
       "holdings",
       "transactions",
-      "pnl-chart"
+      "pnl-chart",
+      "footer"
     ],
     "techStack": [
       "chart-js",
@@ -988,7 +851,7 @@
       "letterSpacing": "tight (-0.3px headings), wide (0.8px labels)",
       "style": "Clean Inter for UI, JetBrains Mono for all data values. Uppercase labels with wide letter-spacing. Gradient brand text."
     },
-    "layoutDetails": "Fixed sidebar (220px) with icon nav + main content area. Sticky topbar with search and live clock. Network stats in 4-column grid. Main content in 12-column bento grid with span-8/span-4/span-7/span-5 cards. Full-width My Portfolio card at bottom. Responsive: collapses to single column on mobile with hamburger menu.",
+    "layoutDetails": "Single-page layout with sticky topbar (brand + search + wallet). Max-width 1400px centered content. Network stats in 4-column grid. Main content in 12-column bento grid with span-8/span-4/span-7/span-5 cards. Full-width My Portfolio card at bottom. Footer with system status. Responsive: collapses to single column on mobile.",
     "visualStyle": "Dark, professional intelligence dashboard. Midnight navy base with electric cyan and violet accents. Subtle gradient brand elements. Thin borders with low-opacity blue tint. Bento grid layout with varied card sizes. Live data indicators with pulse animations. Sparkline mini-charts in token table. Gradient progress bars for TVL. Auto-updating whale feed with slide-in animation. Connect Wallet flow for personal on-chain data.",
     "breakpoints": [480, 768, 1024, 1200],
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--onchain-dashboard.zip"

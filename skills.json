@@ -136,8 +136,8 @@
     {
       "name": "cli-bridge",
       "path": "cli-bridge/SKILL.md",
-      "version": "0.2.3",
-      "description": "Authorize the local starchild CLI plus its agent-shell local-exec channel to this agent. Manage short-code bundles that connect the CLI to this agent.\n\nUse when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine)."
+      "version": "0.3.0",
+      "description": "Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.\n\nUse when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine)."
     },
     {
       "name": "cloudflare-tunnel-publish",

@@ -57,6 +57,13 @@ def _parse(argv: list[str]) -> argparse.Namespace:
              "a chat bridge only, never local RCE. Only pass this when the user "
              "explicitly asks for local shell access.",
     )
+    p.add_argument(
+        "--enable-files", action="store_true",
+        help="Grant the `files` capability so the agent can read/write files on "
+             "the user's machine via agent-shell. OFF by default. Independent of "
+             "--enable-shell. Transfers are path-gated on the laptop (dedicated "
+             "dir + policy); only pass this when the user wants file transfer.",
+    )
     return p.parse_args(argv[1:])
 
 
@@ -78,13 +85,20 @@ def main(argv: list[str]) -> int:
     C.require_env()
     ttl_seconds = ttl_days * 86400
     enable_shell = args.enable_shell
+    enable_files = args.enable_files
 
-    # 1. Mint the AKM key on local clawd. The `shell` capability is granted
-    # ONLY when --enable-shell is passed — the AKM is the authoritative
+    # 1. Mint the AKM key on local clawd. Capabilities are granted ONLY when
+    # the matching --enable-* flag is passed — the AKM is the authoritative
     # capability source (clawd reads it on the /ws/cli-shell handshake and
-    # refuses exec for connections without it, #264). A default bundle is a
-    # chat bridge only: even if it leaks, it cannot drive local_shell.
-    capabilities = ["shell"] if enable_shell else []
+    # refuses exec/file frames for connections lacking the capability, #264).
+    # `shell` (run commands) and `files` (read/write files) are independent.
+    # A default bundle is a chat bridge only: even if it leaks, it cannot drive
+    # local_shell or file transfer.
+    capabilities = []
+    if enable_shell:
+        capabilities.append("shell")
+    if enable_files:
+        capabilities.append("files")
     akm_body = {
         "scope": C.CLI_BRIDGE_SCOPE,
         "ttl_seconds": ttl_seconds,
@@ -146,9 +160,12 @@ def main(argv: list[str]) -> int:
     if enable_shell:
         C.info("  ⚠ shell ENABLED — agent-shell on this bundle can run commands "
                "on the user's machine (gated by their local exec-policy).")
-    else:
-        C.info("  • chat bridge only (no shell). Re-run with --enable-shell to "
-               "allow `starchild agent-shell` local command execution.")
+    if enable_files:
+        C.info("  ⚠ files ENABLED — the agent can read/write files on the user's "
+               "machine (gated by their local file-policy; dedicated transfer dir).")
+    if not capabilities:
+        C.info("  • chat bridge only (no shell, no files). Re-run with "
+               "--enable-shell and/or --enable-files to allow local access.")
     C.info("")
     C.info("First time on this device? Grab the starchild binary "
            "(auto-detects your OS):")

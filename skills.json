@@ -136,8 +136,8 @@
     {
       "name": "cli-bridge",
       "path": "cli-bridge/SKILL.md",
-      "version": "0.2.2",
-      "description": "Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.\n\nUse when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine)."
+      "version": "0.2.3",
+      "description": "Authorize the local starchild CLI plus its agent-shell local-exec channel to this agent. Manage short-code bundles that connect the CLI to this agent.\n\nUse when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine)."
     },
     {
       "name": "cloudflare-tunnel-publish",
@@ -184,8 +184,8 @@
     {
       "name": "creator-paywall",
       "path": "creator-paywall/SKILL.md",
-      "version": "1.0.0",
-      "description": "Drop-in crypto subscription paywall for creator products: EVM wallet login (SIWE) + on-chain\npayment verification. Users sign in with their wallet, pay a monthly/yearly subscription by\ntransferring tokens (ETH/Base/BSC, any ERC20 incl. custom tokens) to the creator's Starchild\nagent wallet, and get gated access — verified on-chain with no payment processor or third-party\naccount.\n\nUse when a creator wants to add \"sign up → pay → use\" monetization to something they built\n(e.g. \"add a paywall\", \"let users pay to subscribe\", \"gate my app behind a crypto payment\",\n\"收款\", \"订阅付费\", \"wallet login + subscription\"). Not for fiat/Stripe, not for pay-per-use metering."
+      "version": "1.0.1",
+      "description": "Drop-in crypto subscription paywall for creator products (not fiat/Stripe). EVM wallet login (SIWE) + on-chain\npayment verification. Users sign in with their wallet, pay a monthly/yearly subscription by\ntransferring tokens (ETH/Base/BSC, any ERC20 incl. custom tokens) to the creator's Starchild\nagent wallet, and get gated access — verified on-chain with no payment processor or third-party\naccount.\n\nUse when a creator wants to add \"sign up → pay → use\" monetization to something they built\n(e.g. \"add a paywall\", \"let users pay to subscribe\", \"gate my app behind a crypto payment\",\n\"收款\", \"订阅付费\", \"wallet login + subscription\"). Not for fiat/Stripe, not for pay-per-use metering."
     },
     {
       "name": "debank",
@@ -232,8 +232,8 @@
     {
       "name": "ibkr",
       "path": "ibkr/SKILL.md",
-      "version": "1.0.0",
-      "description": "Interactive Brokers (IBKR) — global stocks/ETFs/forex/futures via a LOCAL TWS or IB Gateway. Account, positions, orders, quotes, history, order placement.\n\nUse when the user wants to check or trade an Interactive Brokers account (e.g. \"IBKR positions\", \"buy 10 AAPL on IBKR paper\", \"my IB account net liq\"). Requires a running TWS / IB Gateway — NOT a cloud key."
+      "version": "1.0.1",
+      "description": "Interactive Brokers — global stocks/forex/futures via a LOCAL TWS/IB Gateway, not cloud. Covers stocks, ETFs, forex, futures; account, positions, orders, quotes, history, order placement.\n\nUse when the user wants to check or trade an Interactive Brokers account (e.g. \"IBKR positions\", \"buy 10 AAPL on IBKR paper\", \"my IB account net liq\"). Requires a running TWS / IB Gateway — NOT a cloud key."
     },
     {
       "name": "image-3d",
@@ -250,8 +250,8 @@
     {
       "name": "image-create",
       "path": "image-create/SKILL.md",
-      "version": "1.0.0",
-      "description": "Pure text-to-image generation for all creative scenarios: logo design, poster design, illustration, meme, game assets, social media content, 3D rendering, education, fashion, food, pet, wedding, holiday marketing, and artistic styles.\n\nUse when generating images from text descriptions without a reference photo (e.g. design a logo, create a poster, generate game art, make a meme, 3D render)."
+      "version": "1.0.1",
+      "description": "Pure text-to-image generation for all creative scenarios (no reference photo). Covers logo design, poster design, illustration, meme, game assets, social media content, 3D rendering, education, fashion, food, pet, wedding, holiday marketing, and artistic styles.\n\nUse when generating images from text descriptions without a reference photo (e.g. design a logo, create a poster, generate game art, make a meme, 3D render)."
     },
     {
       "name": "image-ecommerce",
@@ -262,14 +262,14 @@
     {
       "name": "image-edit",
       "path": "image-edit/SKILL.md",
-      "version": "1.0.0",
-      "description": "Image editing and enhancement: background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.\n\nUse when editing, enhancing, or transforming an existing image (e.g. remove background, upscale photo, restore old photo, retouch portrait, change car color, apply filter, extend image)."
+      "version": "1.0.1",
+      "description": "Image editing and enhancement of an existing image. Covers background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.\n\nUse when editing, enhancing, or transforming an existing image (e.g. remove background, upscale photo, restore old photo, retouch portrait, change car color, apply filter, extend image)."
     },
     {
       "name": "image-portrait",
       "path": "image-portrait/SKILL.md",
-      "version": "1.0.0",
-      "description": "Identity-consistent portrait generation: professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.\n\nUse when generating styled portraits from a reference photo (e.g. professional headshot, anime avatar, cyberpunk portrait, travel photo, dating profile photo, ID photo)."
+      "version": "1.0.1",
+      "description": "Identity-consistent portrait generation from a reference photo. Covers professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.\n\nUse when generating styled portraits from a reference photo (e.g. professional headshot, anime avatar, cyberpunk portrait, travel photo, dating profile photo, ID photo)."
     },
     {
       "name": "image-tryon",
@@ -430,8 +430,8 @@
     {
       "name": "temp-files",
       "path": "temp-files/SKILL.md",
-      "version": "1.0.2",
-      "description": "Workroom file relay — agents hand off files, directories, and zipped bundles to each other through the sc-agent-backup /temp-files subsystem. TTL, sliding renewal, internal short links. Distinct semantics from the backup skill."
+      "version": "1.0.3",
+      "description": "Workroom file relay between agents (distinct from the backup skill). Hand off files, directories, and zipped bundles through the sc-agent-backup /temp-files subsystem. TTL, sliding renewal, internal short links."
     },
     {
       "name": "tg-bot-binding",

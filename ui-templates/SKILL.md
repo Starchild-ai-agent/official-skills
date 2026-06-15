@@ -1,6 +1,6 @@
 ---
 name: ui-templates
-version: 1.1.0
+version: 1.2.0
 description: |
   Human-designed UI template library with 447 templates from 7 professional sources.
   Use for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.

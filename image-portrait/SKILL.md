@@ -1,8 +1,8 @@
 ---
 name: image-portrait
-version: 1.0.0
+version: 1.0.1
 description: |
-  Identity-consistent portrait generation: professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.
+  Identity-consistent portrait generation from a reference photo. Covers professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.
 
   Use when generating styled portraits from a reference photo (e.g. professional headshot, anime avatar, cyberpunk portrait, travel photo, dating profile photo, ID photo).
 metadata:

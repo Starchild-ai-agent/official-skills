@@ -1,8 +1,8 @@
 ---
 name: cli-bridge
-version: 0.2.2
+version: 0.2.3
 description: |
-  Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.
+  Authorize the local starchild CLI plus its agent-shell local-exec channel to this agent. Manage short-code bundles that connect the CLI to this agent.
 
   Use when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine).
 delivery: script

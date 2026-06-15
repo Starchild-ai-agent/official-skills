@@ -86,10 +86,10 @@
       "description": "Bitget Wallet: token prices, swap quotes, RWA stock trades, security audits.\n\nUse when researching tokens or trading via Bitget on supported chains (e.g. honeypot check, USDT→BNB swap quote, RWA TSLA order, K-line on Base)."
     },
     {
-      "name": "blockfill",
+      "name": "blockfill-agent-execution",
       "path": "blockfill/SKILL.md",
-      "version": "0.1.0",
-      "description": "Local-first smart execution daemon for Binance Futures and OKX Swap. API keys never leave your machine — no cloud, no key leaks. Built-in maker/TWAP execution, multi-exchange support, persistent WebSocket connections. Place, query, and cancel execution tickets via CLI or Python SDK."
+      "version": "1.0.2",
+      "description": "AI-agent-ready Python SDK and local execution engine for crypto perpetual futures order execution. Work large orders through TWAP and maker-style strategies on Binance Futures and OKX Swap while exchange API keys stay on your own machine — self-custodial, no third-party order routing. Declare a target position and BlockFill executes it; place, query, and cancel execution tickets from one Python API."
     },
     {
       "name": "browser-preview",

@@ -1,8 +1,8 @@
 ---
 name: ibkr
-version: 1.0.0
+version: 1.0.1
 description: |
-  Interactive Brokers (IBKR) — global stocks/ETFs/forex/futures via a LOCAL TWS or IB Gateway. Account, positions, orders, quotes, history, order placement.
+  Interactive Brokers — global stocks/forex/futures via a LOCAL TWS/IB Gateway, not cloud. Covers stocks, ETFs, forex, futures; account, positions, orders, quotes, history, order placement.
 
   Use when the user wants to check or trade an Interactive Brokers account (e.g. "IBKR positions", "buy 10 AAPL on IBKR paper", "my IB account net liq"). Requires a running TWS / IB Gateway — NOT a cloud key.
 author: starchild

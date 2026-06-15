@@ -1,7 +1,7 @@
 ---
 name: temp-files
-version: 1.0.2
-description: Workroom file relay — agents hand off files, directories, and zipped bundles to each other through the sc-agent-backup /temp-files subsystem. TTL, sliding renewal, internal short links. Distinct semantics from the backup skill.
+version: 1.0.3
+description: Workroom file relay between agents (distinct from the backup skill). Hand off files, directories, and zipped bundles through the sc-agent-backup /temp-files subsystem. TTL, sliding renewal, internal short links.
 metadata:
   starchild:
     emoji: "🔁"

@@ -88,6 +88,73 @@ def hl_balances():
     return _info("spotClearinghouseState", user=_get_address())
 
 
+def hl_total_balance():
+    """Get total available balance across spot + perp, aware of abstraction mode.
+
+    Mirrors the `hl_total_balance` runtime tool. Use this for "how much can I
+    trade with" checks — hl_account shows perp only (often $0 under unified
+    account) and hl_balances shows spot only.
+
+    Returns dict:
+        totalAvailable: USDC available for trading (rounded 2dp)
+        abstractionMode: "unifiedAccount" | "disabled" | "default" | ...
+        note: human-readable explanation of how the total was derived
+        breakdown: {spot:{usdc}, perp:{accountValue, marginUsed, available}}
+    """
+    addr = _get_address()
+
+    # Abstraction mode — tolerate string or dict shapes, default on any error.
+    try:
+        abstraction_result = _info("userAbstraction", user=addr)
+        if isinstance(abstraction_result, str):
+            abstraction_mode = abstraction_result
+        elif isinstance(abstraction_result, dict):
+            abstraction_mode = abstraction_result.get(
+                "type", abstraction_result.get("state", "default")
+            )
+        else:
+            abstraction_mode = "default"
+    except Exception:
+        abstraction_mode = "default"
+
+    spot_state = _info("spotClearinghouseState", user=addr)
+    perp_state = _info("clearinghouseState", user=addr)
+
+    # Spot USDC
+    spot_usdc = 0.0
+    for bal in spot_state.get("balances", []):
+        if bal.get("coin") == "USDC":
+            spot_usdc = float(bal.get("total", 0))
+            break
+
+    # Perp margin
+    perp_margin = perp_state.get("marginSummary", {})
+    perp_value = float(perp_margin.get("accountValue", 0))
+    perp_used = float(perp_margin.get("totalMarginUsed", 0))
+    perp_available = perp_value - perp_used
+
+    if abstraction_mode == "unifiedAccount":
+        total_available = spot_usdc + perp_available
+        note = "Unified account: funds are shared across spot/perp/builder-dexes"
+    else:
+        total_available = perp_available
+        note = "Disabled mode: perp and spot are separate"
+
+    return {
+        "totalAvailable": round(total_available, 2),
+        "abstractionMode": abstraction_mode,
+        "note": note,
+        "breakdown": {
+            "spot": {"usdc": round(spot_usdc, 2)},
+            "perp": {
+                "accountValue": round(perp_value, 2),
+                "marginUsed": round(perp_used, 2),
+                "available": round(perp_available, 2),
+            },
+        },
+    }
+
+
 def hl_open_orders():
     """Get all open orders."""
     return _info("openOrders", user=_get_address())

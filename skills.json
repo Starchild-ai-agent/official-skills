@@ -232,7 +232,7 @@
     {
       "name": "hyperliquid",
       "path": "hyperliquid/SKILL.md",
-      "version": "1.4.1",
+      "version": "1.5.0",
       "description": "Trade perp futures, spot, and RWA on Hyperliquid DEX with up to asset max leverage.\n\nUse when placing perp or spot orders, setting TP/SL, or moving funds on Hyperliquid (e.g. long BTC 5x, sell ETH, deposit USDC, set stop)."
     },
     {

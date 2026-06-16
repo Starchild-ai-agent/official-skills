@@ -1,6 +1,6 @@
 ---
 name: hyperliquid
-version: 1.4.1
+version: 1.5.0
 description: |
   Trade perp futures, spot, and RWA on Hyperliquid DEX with up to asset max leverage.
 

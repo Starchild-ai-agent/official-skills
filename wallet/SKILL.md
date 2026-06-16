@@ -1,78 +1,108 @@
 ---
 name: wallet
-version: 3.5.1
+version: 3.6.0
 description: |
   Multi-chain wallet: EVM and Solana balances, transfers, signing, and policy.
 
   Use when checking balances, sending tokens, signing typed data, or proposing a wallet policy (e.g. send 10 USDC on Base, sign EIP-712, Solana balance).
 author: starchild
 tags: [wallet, evm, solana, transfer, sign, policy, debank, birdeye]
-tools:
-  - wallet_info
-  - wallet_balance
-  - wallet_sol_balance
-  - wallet_get_all_balances
-  - wallet_transfer
-  - wallet_sign_transaction
-  - wallet_sign
-  - wallet_sign_typed_data
-  - wallet_transactions
-  - wallet_sol_transfer
-  - wallet_sol_sign_transaction
-  - wallet_sol_sign
-  - wallet_sol_transactions
-  - wallet_get_policy
-  - wallet_propose_policy
-tool_module: wallet.wallet
-
+delivery: script
+metadata:
+  starchild:
+    emoji: 💰
+    skillKey: wallet
 ---
 
 # 💰 Wallet Skill
 
-Multi-chain wallet for EVM (DeBank-supported chains) + Solana. Balances, transfers, signing, policy management.
+Multi-chain wallet for EVM (DeBank-supported chains) + Solana. Balances,
+transfers, signing, and policy management. **Script skill** — call the functions
+below via bash; no wallet tools are registered.
 
-## Tools
+## How to call
 
-| Tool | Description |
-|------|-------------|
-| `wallet_info` | Get all wallet addresses |
-| `wallet_balance` | EVM balance on a chain (DeBank) |
-| `wallet_sol_balance` | Solana balance (Birdeye) |
-| `wallet_get_all_balances` | All chains at once |
-| `wallet_transfer` | **Broadcast** EVM tx (gas sponsored by default, user-paid fallback) |
-| `wallet_sign_transaction` | Sign EVM tx (no broadcast) |
-| `wallet_sign` | EIP-191 message signing |
-| `wallet_sign_typed_data` | EIP-712 typed data signing |
-| `wallet_transactions` | EVM tx history |
-| `wallet_sol_transfer` | **Broadcast** Solana tx |
-| `wallet_sol_sign_transaction` | Sign Solana tx (no broadcast) |
-| `wallet_sol_sign` | Solana message signing |
-| `wallet_sol_transactions` | Solana tx history |
-| `wallet_get_policy` | Check policy status |
-| `wallet_propose_policy` | Propose policy (sends to UI) |
+All read/transfer/sign operations are Python functions in `core.skill_tools.wallet`.
+Run them from bash and read the JSON result:
+
+```bash
+python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.wallet_balance(chain='base')))"
+```
+
+The **one** operation that is NOT a script function is proposing a wallet policy
+— it needs to render a confirmation card in the UI, so it goes through the native
+`frontend_action` tool (see Policy Management below).
+
+## Functions (`from core.skill_tools import wallet`)
+
+| Function | Description |
+|----------|-------------|
+| `wallet_info()` | Get all wallet addresses |
+| `wallet_balance(chain, address="", asset="")` | EVM balance on a chain (DeBank). `chain` required |
+| `wallet_sol_balance(address="", asset="")` | Solana balance (Birdeye) |
+| `wallet_get_all_balances(evm_address="", sol_address="")` | All chains at once |
+| `wallet_transfer(to, amount, chain_id=1, data="", **kw)` | **Broadcast** EVM tx (gas sponsored by default) |
+| `wallet_sign_transaction(to, amount, chain_id=1, data="", **kw)` | Sign EVM tx (no broadcast) |
+| `wallet_sign(message)` | EIP-191 message signing |
+| `wallet_sign_typed_data(domain, types, primaryType, message)` | EIP-712 typed data signing |
+| `wallet_transactions(chain="ethereum", asset="", limit=20)` | EVM tx history |
+| `wallet_sol_transfer(transaction, caip2=...)` | **Broadcast** Solana tx (base64) |
+| `wallet_sol_sign_transaction(transaction)` | Sign Solana tx (no broadcast) |
+| `wallet_sol_sign(message)` | Solana message signing |
+| `wallet_sol_transactions(chain="solana", asset="sol", limit=20)` | Solana tx history |
+| `wallet_get_policy(chain_type="ethereum")` | Check policy status |
+| `validate_and_clean_rules(rules, chain_type)` | Pre-validate policy rules before proposing |
 
 ## Key Facts
 
-- **Gas is sponsored by default** on EVM chains — user doesn't need native tokens for gas. Falls back to user-paid if sponsorship is unavailable. Use `sponsor=false` in wallet_transfer to explicitly pay gas from wallet balance.
-- **Policy default: OFF** (allow-all). Only when user enables policy do transactions need UI confirmation
-- **Supported EVM chains**: All DeBank-supported chains. Common names auto-mapped to DeBank chain IDs (e.g. `avalanche` → `avax`, `bsc` → `bsc`, `zksync` → `era`). For full chain list call `db_chain_list()` from the debank skill. The 16 common chains (ethereum, base, arbitrum, optimism, polygon, linea, bsc, avalanche, fantom, gnosis, zksync, scroll, blast, mantle, celo, aurora) have built-in fallback mapping.
-- **Balance sources**: DeBank (EVM), Birdeye (Solana), wallet-service (fallback)
+- **Amounts are in wei** for EVM (`wallet_transfer` / `wallet_sign_transaction`). 0.01 ETH = `10000000000000000`. For ERC-20 token sends, `amount` is `0` (native) and the transfer is encoded in `data` calldata.
+- **Gas is sponsored by default** on EVM chains — user doesn't need native tokens for gas. Falls back to user-paid if unavailable. Pass `sponsor=False` to pay gas from wallet balance.
+- **Policy default: OFF** (allow-all). Only when policy is enabled do transactions need UI confirmation.
+- **Supported EVM chains**: All DeBank-supported chains. Common names auto-mapped (e.g. `avalanche` → `avax`, `bsc` → `bsc`, `zksync` → `era`). The 16 common chains (ethereum, base, arbitrum, optimism, polygon, linea, bsc, avalanche, fantom, gnosis, zksync, scroll, blast, mantle, celo, aurora) have built-in fallback mapping.
+- **Balance sources**: DeBank (EVM), Birdeye (Solana), wallet-service (fallback). DeBank/Birdeye keys are auto-injected by sc-proxy.
 
-## Workflow
+## Workflows
 
-### Check Balances
-1. Single chain: `wallet_balance(chain="base")` or `wallet_sol_balance()`
-2. All at once: `wallet_get_all_balances()`
+### Check balances
+```bash
+python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.wallet_balance(chain='base')))"
+python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.wallet_get_all_balances()))"
+```
 
-### Send Transaction (EVM)
-1. Check balance: `wallet_balance(chain=...)`
-2. Transfer: `wallet_transfer(to=..., amount=..., chain_id=...)`
-3. Verify: `wallet_transactions()` or check balance again
+### Send a transaction (EVM)
+Always verify balance before, and the result/history after.
+```bash
+# 1. check
+python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.wallet_balance(chain='base')))"
+# 2. transfer (amount in wei)
+python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.wallet_transfer(to='0x...', amount='10000000000000000', chain_id=8453)))"
+# 3. verify
+python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.wallet_transactions(chain='base')))"
+```
 
-### Policy Management
-1. Check: `wallet_get_policy(chain_type="ethereum")`
-2. If user wants to enable: `wallet_propose_policy(chain_type, rules, title, description)`
-3. User confirms in UI → policy applied
+### Sign EIP-712 typed data
+```bash
+python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.wallet_sign_typed_data(domain={...}, types={...}, primaryType='Permit', message={...})))"
+```
+
+## Policy Management
+
+Checking policy is a script function; **proposing** a policy uses the native
+`frontend_action` tool (it renders a signature card in the UI — a script cannot).
+
+1. Check current policy:
+   ```bash
+   python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.wallet_get_policy(chain_type='ethereum')))"
+   ```
+2. (Optional) pre-validate rules:
+   ```bash
+   python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.validate_and_clean_rules([...], 'ethereum')))"
+   ```
+3. Propose — call the **`frontend_action` tool** (not a script):
+   ```
+   frontend_action(action_type="update_wallet_policy", chain_type="ethereum", rules=[...])
+   ```
+   The user confirms + signs in the UI. **Call once per chain** (EVM + Solana = two calls).
 
 ### Standard Wildcard Policy (when needed)
 ```
@@ -131,11 +161,10 @@ rules = [
 | **TX methods need conditions** | `eth_sendTransaction`, `eth_signTransaction`, `eth_signTypedData_v4`, `eth_signUserOperation`, `signAndSendTransaction`, etc. ALL require ≥1 condition |
 | **Valid field_sources** | EVM: `ethereum_transaction` (to/value/chain_id), `ethereum_calldata` (function_name), `ethereum_typed_data_domain` (chainId/verifyingContract), `ethereum_typed_data_message`, `system` |
 | **Valid operators** | `eq`, `gt`, `gte`, `lt`, `lte`, `in` (array, max 100 values) |
-| **Dual chain** | Call `wallet_propose_policy` TWICE for EVM + Solana |
+| **Dual chain** | Call `frontend_action(action_type="update_wallet_policy", ...)` TWICE for EVM + Solana |
 
 ## Gotchas
 
-- `wallet_propose_policy` sends SSE event to frontend — needs streaming context
-- DeBank/Birdeye keys are auto-injected by sc-proxy
-- `wallet_balance` requires `chain` param — use `wallet_get_all_balances` for discovery
-- For both EVM + Solana policy, call `wallet_propose_policy` TWICE
+- Policy proposal goes through the `frontend_action` tool — needs an active SSE session (won't work from a background task).
+- `wallet_balance` requires `chain` — use `wallet_get_all_balances` for discovery.
+- For both EVM + Solana policy, call `frontend_action` TWICE (one per chain_type).

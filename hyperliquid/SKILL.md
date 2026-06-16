@@ -9,6 +9,7 @@ delivery: script
 tools:
   - hl_account
   - hl_balances
+  - hl_total_balance
   - hl_open_orders
   - hl_market
   - hl_orderbook

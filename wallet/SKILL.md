@@ -1,6 +1,6 @@
 ---
 name: wallet
-version: 3.5.1
+version: 3.6.0
 description: |
   Multi-chain wallet: EVM and Solana balances, transfers, signing, and policy.
 

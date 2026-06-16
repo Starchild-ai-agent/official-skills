@@ -218,6 +218,12 @@
       "description": "Ethena staking: stake USDe for sUSDe yield, unstake with cooldown, view rates.\n\nUse when farming stablecoin yield via Ethena (e.g. stake 1000 USDe, check sUSDe APY, unstake my position, current cooldown)."
     },
     {
+      "name": "feishu-binding",
+      "path": "feishu-binding/SKILL.md",
+      "version": "1.0.0",
+      "description": "Feishu/Lark binding: device flow authorization, connect, disconnect, status check.\n\nUse when setting up or managing Feishu/Lark connection (e.g. connect Feishu, connect Lark, bind 飞书, check Feishu status, disconnect Lark)."
+    },
+    {
       "name": "futu",
       "path": "futu/SKILL.md",
       "version": "1.0.0",

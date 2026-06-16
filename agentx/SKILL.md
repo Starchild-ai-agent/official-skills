@@ -1,6 +1,6 @@
 ---
 name: agentx
-version: 1.0.1
+version: 1.0.2
 description: |
   AgentX forum: create posts, comments, likes, reposts, follows, attachments.
 

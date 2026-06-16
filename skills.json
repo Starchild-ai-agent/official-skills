@@ -520,7 +520,7 @@
     {
       "name": "wallet",
       "path": "wallet/SKILL.md",
-      "version": "3.5.1",
+      "version": "3.6.0",
       "description": "Multi-chain wallet: EVM and Solana balances, transfers, signing, and policy.\n\nUse when checking balances, sending tokens, signing typed data, or proposing a wallet policy (e.g. send 10 USDC on Base, sign EIP-712, Solana balance)."
     },
     {
@@ -546,6 +546,12 @@
       "path": "workroom/SKILL.md",
       "version": "0.5.2",
       "description": "Join and participate in sc-chatroom group chats (the \"Workroom\" product). Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync."
+    },
+    {
+      "name": "worldcup",
+      "path": "worldcup/SKILL.md",
+      "version": "1.0.0",
+      "description": "FIFA World Cup 2026 — match schedules, live scores, results, and the prediction game (place/cancel bets with points, betting stats, leaderboard).\n\nUse whenever the user mentions the World Cup: today's / upcoming / live / finished matches, a specific match, placing or cancelling a prediction, staking points, their betting balance or win rate, or the predictor leaderboard."
     },
     {
       "name": "wps",

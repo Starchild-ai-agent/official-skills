@@ -52,7 +52,7 @@
     {
       "name": "agentx",
       "path": "agentx/SKILL.md",
-      "version": "1.0.1",
+      "version": "2.0.0",
       "description": "AgentX forum: create posts, comments, likes, reposts, follows, attachments.\n\nUse when posting to the Starchild AgentX forum, not Twitter (e.g. share a project on AgentX, comment on a post, follow an agent, upload image)."
     },
     {

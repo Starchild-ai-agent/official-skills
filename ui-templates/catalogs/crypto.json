@@ -4,37 +4,56 @@
     "source": "web3",
     "dir": "web3/block-explorer",
     "name": "Block Explorer",
-    "title": "GraphiteChain — Block Explorer",
+    "title": "NexScan — Blockchain Explorer",
     "category": "crypto",
     "hasIndex": true,
     "hasCss": true,
     "hasJs": true,
     "hasImages": false,
-    "sizeKB": 44,
+    "sizeKB": 52,
     "indexPath": "web3/block-explorer/index.html",
-    "description": "Blockchain explorer with light theme. Header with GraphiteChain branding and nav (Home, Blocks, Transactions, Tokens, Validators). Search section with filter dropdown and input. Token price ticker with CoinGecko data. Network stats cards (block height, transactions, gas, validators). Two-column latest blocks and transactions tables.",
-    "colorScheme": "light",
-    "primaryColor": "#2d3436",
+    "description": "Premium blockchain explorer with deep midnight navy theme, cyan/violet gradient accents, and interactive particle network canvas background animation (floating cyan/violet particles with mouse-reactive connection lines). Sticky topbar with NexScan branding (gradient logo), nav tabs (Overview, Blocks, Transactions, Tokens, Validators), live Mainnet indicator, and real-time clock. Hero search section with gradient title, monospace input, filter dropdown, and gradient search button. Scrolling token price ticker with CoinGecko real-time data. Four network stat cards with colored icons (Block Height, Transactions 24h, Gas Price with low/avg/fast tiers, ETH Price). Bento Grid layout: Transaction Volume line chart (24H/7D/30D controls) with cyan gradient fill, Gas Tracker multi-line chart (Low/Avg/Fast), Latest Blocks list, Latest Transactions list. Tab pages for Blocks table, Transactions table with method badges and direction arrows, Token Tracker with inline sparkline charts, Validators table with uptime bars and status badges. Inter + JetBrains Mono typography. Chart.js for all charts. Card hover lift effects with glow shadows. Fully responsive with mobile nav overlay.",
+    "colorScheme": "dark",
+    "primaryColor": "#00d4ff",
     "layout": "single-page",
     "features": [
       "responsive",
       "search",
       "real-time-data",
+      "charts",
       "tables",
-      "filter"
+      "filter",
+      "animations",
+      "bento-grid",
+      "sparklines",
+      "tab-navigation",
+      "mobile-nav",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
-      "header",
-      "search",
+      "topbar",
+      "search-hero",
       "price-ticker",
       "network-stats",
+      "volume-chart",
+      "gas-chart",
       "latest-blocks",
-      "latest-transactions"
+      "latest-transactions",
+      "blocks-table",
+      "transactions-table",
+      "tokens-table",
+      "validators-table",
+      "footer"
     ],
     "techStack": [
       "google-fonts",
+      "chart-js",
       "vanilla-js",
-      "coingecko-api"
+      "coingecko-api",
+      "css-variables",
+      "css-grid",
+      "canvas-api"
     ],
     "matchSignals": [
       "blockchain",
@@ -45,92 +64,32 @@
       "validator",
       "on-chain",
       "search",
-      "crypto"
+      "crypto",
+      "dashboard",
+      "analytics"
     ],
     "colorPalette": {
-      "background": "#f5f5f5",
-      "text": "#2d3436",
-      "accent": "#2d3436",
-      "cardBg": "#ffffff",
-      "border": "#e0e0e0"
+      "background": "#060a14",
+      "text": "#e8ecf4",
+      "accent": "#00d4ff",
+      "secondary": "#7b61ff",
+      "cardBg": "#111827",
+      "border": "rgba(99, 130, 255, 0.08)",
+      "green": "#00e68a",
+      "red": "#ff4d6a",
+      "orange": "#ff9f43"
     },
     "typography": {
-      "fontFamily": "system-ui, sans-serif",
-      "headingWeight": "700",
+      "fontFamily": "Inter, -apple-system, sans-serif",
+      "monoFamily": "JetBrains Mono, Fira Code, monospace",
+      "headingWeight": "800",
       "bodyWeight": "400",
       "bodySize": "14px",
-      "style": "Clean system font stack with monospace for hashes"
+      "style": "Inter for UI, JetBrains Mono for data/hashes. Gradient text for branding."
     },
-    "layoutDetails": "Full-width header, centered container. Search prominent at top. Two-column grid for blocks/transactions.",
-    "visualStyle": "Professional, data-heavy. Light theme. Etherscan-inspired clean layout.",
+    "layoutDetails": "Sticky topbar with brand + nav + live indicator. Hero search with gradient accents. Bento Grid (12-column) for charts and data panels. Tab-based navigation for detail pages.",
+    "visualStyle": "Premium dark dashboard. Deep midnight navy base with electric cyan and violet gradient accents. Dune Analytics / Arkham Intelligence inspired. Bento Grid layout with Chart.js visualizations.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--block-explorer.zip"
-  },
-  {
-    "id": "web3-crypto-currency-landing",
-    "source": "web3",
-    "dir": "web3/crypto-currency-landing",
-    "name": "Crypto Currency Landing",
-    "title": "BITNexus — Crypto Currency Landing Page",
-    "category": "crypto",
-    "hasIndex": true,
-    "hasCss": true,
-    "hasJs": true,
-    "hasImages": true,
-    "sizeKB": 1872,
-    "indexPath": "web3/crypto-currency-landing/index.html",
-    "description": "Full-featured cryptocurrency landing page with dark theme. BITNexus branding, nav (Home, Features, Services, Blog, FAQ). Hero with headline and CTA buttons. Features icon cards. Services section. Blog article cards. FAQ accordion. Footer with social links. Remix Icons, Google Fonts (Lato, Outfit, Poppins). Professional marketing design with gradient accents.",
-    "colorScheme": "dark",
-    "primaryColor": "#6c5ce7",
-    "layout": "single-page",
-    "features": [
-      "responsive",
-      "smooth-scroll",
-      "accordion",
-      "animation",
-      "social-links"
-    ],
-    "sections": [
-      "navbar",
-      "hero",
-      "features",
-      "services",
-      "blog",
-      "faq",
-      "footer"
-    ],
-    "techStack": [
-      "remix-icons",
-      "google-fonts",
-      "vanilla-js"
-    ],
-    "matchSignals": [
-      "crypto",
-      "cryptocurrency",
-      "landing",
-      "bitcoin",
-      "ethereum",
-      "blockchain",
-      "trading",
-      "investment",
-      "marketing",
-      "web3"
-    ],
-    "colorPalette": {
-      "background": "#0a0a1a",
-      "text": "#ffffff",
-      "accent": "#6c5ce7",
-      "gradient": "linear-gradient(purple to blue)"
-    },
-    "typography": {
-      "fontFamily": "Outfit + Lato + Poppins",
-      "headingWeight": "700-900",
-      "bodyWeight": "400",
-      "bodySize": "16px",
-      "style": "Triple font pairing. Bold geometric headings with clean body text."
-    },
-    "layoutDetails": "Single-page scroll with anchor navigation. Full-width sections with centered containers.",
-    "visualStyle": "Dark crypto marketing page. Gradient accents, icon cards, professional layout.",
-    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--crypto-currency-landing.zip"
   },
   {
     "id": "web3-crypto-news",
@@ -145,9 +104,9 @@
     "hasImages": false,
     "sizeKB": 36,
     "indexPath": "web3/crypto-news/index.html",
-    "description": "Crypto news aggregator with editorial design. Scrolling price ticker. Header with CryptoWire branding, category nav (All News, Market, DeFi, NFT, Regulation, Technology), search. Two-column: main with featured breaking story and news grid, sidebar with trending topics, market chart, newsletter signup. Playfair Display serif headings. Chart.js for market data.",
-    "colorScheme": "light",
-    "primaryColor": "#e74c3c",
+    "description": "Crypto news aggregator with cyberpunk magazine design and Matrix rain canvas background. Scrolling price ticker with live indicator. Header with CryptoWire gradient branding, pill-style category nav (All, Market, DeFi, NFT, Regulation, Technology), search with glow focus. Two-column: main with featured breaking story (gradient top border, BREAKING badge), news grid with hover side-accent, sidebar with trending coins, market snapshot, top movers, newsletter. Space Grotesk geometric headings. Chart.js for sentiment gauge and social mentions. Matrix digital rain canvas animation (crypto symbols + hex digits).",
+    "colorScheme": "dark",
+    "primaryColor": "#00ff88",
     "layout": "sidebar",
     "features": [
       "responsive",
@@ -155,21 +114,28 @@
       "charts",
       "newsletter",
       "category-filter",
-      "ticker"
+      "ticker",
+      "canvas-animation",
+      "live-indicator",
+      "hover-effects"
     ],
     "sections": [
       "ticker",
       "header",
       "featured-story",
+      "trending-topics",
       "news-grid",
+      "sentiment",
       "sidebar",
-      "trending",
-      "market-chart"
+      "trending-coins",
+      "market-snapshot",
+      "top-movers"
     ],
     "techStack": [
       "chart-js",
       "google-fonts",
-      "vanilla-js"
+      "vanilla-js",
+      "canvas-api"
     ],
     "matchSignals": [
       "news",
@@ -184,21 +150,21 @@
       "nft"
     ],
     "colorPalette": {
-      "background": "#f8f9fa",
-      "text": "#2d3436",
-      "accent": "#e74c3c",
-      "cardBg": "#ffffff",
-      "heading": "#1a1a2e"
+      "background": "#0a0a12",
+      "text": "#e8e8f0",
+      "accent": "#00ff88",
+      "cardBg": "#12122a",
+      "heading": "#e8e8f0"
     },
     "typography": {
-      "fontFamily": "Playfair Display + Source Sans 3 + Roboto Mono",
-      "headingWeight": "700-800",
+      "fontFamily": "Space Grotesk + Inter + JetBrains Mono",
+      "headingWeight": "600-700",
       "bodyWeight": "400",
       "bodySize": "15px",
-      "style": "Editorial serif+sans-serif pairing. Newspaper-inspired."
+      "style": "Cyberpunk geometric sans-serif. Tech-forward with monospace accents."
     },
-    "layoutDetails": "Two-column: main content (70%) + sidebar (30%). Featured story at top, news grid below.",
-    "visualStyle": "Editorial, newspaper-like. Light theme with red accent. Serif headings for authority.",
+    "layoutDetails": "Two-column: main content (70%) + sidebar (30%). Featured story with gradient border, news grid with hover side-accent, Matrix rain canvas background.",
+    "visualStyle": "Cyberpunk magazine. Deep purple-black with neon green (#00ff88) + cyan (#00d4ff) accents. Matrix digital rain canvas animation. Glassmorphism header. Geometric sans-serif headings.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--crypto-news.zip"
   },
   {
@@ -214,7 +180,7 @@
     "hasImages": false,
     "sizeKB": 48,
     "indexPath": "web3/crypto-portfolio/index.html",
-    "description": "Crypto portfolio dashboard with dark theme. Navbar with CRYPTOFOLIO branding, search, nav (Dashboard, Analytics, History), wallet address button. Hero stats: Total Balance, 24h P&L, Best Performer, Assets Held. Portfolio donut chart. Holdings table with coin icons, prices, 24h changes, sparklines. Transaction history. Animated entrance. Real-time CoinGecko data.",
+    "description": "Crypto portfolio dashboard with dark theme and floating bubble canvas background animation (semi-transparent purple/cyan gradient circles slowly rising). Navbar with CRYPTOFOLIO branding, search, nav (Dashboard, Analytics, History), gradient wallet button with shimmer hover. Hero stats with hover lift effect and purple glow. Portfolio value line chart with radial glow overlay. Allocation donut chart. Holdings table with hover slide-in accent border and purple highlight. Market movers cards with scale-up hover and shadow glow. Section headers with gradient accent underlines. Transaction items with hover indent animation. Three tab pages: Dashboard, Analytics (P&L trend, risk assessment, asset table), History (activity chart, filterable transaction table). Real-time CoinGecko data with fallback.",
     "colorScheme": "dark",
     "primaryColor": "#6c5ce7",
     "layout": "single-page",
@@ -224,7 +190,9 @@
       "search",
       "real-time-data",
       "animation",
-      "wallet-connect"
+      "wallet-connect",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "navbar",
@@ -282,9 +250,9 @@
     "hasImages": true,
     "sizeKB": 20332,
     "indexPath": "web3/crypto-trade-frontend/index.html",
-    "description": "Professional crypto trading platform with four fully functional pages. Trade page: three-column grid with left market list (search), center candlestick chart (Lightweight Charts, 1H/4H/1D/1W/1M timeframes) with order book and recent trades, right order panel with Buy/Sell tabs and percentage buttons. Markets page: full token table with price/24h change/high/low/volume/market cap, filter tabs (All/Gainers/Losers), click-to-trade links. Portfolio page: Connect Wallet flow with modal (MetaMask/WalletConnect/Coinbase), connected state shows total value/24h P&L/asset count, Holdings tab with token balances and allocation bars, Activity tab with send/receive/swap/approve transaction history. Earn page: staking pool cards with APY/TVL/min stake/lock period, stake/unstake toggle. Nav tabs switch between all four pages. Ticker strip with live prices. CoinGecko API with fallback data.",
+    "description": "Premium crypto trading terminal with deep space glassmorphism design, particle network + wave line canvas background, and four fully functional pages. Trade page: three-column grid with glassmorphism panels — left market list (gradient accent border on hover, animated search with icon, smooth filter transitions), center candlestick chart (Lightweight Charts, 1H/4H/1D/1W/1M pill-style tabs with glow) with radial glow overlay, order book with row slide-in animations and gradient depth bars, recent trades with fade-in new entries, right order panel with animated Buy/Sell tab indicator (sliding gradient underline), percentage buttons with gradient active state, ripple-effect trade button with confirmation animation (Processing → Order Placed). Markets page: full token table with staggered row entrance animations, pill-style filter tabs, hover trade buttons with glow. Portfolio page: Connect Wallet with shimmer gradient button and glassmorphism modal (slide-in wallet options), connected state shows stats in glassmorphism cards, Holdings with animated allocation bars, Activity with staggered entrance. Earn page: glassmorphism staking cards with gradient top border reveal on hover, glowing APY numbers. Ticker strip with gradient hover overlay. Inter + JetBrains Mono typography. Purple-to-pink Hyperspace-inspired gradient accent system. CoinGecko API with animated price transitions and flash effects.",
     "colorScheme": "dark",
-    "primaryColor": "#6c5ce7",
+    "primaryColor": "#7c6cf0",
     "layout": "dashboard",
     "features": [
       "responsive",
@@ -296,7 +264,17 @@
       "multi-page",
       "portfolio",
       "staking",
-      "transaction-history"
+      "transaction-history",
+      "canvas-animation",
+      "particle-network",
+      "glassmorphism",
+      "hover-effects",
+      "price-flash-animation",
+      "staggered-entrance",
+      "ripple-buttons",
+      "animated-tab-indicator",
+      "order-confirmation-animation",
+      "gradient-system"
     ],
     "sections": [
       "header",
@@ -316,7 +294,9 @@
     "techStack": [
       "lightweight-charts",
       "vanilla-js",
-      "coingecko-api"
+      "coingecko-api",
+      "google-fonts",
+      "canvas-particles"
     ],
     "matchSignals": [
       "trading",
@@ -329,95 +309,34 @@
       "market",
       "binance",
       "coinbase",
+      "bybit",
+      "okx",
       "dex",
-      "trade"
+      "trade",
+      "premium",
+      "glassmorphism"
     ],
     "colorPalette": {
-      "background": "#0a0a14",
-      "text": "#e0e0e0",
-      "accent": "#6c5ce7",
-      "green": "#00d4aa",
-      "red": "#ff4757",
-      "panelBg": "rgba(255,255,255,0.03)"
+      "background": "#06060f",
+      "text": "#eaeaf2",
+      "accent": "#7c6cf0",
+      "accent2": "#a78bfa",
+      "accent3": "#c084fc",
+      "green": "#00e6b0",
+      "red": "#ff5c72",
+      "panelBg": "rgba(18,18,36,0.65)"
     },
     "typography": {
-      "fontFamily": "system-ui, sans-serif",
-      "headingWeight": "600",
+      "fontFamily": "Inter, system-ui, sans-serif",
+      "monoFamily": "JetBrains Mono, monospace",
+      "headingWeight": "700",
       "bodyWeight": "400",
       "bodySize": "13px",
-      "style": "Compact data-dense typography for trading interface"
+      "style": "Premium dual-font system: Inter for UI, JetBrains Mono for data. Compact data-dense with refined letter-spacing."
     },
-    "layoutDetails": "Three-column trading grid. Left: market list. Center: chart + order book. Right: order form.",
-    "visualStyle": "Professional trading terminal. Dark theme, data-dense. Binance/Coinbase-inspired.",
+    "layoutDetails": "Three-column trading grid with glassmorphism panels. Left: market list with search. Center: chart + order book + recent trades. Right: order form with animated tabs.",
+    "visualStyle": "Premium trading terminal. Deep space dark theme with purple-to-pink gradient accent system. Glassmorphism panels with backdrop blur. Particle network canvas. Bybit/OKX-inspired precision with Hyperspace gradient aesthetics.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--crypto-trade-frontend.zip"
-  },
-  {
-    "id": "web3-crypto-web3-investment",
-    "source": "web3",
-    "dir": "web3/crypto-web3-investment",
-    "name": "Crypto Web3 Investment",
-    "title": "Sample Invest — Web3 Investment Platform",
-    "category": "crypto",
-    "hasIndex": true,
-    "hasCss": true,
-    "hasJs": true,
-    "hasImages": true,
-    "sizeKB": 1016,
-    "indexPath": "web3/crypto-web3-investment/index.html",
-    "description": "Web3 investment platform with Bootstrap 4. Sign Up/Sign In modals. Navigation with auth buttons. Hero promoting crypto investment. Features icon cards. Investment plans/pricing. Market data tables with DataTables. Dashboard section. Footer with social icons. Font Awesome, Line Awesome, Simple Line Icons.",
-    "colorScheme": "dark",
-    "primaryColor": "#007bff",
-    "layout": "single-page",
-    "features": [
-      "responsive",
-      "modal",
-      "form",
-      "data-tables",
-      "social-links",
-      "authentication"
-    ],
-    "sections": [
-      "modals",
-      "navbar",
-      "hero",
-      "features",
-      "pricing",
-      "market-data",
-      "dashboard",
-      "footer"
-    ],
-    "techStack": [
-      "bootstrap-4",
-      "font-awesome",
-      "datatables",
-      "jquery"
-    ],
-    "matchSignals": [
-      "investment",
-      "crypto",
-      "web3",
-      "trading",
-      "platform",
-      "business",
-      "finance",
-      "bootstrap"
-    ],
-    "colorPalette": {
-      "background": "#1a1a2e",
-      "text": "#ffffff",
-      "accent": "#007bff",
-      "cardBg": "rgba(255,255,255,0.05)"
-    },
-    "typography": {
-      "fontFamily": "Lato",
-      "headingWeight": "700-900",
-      "bodyWeight": "400",
-      "bodySize": "16px",
-      "style": "Clean sans-serif. Bootstrap styling with Lato override."
-    },
-    "layoutDetails": "Single-page with modals. Bootstrap grid. Full-width sections with container centering.",
-    "visualStyle": "Dark business template. Bootstrap-based, professional. Third-party template.",
-    "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--crypto-web3-investment.zip"
   },
   {
     "id": "web3-defi-tracker",
@@ -432,7 +351,7 @@
     "hasImages": false,
     "sizeKB": 44,
     "indexPath": "web3/defi-tracker/index.html",
-    "description": "DeFi portfolio tracker with sidebar nav. Left sidebar with DeFiScope branding, nav sections (Overview: Dashboard, Protocols; Analytics: Yield Rates, DeFi Tokens). Topbar with hamburger, page title, refresh time, wallet connect. Dashboard: portfolio value chart, protocol allocation donut, top DeFi protocols table (Aave, Uniswap, Lido) with TVL, APY, chain info. Green accent.",
+    "description": "DeFi portfolio tracker with sidebar nav and flowing connection lines canvas background animation (nodes representing protocols connected by animated dashed flow lines, green). Left sidebar with DeFiScope branding and hover slide-in accent, nav sections (Overview: Dashboard, Protocols; Analytics: Yield Rates, DeFi Tokens). Topbar with hamburger, page title, refresh time, wallet connect. Dashboard: metric cards with hover lift and bottom gradient reveal, portfolio value chart, protocol allocation donut, top DeFi protocols table (Aave, Uniswap, Lido) with TVL, APY, chain info and hover row accent. Protocol grid items with scale-up hover. Green accent.",
     "colorScheme": "dark",
     "primaryColor": "#10b981",
     "layout": "sidebar",
@@ -442,7 +361,9 @@
       "charts",
       "real-time-data",
       "wallet-connect",
-      "multi-page"
+      "multi-page",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "sidebar",
@@ -485,8 +406,8 @@
       "bodySize": "14px",
       "style": "Modern geometric sans-serif with monospace for data"
     },
-    "layoutDetails": "Two-column: collapsible sidebar (240px) + main content. Dashboard grid layout.",
-    "visualStyle": "Dark fintech dashboard. Green accent for positive values. Clean data presentation.",
+    "layoutDetails": "Two-column: collapsible sidebar (240px) + main content. Dashboard grid layout. Flowing connection lines canvas background.",
+    "visualStyle": "Dark fintech dashboard. Green accent for positive values. Clean data presentation. Flowing protocol connection lines canvas animation. Hover effects on cards, rows, and sidebar links.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--defi-tracker.zip"
   },
   {
@@ -502,7 +423,7 @@
     "hasImages": false,
     "sizeKB": 40,
     "indexPath": "web3/defi-yield/index.html",
-    "description": "DeFi yield farming platform. Navbar with FORGEFI branding, nav (Farms, Pools, Swap, Bridge, Docs), Connect Wallet. Hero stats: TVL ($1.24B), Total Yield Distributed, Active Farms. Liquidity pools with sortable cards showing token pairs, APY, TVL, Stake/Unstake buttons. Expandable pool details with deposit/withdraw forms. Bebas Neue display font.",
+    "description": "DeFi yield farming platform with rising firefly canvas background animation (small light points rising from bottom and dissolving, purple/gold colors representing yield growth). Navbar with FORGEFI branding, nav (Farms, Pools, Swap, Bridge, Docs), Connect Wallet with ripple hover and glow. Hero stats with hover highlight. Liquidity pools with hover slide-in accent and APY glow highlight. Farm/Stake buttons with pulse animation. Expandable pool details with deposit/withdraw forms. Bebas Neue display font.",
     "colorScheme": "dark",
     "primaryColor": "#6c5ce7",
     "layout": "single-page",
@@ -511,7 +432,9 @@
       "wallet-connect",
       "form",
       "animation",
-      "expandable-cards"
+      "expandable-cards",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "navbar",
@@ -521,7 +444,9 @@
     ],
     "techStack": [
       "google-fonts",
-      "vanilla-js"
+      "vanilla-js",
+      "canvas-api",
+      "coingecko-api"
     ],
     "matchSignals": [
       "defi",
@@ -550,8 +475,8 @@
       "bodySize": "14px",
       "style": "Clean sans-serif with condensed display font for TVL/APY"
     },
-    "layoutDetails": "Single-page vertical scroll. Navbar, stats row, pool cards list. Expandable details.",
-    "visualStyle": "Dark DeFi platform. Purple accent, clean cards. Uniswap/PancakeSwap-inspired.",
+    "layoutDetails": "Single-page vertical scroll. Navbar, stats row, pool cards list. Expandable details. Rising firefly canvas background.",
+    "visualStyle": "Dark DeFi platform. Purple accent, clean cards. Uniswap/PancakeSwap-inspired. Rising firefly/yield particle canvas animation. Pulse animations on stake buttons, hover glow on APY values.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--defi-yield.zip"
   },
   {
@@ -567,7 +492,7 @@
     "hasImages": false,
     "sizeKB": 44,
     "indexPath": "web3/dex-aggregator/index.html",
-    "description": "DEX aggregator with cyberpunk aesthetic. Scanline overlay. Navbar with NEXSWAP in Orbitron font, nav (Swap, Routes, Analytics, Docs), glowing Connect Wallet. Stats bar (24h Volume, Total Trades, DEXs Connected, Best Rate). Swap card with token selectors and route comparison from multiple DEXs (Uniswap, SushiSwap, 1inch, Curve). Recent trades table. Neon green accent.",
+    "description": "DEX aggregator with cyberpunk aesthetic and radar scan canvas background animation (concentric rings with rotating sweep beam and blinking detected points, neon green). Scanline overlay. Navbar with NEXSWAP in Orbitron font, nav (Swap, Routes, Analytics, Docs), glowing Connect Wallet with pulse animation. Stats bar with hover lift. Swap card with expanding glow border and shimmer button effect. DEX comparison rows with slide-in hover. Route cards with elevation hover. Neon green accent.",
     "colorScheme": "dark",
     "primaryColor": "#00ff88",
     "layout": "single-page",
@@ -576,7 +501,9 @@
       "wallet-connect",
       "charts",
       "animation",
-      "real-time-data"
+      "real-time-data",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "navbar",
@@ -589,7 +516,9 @@
     "techStack": [
       "chart-js",
       "google-fonts",
-      "vanilla-js"
+      "vanilla-js",
+      "canvas-api",
+      "coingecko-api"
     ],
     "matchSignals": [
       "dex",
@@ -617,8 +546,8 @@
       "bodySize": "14px",
       "style": "Sci-fi display font with geometric body. Cyberpunk aesthetic."
     },
-    "layoutDetails": "Single-page centered. Stats bar, swap card, route comparison, trades table.",
-    "visualStyle": "Cyberpunk/sci-fi. Neon green on black. Scanline overlay, glowing effects.",
+    "layoutDetails": "Single-page centered. Stats bar, swap card, route comparison, trades table. Radar scan canvas background.",
+    "visualStyle": "Cyberpunk/sci-fi. Neon green on black. Scanline overlay, glowing effects. Radar scan canvas animation with sweep beam and blinking blips. Shimmer swap button, glow wallet button, hover elevation on cards.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--dex-aggregator.zip"
   },
   {
@@ -634,7 +563,7 @@
     "hasImages": false,
     "sizeKB": 44,
     "indexPath": "web3/market-overview/index.html",
-    "description": "Crypto market overview with sidebar. Narrow icon sidebar with CRYPTOVIEW branding, nav icons (Markets, Watchlist, Portfolio, Settings), LIVE indicator. Hero strip with title and connection status. Search bar. Market stats row (Market Cap, Volume, BTC Dominance, Active Coins). Sortable market table with rank, price, change, cap, volume, sparklines. Anton display font. IBM Plex Mono for data. Real-time CoinGecko.",
+    "description": "Crypto market overview with sidebar and subtle grid pulse canvas background animation (gentle dot grid with wave-based opacity variation, floating accent glow dots in green/red with connection lines between nearby dots). Narrow icon sidebar with CRYPTOVIEW branding, nav icons with hover tooltips (Markets, Watchlist, Portfolio, Settings), LIVE indicator. Hero strip with title and connection status. Search bar with focus glow. Market stats row with hover highlight (Market Cap, Volume, BTC Dominance, Fear & Greed gauge). Sortable market table with rank, price, change, cap, volume, sparklines, and hover row accent. Category filter tabs (All, DeFi, L1, Meme). Watchlist page with star-toggle cards. Portfolio page with allocation donut chart. Settings page. Anton display font. IBM Plex Mono for data. Real-time CoinGecko with fallback.",
     "colorScheme": "dark",
     "primaryColor": "#e74c3c",
     "layout": "sidebar",
@@ -644,7 +573,9 @@
       "charts",
       "real-time-data",
       "sortable-table",
-      "sidebar-navigation"
+      "sidebar-navigation",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "sidebar",
@@ -684,8 +615,8 @@
       "bodySize": "14px",
       "style": "Bold display font with condensed body and monospace data"
     },
-    "layoutDetails": "Narrow icon sidebar (60px) + full main content. Hero strip, search, stats, data table.",
-    "visualStyle": "Dark, industrial. Red accent. Bold typography with monospace data. Bloomberg-inspired.",
+    "layoutDetails": "Narrow icon sidebar (60px) + full main content. Hero strip, search, stats, data table. Digital waterfall canvas background.",
+    "visualStyle": "Dark, industrial. Red accent. Bold typography with monospace data. Bloomberg-inspired. Digital waterfall canvas animation (numbers/price symbols falling in red/green). Sidebar icon hover tooltips, table row hover accent, stat cell hover highlight, search focus glow.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--market-overview.zip"
   },
   {
@@ -701,7 +632,7 @@
     "hasImages": true,
     "sizeKB": 15860,
     "indexPath": "web3/nftai-marketplace/index.html",
-    "description": "Full-featured NFT marketplace with preloader. Fixed header with nav, search, wallet connect. Hero with featured collection. Live auction section with countdown timers. Top sellers with creator profiles. Explore section with filterable NFT grid (Art, Music, Domain, Virtual, Trading Cards). NFT cards show image, title, creator, ETH price, likes. Footer with newsletter and social links. Professional themesflat.com template.",
+    "description": "Full-featured NFT marketplace with preloader. Canvas background with colorful pixel blocks falling and rotating (representing NFT pixel art, multi-color gradient). Fixed header with glassmorphism blur and nav underline animation. Hero with featured collection. Live auction section with countdown pulse animation. Top sellers with creator profiles and avatar zoom on hover. Explore section with filterable NFT grid (Art, Music, Domain, Virtual, Trading Cards). NFT cards with 3D tilt hover effect, image zoom, and price glow. Wallet connect button with shine sweep. Footer with newsletter and social links. Professional themesflat.com template.",
     "colorScheme": "dark",
     "primaryColor": "#5142fc",
     "layout": "single-page",
@@ -712,7 +643,9 @@
       "filter",
       "countdown",
       "wallet-connect",
-      "newsletter"
+      "newsletter",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "preloader",
@@ -725,7 +658,8 @@
     ],
     "techStack": [
       "vanilla-js",
-      "custom-css"
+      "custom-css",
+      "canvas-api"
     ],
     "matchSignals": [
       "nft",
@@ -754,7 +688,7 @@
       "style": "Clean system fonts. NFT marketplace standard."
     },
     "layoutDetails": "Single-page scroll. Full-width sections with container centering. Grid for NFT cards.",
-    "visualStyle": "Dark NFT marketplace. Purple accent. Card-based grid. OpenSea-inspired layout.",
+    "visualStyle": "Dark NFT marketplace. Purple accent. Canvas pixel block rain. NFT card 3D tilt hover. Avatar zoom. Countdown pulse. Button shine sweep. Menu underline animation.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--nftai-marketplace.zip"
   },
   {
@@ -770,7 +704,7 @@
     "hasImages": false,
     "sizeKB": 42,
     "indexPath": "web3/onchain-dashboard/index.html",
-    "description": "Professional on-chain intelligence dashboard inspired by Dune Analytics and Arkham Intelligence. Single-page layout with sticky topbar containing ONCHAIN branding with gradient icon, monospace search box (supports address/tx hash/token search with keyboard shortcut '/'), live indicator, real-time clock, and Connect Wallet button. Network overview section with chain selector tabs (Ethereum, BSC, Polygon, Arbitrum) and four stat cards: Block Height, TPS, Gas Price with low/avg/fast tiers, and Total Market Cap. Bento grid layout below: wide transaction volume bar chart with 24H/7D/30D period controls, gas tracker line chart with 3-line overlay (low/avg/fast), hot tokens table with rank/icon/price/24h change/market cap/volume/7D sparkline, DeFi TVL rankings with gradient progress bars, whale activity live feed with buy/sell/transfer icons and auto-updating entries, and market dominance doughnut chart. Full-width My Portfolio section at bottom with Connect Wallet flow: once connected shows three tabs — Holdings (token balances with allocation bars), Transactions (send/receive/swap/approve history with type badges), and P&L Chart (30-day portfolio value line chart with gradient fill). All data fetched from CoinGecko API with comprehensive fallback datasets. Inter + JetBrains Mono typography. Deep midnight navy background with electric cyan and violet accents. Footer with system status.",
+    "description": "Professional on-chain intelligence dashboard with hexagonal grid pulse canvas background animation (semi-transparent hexagon grid with random hexagons lighting up and radiating pulse waves, cyan/purple). Inspired by Dune Analytics and Arkham Intelligence. Sticky topbar with ONCHAIN gradient branding, monospace search box with glow focus (supports address/tx hash/token search with keyboard shortcut '/'), live indicator, real-time clock, and Connect Wallet button. Network overview section with chain selector tabs (Ethereum, BSC, Polygon, Arbitrum) with active glow and underline animation, four stat cards with hover lift: Block Height, TPS, Gas Price with low/avg/fast tiers, and Total Market Cap. Bento grid layout with hover shadow: wide transaction volume bar chart with 24H/7D/30D period controls, gas tracker line chart with 3-line overlay (low/avg/fast), hot tokens table with rank/icon/price/24h change/market cap/volume/7D sparkline, DeFi TVL rankings with gradient progress bars, whale activity live feed with buy/sell/transfer icons and auto-updating entries, and market dominance doughnut chart. Full-width My Portfolio section at bottom with Connect Wallet flow. All data fetched from CoinGecko API with comprehensive fallback datasets. Inter + JetBrains Mono typography. Deep midnight navy background with electric cyan and violet accents. Footer with system status.",
     "colorScheme": "dark",
     "primaryColor": "#00d4ff",
     "layout": "single-page",
@@ -786,7 +720,9 @@
       "live-feed",
       "wallet-connect",
       "portfolio",
-      "transaction-history"
+      "transaction-history",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "topbar",
@@ -851,9 +787,14 @@
       "letterSpacing": "tight (-0.3px headings), wide (0.8px labels)",
       "style": "Clean Inter for UI, JetBrains Mono for all data values. Uppercase labels with wide letter-spacing. Gradient brand text."
     },
-    "layoutDetails": "Single-page layout with sticky topbar (brand + search + wallet). Max-width 1400px centered content. Network stats in 4-column grid. Main content in 12-column bento grid with span-8/span-4/span-7/span-5 cards. Full-width My Portfolio card at bottom. Footer with system status. Responsive: collapses to single column on mobile.",
-    "visualStyle": "Dark, professional intelligence dashboard. Midnight navy base with electric cyan and violet accents. Subtle gradient brand elements. Thin borders with low-opacity blue tint. Bento grid layout with varied card sizes. Live data indicators with pulse animations. Sparkline mini-charts in token table. Gradient progress bars for TVL. Auto-updating whale feed with slide-in animation. Connect Wallet flow for personal on-chain data.",
-    "breakpoints": [480, 768, 1024, 1200],
+    "layoutDetails": "Single-page layout with sticky topbar (brand + search + wallet). Max-width 1400px centered content. Network stats in 4-column grid. Main content in 12-column bento grid with span-8/span-4/span-7/span-5 cards. Full-width My Portfolio card at bottom. Hexagonal grid pulse canvas background. Footer with system status. Responsive: collapses to single column on mobile.",
+    "visualStyle": "Dark, professional intelligence dashboard. Midnight navy base with electric cyan and violet accents. Hexagonal grid pulse canvas animation (hex cells light up with expanding pulse waves). Subtle gradient brand elements. Thin borders with low-opacity blue tint. Bento grid layout with hover shadow. Chain tab active glow with underline animation. Stat cards with hover lift. Search input with glow focus. Live data indicators with pulse animations. Sparkline mini-charts in token table. Gradient progress bars for TVL. Auto-updating whale feed with slide-in animation. Connect Wallet flow for personal on-chain data.",
+    "breakpoints": [
+      480,
+      768,
+      1024,
+      1200
+    ],
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--onchain-dashboard.zip"
   },
   {
@@ -869,7 +810,7 @@
     "hasImages": false,
     "sizeKB": 40,
     "indexPath": "web3/staking-platform/index.html",
-    "description": "Staking protocol with sidebar layout. Narrow icon sidebar with STAKEHAUS branding and nav icons. Main content with hero strip 'STAKE YOUR ASSETS'. Stats row: Total Value Staked ($847.2M), Average APY (8.42%), Total Rewards Paid. Staking pool cards with token info, APY, TVL, lock period, and Stake button. Each card expandable with staking form. Anton display font. Barlow Condensed body. IBM Plex Mono for data.",
+    "description": "Staking protocol with sidebar layout and hexagonal node network canvas background animation (subtle hex grid with wave-based opacity variation, floating validator nodes in green/red with pulsing glow and connection lines between nearby nodes). Narrow icon sidebar with STAKEHAUS branding and nav icons with hover tooltips. Main content with hero strip 'STAKE YOUR ASSETS'. Stats row: Total Value Staked ($847.2M), Average APY (8.42%), Total Rewards Paid, Active Stakers. Staking pool rows with hover slide and APY glow. Stake buttons with hover scale and pulse animation. Position progress bars with glowing endpoint. Stake/Unstake tab toggle. Asset selector modal. Staking calculator with duration buttons. Analytics page with reward history bar chart and allocation breakdown. Settings page with toggle switches. Anton display font. Barlow Condensed body. IBM Plex Mono for data. Real-time CoinGecko with fallback.",
     "colorScheme": "dark",
     "primaryColor": "#e74c3c",
     "layout": "sidebar",
@@ -879,7 +820,9 @@
       "wallet-connect",
       "form",
       "expandable-cards",
-      "animation"
+      "animation",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "sidebar",
@@ -919,8 +862,8 @@
       "bodySize": "14px",
       "style": "Bold display font with condensed body and monospace data"
     },
-    "layoutDetails": "Narrow icon sidebar (60px) + main content. Hero strip, stats row, pool cards.",
-    "visualStyle": "Dark, industrial. Red accent. Bold typography. Lido/Rocket Pool-inspired.",
+    "layoutDetails": "Narrow icon sidebar (60px) + main content. Hero strip, stats row, pool cards. Energy column canvas background. Multi-page: Dashboard, Stake, Analytics, Settings.",
+    "visualStyle": "Dark, industrial. Red accent. Bold typography. Lido/Rocket Pool-inspired. Energy column canvas animation (vertical beams with rising particles bursting at top, red/orange). Sidebar icon hover tooltips, pool row hover slide with APY glow, stake button pulse animation, progress bar glowing endpoint, claim button hover lift.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--staking-platform.zip"
   },
   {
@@ -936,7 +879,7 @@
     "hasImages": false,
     "sizeKB": 64,
     "indexPath": "web3/token-analytics/index.html",
-    "description": "Token analytics platform with sidebar. Left sidebar with TokenScope branding, nav sections (Analytics: Search Tokens, Trending, Compare; Market: Rankings). Topbar with search input and dropdown suggestions. Token detail view with price chart, key metrics (market cap, volume, supply, ATH), price change percentages, and description. Trending tokens grid. Compare view for side-by-side token analysis. Nunito typography with Source Code Pro for data.",
+    "description": "Premium token analytics platform with glassmorphism design and data flow canvas background animation (horizontal streaming data points flowing left-to-right across multiple lanes with trailing paths, purple/cyan). Left sidebar with TokenScope branding and backdrop blur, nav sections with gradient active indicator (Analytics: Search Tokens, Trending, Compare; Market: Rankings). Glassmorphism topbar with search input with focus ring glow and animated dropdown. Token detail view with gradient top border, price chart, key metrics in glassmorphism detail items with hover elevation, price change badges. Trending tokens grid with gradient overlay reveal and top border slide-in on hover. Compare view with animated VS badge. Quick-pick buttons with gradient background reveal on hover. Staggered card entrance animations. Deep space dark theme with indigo-violet gradient accent system. Nunito typography with Source Code Pro for data.",
     "colorScheme": "dark",
     "primaryColor": "#8b5cf6",
     "layout": "sidebar",
@@ -947,7 +890,9 @@
       "search",
       "real-time-data",
       "multi-page",
-      "comparison"
+      "comparison",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "sidebar",
@@ -961,7 +906,8 @@
     "techStack": [
       "chart-js",
       "google-fonts",
-      "coingecko-api"
+      "coingecko-api",
+      "canvas-api"
     ],
     "matchSignals": [
       "token",
@@ -991,8 +937,8 @@
       "bodySize": "14px",
       "style": "Rounded sans-serif with monospace for data. Friendly yet professional."
     },
-    "layoutDetails": "Sidebar (240px) + main content. Multi-view: search, detail, trending, compare, rankings.",
-    "visualStyle": "Dark analytics platform. Purple accent. Multi-view dashboard. CoinGecko-inspired.",
+    "layoutDetails": "Sidebar (240px) + main content. Multi-view: search, detail, trending, compare, rankings. Data flow canvas background.",
+    "visualStyle": "Dark analytics platform. Purple accent. Multi-view dashboard. CoinGecko-inspired. Data flow canvas animation (horizontal streaming points with trails, purple/cyan). Search box focus glow, stat card hover lift, trending card hover scale with gradient overlay, quick-pick hover glow, detail item hover elevation.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--token-analytics.zip"
   },
   {
@@ -1008,7 +954,7 @@
     "hasImages": false,
     "sizeKB": 36,
     "indexPath": "web3/token-swap/index.html",
-    "description": "Decentralized token swap interface. Header with SwapX branding, nav (Swap, Pools, Farm, Bridge), Connect Wallet. Side panel with popular tokens list. Central swap card with You Pay/You Receive inputs, token selectors, balance display, MAX button, and swap direction toggle. Slippage settings. Price impact and route info. Exchange rate display. Real-time token prices from CoinGecko. Dark theme with purple accent.",
+    "description": "Decentralized token swap interface with spiral vortex canvas background animation (rotating spiral arms emanating from center with scattered particles, purple/blue). Header with SwapX branding, nav (Swap, Pools, Farm, Bridge), Connect Wallet with hover lift and glow. Side panel with popular tokens list with hover slide-in effect. Central swap card with hover glow border and shadow, You Pay/You Receive inputs, token selectors with hover border glow, balance display, MAX button, and swap direction toggle with 180° rotation and glow on hover. Swap button with hover lift and gradient shadow. Slippage settings. Price impact and route info. Exchange rate display. Four tab pages: Swap, Pools (table with hover rows, add liquidity form), Farm (APY cards with hover lift, stake/harvest buttons), Bridge (chain selector with swap animation, transfer history). Real-time token prices from CoinGecko. Dark theme with purple accent.",
     "colorScheme": "dark",
     "primaryColor": "#6c5ce7",
     "layout": "single-page",
@@ -1017,7 +963,10 @@
       "wallet-connect",
       "form",
       "real-time-data",
-      "animation"
+      "animation",
+      "canvas-animation",
+      "hover-effects",
+      "multi-page"
     ],
     "sections": [
       "header",
@@ -1029,7 +978,8 @@
     "techStack": [
       "google-fonts",
       "vanilla-js",
-      "coingecko-api"
+      "coingecko-api",
+      "canvas-api"
     ],
     "matchSignals": [
       "swap",
@@ -1057,8 +1007,8 @@
       "bodySize": "14px",
       "style": "Clean system fonts. Compact swap interface typography."
     },
-    "layoutDetails": "Header, then two-column: side panel (popular tokens) + central swap card.",
-    "visualStyle": "Dark swap interface. Purple accent. Clean card-based. Uniswap-inspired.",
+    "layoutDetails": "Header, then three-column: side panel (popular tokens) + central swap card + side panel (route/pools). Four tab pages: Swap, Pools, Farm, Bridge. Spiral vortex canvas background.",
+    "visualStyle": "Dark swap interface. Purple accent. Clean card-based. Uniswap-inspired. Spiral vortex canvas animation (rotating arms with particles, purple/blue). Swap card hover glow, token selector hover border, swap arrow 180° rotation with glow, swap button hover lift with gradient shadow, price item hover slide, farm card hover elevation.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--token-swap.zip"
   },
   {
@@ -1074,7 +1024,7 @@
     "hasImages": false,
     "sizeKB": 48,
     "indexPath": "web3/wallet-dashboard/index.html",
-    "description": "Multi-chain wallet dashboard with playful design. Floating background shapes. Left sidebar with MochiWallet branding (mochi emoji), nav groups (Main: Dashboard, Assets, Activity, Contacts; Tools: Settings), network status. Topbar with search, notifications, wallet address. Dashboard: total balance card with sparkline, chain breakdown cards (Ethereum, Polygon, Arbitrum), recent transactions list, portfolio allocation chart. Comfortaa + Nunito fonts. Pastel gradient accents.",
+    "description": "Multi-chain wallet dashboard with playful design and colorful trail canvas background animation (multiple colored light points moving along random bezier curves leaving fading gradient trails, rainbow palette). Floating background shapes. Left sidebar with MochiWallet branding (mochi emoji), nav groups (Main: Dashboard, Assets, Activity, Contacts; Tools: Settings), network status. Topbar with search, notifications, wallet address. Dashboard: total balance card with hover lift and glow shadow, chain tabs with hover elevation and gradient overlay, action cards with radial glow hover effect, token list items with hover slide and background highlight, transaction items with hover slide, address book items with hover slide. Portfolio mini chart. Gas tracker with speed selection. QR code display. Comfortaa + Nunito fonts. Pastel gradient accents.",
     "colorScheme": "dark",
     "primaryColor": "#a78bfa",
     "layout": "sidebar",
@@ -1084,7 +1034,9 @@
       "charts",
       "search",
       "wallet-connect",
-      "animation"
+      "animation",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "sidebar",
@@ -1097,7 +1049,8 @@
     "techStack": [
       "chart-js",
       "google-fonts",
-      "coingecko-api"
+      "coingecko-api",
+      "canvas-api"
     ],
     "matchSignals": [
       "wallet",
@@ -1126,8 +1079,8 @@
       "bodySize": "14px",
       "style": "Rounded, playful fonts. Friendly and approachable."
     },
-    "layoutDetails": "Sidebar (240px) + main content. Topbar with search. Dashboard grid with cards and charts.",
-    "visualStyle": "Dark with pastel accents. Playful, rounded design. Friendly wallet UI. Rainbow-inspired.",
+    "layoutDetails": "Sidebar (240px) + main content. Topbar with search. Dashboard grid with cards and charts. Colorful trail canvas background.",
+    "visualStyle": "Dark with pastel accents. Playful, rounded design. Friendly wallet UI. Rainbow-inspired. Colorful trail canvas animation (light points on bezier curves with fading trails, rainbow colors). Balance hero hover lift, chain tab hover elevation with gradient overlay, action card radial glow hover, token item hover slide, transaction item hover slide, address item hover slide.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--wallet-dashboard.zip"
   },
   {
@@ -1143,7 +1096,7 @@
     "hasImages": false,
     "sizeKB": 36,
     "indexPath": "web3/whale-tracker/index.html",
-    "description": "On-chain whale tracker with industrial aesthetic. Noise texture overlay. Header with whale emoji branding, tab nav (LIVE FEED, TOP WALLETS, FLOW ANALYSIS, CONCENTRATION), live indicator. Scrolling price ticker. Live feed tab shows large transaction cards with chain, amount, from/to addresses, and timestamp. Top wallets tab with ranked whale addresses. Flow analysis with exchange inflow/outflow charts. Concentration tab with supply distribution. Barlow Condensed + IBM Plex Mono fonts.",
+    "description": "On-chain whale tracker with industrial aesthetic. Canvas background with deep ocean wave ripples (multi-layer translucent waves in deep blue/amber, simulating underwater effect). Noise texture overlay. Glassmorphism header with whale emoji branding, tab nav with glow effects and fade-in animation (LIVE FEED, TOP WALLETS, FLOW ANALYSIS, CONCENTRATION), live indicator with pulse. Scrolling price ticker. Live feed tab shows large transaction cards with slide-in animation, hover translate and colored shadow. Top wallets tab with ranked whale addresses and hover highlight with address glow. Flow analysis with exchange inflow/outflow charts in hoverable cards. Concentration tab with supply distribution. Stats strip with hover scale effect. Barlow Condensed + IBM Plex Mono fonts.",
     "colorScheme": "dark",
     "primaryColor": "#f59e0b",
     "layout": "single-page",
@@ -1153,7 +1106,9 @@
       "real-time-data",
       "tabs",
       "ticker",
-      "animation"
+      "animation",
+      "canvas-animation",
+      "hover-effects"
     ],
     "sections": [
       "header",
@@ -1166,7 +1121,8 @@
     "techStack": [
       "chart-js",
       "google-fonts",
-      "coingecko-api"
+      "coingecko-api",
+      "canvas-api"
     ],
     "matchSignals": [
       "whale",
@@ -1195,7 +1151,7 @@
       "style": "Condensed industrial font with monospace for addresses and amounts"
     },
     "layoutDetails": "Single-page with tab navigation. Header, ticker, then tab content areas.",
-    "visualStyle": "Dark, industrial. Amber accent. Noise texture. Military/terminal aesthetic.",
+    "visualStyle": "Dark, industrial. Amber accent. Canvas ocean wave background. Noise texture. Glassmorphism header. Transaction slide-in animation. Wallet address hover glow. Tab fade-in transition. Stats hover scale.",
     "downloadUrl": "https://storage.googleapis.com/starchild-bucket-testnet/ui-templates/web3--whale-tracker.zip"
   }
 ]

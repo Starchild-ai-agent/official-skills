@@ -434,6 +434,12 @@
       "description": "Buy Amazon and eBay products with USDC on Solana via SP3ND x402 payments.\n\nUse when paying for real-world goods with crypto (e.g. order this Amazon listing, buy eBay item, ship to Tokyo with USDC)."
     },
     {
+      "name": "starchild-auth",
+      "path": "starchild-auth/SKILL.md",
+      "version": "1.0.0",
+      "description": "Starchild Auth SDK: add OAuth login to any web app with one SDK.\n\nUse when integrating Starchild login into a project (e.g. add Starchild sign-in to my React app, set up OAuth with iamstarchild.com, implement login/logout with Starchild Auth SDK)."
+    },
+    {
       "name": "taapi",
       "path": "taapi/SKILL.md",
       "version": "2.0.3",
@@ -497,7 +503,11 @@
       "name": "ui-templates",
       "path": "ui-templates/SKILL.md",
       "version": "1.6.0",
+<<<<<<< HEAD
       "description": "Human-designed UI template library with 380 templates from 9 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
+=======
+      "description": "Human-designed UI template library with 447 templates from 7 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
+>>>>>>> 19b0698 (add starchild auth)
     },
     {
       "name": "us-stock",

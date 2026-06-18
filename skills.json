@@ -44,6 +44,12 @@
       "description": "Export this agent's data into a migration bundle for import elsewhere.\n\nUse when moving an agent off Starchild or backing up state (e.g. export my memory and tasks, create a migration code, hand off to a new agent)."
     },
     {
+      "name": "agent-hooks",
+      "path": "agent-hooks/SKILL.md",
+      "version": "1.0.0",
+      "description": "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
+    },
+    {
       "name": "agent-import",
       "path": "agent-import/SKILL.md",
       "version": "1.1.1",

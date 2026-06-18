@@ -490,7 +490,7 @@
     {
       "name": "ui-templates",
       "path": "ui-templates/SKILL.md",
-      "version": "1.4.0",
+      "version": "1.5.0",
       "description": "Human-designed UI template library with 447 templates from 7 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
     },
     {

@@ -490,13 +490,8 @@
     {
       "name": "ui-templates",
       "path": "ui-templates/SKILL.md",
-<<<<<<< Updated upstream
-      "version": "1.5.0",
-      "description": "Human-designed UI template library with 380 templates from 9 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
-=======
       "version": "1.6.0",
-      "description": "Human-designed UI template library with 447 templates from 7 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
->>>>>>> Stashed changes
+      "description": "Human-designed UI template library with 380 templates from 9 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
     },
     {
       "name": "us-stock",

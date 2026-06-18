@@ -2,7 +2,7 @@
 name: ui-templates
 version: 1.4.0
 description: |
-  Human-designed UI template library with 447 templates from 7 professional sources.
+  Human-designed UI template library with 380 templates from 9 professional sources.
   Use for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.
   All templates are real human-designed HTML/CSS/JS — no AI-generated slop.
 tags: [templates, ui, web, landing-page, portfolio, business, crypto, web3, surprise-me]
@@ -17,7 +17,7 @@ triggers:
 
 # UI Templates — Human-Designed Template Library
 
-> 447 pre-built HTML/CSS/JS templates from 7 professional template libraries.
+> 380 pre-built HTML/CSS/JS templates from 9 professional template libraries.
 > All templates are human-designed with real design quality — NOT AI-generated.
 > The agent MUST use an existing template as the starting point. Never write HTML/CSS/JS from scratch.
 
@@ -106,60 +106,62 @@ When customizing a template, focus on content replacement while preserving the h
 **Source quality preference**: `web3` > `html5up` > `styleshout` > `startbootstrap` > `tooplate` > `themefisher` > `templatemo`
 
 ### Tier 1 — Premium (prefer these)
-- **Web3** (19 templates): Crypto/DeFi/NFT dashboards and tools. Dark themes, real-time data, Chart.js. Best for blockchain projects.
-- **HTML5 UP** (44 templates): Clean, modern, responsive. Best overall design quality. Pure HTML/CSS/JS.
+- **Web3** (14 templates): Crypto/DeFi/NFT dashboards and tools. Dark themes, real-time data, Chart.js. Best for blockchain projects.
+- **HTML5 UP** (29 templates): Clean, modern, responsive. Best overall design quality. Pure HTML/CSS/JS.
 - **StyleShout** (36 templates): Professional, polished. Great for portfolios and personal sites.
-- **Start Bootstrap** (28 templates): Bootstrap-based, well-structured. Good for business sites.
+- **Start Bootstrap** (12 templates): Bootstrap-based, well-structured. Good for business sites.
 
 ### Tier 2 — Good
 - **Tooplate** (88 templates): Large variety, decent quality. Good for specific niches.
 - **ThemeFisher** (42 templates): Bootstrap-based, professional.
+- **AdminMart** (1 template): Dashboard template.
+- **GitHub** (2 templates): Community-contributed templates.
 
 ### Tier 3 — Supplementary
-- **TemplateMo** (187 templates): Largest collection, variable quality. Good for niche categories.
+- **TemplateMo** (156 templates): Largest collection, variable quality. Good for niche categories.
 
 ---
 
-## 4. Category Reference (36+ categories)
+## 4. Category Reference (36 categories)
 
 | Category       | Description                          | Count | Example Use Case                    |
 |----------------|--------------------------------------|-------|-------------------------------------|
-| `multipurpose` | General-purpose templates            | 105   | Generic websites, quick prototypes  |
-| `business`     | Business / Corporate / Consulting    | 66    | Company sites, consulting firms     |
-| `personal`     | Personal pages / Resume / CV         | 29    | Personal resume, self-introduction  |
-| `blog`         | Blog / Magazine / News               | 24    | Personal blog, news site            |
-| `agency`       | Creative agency / Studio             | 22    | Design firms, digital marketing     |
+| `multipurpose` | General-purpose templates            | 83    | Generic websites, quick prototypes  |
+| `business`     | Business / Corporate / Consulting    | 56    | Company sites, consulting firms     |
+| `personal`     | Personal pages / Resume / CV         | 24    | Personal resume, self-introduction  |
+| `blog`         | Blog / Magazine / News               | 20    | Personal blog, news site            |
+| `agency`       | Creative agency / Studio             | 21    | Design firms, digital marketing     |
 | `restaurant`   | Restaurant / Cafe / Bakery           | 15    | Restaurants, coffee shops, bakeries |
-| `ecommerce`    | E-commerce / Shop / Fashion          | 13    | Online stores, fashion brands       |
-| `portfolio`    | Portfolio / Showcase                 | 12    | Designer portfolios, project showcase |
+| `crypto`       | Crypto / DeFi / NFT / Web3           | 14    | Trading platforms, wallets, DeFi    |
+| `ecommerce`    | E-commerce / Shop / Fashion          | 11    | Online stores, fashion brands       |
+| `portfolio`    | Portfolio / Showcase                 | 11    | Designer portfolios, project showcase |
 | `app`          | App landing page                     | 11    | Mobile app promotion pages          |
-| `dashboard`    | Dashboard / Admin panel              | 10    | Backend admin, data panels          |
+| `dashboard`    | Dashboard / Admin panel              | 11    | Backend admin, data panels          |
 | `travel`       | Travel / Hotel / Vacation            | 10    | Travel agencies, hotel booking      |
-| `photography`  | Photography / Image showcase         | 9     | Photographer portfolios, galleries  |
-| `coming_soon`  | Coming soon / Countdown              | 9     | Product teasers, launch countdowns  |
-| `landing`      | Landing page                         | 9     | Product landing pages, sign-up pages |
+| `landing`      | Landing page                         | 8     | Product landing pages, sign-up pages |
+| `photography`  | Photography / Image showcase         | 7     | Photographer portfolios, galleries  |
+| `coming_soon`  | Coming soon / Countdown              | 7     | Product teasers, launch countdowns  |
 | `saas`         | SaaS / Hosting services              | 7     | SaaS product pages, cloud services  |
-| `event`        | Event / Conference                   | 6     | Conferences, event registration     |
-| `gallery`      | Image gallery                        | 6     | Photo galleries, art exhibitions    |
-| `nature`       | Nature / Eco / Organic               | 6     | Environmental orgs, organic brands  |
-| `fitness`      | Fitness / Sports                     | 6     | Gyms, sports brands                 |
+| `event`        | Event / Conference                   | 5     | Conferences, event registration     |
+| `fitness`      | Fitness / Sports                     | 5     | Gyms, sports brands                 |
 | `automotive`   | Automotive / Taxi / Rental           | 5     | Car dealers, rental services        |
-| `education`    | Education / Training                 | 5     | Schools, online courses             |
+| `other`        | Other / Miscellaneous                | 5     | Uncategorized templates             |
+| `gallery`      | Image gallery                        | 4     | Photo galleries, art exhibitions    |
+| `nature`       | Nature / Eco / Organic               | 4     | Environmental orgs, organic brands  |
 | `beauty`       | Beauty / Salon / SPA                 | 4     | Beauty salons, barber shops         |
-| `food`         | Food / Recipes                       | 4     | Food blogs, recipe sharing          |
+| `food`         | Food / Recipes                       | 3     | Food blogs, recipe sharing          |
 | `medical`      | Medical / Healthcare                 | 4     | Clinics, medical services           |
 | `real_estate`  | Real estate / Interior design        | 4     | Real estate agencies, interior design |
 | `technology`   | Technology / Innovation              | 4     | Tech companies, innovation products |
+| `component`    | UI components                        | 4     | Forms, admin panel components       |
 | `music`        | Music / Band                         | 3     | Bands, musicians                    |
+| `education`    | Education / Training                 | 3     | Schools, online courses             |
 | `charity`      | Charity / Nonprofit                  | 2     | Charity organizations               |
 | `wedding`      | Wedding                              | 1     | Wedding invitations                 |
-| `pet`          | Pet                                  | 1     | Pet shops, pet services             |
 | `construction` | Construction / Building              | 1     | Construction companies              |
 | `coworking`    | Coworking space                      | 1     | Coworking spaces                    |
 | `job`          | Job / Career                         | 1     | Job portals                         |
 | `wellness`     | Wellness / Meditation                | 1     | Meditation, mental health           |
-| `component`    | UI components                        | 4     | Forms, admin panel components       |
-| `crypto`       | Crypto / DeFi / NFT / Web3           | 19    | Trading platforms, wallets, DeFi    |
 
 ---
 
@@ -218,8 +220,8 @@ Full example of an enriched catalog entry:
 
 ## 6. Important Notes
 
-- **All 447 templates are usable** — every template has an `index.html` file. Use `indexPath` to find it under `ui-templates/`.
-- **Category catalogs** — read `catalogs/{category}.json` for enriched metadata. Templates not yet enriched can be found in `ui-templates/catalog.json`.
+- **All 380 templates are usable** — every template has an `index.html` file. Use `indexPath` to find it under `ui-templates/`.
+- **Category catalogs** — read `catalogs/{category}.json` for enriched metadata.
 - **Keep the human design** — these templates look good because humans designed them. Don't over-modify the CSS structure.
 - **Use colorPalette for customization** — when the user has brand colors, use `colorPalette` to understand which CSS colors to replace.
 - **Responsive** — most templates are already responsive. Check `breakpoints` for responsive behavior.

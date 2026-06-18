@@ -503,11 +503,7 @@
       "name": "ui-templates",
       "path": "ui-templates/SKILL.md",
       "version": "1.6.0",
-<<<<<<< HEAD
       "description": "Human-designed UI template library with 380 templates from 9 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
-=======
-      "description": "Human-designed UI template library with 447 templates from 7 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
->>>>>>> 19b0698 (add starchild auth)
     },
     {
       "name": "us-stock",

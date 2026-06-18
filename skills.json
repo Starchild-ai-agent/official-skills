@@ -436,7 +436,7 @@
     {
       "name": "starchild-auth",
       "path": "starchild-auth/SKILL.md",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "description": "Starchild Auth SDK: add OAuth login to any web app with one SDK.\n\nUse when integrating Starchild login into a project (e.g. add Starchild sign-in to my React app, set up OAuth with iamstarchild.com, implement login/logout with Starchild Auth SDK)."
     },
     {

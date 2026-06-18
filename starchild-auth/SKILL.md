@@ -1,6 +1,6 @@
 ---
 name: starchild-auth
-version: 1.2.0
+version: 1.3.0
 description: |
   Starchild Auth SDK: add OAuth login to any web app with one SDK.
 
@@ -77,7 +77,7 @@ The SDK provides **two builds**. For plain `<script>` tags, use the **UMD** buil
 > ```
 > 然后 `<script src="starchild-auth.umd.cjs"></script>`
 
-When loaded via UMD CDN, the class is available as `window.StarchildAuth.StarchildAuth` (the outer `StarchildAuth` is the module namespace).
+When loaded via UMD CDN, the class is available directly as `window.StarchildAuth` (it's the constructor itself, not a namespace object).
 
 ---
 
@@ -342,15 +342,14 @@ const { user, loading, login, logout } = useStarchildAuth()
 
   <script>
     // UMD exposes: window.StarchildAuth (object) → .StarchildAuth (constructor)
-    // IMPORTANT: window.StarchildAuth is a module namespace object, NOT the constructor itself.
-    // The constructor is at window.StarchildAuth.StarchildAuth
-    if (!window.StarchildAuth || !window.StarchildAuth.StarchildAuth) {
+    // window.StarchildAuth is the constructor itself (not a namespace object)
+    if (typeof window.StarchildAuth !== 'function') {
       document.getElementById('logged-out').innerHTML =
         '<p style="color:red">SDK failed to load. Check if the CDN script loaded correctly.</p>'
       throw new Error('StarchildAuth SDK not loaded')
     }
 
-    var auth = new window.StarchildAuth.StarchildAuth({
+    var auth = new StarchildAuth({
       clientId: 'your-client-id',
       onLogin: function (result) {
         showLoggedIn(result.userInfo)
@@ -539,7 +538,7 @@ const fetchData = async () => {
 
 | Build | File | Usage |
 |-------|------|-------|
-| **UMD** | `starchild-auth.umd.cjs` | `<script>` tags — exposes `window.StarchildAuth.StarchildAuth` |
+| **UMD** | `starchild-auth.umd.cjs` | `<script>` tags — exposes `window.StarchildAuth` (constructor) |
 | **ESM** | `starchild-auth.js` | `<script type="module">` or bundlers (Vite, webpack, etc.) |
 
 > **Common mistake**: Using `starchild-auth.js` with a plain `<script>` tag. This will fail silently because the ESM file uses `export` syntax which is invalid in non-module scripts. Always use the `.umd.cjs` build for plain `<script>` tags.

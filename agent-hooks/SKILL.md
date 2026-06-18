@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.0.0
+version: 1.1.0
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -133,6 +133,67 @@ hooks:
     command: ./extensions/shell_hooks/examples/block_secrets.py
     timeout: 10                          # seconds, default 20, max 120
 ```
+
+## Two hook transports
+
+A hook is either a local **command** (default) or an **HTTP endpoint** — same
+payload in, same decision JSON out, only the transport differs.
+
+```yaml
+hooks:
+  - event: pre_tool_call
+    type: http                          # omit type -> "command" (default)
+    url: https://my-guard.example.com/hook
+    timeout: 10
+```
+
+HTTP specifics:
+- **SSRF guard** — the URL must be http(s) and must NOT resolve to a loopback /
+  private / link-local (incl. cloud metadata `169.254.169.254`) / reserved
+  address (blocked at parse AND call time). Set
+  `STARCHILD_SHELL_HOOKS_HTTP_ALLOW_LOCAL=1` only to intentionally hit a local
+  service.
+- **Approval keys on the URL**: `/hooks approve <event> <url>`; `/hooks list`
+  shows it as `POST <url>` and skips the executable/mtime checks.
+
+## Adding an LLM judgement (call the proxy, NOT /chat)
+
+When a hook needs real reasoning ("does this leak a secret?", "is this
+completion actually done?"), call an LLM **directly through the proxy** from your
+script — never the agent's own `/chat`.
+
+```python
+from core.http_client import proxied_post
+import json, sys
+
+event = json.load(sys.stdin)
+r = proxied_post(
+    "https://openrouter.ai/api/v1/chat/completions",
+    json={
+        "model": "minimax/minimax-m3",   # cheap default (~$0.0002/call)
+        "messages": [
+            {"role": "system", "content":
+                'You are a guard. Output ONLY JSON {"decision":"block|allow","reason":"..."}.'},
+            {"role": "user", "content": json.dumps(event)},
+        ],
+        "temperature": 0, "max_tokens": 200,
+    },
+    headers={"SC-CALLER-ID": "chat:hook"},   # required for billing
+    timeout=40,
+)
+try:
+    print(json.dumps(json.loads(r.json()["choices"][0]["message"]["content"])))
+except Exception:
+    print("{}")   # fail-open on any parse error
+```
+
+Why proxy-direct: OpenRouter is an external stateless API, so it does **not**
+re-enter the agent loop or fire `pre_llm_call` -> **no recursion**, one cheap
+completion instead of a full agent turn, your own prompt + pure-JSON response.
+Calling `/chat` from a hook re-emits the same event (the bridge guards against
+the loop, but it's needless overhead) — and an LLM hook that calls `/chat` must
+**never** sit on `pre_llm_call`. See the host docs `sc-proxy.md` section
+"Calling an LLM through the proxy".
 
 ## Standard workflow (the agent's checklist)
 

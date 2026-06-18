@@ -1,6 +1,6 @@
 ---
 name: starchild-auth
-version: 1.1.0
+version: 1.2.0
 description: |
   Starchild Auth SDK: add OAuth login to any web app with one SDK.
 
@@ -62,11 +62,20 @@ pnpm add starchild-auth-sdk
 The SDK provides **two builds**. For plain `<script>` tags, use the **UMD** build:
 
 ```html
-<!-- UMD build — exposes window.StarchildAuth.StarchildAuth -->
-<script src="https://cdn.jsdelivr.net/npm/starchild-auth-sdk/dist/starchild-auth.umd.cjs"></script>
+<!-- unpkg (recommended) -->
+<script src="https://unpkg.com/starchild-auth-sdk/dist/starchild-auth.umd.cjs"></script>
+
+<!-- npmmirror (alternative, for China mainland) -->
+<script src="https://registry.npmmirror.com/starchild-auth-sdk/latest/files/dist/starchild-auth.umd.cjs"></script>
 ```
 
 > ⚠️ **Do NOT use** `starchild-auth.js` with a plain `<script>` tag — that file is an ES Module and will fail silently. Use `starchild-auth.umd.cjs` for `<script>` tags, or use `<script type="module">` with the ESM build (see examples below).
+
+> 💡 **CDN 加载失败？** 如果两个 CDN 都无法访问（如在受限网络环境中），可以用 `curl` 下载到本地后通过相对路径引用：
+> ```bash
+> curl -sL "https://unpkg.com/starchild-auth-sdk/dist/starchild-auth.umd.cjs" -o starchild-auth.umd.cjs
+> ```
+> 然后 `<script src="starchild-auth.umd.cjs"></script>`
 
 When loaded via UMD CDN, the class is available as `window.StarchildAuth.StarchildAuth` (the outer `StarchildAuth` is the module namespace).
 
@@ -307,6 +316,8 @@ const { user, loading, login, logout } = useStarchildAuth()
 
 ### Plain HTML — UMD (recommended for `<script>` tags)
 
+> 💡 如果 CDN 加载失败，参考上方 Step 2 中的 CDN 备选源和本地下载方案。
+
 ```html
 <!DOCTYPE html>
 <html lang="en">
@@ -314,7 +325,8 @@ const { user, loading, login, logout } = useStarchildAuth()
   <meta charset="UTF-8" />
   <title>Starchild Auth Demo</title>
   <!-- UMD build: works with plain <script> tags -->
-  <script src="https://cdn.jsdelivr.net/npm/starchild-auth-sdk/dist/starchild-auth.umd.cjs"></script>
+  <!-- If CDN is blocked, download the file locally and use a relative path instead -->
+  <script src="https://unpkg.com/starchild-auth-sdk/dist/starchild-auth.umd.cjs"></script>
 </head>
 <body>
   <div id="app">
@@ -329,10 +341,16 @@ const { user, loading, login, logout } = useStarchildAuth()
   </div>
 
   <script>
-    // UMD exposes: window.StarchildAuth.StarchildAuth
-    var SC = window.StarchildAuth.StarchildAuth
+    // UMD exposes: window.StarchildAuth (object) → .StarchildAuth (constructor)
+    // IMPORTANT: window.StarchildAuth is a module namespace object, NOT the constructor itself.
+    // The constructor is at window.StarchildAuth.StarchildAuth
+    if (!window.StarchildAuth || !window.StarchildAuth.StarchildAuth) {
+      document.getElementById('logged-out').innerHTML =
+        '<p style="color:red">SDK failed to load. Check if the CDN script loaded correctly.</p>'
+      throw new Error('StarchildAuth SDK not loaded')
+    }
 
-    var auth = new SC({
+    var auth = new window.StarchildAuth.StarchildAuth({
       clientId: 'your-client-id',
       onLogin: function (result) {
         showLoggedIn(result.userInfo)
@@ -398,7 +416,7 @@ If you prefer ES Module syntax, use `<script type="module">`:
   </div>
 
   <script type="module">
-    import { StarchildAuth } from 'https://cdn.jsdelivr.net/npm/starchild-auth-sdk/dist/starchild-auth.js'
+    import { StarchildAuth } from 'https://unpkg.com/starchild-auth-sdk/dist/starchild-auth.js'
 
     const auth = new StarchildAuth({
       clientId: 'your-client-id',
@@ -545,4 +563,4 @@ To fully clear a user's session, call `auth.logout()` which removes the stored t
 | `StarchildAuth is not defined` (CDN) | You're using the ESM build (`starchild-auth.js`) with a plain `<script>` tag. Switch to the UMD build (`starchild-auth.umd.cjs`), or use `<script type="module">` with `import`. |
 | Token refresh failing | Check that the app hasn't been revoked in user's Starchild settings. Also check browser console for network errors. |
 | `onLogin` fires on page load | This is expected behavior — `autoLogin: true` (default) restores the session from localStorage. Set `autoLogin: false` to disable. |
-| CDN blocked (China) | jsdelivr may be slow/blocked in some regions. Download the SDK file locally and serve it from your own domain, or use `unpkg.com` as an alternative CDN. |
+| CDN blocked | unpkg.com may be slow/blocked in some environments. Use `npmmirror` as alternative (`https://registry.npmmirror.com/starchild-auth-sdk/latest/files/dist/starchild-auth.umd.cjs`), or download the SDK file locally and serve it from your own domain. |

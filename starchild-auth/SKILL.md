@@ -1,6 +1,6 @@
 ---
 name: starchild-auth
-version: 1.3.0
+version: 1.4.0
 description: |
   Starchild Auth SDK: add OAuth login to any web app with one SDK.
 
@@ -341,8 +341,7 @@ const { user, loading, login, logout } = useStarchildAuth()
   </div>
 
   <script>
-    // UMD exposes: window.StarchildAuth (object) → .StarchildAuth (constructor)
-    // window.StarchildAuth is the constructor itself (not a namespace object)
+    // UMD exposes window.StarchildAuth as the constructor directly
     if (typeof window.StarchildAuth !== 'function') {
       document.getElementById('logged-out').innerHTML =
         '<p style="color:red">SDK failed to load. Check if the CDN script loaded correctly.</p>'

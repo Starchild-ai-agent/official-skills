@@ -50,7 +50,7 @@ them, so prompt injection cannot forge an activation.
 |---|---|
 | Write the hook script (any language) | `/hooks approve <event> <command>` |
 | Write/extend `workspace/config/shell_hooks.yaml` | `/hooks on` (or the Preferences toggle) |
-| Test with `/hooks doctor` | |
+| Dry-run the script via `bash` | `/hooks doctor` (verify) |
 | Explain / debug | |
 
 A hook is arbitrary code execution in the container, so the **"who may activate"**
@@ -130,7 +130,7 @@ through to **continue** — a broken hook can never break the agent.
 hooks:
   - event: pre_tool_call
     matcher: "rm -rf|dd if=|mkfs"      # optional regex; script only spawns on a match (perf gate)
-    command: ./extensions/shell_hooks/examples/guard_dangerous_commands.sh
+    command: ./extensions/shell_hooks/examples/block_secrets.py
     timeout: 10                          # seconds, default 20, max 120
 ```
 
@@ -141,7 +141,10 @@ hooks:
    Exit non-zero / non-JSON = continue. Make it executable (`chmod +x`).
 3. **Add a config entry** in `workspace/config/shell_hooks.yaml` (add a `matcher`
    regex when possible so the script only spawns when relevant).
-4. **Dry-run**: `/hooks doctor` (checks the script runs and returns valid JSON).
+4. **Dry-run it yourself with `bash`** — pipe a sample JSON payload into the
+   script and confirm it prints valid JSON. (The agent CANNOT run `/hooks` —
+   that is a user-typed command. Ask the user to run `/hooks doctor` to verify
+   after approval.)
 5. **Hand the user the activation commands** to paste:
    ```
    /hooks approve <event> <command>
@@ -155,13 +158,14 @@ Shipped in-repo under `extensions/shell_hooks/examples/` (copy + adapt):
 
 | Script | Event | Purpose |
 |---|---|---|
-| `guard_dangerous_commands.sh` | `pre_tool_call` | block `rm -rf /`, `dd`, `mkfs`, `chmod 777`, fork bombs |
 | `block_secrets.py` | multi | private-key / seed-phrase guard (inbound warn + outbound/tool hard-block) |
-| `audit_tool_calls.py` | `post_tool_call` | append every tool call to `workspace/logs/tool-audit.jsonl` |
-| `redact_outbound.py` | `on_outbound_message` | mask emails / phones / internal IPs before a push (or block on secrets) |
-| `warn_on_prod_writes.sh` | `pre_tool_call` | allow writes to `.env` / prod config but `systemMessage`-warn the user |
 | `check_publish.sh` | `on_completion_claim` | block "claimed published but no publish tool ran / cited a fake URL" |
 | `inject_website_reminder.sh` | `pre_llm_call` | inject a context note when a published site exists |
+
+For any other rule (block dangerous bash, audit tool calls, redact outbound
+PII, warn on prod writes, ...), write a fresh script — the minimal block
+example below is the template, and the output protocol above covers every
+capability.
 
 ### Minimal block example (`pre_tool_call`, any language)
 

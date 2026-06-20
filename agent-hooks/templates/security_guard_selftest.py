@@ -49,6 +49,17 @@ CASES = [
         "tool_input": {"command": "grep API_KEY .env"}}, "cont"),
     ("PT curl no pipe-shell", {"event": "pre_tool_call", "tool_name": "bash",
         "tool_input": {"command": "curl -s https://api.example.com/data"}}, "cont"),
+    # Command-position anchoring: a dangerous word merely MENTIONED (echo arg,
+    # grep pattern, comment, quoted string) must NOT be blocked — only a real
+    # invocation at a command position is.
+    ("PT mention in echo allowed", {"event": "pre_tool_call", "tool_name": "bash",
+        "tool_input": {"command": "echo 'careful with rm -rf / and disk format commands'"}}, "cont"),
+    ("PT grep for word allowed", {"event": "pre_tool_call", "tool_name": "bash",
+        "tool_input": {"command": "grep -n 'chmod -R 777' notes.md"}}, "cont"),
+    ("PT comment mention allowed", {"event": "pre_tool_call", "tool_name": "bash",
+        "tool_input": {"command": "ls -la  # do not run mkfs.ext4 here"}}, "cont"),
+    ("PT real after pipe blocked", {"event": "pre_tool_call", "tool_name": "bash",
+        "tool_input": {"command": "true; mkfs.ext4 /dev/loop1"}}, "block"),
     ("TR secret in output", {"event": "transform_tool_result", "tool_name": "bash",
         "tool_result": f"OPENROUTER_KEY={KEY}"}, "modify"),
     ("TR clean output", {"event": "transform_tool_result", "tool_name": "bash",

@@ -43,16 +43,31 @@ SECRET_PATTERNS = [
 # paste / outbound — NOT for masking (too text-destructive).
 SEED_RX = re.compile(r"\b(?:[a-z]{3,8} ){11}[a-z]{3,8}(?: (?:[a-z]{3,8} ){11}[a-z]{3,8})?\b")
 
+# A command only "runs" at a command position: the start of the string, or
+# right after a shell separator (newline, ; | & ( { , $( , or a backtick).
+# Anchoring command-leading patterns here means a dangerous word merely MENTIONED
+# inside an echo/grep argument, a path, a comment, or a quoted string does NOT
+# trip the guard — only an actual invocation does. (Pure-syntax patterns like a
+# fork bomb or a redirect to /dev/sd aren't command names, so they stay global.)
+# A command only "runs" at a command position: the start of the string, or
+# right after a shell separator (newline, ; | & ( { , $( , or a backtick),
+# optionally wrapped by a privilege/runner prefix (sudo, doas, time, …). So a
+# dangerous word merely MENTIONED inside an echo/grep argument, a path, a
+# comment, or a quoted string does NOT trip the guard — only a real invocation
+# does. (Pure-syntax patterns like a fork bomb or a redirect to a block device
+# aren't command names, so they stay global.)
+_CMD = r"(?:^|[\n;|&(){]|\$\(|`)\s*(?:(?:sudo|doas|time|nice|nohup|env|command|builtin)\s+)*"
+
 DESTRUCTIVE = [
-    (re.compile(r"\brm\s+-[a-z]*r[a-z]*f?\s+(/(?:\s|$)|/\*|~|\$HOME|--no-preserve-root)"),
+    (re.compile(_CMD + r"rm\s+-[a-z]*r[a-z]*f?\s+(/(?:\s|$)|/\*|~|\$HOME|--no-preserve-root)"),
      "recursive force-delete of a root/home path"),
-    (re.compile(r"\brm\s+-[a-z]*f[a-z]*r\s+(/|~|\$HOME)"), "recursive force-delete of a root/home path"),
-    (re.compile(r"\bdd\b.*\bof=/dev/(sd|nvme|hd|mmcblk|vd)"), "raw write to a block device"),
-    (re.compile(r"\bmkfs(\.\w+)?\b"), "formatting a filesystem"),
+    (re.compile(_CMD + r"rm\s+-[a-z]*f[a-z]*r\s+(/|~|\$HOME)"), "recursive force-delete of a root/home path"),
+    (re.compile(_CMD + r"dd\s.*\bof=/dev/(sd|nvme|hd|mmcblk|vd)"), "raw write to a block device"),
+    (re.compile(_CMD + r"mkfs(\.\w+)?\s"), "formatting a filesystem"),
     (re.compile(r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:"), "fork bomb"),
-    (re.compile(r"\bchmod\s+-R\s+0?777\b"), "world-writable recursive chmod"),
+    (re.compile(_CMD + r"chmod\s+-R\s+0?777\b"), "world-writable recursive chmod"),
     (re.compile(r">\s*/dev/(sd|nvme|hd|mmcblk|vd)"), "overwrite of a block device"),
-    (re.compile(r"\bgit\s+reset\s+--hard\b.*\borigin/"), "hard reset onto a remote (discards local work)"),
+    (re.compile(_CMD + r"git\s+reset\s+--hard\b.*\borigin/"), "hard reset onto a remote (discards local work)"),
 ]
 
 # NOTE (per user policy): we only block operations that are BOTH very dangerous

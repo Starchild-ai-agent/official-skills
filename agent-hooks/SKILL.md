@@ -222,6 +222,7 @@ Shipped in-repo under `extensions/shell_hooks/examples/` (copy + adapt):
 | `block_secrets.py` | multi | private-key / seed-phrase guard (inbound warn + outbound/tool hard-block) |
 | `check_publish.sh` | `on_completion_claim` | block "claimed published but no publish tool ran / cited a fake URL" |
 | `inject_website_reminder.sh` | `pre_llm_call` | inject a context note when a published site exists |
+| `templates/security_guard.py` | 5 events | all-in-one security guard — block pasted/exfiltrated secrets, block irreversible-data-loss bash, mask leaked keys outbound (see below) |
 
 For any other rule (block dangerous bash, audit tool calls, redact outbound
 PII, warn on prod writes, ...), write a fresh script — the minimal block
@@ -243,6 +244,40 @@ else:
     print("{}")   # continue
 PY
 ```
+
+## All-in-one security guard (`templates/security_guard.py`)
+
+A ready-to-use, self-contained script that wires **one file to five events** and
+covers the common "don't leak secrets / don't nuke the box" baseline. Copy it to
+your workspace and approve it once:
+
+```
+/hooks approve /data/workspace/skills/agent-hooks/templates/security_guard.py
+/hooks on
+```
+
+Wire all five events to the same command in `config/shell_hooks.yaml` (one block
+per event, `command:` = the script path). `/hooks approve <script>` then approves
+every event that script is configured for in one shot.
+
+| Event | What it does |
+|---|---|
+| `on_user_message` | **block** a pasted API key / private key / seed phrase before the model sees it |
+| `pre_tool_call` (bash) | **block** only irreversible data loss (`rm -rf /`, `dd` to a block device, `mkfs`, fork bomb, `chmod -R 777`, `git reset --hard origin/*``) and credential exfiltration (`cat .env | curl`, `scp id_rsa`, `printenv | curl`) |
+| `pre_tool_call` (message tools) | guard `send_to_telegram` / `send_to_wechat` args — **mask** a leaked key, **block** a seed phrase (these tools bypass the push pipeline, so this is the real outbound gate for them) |
+| `transform_tool_result` | **warn** when a tool's OUTPUT contains a secret (backend can only flag, not rewrite, result text) |
+| `on_response_end` | **mask** any secret that leaked into the final reply |
+| `on_outbound_message` | **mask / block** secrets before they're pushed to TG / WeChat |
+
+**Design policy:** block only what is *both* very dangerous *and* not part of
+normal work. Common dev actions like `curl | bash` (installers) and
+`git push --force` (rebasing your own feature branch) are intentionally
+**allowed** — over-blocking trains users to disable the guard.
+
+Tune the `SECRET_PATTERNS`, `DESTRUCTIVE`, and `MSG_TOOLS` tables at the top of
+the file for your own rules. `templates/security_guard_selftest.py` is a 30-case
+self-test (run it after any edit; dangerous strings live there as data only, so
+the host bash guard can't trip on them).
 
 ## Claude Code compatibility
 

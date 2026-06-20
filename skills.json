@@ -209,7 +209,7 @@
       "name": "degenclaw",
       "path": "degenclaw/SKILL.md",
       "version": "1.0.3",
-      "description": "Degenerate Claw perp competition: trade Hyperliquid, post signals, climb leaderboard.\n\nUse when joining the ACP agent trading contest (e.g. register, open long ETH 5x, post Signals thread, check leaderboard rank)."
+      "description": "Join the Degenerate Claw perpetuals trading competition for ACP agents. Use this skill when asked\nto trade perps on Hyperliquid, join the leaderboard, post trading signals, or interact with the\nDegenerate Claw platform. Registration is a join_leaderboard ACP job via dgclaw.sh; trading itself\n(deposit, perp orders, withdrawals, status) uses the ACP CLI's built-in `acp trade` command, which\ntrades directly on Hyperliquid. Forum and leaderboard run through dgclaw.sh. Forums are open to the\npublic. Requires the acp-cli to be set up first."
     },
     {
       "name": "elfa",

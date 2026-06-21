@@ -288,18 +288,23 @@ the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
 | `budget_alert.py` | `on_response_end` | Append a soft warning when a turn's cost crosses a threshold. |
 | `inject_website_reminder.sh` | `pre_llm_call` | Preventive nudge: remind the model to actually publish before claiming done (pairs with `verify_publish_claims.py`). |
 
-### Deprecated / folded in (do NOT add these)
+### Superseded by the templates (don't ship a second, conflicting guard)
 
-These earlier examples are **superseded** — their coverage now lives in the two
-templates above. Use the template instead; a standalone copy only creates a
-second, conflicting guard.
+The host repo also ships some **minimal single-event examples** under
+`extensions/shell_hooks/examples/` that overlap the two templates above. They're
+fine as learning references, but for real use prefer the template — running both
+just creates two guards with possibly different policies.
 
-| Removed | Folded into | Why |
+| Minimal example | Use this instead | Why |
 |---|---|---|
-| `block_secrets.py` | `security_guard.py` | private-key/seed detection (incl. Solana byte-array, base58 WIF) now in the guard |
-| `secret_guard.py` | `security_guard.py` | vendor-key block/mask (incl. Bearer) now in the guard |
-| `check_publish.sh` | `verify_publish_claims.py` | publish-claim check is a strict subset of the anti-hallucination template |
-| `dangerous_bash_guard.py` | `security_guard.py` | destructive-bash block now in the guard. Want to *also* block installers / force-push? Tune the guard's `DESTRUCTIVE` table — don't run a second bash guard with a conflicting policy. |
+| `block_secrets.py` | `security_guard.py` | the guard's secret detection is a strict superset (adds Bearer, Solana byte-array, base58 WIF, destructive-bash, masking) |
+| `check_publish.sh` | `verify_publish_claims.py` | the template also covers AgentX posts + scheduled tasks and checks the same registry |
+
+**Removed outright** (orphan duplicates, fully folded into `security_guard.py`):
+`secret_guard.py` (vendor-key block/mask, incl. Bearer) and
+`dangerous_bash_guard.py` (destructive-bash block). Want to *also* block
+installers / force-push? Tune the guard's `DESTRUCTIVE` table rather than running
+a second bash guard with a conflicting policy.
 
 For any rule none of the above covers, write a fresh script — the minimal block
 example below is the template, and the output protocol above covers every

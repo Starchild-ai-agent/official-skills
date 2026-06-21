@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.5.0
+version: 1.5.2
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -64,27 +64,31 @@ curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
 - Approval records the script's mtime, so a later edit surfaces as drift in
   `/hooks list` / `/hooks doctor` — a swap-the-script change stays visible.
 
-**Fallback (older builds):** if the curl returns `404`, this runtime predates
-the self-approve API. Then — and only then — hand the user the two activation
-commands to paste:
-```
-/hooks approve <command>
-/hooks on
-```
+**This is the whole activation story for the user — there isn't a second step.**
+After the call returns `{"ok": true}`, tell them it's live and to test it. Do not
+mention `/hooks approve`, `/hooks on`, or "two gates" — those are internal.
 
-## The two gates
+**Fallback (older builds only):** if the curl returns `404`, this runtime
+predates the self-approve API — only then fall back to asking the user to paste
+`/hooks approve <command>` then `/hooks on`.
 
-A hook fires only when **BOTH** hold:
+## The two gates (both handled by the self-approve API — you don't surface them)
+
+Internally a hook fires only when BOTH hold; the self-approve call above flips
+both in one shot, so the **user never sees or types either**:
 
 1. **Master switch ON** — `shell_hooks.enabled: true` in
-   `workspace/config/agent.yaml` (flipped by `/hooks on|off` or the Preferences
-   toggle; legacy env `STARCHILD_SHELL_HOOKS=1` forces it on as a fallback).
-2. **Per-hook approval** — each `(event, command)` pair approved once via
-   `/hooks approve` (recorded with the script's mtime, so a later edit is flagged
-   "changed since approval" — a swap-the-script attack is visible).
+   `workspace/config/agent.yaml`. The API auto-enables it (`enable_master`
+   defaults true).
+2. **Per-hook approval** — the `(event, command)` pair is recorded in the
+   allowlist with the script's mtime (so a later edit shows as "changed since
+   approval" drift — a swapped script stays visible). The API approves every
+   event the command is wired to.
 
-Switch on but unapproved → inert (shows ✗ in `/hooks list`). Approved but switch
-off → inert until `/hooks on`.
+These exist as a security boundary, not as a user step. Do NOT mention "approve"
+or "two gates" when explaining hooks to a user — just say you'll set it up and
+they can test it. (Manual `/hooks on` + `/hooks approve` exist only as the `404`
+fallback for older runtimes.)
 
 ## The `/hooks` command
 
@@ -117,6 +121,16 @@ Plain text on web / Telegram / WeChat (no LLM, no cost):
 | `on_session_end` | session ends | observe / cleanup | `status` |
 
 Every payload also includes `event`, `session_id`, `agent_id`, `cwd`.
+
+**The `event` field is the dispatch key.** It names *which* lifecycle moment is
+firing (`pre_tool_call`, `on_user_message`, …). A multi-event script (like
+`security_guard.py`, one file wired to five events) reads `event` to decide which
+branch to run — no `event` in the payload means no branch matches, so the script
+falls through to "continue" (empty output = allow). The runtime always sets it;
+**you only have to remember it when hand-crafting a test payload** (see the
+dry-run step below). It is NOT something you put in `shell_hooks.yaml` — there the
+`event:` key tells the *bus* when to call you; the `event` field in the payload is
+the bus telling the *script* which moment it is.
 
 ### The three "make the agent fix it" levers (don't mix them up)
 
@@ -269,7 +283,18 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
 3. **Add a config entry** in `workspace/config/shell_hooks.yaml` (add a `matcher`
    regex when possible so the script only spawns when relevant).
 4. **Dry-run it yourself with `bash`** — pipe a sample JSON payload into the
-   script and confirm it prints valid JSON.
+   script and confirm it prints valid JSON. **The payload MUST include the
+   `event` field** — a multi-event script dispatches on it, so leaving it out
+   makes every case fall through to "continue" and you'll wrongly conclude the
+   guard doesn't fire. Test each event the script handles:
+   ```bash
+   # should BLOCK (note the "event" key):
+   echo '{"event":"pre_tool_call","tool_name":"bash","tool_input":{"command":"rm -rf /"}}' \
+     | python3 hooks/security_guard.py
+   # should ALLOW (empty output):
+   echo '{"event":"pre_tool_call","tool_name":"bash","tool_input":{"command":"ls -la"}}' \
+     | python3 hooks/security_guard.py
+   ```
 5. **Activate it yourself** via the loopback self-approve API (no user paste):
    ```bash
    curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
@@ -436,6 +461,10 @@ or exits 2 works unchanged once wired to `on_stop`.
    self-approve API for that command (or `/hooks approve` as fallback).
 4. Does the `matcher` regex actually match? Too narrow = never spawns.
 5. Run `/hooks doctor` — it flags non-executable / tampered / timed-out / non-JSON.
+6. **Manual test "allows everything"?** Your test payload is probably missing the
+   `event` field — a multi-event script dispatches on it and falls through to
+   "continue" without it. This is a test-harness mistake, not a hook bug; the
+   real runtime always sets `event`.
 
 ## Deep reference
 

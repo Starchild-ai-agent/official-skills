@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.5.2
+version: 1.5.3
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -51,13 +51,24 @@ and hot-mounts it live (no restart). The user just tests it afterward.
 ```bash
 curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
   -H 'Content-Type: application/json' \
-  -d '{"command": "python3 skills/agent-hooks/templates/security_guard.py"}'
+  -d '{"command": "/data/workspace/hooks/security_guard.py"}'
 # -> {"ok": true, "events": [...], "mounted": N, "master_enabled": true}
 ```
 
+> ⚠️ **ALWAYS use an absolute path under `/data/workspace`** in both the yaml
+> `command:` and this call. **Never a relative path** like
+> `skills/agent-hooks/templates/security_guard.py`: the bridge spawns the script
+> with the *server* cwd (`/app`), so a relative path resolves to `/app/skills/…`
+> — an empty dir — and every spawn fails. Because the bridge fails OPEN (a script
+> it can't run = "continue"), the guard then silently protects nothing while
+> `/hooks list` still shows it "mounted". To avoid this, the standard install
+> **copies the template into `/data/workspace/hooks/` and points the yaml there**
+> (see the workflow below). `/app/skills` is NOT the skills dir — the real one is
+> `/data/workspace/skills/` (a.k.a. `/app/workspace/skills/` via symlink).
+
 - `command` MUST be the exact `command:` string from the `shell_hooks.yaml`
-  entry (the script path). The hook MUST already be declared in the yaml —
-  approval flips a declared hook to live, it can't conjure one out of thin air.
+  entry (the absolute script path). The hook MUST already be declared in the yaml
+  — approval flips a declared hook to live, it can't conjure one out of thin air.
 - The endpoint is **loopback-only** (same-uid-in-container trust boundary, same
   as `.env` reads). It auto-enables the master switch (`enable_master` defaults
   true), so the hook fires immediately.
@@ -280,9 +291,20 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
 1. **Clarify** the rule and pick the event from the table above.
 2. **Write the script** — read JSON on stdin, print a decision on stdout.
    Exit non-zero / non-JSON = continue. Make it executable (`chmod +x`).
-3. **Add a config entry** in `workspace/config/shell_hooks.yaml` (add a `matcher`
-   regex when possible so the script only spawns when relevant).
-4. **Dry-run it yourself with `bash`** — pipe a sample JSON payload into the
+3. **Put the script at a stable ABSOLUTE path** under `/data/workspace`. For a
+   shipped template, copy it out of the skill dir so a skill update can't move it:
+   ```bash
+   mkdir -p /data/workspace/hooks
+   cp /data/workspace/skills/agent-hooks/templates/security_guard.py /data/workspace/hooks/
+   chmod +x /data/workspace/hooks/security_guard.py
+   ls -l /data/workspace/hooks/security_guard.py    # VERIFY it exists before going on
+   ```
+   Never reference the script by a relative path (see the ⚠️ box above — it
+   resolves against `/app` and silently fails open).
+4. **Add a config entry** in `workspace/config/shell_hooks.yaml` with the
+   absolute `command:` (`/data/workspace/hooks/security_guard.py`); add a
+   `matcher` regex when possible so the script only spawns when relevant.
+5. **Dry-run it yourself with `bash`** — pipe a sample JSON payload into the
    script and confirm it prints valid JSON. **The payload MUST include the
    `event` field** — a multi-event script dispatches on it, so leaving it out
    makes every case fall through to "continue" and you'll wrongly conclude the
@@ -290,21 +312,24 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
    ```bash
    # should BLOCK (note the "event" key):
    echo '{"event":"pre_tool_call","tool_name":"bash","tool_input":{"command":"rm -rf /"}}' \
-     | python3 hooks/security_guard.py
+     | python3 /data/workspace/hooks/security_guard.py
    # should ALLOW (empty output):
    echo '{"event":"pre_tool_call","tool_name":"bash","tool_input":{"command":"ls -la"}}' \
-     | python3 hooks/security_guard.py
+     | python3 /data/workspace/hooks/security_guard.py
    ```
-5. **Activate it yourself** via the loopback self-approve API (no user paste):
+6. **Activate it yourself** via the loopback self-approve API (no user paste);
+   `command` = the exact absolute path from your yaml entry:
    ```bash
    curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
      -H 'Content-Type: application/json' \
-     -d '{"command": "<the command: string from your yaml entry>"}'
+     -d '{"command": "/data/workspace/hooks/security_guard.py"}'
    ```
    On `{"ok": true}` the hook is live. On `404`, fall back to handing the user
    `/hooks approve <command>` + `/hooks on` (see "How configuration works").
-6. **Tell the user it's live and ready to test** — they can confirm anytime with
-   `/hooks list` (✓ approved + live) or `/hooks doctor`.
+7. **Run `/hooks doctor` to confirm it actually works** — this is the step that
+   catches a wrong path / non-executable / non-JSON script. A guard that shows
+   "mounted" in `/hooks list` but errors in `doctor` is a silent no-op (fails
+   open). Only after `doctor` is clean tell the user it's live and ready to test.
 
 ## Ready-made scripts (each has ONE clear job)
 
@@ -370,14 +395,16 @@ PY
 ## All-in-one security guard (`templates/security_guard.py`)
 
 A ready-to-use, self-contained script that wires **one file to five events** and
-covers the common "don't leak secrets / don't nuke the box" baseline. Wire all
-five events to the same command in `config/shell_hooks.yaml` (one block per
-event, `command:` = the script path), then the agent activates it in one call:
+covers the common "don't leak secrets / don't nuke the box" baseline. First copy
+it to a stable absolute path, then wire all five events to that same absolute
+`command:` in `config/shell_hooks.yaml` (one block per event), then activate:
 
 ```bash
+cp /data/workspace/skills/agent-hooks/templates/security_guard.py /data/workspace/hooks/
+chmod +x /data/workspace/hooks/security_guard.py
 curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
   -H 'Content-Type: application/json' \
-  -d '{"command": "python3 skills/agent-hooks/templates/security_guard.py"}'
+  -d '{"command": "/data/workspace/hooks/security_guard.py"}'
 ```
 
 This approves every event that command is wired to and mounts it live — no user
@@ -413,9 +440,11 @@ low-false-positive: a *real* published URL or an "offer to publish" (future
 tense) passes untouched; only a past-tense success claim with no backing trips it.
 
 ```bash
+cp /data/workspace/skills/agent-hooks/templates/verify_publish_claims.py /data/workspace/hooks/
+chmod +x /data/workspace/hooks/verify_publish_claims.py
 curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
   -H 'Content-Type: application/json' \
-  -d '{"command": "python3 skills/agent-hooks/templates/verify_publish_claims.py"}'
+  -d '{"command": "/data/workspace/hooks/verify_publish_claims.py"}'
 ```
 
 | Event | What it does |
@@ -465,6 +494,14 @@ or exits 2 works unchanged once wired to `on_stop`.
    `event` field — a multi-event script dispatches on it and falls through to
    "continue" without it. This is a test-harness mistake, not a hook bug; the
    real runtime always sets `event`.
+7. **`can't open file '/app/skills/…'` / "mounted" but nothing is blocked?** The
+   `command:` is a relative or wrong path. The bridge spawns with the *server*
+   cwd (`/app`), so `skills/…` resolves to the empty `/app/skills` and every
+   spawn fails — and because the bridge fails OPEN, the guard silently protects
+   nothing. Fix: use the ABSOLUTE path `/data/workspace/hooks/<script>.py` in both
+   the yaml and the approve call, then re-approve and confirm with `/hooks
+   doctor`. (`/app/skills` is not the skills dir; the real one is
+   `/data/workspace/skills/`.)
 
 ## Deep reference
 

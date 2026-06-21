@@ -43,8 +43,11 @@ SCHED_EMPTY = os.path.join(TMP, "scheduled_empty.json")
 with open(SCHED_EMPTY, "w") as f:
     json.dump({"jobs": []}, f)
 
+# Use the canonical override name the writer (agentx exports) honors, so this
+# test also guards the env-name match (regression: hook read AGENTX_LEDGER while
+# the writer used AGENTX_LEDGER_FILE).
 ENV = {**os.environ, "WORKSPACE_DIR": TMP,
-       "PREVIEWS_REGISTRY": REG_PATH, "AGENTX_LEDGER": LEDGER_PATH,
+       "PREVIEWS_REGISTRY": REG_PATH, "AGENTX_LEDGER_FILE": LEDGER_PATH,
        "SCHEDULED_JOBS": SCHED_PATH}
 # Env variant where the scheduler registry is empty.
 ENV_NOSCHED = {**ENV, "SCHEDULED_JOBS": SCHED_EMPTY}
@@ -103,6 +106,17 @@ CASES = [
     # on_completion_claim BLOCK path
     ("completion claim fake url -> block", "on_completion_claim",
      "Published! https://community.iamstarchild.com/2004-totally-fake", [], "block"),
+
+    # on_stop BLOCK path (normal-chat redo) — must block, NOT rewrite, because the
+    # host honors only `decision: block` on on_stop.
+    ("on_stop fake url -> block", "on_stop",
+     "Published! https://community.iamstarchild.com/2004-totally-fake", [], "block"),
+    ("on_stop agentx fake id -> block", "on_stop",
+     "已发布到 AgentX 论坛: /post/zzz999", [], "block"),
+    ("on_stop clean real url -> continue", "on_stop",
+     "Published! https://community.iamstarchild.com/2004-real-deck", ["publish_preview"], "continue"),
+    ("on_stop agentx id in ledger -> continue", "on_stop",
+     "已发布到 AgentX: /post/REAL777", [], "continue"),
 ]
 
 
@@ -156,6 +170,30 @@ def main():
     passed += cap_ok
     failed += (not cap_ok)
     print(f"{'ok  ' if cap_ok else 'FAIL'}  loop cap {seq} (want block,block,warn)")
+
+    print("--- on_stop loop cap (same session, 3x) ---")
+    sid = "loopcap-onstop"
+    seq = []
+    for _ in range(3):
+        d = run({"event": "on_stop",
+                 "response": "Published! https://community.iamstarchild.com/2004-totally-fake",
+                 "tool_names": [], "session_id": sid})
+        seq.append(decision(d))
+    cap_ok = seq == ["block", "block", "warn"]
+    passed += cap_ok
+    failed += (not cap_ok)
+    print(f"{'ok  ' if cap_ok else 'FAIL'}  on_stop loop cap {seq} (want block,block,warn)")
+
+    print("--- AGENTX_LEDGER legacy-name fallback ---")
+    # The hook must still read the ledger via the legacy AGENTX_LEDGER name.
+    env_legacy = {k: v for k, v in ENV.items() if k != "AGENTX_LEDGER_FILE"}
+    env_legacy["AGENTX_LEDGER"] = LEDGER_PATH
+    d = run({"event": "on_stop", "response": "已发布到 AgentX: /post/REAL777",
+             "tool_names": [], "session_id": "legacy-env"}, env=env_legacy)
+    legacy_ok = decision(d) == "continue"
+    passed += legacy_ok
+    failed += (not legacy_ok)
+    print(f"{'ok  ' if legacy_ok else 'FAIL'}  legacy AGENTX_LEDGER read -> {decision(d)} (want continue)")
 
     print(f"\n{passed} passed, {failed} failed")
     sys.exit(1 if failed else 0)

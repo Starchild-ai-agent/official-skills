@@ -7,12 +7,14 @@ actually run the publishing tool — a hallucinated success. This hook checks th
 reply against ground truth and either forces a redo or rewrites the reply so the
 user never sees a false success.
 
-Wire under EITHER (or both) events in workspace/config/shell_hooks.yaml:
+Wire under one or more events in workspace/config/shell_hooks.yaml. Prefer
+on_stop — it makes the agent ACTUALLY redo in ordinary chat:
 
   hooks:
-    # (A) Always-on, every chat turn. Can only REWRITE the reply (append an
-    #     honest correction); it cannot make the agent redo. Zero loop risk.
-    - event: on_response_end
+    # (A) PREFERRED, every chat turn. Can BLOCK -> the host steers the reason
+    #     back and the agent keeps working, so it actually publishes/redoes
+    #     instead of just printing a corrected note. Loop-capped (MAX_BLOCKS).
+    - event: on_stop
       matcher: "publish|posted|preview|/post/|community\\.iamstarchild|已发布|已上线|已更新|发布成功"
       command: ./extensions/shell_hooks/examples/verify_publish_claims.py
       timeout: 10
@@ -20,6 +22,13 @@ Wire under EITHER (or both) events in workspace/config/shell_hooks.yaml:
     # (B) Goal/supervisor mode only. Can BLOCK -> forces the agent to actually
     #     publish, then re-confirm. Loop-capped so it can never trap the agent.
     - event: on_completion_claim
+      matcher: "publish|posted|preview|/post/|community\\.iamstarchild|已发布|已上线|已更新|发布成功"
+      command: ./extensions/shell_hooks/examples/verify_publish_claims.py
+      timeout: 10
+
+    # (C) Fallback if on_stop isn't available. REWRITE-only: appends an honest
+    #     correction to the stored reply; it cannot make the agent redo.
+    - event: on_response_end
       matcher: "publish|posted|preview|/post/|community\\.iamstarchild|已发布|已上线|已更新|发布成功"
       command: ./extensions/shell_hooks/examples/verify_publish_claims.py
       timeout: 10
@@ -177,8 +186,13 @@ def _load_agentx_ids(ev: dict) -> set:
     cited /post/<id> was produced, instead of guessing from "did bash run".
     """
     ids = set()
-    path = os.environ.get("AGENTX_LEDGER") or os.path.join(
-        _workspace_base(ev), "output", "agentx_posts.json")
+    # Match the writer (agentx exports): it honors AGENTX_LEDGER_FILE. Read that
+    # first; keep AGENTX_LEDGER as a legacy fallback so an override set per the
+    # agentx SKILL.md doc is actually picked up (otherwise the guard reads the
+    # default path, misses the real ledger, and false-flags a genuine /post/<id>).
+    path = (os.environ.get("AGENTX_LEDGER_FILE")
+            or os.environ.get("AGENTX_LEDGER")
+            or os.path.join(_workspace_base(ev), "output", "agentx_posts.json"))
     try:
         with open(path, "r", encoding="utf-8") as f:
             items = json.load(f)
@@ -311,9 +325,14 @@ def main() -> None:
     full_reason = ("[verify-publish] %s: %s" % (reason, detail)) if detail \
         else ("[verify-publish] %s" % reason)
 
-    # on_completion_claim -> BLOCK (force a redo), capped so the agent can always
-    # finish. Past the cap, let it through with a user-facing warning.
-    if event == "on_completion_claim":
+    # Redo-capable events -> BLOCK (force the agent to actually publish/redo),
+    # capped so the agent can always finish. Past the cap, let it through with a
+    # user-facing warning.
+    #   on_stop             -> redo in NORMAL chat (host steers the reason back)
+    #   on_completion_claim -> redo inside a /goal supervisor loop
+    # Both only honor a `decision: block` from the host — a rewrite is silently
+    # ignored on these events, so we must block here, never return a {"response"}.
+    if event in ("on_stop", "on_completion_claim"):
         if _block_count(ev, sid) >= MAX_BLOCKS:
             print(json.dumps({
                 "add_warning": ("A publish/post success claim couldn't be verified, "

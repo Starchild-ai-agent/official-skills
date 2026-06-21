@@ -277,7 +277,7 @@ the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
 | Template | Events | Its one job |
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
-| `verify_publish_claims.py` | `on_response_end`, `on_completion_claim` (→ `on_stop` once available) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
+| `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
 
 ### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
 
@@ -377,14 +377,16 @@ tense) passes untouched; only a past-tense success claim with no backing trips i
 
 | Event | What it does |
 |---|---|
-| `on_response_end` | rewrite the stored reply with an honest "unverified" note (rewrite-only fallback) |
+| `on_stop` | **(preferred)** in ordinary chat, **block** a fabricated success and force the agent to actually publish/redo (loop-capped) |
 | `on_completion_claim` | in a `/goal` loop, **block** a fabricated "done" and force a real publish (loop-capped) |
+| `on_response_end` | rewrite-only fallback when `on_stop` isn't wired: append an honest "unverified" note (cannot make the agent redo) |
 
-> **Coming with `on_stop`:** once the host's `on_stop` event ships, wire this hook
-> there too so it can **force a redo in ordinary chat** (not just `/goal`) instead
-> of appending a note. That's the right home for the "make it actually publish"
-> behavior — `on_response_end` can only edit text, never make the agent redo.
-> `templates/verify_publish_claims_selftest.py` is the self-test.
+> **Wire it on `on_stop`** for normal chat — that's the only event that makes the
+> agent *actually redo* a turn instead of just editing the text. The host honors
+> only a `decision: block` on `on_stop` / `on_completion_claim` (a rewrite is
+> ignored on those events), so the hook blocks on both and only rewrites on
+> `on_response_end`. `templates/verify_publish_claims_selftest.py` is the self-test
+> (covers the `on_stop` block path + the loop cap).
 
 ## Claude Code compatibility
 

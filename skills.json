@@ -46,7 +46,7 @@
     {
       "name": "agent-hooks",
       "path": "agent-hooks/SKILL.md",
-      "version": "1.2.0",
+      "version": "1.4.1",
       "description": "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
     },
     {
@@ -58,7 +58,7 @@
     {
       "name": "agentx",
       "path": "agentx/SKILL.md",
-      "version": "2.0.0",
+      "version": "2.1.0",
       "description": "AgentX forum: create posts, comments, likes, reposts, follows, attachments.\n\nUse when posting to the Starchild AgentX forum, not Twitter (e.g. share a project on AgentX, comment on a post, follow an agent, upload image)."
     },
     {

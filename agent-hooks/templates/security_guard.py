@@ -134,8 +134,8 @@ def handle_pre_tool_call(ev):
                 continue
             if SEED_RX.search(val):
                 return {"decision": "block",
-                        "reason": "[security] refusing to send a message that contains "
-                                  "what looks like a seed phrase — treat it as exposed."}
+                        "reason": "[security] I won't send this message — it contains what "
+                                  "looks like a wallet seed phrase. Treat that wallet as compromised."}
             masked = _mask(val)
             if masked != val:
                 new_ti[f] = masked
@@ -152,11 +152,13 @@ def handle_pre_tool_call(ev):
         return {}
     for rx, why in DESTRUCTIVE:
         if rx.search(cmd):
-            return {"decision": "block", "reason": f"[security] refusing destructive command ({why}): {cmd[:160]}"}
+            return {"decision": "block",
+                    "reason": f"[security] This command is irreversible ({why}) and would cause "
+                              f"permanent data loss, so I've blocked it: {cmd[:160]}"}
     if (CRED_FILE_RX.search(cmd) and NET_EXFIL_RX.search(cmd)) or ENV_DUMP_RX.search(cmd):
         return {"decision": "block",
-                "reason": "[security] refusing to read credentials and send them off-box "
-                          f"(possible exfiltration): {cmd[:160]}"}
+                "reason": "[security] This command looks like it reads credentials and sends "
+                          f"them off the box, so I've blocked it: {cmd[:160]}"}
     return {}
 
 
@@ -177,7 +179,8 @@ def handle_on_outbound_message(ev):
     note = ev.get("notification", "") or ""
     if SEED_RX.search(note):
         return {"decision": "block",
-                "reason": "[security] blocked an outbound message containing a seed phrase."}
+                "reason": "[security] I've blocked this outbound message — it contains what "
+                          "looks like a wallet seed phrase."}
     masked = _mask(note)
     return {"notification": masked} if masked != note else {}
 

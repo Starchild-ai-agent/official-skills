@@ -122,6 +122,38 @@ Safety: scripts run with `shell=False` + argv split (no shell injection) and a
 per-hook timeout. A script that errors, times out, or prints non-JSON falls
 through to **continue** — a broken hook can never break the agent.
 
+### Writing a readable `reason`
+
+The `reason` is shown to the **user** (on the blocked-action card) and to the
+**model**. Write a plain sentence a person can read — say *what* you blocked and
+*why*, not just a raw command. The UI splits one reason string into two parts
+for you, so you don't parse anything client-side:
+
+- **Explanation + command box** — put the human sentence first, then `: `, then
+  the offending command/payload. Everything after the first `": "` is rendered
+  in a separate monospace box. The split only triggers when that tail looks like
+  a payload (has a space or is longer than ~12 chars), so an ordinary sentence
+  that happens to contain a colon is left intact.
+- **Sentence only** — a reason with no `": "` shows as a single sentence and no
+  command box. That's the right shape when there's nothing to quote (e.g. a
+  pasted seed phrase).
+- **`[tag]` is stripped** — a leading tag like `[security]` is removed before
+  display and the sentence is auto-capitalised, so you can keep a tag for your
+  own `grep` without it leaking into the UI.
+
+```jsonc
+// Good — readable sentence + a clean command box:
+{"decision": "block",
+ "reason": "[security] This command is irreversible and would erase the disk: mkfs.ext4 /dev/sda1"}
+//  ->  "This command is irreversible and would erase the disk"   +   [ mkfs.ext4 /dev/sda1 ]
+
+// Avoid — a bare command or lone tag as the whole reason:
+{"decision": "block", "reason": "mkfs /dev/sda1"}   // user sees no WHY
+```
+
+A hook that doesn't follow this still works — a plain string just renders as one
+sentence. The convention only unlocks the nicer "explanation + command" layout.
+
 ## Config file format
 
 `workspace/config/shell_hooks.yaml`:
@@ -239,7 +271,7 @@ import json, sys, re
 ev = json.loads(sys.argv[1])
 cmd = (ev.get("tool_input") or {}).get("command", "")
 if re.search(r"rm\s+-rf\s+/|dd\s+if=|mkfs", cmd):
-    print(json.dumps({"decision": "block", "reason": f"refusing destructive command: {cmd}"}))
+    print(json.dumps({"decision": "block", "reason": f"This command is irreversible and would erase data, so I've blocked it: {cmd}"}))
 else:
     print("{}")   # continue
 PY

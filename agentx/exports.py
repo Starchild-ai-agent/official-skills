@@ -172,6 +172,52 @@ def _record_write(action: str, content: str, item_id: str, link: str) -> None:
         pass
 
 
+# ─── Post ledger (durable, for hallucination-checking hooks) ───────────────────
+# Separate from the 5-minute dedup store above: this is a long-lived,
+# append-only record of every post/comment id this agent ACTUALLY created (real,
+# server-confirmed ids only). An external guard — e.g. the verify_publish_claims
+# shell hook — reads it to EXACTLY confirm that a /post/<id> link the agent put
+# in its reply was really produced, instead of guessing from "did any tool run
+# this round". Best-effort: a ledger failure never blocks a write.
+_LEDGER_CAP = 1000
+
+
+def _ledger_path() -> str:
+    override = os.environ.get("AGENTX_LEDGER_FILE")
+    if override:
+        return override
+    base = os.environ.get("WORKSPACE_DIR", ".")
+    d = os.path.join(base, "output")
+    try:
+        os.makedirs(d, exist_ok=True)
+    except Exception:
+        d = "/tmp"
+    return os.path.join(d, "agentx_posts.json")
+
+
+def _record_post_id(kind: str, item_id: str, link: str) -> None:
+    """Append a real, server-confirmed id to the durable post ledger."""
+    if not item_id:
+        return
+    path = _ledger_path()
+    try:
+        try:
+            with open(path) as f:
+                items = json.load(f)
+            if not isinstance(items, list):
+                items = []
+        except Exception:
+            items = []
+        items.append({"id": str(item_id), "link": link,
+                      "kind": kind, "ts": time.time()})
+        if len(items) > _LEDGER_CAP:
+            items = items[-_LEDGER_CAP:]
+        with open(path, "w") as f:
+            json.dump(items, f)
+    except Exception:
+        pass
+
+
 # ─── Posts ─────────────────────────────────────────────────────────────────────
 
 def create_post(content: str, tags: Optional[List[str]] = None,
@@ -196,6 +242,7 @@ def create_post(content: str, tags: Optional[List[str]] = None,
         pid = post.get("id") if isinstance(post, dict) else None
         if pid:
             _record_write("create_post", content, pid, f"/post/{pid}")
+            _record_post_id("post", pid, f"/post/{pid}")
             res["id"] = pid
             res["link"] = f"/post/{pid}"
     return res
@@ -224,6 +271,7 @@ def create_thread_post(segments: List[Dict[str, Any]],
         pid = post.get("id") if isinstance(post, dict) else None
         if pid:
             _record_write("create_thread_post", combined, pid, f"/post/{pid}")
+            _record_post_id("thread", pid, f"/post/{pid}")
             res["id"] = pid
             res["link"] = f"/post/{pid}"
     return res
@@ -289,6 +337,10 @@ def create_comment(post_id: str, content: str,
         if cid:
             link = f"/post/{post_id}?comment={cid}"
             _record_write(f"create_comment:{post_id}", content, cid, link)
+            # Record the PARENT post id — that is the verifiable /post/<id>
+            # a "I commented on /post/X" reply will cite (the post is real,
+            # the server accepted the comment on it).
+            _record_post_id("comment", post_id, f"/post/{post_id}")
             res["id"] = cid
             res["link"] = link
     return res

@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.5.0
+version: 1.5.1
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -64,27 +64,31 @@ curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
 - Approval records the script's mtime, so a later edit surfaces as drift in
   `/hooks list` / `/hooks doctor` — a swap-the-script change stays visible.
 
-**Fallback (older builds):** if the curl returns `404`, this runtime predates
-the self-approve API. Then — and only then — hand the user the two activation
-commands to paste:
-```
-/hooks approve <command>
-/hooks on
-```
+**This is the whole activation story for the user — there isn't a second step.**
+After the call returns `{"ok": true}`, tell them it's live and to test it. Do not
+mention `/hooks approve`, `/hooks on`, or "two gates" — those are internal.
 
-## The two gates
+**Fallback (older builds only):** if the curl returns `404`, this runtime
+predates the self-approve API — only then fall back to asking the user to paste
+`/hooks approve <command>` then `/hooks on`.
 
-A hook fires only when **BOTH** hold:
+## The two gates (both handled by the self-approve API — you don't surface them)
+
+Internally a hook fires only when BOTH hold; the self-approve call above flips
+both in one shot, so the **user never sees or types either**:
 
 1. **Master switch ON** — `shell_hooks.enabled: true` in
-   `workspace/config/agent.yaml` (flipped by `/hooks on|off` or the Preferences
-   toggle; legacy env `STARCHILD_SHELL_HOOKS=1` forces it on as a fallback).
-2. **Per-hook approval** — each `(event, command)` pair approved once via
-   `/hooks approve` (recorded with the script's mtime, so a later edit is flagged
-   "changed since approval" — a swap-the-script attack is visible).
+   `workspace/config/agent.yaml`. The API auto-enables it (`enable_master`
+   defaults true).
+2. **Per-hook approval** — the `(event, command)` pair is recorded in the
+   allowlist with the script's mtime (so a later edit shows as "changed since
+   approval" drift — a swapped script stays visible). The API approves every
+   event the command is wired to.
 
-Switch on but unapproved → inert (shows ✗ in `/hooks list`). Approved but switch
-off → inert until `/hooks on`.
+These exist as a security boundary, not as a user step. Do NOT mention "approve"
+or "two gates" when explaining hooks to a user — just say you'll set it up and
+they can test it. (Manual `/hooks on` + `/hooks approve` exist only as the `404`
+fallback for older runtimes.)
 
 ## The `/hooks` command
 

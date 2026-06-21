@@ -35,7 +35,8 @@ or react to an event** without being asked each time. Examples:
 - "Never let a private key get pushed to Telegram" → `on_outbound_message` block
 - "Log every tool call for audit" → `post_tool_call` observe
 - "Remind the agent of X at the start of every model call" → `pre_llm_call` context
-- "Don't let the agent claim it published when it didn't" → `on_completion_claim`
+- "Don't let the agent claim it published when it didn't" → `on_completion_claim` (in `/goal`) or `on_stop` (in normal chat)
+- "If the answer fails my quality check, make the agent redo it" → `on_stop` block
 
 If the user just wants a one-off check, that's not a hook — hooks are for
 **recurring, automatic** lifecycle enforcement.
@@ -84,21 +85,40 @@ Plain text on web / Telegram / WeChat (no LLM, no cost):
 | `/hooks revoke <command>` | revoke + detach live (no restart) |
 | `/hooks help` | usage |
 
-## Events (9) and what each can do
+## Events (12) and what each can do
 
 | Event | Fires | Capability | stdin gives the script |
 |---|---|---|---|
+| `on_user_message` | a user message arrives, before the model sees it | **block** / rewrite text | `message`, `channel` |
 | `pre_tool_call` | before a tool runs | **block / rewrite input** | `tool_name`, `tool_input` |
 | `post_tool_call` | after a tool runs | observe (log/metrics) | `tool_name`, `tool_result` |
 | `transform_tool_result` | result before agent sees it | **append a note** | `tool_name`, `tool_result` |
-| `pre_llm_call` | before a model call | **inject context / block** | `system`, `last_user_message`, `model` |
-| `post_llm_call` | after a model reply | observe | `model` |
+| `pre_llm_call` | before a model call | **inject context** | `system`, `last_user_message`, `model` |
+| `post_llm_call` | after a model reply | observe / swap | `model` |
+| `on_response_end` | final reply assembled, once per turn | **rewrite reply** | `response`, `model`, `tokens`, `tool_names` |
+| `on_stop` | turn boundary, after `on_response_end` | **block → force a redo** | `response`, `tool_names`, `stop_hook_active` |
 | `on_outbound_message` | before a TG/WeChat push | **block / rewrite outbound** | `notification`, `type` |
-| `on_completion_claim` | agent claims "done" | **refuse a fake completion** | `goal`, `summary`, `response`, `tool_names` |
-| `on_session_start` | session begins | observe / inject | `status` |
+| `on_completion_claim` | agent claims a `/goal` done | **block → force a redo** | `goal`, `summary`, `response`, `tool_names` |
+| `on_session_start` | session begins | observe | `status` |
 | `on_session_end` | session ends | observe / cleanup | `status` |
 
 Every payload also includes `event`, `session_id`, `agent_id`, `cwd`.
+
+### The three "make the agent fix it" levers (don't mix them up)
+
+These three fire near the end of a turn but have **very different power** — pick
+by *what you need to happen* when something's wrong:
+
+| Event | Power | Use when |
+|---|---|---|
+| `on_response_end` | **rewrite only** — edit the stored/forwarded reply (footer, redaction, mask). Cannot make the agent redo. Zero loop risk. | You only need to *change the text* (mask a leaked key, add a cost footer). |
+| `on_stop` | **block → redo, in normal chat** — steers your `reason` back as the next instruction and the agent keeps working. Kernel-capped (≤3 redos/turn) + `stop_hook_active` flag, so it can't trap a turn. | You need the agent to *actually fix/verify its own output* in ordinary conversation (quality gate, citation/publish check). Claude Code "Stop" hook parity. |
+| `on_completion_claim` | **block → redo, in `/goal` only** — refuses a fabricated "done" and keeps the goal loop running. | Same redo power, but it only fires inside a running `/goal` supervisor loop. |
+
+Rule of thumb: **mask → `on_response_end`; redo in chat → `on_stop`; redo in a
+goal → `on_completion_claim`.** Note `on_response_end` can only rewrite the
+*stored* copy — tokens already streamed to a live web client can't be unsent, so
+prefer `on_stop` when you need the user to actually see a corrected answer.
 
 ## Output protocol (what the script prints on stdout)
 
@@ -245,19 +265,43 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
    ```
 6. Confirm with `/hooks list` that it shows ✓ approved and live.
 
-## Ready-made example scripts
+## Ready-made scripts (each has ONE clear job)
 
-Shipped in-repo under `extensions/shell_hooks/examples/` (copy + adapt):
+Two **production-grade, multi-event guards** ship in this skill under
+`templates/` (copy + approve as-is). Four **single-purpose examples** ship with
+the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
+— pick by the job, not by trial.
 
-| Script | Event | Purpose |
+### Production templates (in this skill, `templates/`)
+
+| Template | Events | Its one job |
 |---|---|---|
-| `block_secrets.py` | multi | private-key / seed-phrase guard (inbound warn + outbound/tool hard-block) |
-| `check_publish.sh` | `on_completion_claim` | block "claimed published but no publish tool ran / cited a fake URL" |
-| `inject_website_reminder.sh` | `pre_llm_call` | inject a context note when a published site exists |
-| `templates/security_guard.py` | 5 events | all-in-one security guard — block pasted/exfiltrated secrets, block irreversible-data-loss bash, mask leaked keys outbound (see below) |
+| `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
+| `verify_publish_claims.py` | `on_response_end`, `on_completion_claim` (→ `on_stop` once available) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
 
-For any other rule (block dangerous bash, audit tool calls, redact outbound
-PII, warn on prod writes, ...), write a fresh script — the minimal block
+### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
+
+| Script | Event | Its one job |
+|---|---|---|
+| `pii_redactor.py` | `transform_tool_result`, `on_response_end` | Mask emails / phones (PII — distinct from secrets). |
+| `tool_audit_log.py` | `post_tool_call` | Observe-only: append every tool call to a JSONL audit trail. |
+| `budget_alert.py` | `on_response_end` | Append a soft warning when a turn's cost crosses a threshold. |
+| `inject_website_reminder.sh` | `pre_llm_call` | Preventive nudge: remind the model to actually publish before claiming done (pairs with `verify_publish_claims.py`). |
+
+### Deprecated / folded in (do NOT add these)
+
+These earlier examples are **superseded** — their coverage now lives in the two
+templates above. Use the template instead; a standalone copy only creates a
+second, conflicting guard.
+
+| Removed | Folded into | Why |
+|---|---|---|
+| `block_secrets.py` | `security_guard.py` | private-key/seed detection (incl. Solana byte-array, base58 WIF) now in the guard |
+| `secret_guard.py` | `security_guard.py` | vendor-key block/mask (incl. Bearer) now in the guard |
+| `check_publish.sh` | `verify_publish_claims.py` | publish-claim check is a strict subset of the anti-hallucination template |
+| `dangerous_bash_guard.py` | `security_guard.py` | destructive-bash block now in the guard. Want to *also* block installers / force-push? Tune the guard's `DESTRUCTIVE` table — don't run a second bash guard with a conflicting policy. |
+
+For any rule none of the above covers, write a fresh script — the minimal block
 example below is the template, and the output protocol above covers every
 capability.
 
@@ -294,7 +338,7 @@ every event that script is configured for in one shot.
 
 | Event | What it does |
 |---|---|
-| `on_user_message` | **block** a pasted API key / private key / seed phrase before the model sees it |
+| `on_user_message` | **block** a pasted API key (incl. Bearer token), private key (PEM / EVM hex), seed phrase, Solana byte-array secret, or base58 WIF before the model sees it |
 | `pre_tool_call` (bash) | **block** only irreversible data loss (`rm -rf /`, `dd` to a block device, `mkfs`, fork bomb, `chmod -R 777`, `git reset --hard origin/*``) and credential exfiltration (`cat .env | curl`, `scp id_rsa`, `printenv | curl`) |
 | `pre_tool_call` (message tools) | guard `send_to_telegram` / `send_to_wechat` args — **mask** a leaked key, **block** a seed phrase (these tools bypass the push pipeline, so this is the real outbound gate for them) |
 | `transform_tool_result` | **warn** when a tool's OUTPUT contains a secret (backend can only flag, not rewrite, result text) |
@@ -307,9 +351,35 @@ normal work. Common dev actions like `curl | bash` (installers) and
 **allowed** — over-blocking trains users to disable the guard.
 
 Tune the `SECRET_PATTERNS`, `DESTRUCTIVE`, and `MSG_TOOLS` tables at the top of
-the file for your own rules. `templates/security_guard_selftest.py` is a 30-case
+the file for your own rules. `templates/security_guard_selftest.py` is the
 self-test (run it after any edit; dangerous strings live there as data only, so
 the host bash guard can't trip on them).
+
+## Anti-hallucination guard (`templates/verify_publish_claims.py`)
+
+Catches a fabricated success: the agent writes "Published! community.iamstarchild.com/…",
+"Posted to AgentX /post/…", or "Reminder scheduled" when it never ran the tool.
+The script checks the reply against **ground truth** — the previews registry
+(`/data/previews.json`), the AgentX post ledger, and the scheduler registry —
+and either rewrites the reply or forces a redo. It is deliberately
+low-false-positive: a *real* published URL or an "offer to publish" (future
+tense) passes untouched; only a past-tense success claim with no backing trips it.
+
+```
+/hooks approve /data/workspace/skills/agent-hooks/templates/verify_publish_claims.py
+/hooks on
+```
+
+| Event | What it does |
+|---|---|
+| `on_response_end` | rewrite the stored reply with an honest "unverified" note (rewrite-only fallback) |
+| `on_completion_claim` | in a `/goal` loop, **block** a fabricated "done" and force a real publish (loop-capped) |
+
+> **Coming with `on_stop`:** once the host's `on_stop` event ships, wire this hook
+> there too so it can **force a redo in ordinary chat** (not just `/goal`) instead
+> of appending a note. That's the right home for the "make it actually publish"
+> behavior — `on_response_end` can only edit text, never make the agent redo.
+> `templates/verify_publish_claims_selftest.py` is the self-test.
 
 ## Claude Code compatibility
 
@@ -327,11 +397,14 @@ auto-translated into the fields above:
 | exit code 2 with stderr, no stdout | `decision: block`, stderr is the reason |
 
 Only the output **payload** is translated — event NAMES stay ours
-(`pre_tool_call`, not `PreToolUse`).
+(`pre_tool_call`, not `PreToolUse`). Claude Code's **`Stop`** hook maps to our
+`on_stop` (block → force a redo); its **`UserPromptSubmit`** maps to
+`on_user_message`. A Stop script that returns `{"decision":"block","reason":…}`
+or exits 2 works unchanged once wired to `on_stop`.
 
 ## Troubleshooting "my hook never fires"
 
-1. Is the event one of the 9 above? (a typo is a silent no-op)
+1. Is the event one of the 12 above? (a typo is a silent no-op)
 2. Is the **master switch** on? `/hooks list` shows it; `/hooks on` to enable.
 3. Is the hook **approved**? `✗ NOT approved` in `/hooks list` → `/hooks approve`.
 4. Does the `matcher` regex actually match? Too narrow = never spawns.

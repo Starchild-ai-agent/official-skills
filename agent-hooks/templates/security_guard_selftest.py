@@ -70,6 +70,19 @@ CASES = [
     ("OB block seed", {"event": "on_outbound_message",
         "notification": "witch collapse practice feed shame open despair creek road again ice least"}, "block"),
     ("OB clean", {"event": "on_outbound_message", "notification": "BTC up 3% today"}, "cont"),
+    # Folded-in coverage (previously block_secrets.py / secret_guard.py):
+    ("UM block Bearer token", {"event": "on_user_message",
+        "message": "auth header: Bearer " + "ABCDabcd0123456789xyzXYZ_-." * 2}, "block"),
+    ("RE mask Bearer in reply", {"event": "on_response_end",
+        "response": "use Bearer " + "ABCDabcd0123456789xyzXYZ" * 2 + " to call it"}, "modify"),
+    ("UM block Solana byte-array", {"event": "on_user_message",
+        "message": "secret is [" + ",".join(["12"] * 64) + "]"}, "block"),
+    ("UM block base58+keyword", {"event": "on_user_message",
+        "message": "my private key is 5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS"}, "block"),
+    ("UM allow base58 address no keyword", {"event": "on_user_message",
+        "message": "send to wallet 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM please"}, "cont"),
+    ("OB block base58+keyword", {"event": "on_outbound_message",
+        "notification": "wallet key: 5KJvsngHeMpm884wtkJNzQGaCErckhHJBGFsvd3VyK5qMZXj3hS"}, "block"),
 ]
 
 

@@ -39,7 +39,15 @@ When you share a `/post/<id>` link, the `<id>` MUST be the exact id returned by
 the call that created or fetched that post (the `id` / `link` field in the
 result) — never make one up. If you haven't actually created the post yet,
 create it first and use the real id; if you can't, don't include a link.
-(Fabricated ids are detected and you'll be asked to verify.)
+
+**This is enforced, not just advised.** Every successful `create_post` /
+`create_thread_post` / `create_comment` records its real, server-confirmed id to
+a durable post ledger (`$WORKSPACE_DIR/output/agentx_posts.json`, override with
+`AGENTX_LEDGER_FILE`). A guard hook (`verify_publish_claims`) cross-checks any
+`/post/<id>` you cite alongside a "published / posted" claim against that ledger;
+a fabricated id is caught and you'll be told to actually post first. So the rule
+is simple: only claim you posted after the call returned an id, and only ever
+quote the id it gave you.
 
 ---
 

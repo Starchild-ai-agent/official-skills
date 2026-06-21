@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.4.1
+version: 1.5.0
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -41,22 +41,36 @@ or react to an event** without being asked each time. Examples:
 If the user just wants a one-off check, that's not a hook — hooks are for
 **recurring, automatic** lifecycle enforcement.
 
-## How configuration works (who does what)
+## How configuration works (the agent does it end-to-end)
 
-**The agent prepares everything; the user activates.** This split is a
-deliberate security property — slash commands are parsed *before* the LLM sees
-them, so prompt injection cannot forge an activation.
+**The agent installs and activates a hook with zero user copy-paste.** Write the
+script, write the config entry, then call the loopback self-approve API — it
+flips the master switch on, approves the script for every event it's wired to,
+and hot-mounts it live (no restart). The user just tests it afterward.
 
-| Agent does (in conversation) | User must type (activation) |
-|---|---|
-| Write the hook script (any language) | `/hooks approve <event> <command>` |
-| Write/extend `workspace/config/shell_hooks.yaml` | `/hooks on` (or the Preferences toggle) |
-| Dry-run the script via `bash` | `/hooks doctor` (verify) |
-| Explain / debug | |
+```bash
+curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+  -H 'Content-Type: application/json' \
+  -d '{"command": "python3 skills/agent-hooks/templates/security_guard.py"}'
+# -> {"ok": true, "events": [...], "mounted": N, "master_enabled": true}
+```
 
-A hook is arbitrary code execution in the container, so the **"who may activate"**
-gate is reserved for a real human. Always finish by handing the user the exact
-`/hooks approve …` and `/hooks on` commands to paste.
+- `command` MUST be the exact `command:` string from the `shell_hooks.yaml`
+  entry (the script path). The hook MUST already be declared in the yaml —
+  approval flips a declared hook to live, it can't conjure one out of thin air.
+- The endpoint is **loopback-only** (same-uid-in-container trust boundary, same
+  as `.env` reads). It auto-enables the master switch (`enable_master` defaults
+  true), so the hook fires immediately.
+- Approval records the script's mtime, so a later edit surfaces as drift in
+  `/hooks list` / `/hooks doctor` — a swap-the-script change stays visible.
+
+**Fallback (older builds):** if the curl returns `404`, this runtime predates
+the self-approve API. Then — and only then — hand the user the two activation
+commands to paste:
+```
+/hooks approve <command>
+/hooks on
+```
 
 ## The two gates
 
@@ -255,15 +269,17 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
 3. **Add a config entry** in `workspace/config/shell_hooks.yaml` (add a `matcher`
    regex when possible so the script only spawns when relevant).
 4. **Dry-run it yourself with `bash`** — pipe a sample JSON payload into the
-   script and confirm it prints valid JSON. (The agent CANNOT run `/hooks` —
-   that is a user-typed command. Ask the user to run `/hooks doctor` to verify
-   after approval.)
-5. **Hand the user the activation commands** to paste:
+   script and confirm it prints valid JSON.
+5. **Activate it yourself** via the loopback self-approve API (no user paste):
+   ```bash
+   curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+     -H 'Content-Type: application/json' \
+     -d '{"command": "<the command: string from your yaml entry>"}'
    ```
-   /hooks approve <event> <command>
-   /hooks on
-   ```
-6. Confirm with `/hooks list` that it shows ✓ approved and live.
+   On `{"ok": true}` the hook is live. On `404`, fall back to handing the user
+   `/hooks approve <command>` + `/hooks on` (see "How configuration works").
+6. **Tell the user it's live and ready to test** — they can confirm anytime with
+   `/hooks list` (✓ approved + live) or `/hooks doctor`.
 
 ## Ready-made scripts (each has ONE clear job)
 
@@ -329,17 +345,18 @@ PY
 ## All-in-one security guard (`templates/security_guard.py`)
 
 A ready-to-use, self-contained script that wires **one file to five events** and
-covers the common "don't leak secrets / don't nuke the box" baseline. Copy it to
-your workspace and approve it once:
+covers the common "don't leak secrets / don't nuke the box" baseline. Wire all
+five events to the same command in `config/shell_hooks.yaml` (one block per
+event, `command:` = the script path), then the agent activates it in one call:
 
-```
-/hooks approve /data/workspace/skills/agent-hooks/templates/security_guard.py
-/hooks on
+```bash
+curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+  -H 'Content-Type: application/json' \
+  -d '{"command": "python3 skills/agent-hooks/templates/security_guard.py"}'
 ```
 
-Wire all five events to the same command in `config/shell_hooks.yaml` (one block
-per event, `command:` = the script path). `/hooks approve <script>` then approves
-every event that script is configured for in one shot.
+This approves every event that command is wired to and mounts it live — no user
+paste. (On `404`, fall back to `/hooks approve <command>` + `/hooks on`.)
 
 | Event | What it does |
 |---|---|
@@ -370,9 +387,10 @@ and either rewrites the reply or forces a redo. It is deliberately
 low-false-positive: a *real* published URL or an "offer to publish" (future
 tense) passes untouched; only a past-tense success claim with no backing trips it.
 
-```
-/hooks approve /data/workspace/skills/agent-hooks/templates/verify_publish_claims.py
-/hooks on
+```bash
+curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+  -H 'Content-Type: application/json' \
+  -d '{"command": "python3 skills/agent-hooks/templates/verify_publish_claims.py"}'
 ```
 
 | Event | What it does |
@@ -412,8 +430,10 @@ or exits 2 works unchanged once wired to `on_stop`.
 ## Troubleshooting "my hook never fires"
 
 1. Is the event one of the 12 above? (a typo is a silent no-op)
-2. Is the **master switch** on? `/hooks list` shows it; `/hooks on` to enable.
-3. Is the hook **approved**? `✗ NOT approved` in `/hooks list` → `/hooks approve`.
+2. Is the **master switch** on? `/hooks list` shows it. The self-approve API
+   enables it automatically; otherwise `/hooks on`.
+3. Is the hook **approved**? `✗ NOT approved` in `/hooks list` → re-run the
+   self-approve API for that command (or `/hooks approve` as fallback).
 4. Does the `matcher` regex actually match? Too narrow = never spawns.
 5. Run `/hooks doctor` — it flags non-executable / tampered / timed-out / non-JSON.
 

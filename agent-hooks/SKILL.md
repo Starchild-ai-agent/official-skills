@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.5.1
+version: 1.5.2
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -121,6 +121,16 @@ Plain text on web / Telegram / WeChat (no LLM, no cost):
 | `on_session_end` | session ends | observe / cleanup | `status` |
 
 Every payload also includes `event`, `session_id`, `agent_id`, `cwd`.
+
+**The `event` field is the dispatch key.** It names *which* lifecycle moment is
+firing (`pre_tool_call`, `on_user_message`, …). A multi-event script (like
+`security_guard.py`, one file wired to five events) reads `event` to decide which
+branch to run — no `event` in the payload means no branch matches, so the script
+falls through to "continue" (empty output = allow). The runtime always sets it;
+**you only have to remember it when hand-crafting a test payload** (see the
+dry-run step below). It is NOT something you put in `shell_hooks.yaml` — there the
+`event:` key tells the *bus* when to call you; the `event` field in the payload is
+the bus telling the *script* which moment it is.
 
 ### The three "make the agent fix it" levers (don't mix them up)
 
@@ -273,7 +283,18 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
 3. **Add a config entry** in `workspace/config/shell_hooks.yaml` (add a `matcher`
    regex when possible so the script only spawns when relevant).
 4. **Dry-run it yourself with `bash`** — pipe a sample JSON payload into the
-   script and confirm it prints valid JSON.
+   script and confirm it prints valid JSON. **The payload MUST include the
+   `event` field** — a multi-event script dispatches on it, so leaving it out
+   makes every case fall through to "continue" and you'll wrongly conclude the
+   guard doesn't fire. Test each event the script handles:
+   ```bash
+   # should BLOCK (note the "event" key):
+   echo '{"event":"pre_tool_call","tool_name":"bash","tool_input":{"command":"rm -rf /"}}' \
+     | python3 hooks/security_guard.py
+   # should ALLOW (empty output):
+   echo '{"event":"pre_tool_call","tool_name":"bash","tool_input":{"command":"ls -la"}}' \
+     | python3 hooks/security_guard.py
+   ```
 5. **Activate it yourself** via the loopback self-approve API (no user paste):
    ```bash
    curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
@@ -440,6 +461,10 @@ or exits 2 works unchanged once wired to `on_stop`.
    self-approve API for that command (or `/hooks approve` as fallback).
 4. Does the `matcher` regex actually match? Too narrow = never spawns.
 5. Run `/hooks doctor` — it flags non-executable / tampered / timed-out / non-JSON.
+6. **Manual test "allows everything"?** Your test payload is probably missing the
+   `event` field — a multi-event script dispatches on it and falls through to
+   "continue" without it. This is a test-harness mistake, not a hook bug; the
+   real runtime always sets `event`.
 
 ## Deep reference
 

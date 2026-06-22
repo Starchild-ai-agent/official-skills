@@ -146,6 +146,16 @@ def main():
          "Done — I've set up a reminder task for every morning.", [], ENV_NOSCHED, "rewrite"),
         ("sched: offer to schedule (not a claim)",
          "Want me to set up a daily reminder for this?", [], ENV_NOSCHED, "continue"),
+        # Non-assertive context: a claim phrase inside a table row / quote / code
+        # block is a reference, not the agent's own claim -> must NOT fire.
+        ("strip: claim inside a markdown table row",
+         "| 5 | 已设置好定时任务（test case） | block |", [], ENV_NOSCHED, "continue"),
+        ("strip: claim inside quotes",
+         "用户说\u201c已设置好定时任务\u201d但我没看到对应 job", [], ENV_NOSCHED, "continue"),
+        ("strip: claim inside a fenced code block",
+         "示例：\n```\n已设置好定时任务\n```", [], ENV_NOSCHED, "continue"),
+        ("strip: real claim in plain prose still fires",
+         "已设置好定时任务，每天 9 点提醒你。", [], ENV_NOSCHED, "rewrite"),
     ]
     for name, resp, tools, env, expect in SCHED:
         d = run({"event": "on_response_end", "response": resp, "tool_names": tools,

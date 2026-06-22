@@ -235,12 +235,42 @@ def _bump_block(ev: dict, sid: str) -> None:
         pass
 
 
+def _strip_non_assertive(text: str) -> str:
+    """Remove quoted / tabular / code content so claim regexes only fire on
+    the agent's OWN assertions, not on text it's quoting or tabulating.
+
+    Strips: markdown table rows (| ... |), inline code spans (`...`), fenced
+    code blocks (```...```), and content inside quotation marks ("...", '...',
+    '...'). This prevents false positives when the agent references a claim
+    phrase inside a test report, a quote, or a code example instead of making
+    the claim itself.
+    """
+    if not text:
+        return ""
+    # Drop fenced code blocks first (```...```)
+    text = re.sub(r"```[\s\S]*?```", " ", text)
+    # Drop markdown table rows (lines whose first non-space char is |)
+    text = re.sub(r"(?m)^\s*\|.*$", " ", text)
+    # Drop inline code spans
+    text = re.sub(r"`[^`]*`", " ", text)
+    # Drop content inside double/single/CJK quotes
+    text = re.sub(r'"[^"]*"', " ", text)
+    text = re.sub(r"'[^']*'", " ", text)
+    text = re.sub(r"\u201c[^\u201d]*\u201d", " ", text)
+    text = re.sub(r"\u2018[^\u2019]*\u2019", " ", text)
+    return text
+
+
 def _analyze(reply: str, tools: list, ev: dict) -> tuple | None:
     """Return (reason, detail) if the reply looks fabricated, else None."""
     if not reply:
         return None
-    has_publish_claim = bool(CLAIM_RX.search(reply))
-    has_sched_claim = bool(SCHED_CLAIM_RX.search(reply))
+    # Only scan the agent's own assertions — strip quoted/tabular/code content
+    # so referencing a claim phrase (in a test report, quote, or example) does
+    # not trip the guard.
+    assertive = _strip_non_assertive(reply)
+    has_publish_claim = bool(CLAIM_RX.search(assertive))
+    has_sched_claim = bool(SCHED_CLAIM_RX.search(assertive))
     if not has_publish_claim and not has_sched_claim:
         return None
     # An offer/plan frame with no hard success verb -> not a real claim.
@@ -260,9 +290,8 @@ def _analyze(reply: str, tools: list, ev: dict) -> tuple | None:
         ran_sched_tool = any("scheduled_task" in t or "schedule" in t
                              for t in tools_l)
         if not ran_sched_tool and not _has_recent_active_job():
-            return ("You said a task/reminder is scheduled, but no scheduling tool "
-                    "ran and there's no matching active job in the registry. Call "
-                    "scheduled_task to actually create it, then confirm", None)
+            return ("Claimed a task is scheduled, but no scheduling tool ran and no "
+                    "matching active job exists. Call scheduled_task, then confirm", None)
 
     if not has_publish_claim:
         return None
@@ -270,22 +299,19 @@ def _analyze(reply: str, tools: list, ev: dict) -> tuple | None:
     pub_ids, all_ids = _load_previews()
 
     # COMMUNITY publish claim: id must exist AND be marked published.
-    for url in COMMUNITY_RX.findall(reply):
+    for url in COMMUNITY_RX.findall(assertive):
         seg = re.sub(r"[?#].*$", "", url.rstrip("/").split("/")[-1])
         if seg and seg not in all_ids and seg not in pub_ids:
-            return ("You said this was published to the community, but it isn't in "
-                    "the published-preview registry. Run publish_preview (community-"
-                    "publish skill) and use the URL it returns", url)
+            return ("Claimed published but not in the registry. Run publish_preview, "
+                    "use the URL it returns", url)
         if seg in all_ids and seg not in pub_ids:
-            return ("You cited a community URL for a preview that exists but is NOT "
-                    "published yet. Publish it first, then share the real URL", url)
+            return ("This preview exists but isn't published yet. Publish it first", url)
 
     # /preview/{id}/ share link: id just has to exist (local serve, not publish).
-    for pid in PREVIEW_RX.findall(reply):
+    for pid in PREVIEW_RX.findall(assertive):
         if pid and pid not in all_ids:
-            return ("You shared a preview link whose id isn't in the registry — it "
-                    "looks made up. Serve the preview first and use its real id",
-                    "/preview/%s/" % pid)
+            return ("Preview id not in the registry — looks made up. Serve it first, "
+                    "use the real id", "/preview/%s/" % pid)
 
     # AGENTX /post/{id}: verify against the agentx skill's durable post ledger
     # (exact id match — cross-round safe, like the preview registry above). Only
@@ -293,17 +319,16 @@ def _analyze(reply: str, tools: list, ev: dict) -> tuple | None:
     # cited ids are in the ledger, it's fabricated. If even one IS in the ledger
     # the agent really posted, and any extra /post/ links are just references to
     # other agents' posts — don't flag those (avoids false positives on sharing).
-    agentx_ids = AGENTX_RX.findall(reply)
-    mentions_agentx = bool(re.search(r"agentx|/post/|论坛|发帖", reply, re.I))
+    agentx_ids = AGENTX_RX.findall(assertive)
+    mentions_agentx = bool(re.search(r"agentx|/post/|论坛|发帖", assertive, re.I))
     if agentx_ids and mentions_agentx:
         known = _load_agentx_ids(ev)
         if not any(pid in known for pid in agentx_ids):
             # None verified. Give the benefit of the doubt only if a tool ran
             # THIS round (the ledger write may lag) — otherwise it's invented.
             if not ran_bash and not ran_publish_tool:
-                return ("You claimed an AgentX post but its /post/ id isn't in the "
-                        "post ledger and no tool ran to create it — the id looks "
-                        "invented. Call agentx.create_post and use the id it returns",
+                return ("AgentX post id not in the ledger and no tool created it — "
+                        "looks invented. Call agentx.create_post, use the id it returns",
                         "/post/%s" % agentx_ids[0])
 
     return None

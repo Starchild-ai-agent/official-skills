@@ -79,7 +79,12 @@ FUTURE_RX = re.compile(
 # Hard ZH success verbs that override an offer frame appearing in the same reply.
 HARD_ZH_RX = re.compile(r"已发布|已上线|发布成功|已更新|更新成功|已部署|已经发布")
 
-COMMUNITY_RX = re.compile(r"https?://community\.iamstarchild\.com/[^\s)\]\"'>]+", re.I)
+# Exclusion set also covers CJK curly quotes (“ ” ‘ ’) + comma/、 so a URL wrapped
+# in quotes (`已发布“…/x”`) doesn't glue the closing quote onto the captured id.
+COMMUNITY_RX = re.compile(
+    "https?://community\\.iamstarchild\\.com/[^\\s)\\]\"'>\u201c\u201d\u2018\u2019,\uff0c\u3001]+",
+    re.I,
+)
 PREVIEW_RX = re.compile(r"/preview/([\w.\-]+)", re.I)
 AGENTX_RX = re.compile(r"/post/([\w\-]+)")
 
@@ -235,7 +240,7 @@ def _bump_block(ev: dict, sid: str) -> None:
         pass
 
 
-def _strip_non_assertive(text: str) -> str:
+def _strip_non_assertive(text: str, keep_quotes: bool = False) -> str:
     """Remove quoted / tabular / code content so claim regexes only fire on
     the agent's OWN assertions, not on text it's quoting or tabulating.
 
@@ -244,6 +249,13 @@ def _strip_non_assertive(text: str) -> str:
     '...'). This prevents false positives when the agent references a claim
     phrase inside a test report, a quote, or a code example instead of making
     the claim itself.
+
+    keep_quotes=True KEEPS quoted content (only code blocks / tables / inline
+    code are dropped). Used for URL/id verification: a real claim commonly puts
+    the link in quotes — `Published: "https://…/x"` / `已发布 "/preview/x/"` —
+    and stripping the quote would erase the very URL we must verify, letting a
+    fabricated link slip through. Code blocks / tables stay stripped because
+    those are genuinely test data / examples, not the agent asserting a link.
     """
     if not text:
         return ""
@@ -253,6 +265,8 @@ def _strip_non_assertive(text: str) -> str:
     text = re.sub(r"(?m)^\s*\|.*$", " ", text)
     # Drop inline code spans
     text = re.sub(r"`[^`]*`", " ", text)
+    if keep_quotes:
+        return text
     # Drop content inside double/single/CJK quotes
     text = re.sub(r'"[^"]*"', " ", text)
     text = re.sub(r"'[^']*'", " ", text)
@@ -265,10 +279,12 @@ def _analyze(reply: str, tools: list, ev: dict) -> tuple | None:
     """Return (reason, detail) if the reply looks fabricated, else None."""
     if not reply:
         return None
-    # Only scan the agent's own assertions — strip quoted/tabular/code content
-    # so referencing a claim phrase (in a test report, quote, or example) does
-    # not trip the guard.
+    # Claim DETECTION uses fully-stripped text (quotes too) so referencing a
+    # claim phrase (in a test report, quote, or example) doesn't trip the guard.
     assertive = _strip_non_assertive(reply)
+    # URL/id VERIFICATION uses quote-preserving text so a real claim that puts
+    # the link in quotes (`Published: "…/x"`) still gets its URL checked.
+    url_scan = _strip_non_assertive(reply, keep_quotes=True)
     has_publish_claim = bool(CLAIM_RX.search(assertive))
     has_sched_claim = bool(SCHED_CLAIM_RX.search(assertive))
     if not has_publish_claim and not has_sched_claim:
@@ -299,8 +315,9 @@ def _analyze(reply: str, tools: list, ev: dict) -> tuple | None:
     pub_ids, all_ids = _load_previews()
 
     # COMMUNITY publish claim: id must exist AND be marked published.
-    for url in COMMUNITY_RX.findall(assertive):
+    for url in COMMUNITY_RX.findall(url_scan):
         seg = re.sub(r"[?#].*$", "", url.rstrip("/").split("/")[-1])
+        seg = seg.strip("\"'\u201c\u201d\u2018\u2019.,\uff0c\u3002\u3001 ")
         if seg and seg not in all_ids and seg not in pub_ids:
             return ("Claimed published but not in the registry. Run publish_preview, "
                     "use the URL it returns", url)
@@ -308,7 +325,7 @@ def _analyze(reply: str, tools: list, ev: dict) -> tuple | None:
             return ("This preview exists but isn't published yet. Publish it first", url)
 
     # /preview/{id}/ share link: id just has to exist (local serve, not publish).
-    for pid in PREVIEW_RX.findall(assertive):
+    for pid in PREVIEW_RX.findall(url_scan):
         if pid and pid not in all_ids:
             return ("Preview id not in the registry — looks made up. Serve it first, "
                     "use the real id", "/preview/%s/" % pid)
@@ -319,8 +336,8 @@ def _analyze(reply: str, tools: list, ev: dict) -> tuple | None:
     # cited ids are in the ledger, it's fabricated. If even one IS in the ledger
     # the agent really posted, and any extra /post/ links are just references to
     # other agents' posts — don't flag those (avoids false positives on sharing).
-    agentx_ids = AGENTX_RX.findall(assertive)
-    mentions_agentx = bool(re.search(r"agentx|/post/|论坛|发帖", assertive, re.I))
+    agentx_ids = AGENTX_RX.findall(url_scan)
+    mentions_agentx = bool(re.search(r"agentx|/post/|论坛|发帖", url_scan, re.I))
     if agentx_ids and mentions_agentx:
         known = _load_agentx_ids(ev)
         if not any(pid in known for pid in agentx_ids):

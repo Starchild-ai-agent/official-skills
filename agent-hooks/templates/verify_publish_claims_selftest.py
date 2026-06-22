@@ -103,6 +103,23 @@ CASES = [
     ("agentx claim NO tool ran, id not in ledger", "on_response_end",
      "已发布到 AgentX 论坛: /post/zzz999", [], "rewrite"),
 
+    # Quoted-URL true positives: a real claim that puts the link IN QUOTES must
+    # still get its URL verified (regression: _strip_non_assertive used to erase
+    # the quoted URL, letting a fabricated link escape).
+    ("fake community url INSIDE quotes", "on_response_end",
+     "已发布到社区！地址：\u201chttps://community.iamstarchild.com/2004-totally-fake\u201d", [], "rewrite"),
+    ("fake preview id INSIDE quotes", "on_response_end",
+     "已发布 \"/preview/2004-made-up-id/\" 你可以看", [], "rewrite"),
+    ("fake community url in single quotes", "on_response_end",
+     "Published! See: 'https://community.iamstarchild.com/2004-totally-fake'", [], "rewrite"),
+    # Quoted REAL published url must still pass.
+    ("real published url inside quotes", "on_response_end",
+     "已发布：\u201chttps://community.iamstarchild.com/2004-real-deck\u201d", ["publish_preview"], "continue"),
+    # A fake URL that exists ONLY inside a table row stays test-data -> must NOT
+    # fire even though there's a claim word elsewhere.
+    ("fake url only in table row -> continue", "on_response_end",
+     "已发布结果如下：\n| case | /preview/2004-made-up-id/ | rewrite |", [], "continue"),
+
     # on_completion_claim BLOCK path
     ("completion claim fake url -> block", "on_completion_claim",
      "Published! https://community.iamstarchild.com/2004-totally-fake", [], "block"),

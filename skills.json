@@ -506,6 +506,12 @@
       "description": "Human-designed UI template library with 380 templates from 9 professional sources.\nUse for any web page creation: landing pages, portfolios, business sites, dashboards, crypto/web3, etc.\nAll templates are real human-designed HTML/CSS/JS — no AI-generated slop."
     },
     {
+      "name": "upbit",
+      "path": "upbit/SKILL.md",
+      "version": "0.9.1",
+      "description": "Use upbit CLI for Upbit REST API — spot orders, market data, withdrawals, deposits, travel rule, account management.\n업비트 CLI로 시세 조회, 주문, 잔고 확인, 입출금을 처리합니다.\n\nTrigger this skill whenever the user wants to query prices, place/cancel orders, check balances, withdraw or deposit assets, or interact with the Upbit exchange API — in any language.\n사용자가 업비트 시세·주문·잔고·입출금을 언급하면 반드시 이 스킬을 사용하세요."
+    },
+    {
       "name": "us-stock",
       "path": "us-stock/SKILL.md",
       "version": "1.0.2",

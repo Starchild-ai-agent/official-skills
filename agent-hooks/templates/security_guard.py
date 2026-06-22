@@ -146,14 +146,21 @@ def _strip_data_regions(cmd):
 
 
 def _mask(text):
+    """Mask every secret in `text`. Returns (masked_text, count). Each secret is
+    replaced in place with `head***tail [redacted]`, so the edit is visible
+    inline; the count lets a caller add a self-documenting footer (the edit card
+    itself can't show a diff, so the rewrite must explain itself in the text)."""
+    n = [0]
+
     def repl(m):
+        n[0] += 1
         s = m.group(0)
         head, tail = (s[:6], s[-4:]) if len(s) > 14 else (s[:2], "")
         return f"{head}***{tail} [redacted]"
     out = text
     for p in SECRET_PATTERNS:
         out = p.sub(repl, out)
-    return out
+    return out, n[0]
 
 
 def _has_secret(text):
@@ -196,7 +203,7 @@ def handle_pre_tool_call(ev):
                 return {"decision": "block",
                         "reason": "[security] Blocked send: message contains a seed phrase / "
                                   "secret key. Treat that wallet as compromised."}
-            masked = _mask(val)
+            masked, _ = _mask(val)
             if masked != val:
                 new_ti[f] = masked
                 changed = True
@@ -232,8 +239,15 @@ def handle_transform_tool_result(ev):
 
 def handle_on_response_end(ev):
     resp = ev.get("response", "") or ""
-    masked = _mask(resp)
-    return {"response": masked} if masked != resp else {}
+    masked, n = _mask(resp)
+    if masked == resp:
+        return {}
+    # The edit card can't show a diff, so make the rewrite self-documenting:
+    # the inline `[redacted]` markers show WHERE, this footer says WHO + HOW MANY.
+    plural = "s" if n != 1 else ""
+    footer = ("\n\n---\n> 🔒 Security guard masked %d credential%s in this reply "
+              "(see the `[redacted]` marker%s above)." % (n, plural, plural))
+    return {"response": masked + footer}
 
 
 def handle_on_outbound_message(ev):
@@ -241,8 +255,12 @@ def handle_on_outbound_message(ev):
     if _block_only_secret(note):
         return {"decision": "block",
                 "reason": "[security] Blocked outbound: contains a seed phrase / secret key."}
-    masked = _mask(note)
-    return {"notification": masked} if masked != note else {}
+    masked, n = _mask(note)
+    if masked == note:
+        return {}
+    plural = "s" if n != 1 else ""
+    footer = ("\n\n[security guard masked %d credential%s before sending]" % (n, plural))
+    return {"notification": masked + footer}
 
 
 HANDLERS = {

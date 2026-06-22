@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.5.6
+version: 1.5.7
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -225,6 +225,36 @@ parts for you, so you don't parse anything client-side:
 
 A hook that doesn't follow this still works — a plain string just renders as one
 sentence. The convention only unlocks the nicer "explanation + command" layout.
+
+### Make rewrites self-documenting
+
+A **block** gets a `reason` the card can show. A **rewrite** does not: the
+`{response}` / `{notification}` / `{tool_input}` path carries only the new value,
+so the UI can only say *"Response edited by <hook>"* — it has **no slot for a
+diff or a why**. If your hook silently swaps text, the user sees that *something*
+changed but not *what* or *by whom* (they may even think the agent typed it).
+
+So a rewrite must **explain itself inside the value it returns**:
+
+- **Mark the spot.** Replace the offending span with a visible token, not a
+  silent edit — e.g. mask a secret to `sk-or-***cdef [redacted]` rather than
+  deleting it. Now the *where* is on screen.
+- **Add a one-line footer** saying *who* changed it and *how much*, so the edit
+  is legible at a glance:
+
+  ```python
+  masked, n = _mask(resp)
+  if masked != resp:
+      footer = "\n\n---\n> 🔒 Security guard masked %d credential(s) (see [redacted] above)." % n
+      return {"response": masked + footer}
+  ```
+
+  `verify_publish_claims.py` does the same on `on_response_end` — it appends a
+  `> Unverified: …` note instead of quietly editing the link.
+
+Rule of thumb: **if a human reading only the final text couldn't tell a hook
+touched it, your rewrite is too quiet.** Block reasons go in `reason`; rewrite
+reasons go in the returned text itself.
 
 ## Config file format
 

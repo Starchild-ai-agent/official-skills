@@ -193,9 +193,72 @@ def linkedin_profile(url, caller_id=None):
     return sc_get("/v1/linkedin/profile", url=url, caller_id=caller_id)
 
 
+# ---------------------------------------------------------------------------#
+# Apify — China apps & structured e-commerce data
+# ---------------------------------------------------------------------------#
+APIFY_BASE = "https://api.apify.com"
+
+
+def apify_run(actor_id, run_input, caller_id=None, timeout=180):
+    """Run an Apify actor synchronously and return the result list.
+
+    Use this for China apps (抖音/小红书/微博/B站/京东/淘宝/1688/闲鱼/得物 etc.)
+    and Southeast Asia e-commerce (Shopee/Lazada/Temu) that Firecrawl and
+    ScrapeCreators don't cover.
+
+    No API key needed — sc-proxy injects the platform Apify token automatically.
+    The `Authorization` header sent here is a fake placeholder; the proxy
+    replaces it with the real token.
+
+    Args:
+        actor_id: "username~actor-name", e.g. "zen-studio~douyin-search-scraper".
+                  Find reliable actors in output/apify_china_reliable.json.
+        run_input: dict, the actor's input JSON (varies per actor — fetch the
+                   actor's input-schema page via scrape_markdown to discover
+                   required fields).
+        caller_id: optional SC-CALLER-ID for billing traceability.
+        timeout: seconds to wait for the run to finish (default 180).
+
+    Returns:
+        list of result dicts. Empty list if the actor ran but found nothing.
+
+    Raises:
+        HTTPError on non-2xx (400 = bad input, 401 = proxy misconfigured,
+        504 = timeout).
+
+    Example:
+        results = apify_run("zen-studio~douyin-search-scraper",
+                            {"keywords": ["MacBook"], "maxResultsPerQuery": 5})
+    """
+    url = f"{APIFY_BASE}/v2/acts/{actor_id}/run-sync-get-dataset-items"
+    resp = proxied_post(
+        url,
+        params={"timeout": timeout},
+        headers={
+            "SC-CALLER-ID": caller_id or _DEFAULT_CALLER,
+            "Authorization": "Bearer fake-apify-token-12345",  # proxy injects real
+            "Content-Type": "application/json",
+        },
+        json=run_input,
+        timeout=timeout + 30,  # buffer beyond the Apify-side timeout
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    if isinstance(data, list):
+        return data
+    # Some actors return {"items": [...]} or {"data": [...]}
+    if isinstance(data, dict):
+        for key in ("items", "results", "data"):
+            v = data.get(key)
+            if isinstance(v, list):
+                return v
+    return []
+
+
 __all__ = [
     "sc_get", "scrape_page", "scrape_markdown",
     "archive_fallback", "wayback_snapshot_url",
+    "apify_run",
     "youtube_transcript", "youtube_video",
     "tiktok_video", "tiktok_transcript", "tiktok_profile",
     "instagram_post", "instagram_profile",

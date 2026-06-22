@@ -6,7 +6,9 @@ description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedI
 
 
   Use when extracting public posts, transcripts, or pages JS-heavy enough to block
-  plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403, anti-bot, cloudflare, JS-heavy page.
+  plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages
+  behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403,
+  anti-bot, cloudflare, JS-heavy page.
 
   '
 metadata:
@@ -45,9 +47,9 @@ metadata:
     - js-heavy
     - listing-page
     - fallback
-    - 反爬
-    - 抓取失败
-    - 自动回退
+    - "\u53CD\u722C"
+    - "\u6293\u53D6\u5931\u8D25"
+    - "\u81EA\u52A8\u56DE\u9000"
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -95,6 +97,7 @@ Fallback rule:
 | Cloudflare/challenge page text in body | Same Firecrawl call as above |
 | Markdown still misses key fields | Retry once with `formats:["rawHtml"]` |
 | **Firecrawl itself returns 403 / empty** (hard paywall: NYT, WSJ, Economist, FT, Bloomberg) | Call `archive_fallback(url)` — recovers full text from a web archive snapshot |
+| **Need structured data from a China app** (抖音/小红书/微博/B站/京东/淘宝/1688/闲鱼/得物 etc.) | Call `apify_run()` — Apify Store has purpose-built actors for these platforms that Firecrawl/ScrapeCreators don't cover |
 
 ### Paywall / Firecrawl-blocked fallback chain (use `archive_fallback`)
 When Firecrawl can't get the page either (it returns 403, or markdown comes back
@@ -122,6 +125,78 @@ How it works (and why this order):
 Limitation: archives only return text **someone already saved**. If
 `res["markdown"] == ""`, no snapshot exists — stop, tell the user, and try the
 outlet's official API/RSS or a different source. Do not fabricate the article.
+
+### China-app structured data (use `apify_run`)
+
+When you need **structured data from a China app** — Douyin video search,
+Xiaohongshu notes, Weibo posts, Bilibili videos, JD/Taobao product prices,
+1688 wholesale listings, Xianyu second-hand, Dewu sneakers, etc. — Firecrawl
+and ScrapeCreators don't cover these platforms. Use the **Apify Store** fallback
+instead. Apify is a serverless scraper marketplace with hundreds of
+community-maintained actors that run real browsers + proxy pools against
+Chinese platforms.
+
+**Auth:** No user-supplied key needed. sc-proxy injects the platform Apify
+token automatically. The `Authorization: Bearer` header can be any fake value
+— the proxy replaces it with the real token. Do NOT read `$APIFY_TOKEN` from
+env, do NOT check `.env`, do NOT ask the user for an Apify key.
+
+**When to use Apify (vs Firecrawl/ScrapeCreators):**
+- ✅ China apps: 抖音, 小红书, 微博, B站, 京东, 淘宝, 1688, 闲鱼, 得物, 携程, 知乎, 豆瓣, 雪球, 快手, 爱奇艺, 优酷
+- ✅ Southeast Asia e-commerce: Shopee, Lazada, Temu
+- ❌ Western social media (TikTok/Instagram/YouTube/X/Reddit) → use ScrapeCreators first (cheaper)
+- ❌ Generic web page scraping → use Firecrawl first (cheaper)
+- ❌ Hard paywall articles → use `archive_fallback` (Apify doesn't help here)
+
+**How to pick an actor:** The reliable-actors catalog is at
+`output/apify_china_reliable.json` (sorted by 30-day success count). Pick the
+top actor for the target platform. A few common ones:
+
+| Platform | Actor ID | Input key |
+|---|---|---|
+| 抖音 search | `zen-studio~douyin-search-scraper` | `{"keywords": [...], "maxResultsPerQuery": N}` |
+| 小红书 search | `zen-studio~rednote-search-scraper` | `{"keywords": [...], "maxResultsPerQuery": N}` |
+| 微博 posts | `zhorex~weibo-scraper` | (see actor input schema) |
+| B站 videos | `zhorex~bilibili-scraper` | (see actor input schema) |
+| 京东 products | `sian.agency~jd-com-product-scraper` | (see actor input schema) |
+| 淘宝 products | `sian.agency~taobao-tmall-product-scraper` | (see actor input schema) |
+| 1688 wholesale | `zen-studio~1688-wholesale-scraper` | (see actor input schema) |
+| 闲鱼 search | `zen-studio~goofish-xianyu-search-scraper` | (see actor input schema) |
+| TikTok | `clockworks~tiktok-scraper` | `{"hashtags": [...]}` or `{"profiles": [...]}` |
+
+**Usage:**
+
+```python
+import sys
+sys.path.insert(0, "/data/workspace/skills/web-crawler")
+from exports import apify_run
+
+# Sync run (small batches, ≤100 results): blocks until done, returns result list
+results = apify_run("zen-studio~douyin-search-scraper",
+                     {"keywords": ["MacBook"], "maxResultsPerQuery": 5})
+for r in results:
+    print(r.get("text", "")[:80])
+
+# To discover the right input fields for an unfamiliar actor, fetch its
+# input-schema page via Firecrawl first:
+from exports import scrape_markdown
+schema_md = scrape_markdown("https://apify.com/<user>/<actor>/input-schema")
+```
+
+**Billing:** Apify uses pay-per-event billing (actor-start + per-result +
+add-ons), billed at **2× the real Apify cost** in credits. A typical small
+search (5–10 results) costs $0.02–0.05. The proxy auto-calculates the charge
+from the response — you don't need to estimate it yourself.
+
+**Error handling:**
+- `400 run-failed` → bad input (wrong field name). Fetch the actor's input-schema page and fix.
+- `401` → proxy misconfigured (should not happen). Report to user.
+- Empty result `[]` → actor ran but found nothing. Try different keywords or another actor.
+- Timeout → increase `timeout` param (default 180s). Some actors are slow.
+
+**Cost discipline:** Apify actors are more expensive than Firecrawl/ScrapeCreators.
+Only use Apify when the cheaper options can't get the data (China apps,
+structured e-commerce fields). For a single web page, always try Firecrawl first.
 
 ## What each service is for
 ### ScrapeCreators — Social media data extraction (27+ platforms)

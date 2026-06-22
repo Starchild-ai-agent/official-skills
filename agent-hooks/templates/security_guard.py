@@ -165,9 +165,8 @@ def handle_on_user_message(ev):
     if _has_secret(msg) or _block_only_secret(msg):
         return {
             "decision": "block",
-            "reason": "[security] That message contains what looks like an API key, "
-                      "private key, or seed phrase. I won't process it — treat that "
-                      "credential as exposed and rotate it.",
+            "reason": "[security] Blocked: message contains a credential "
+                      "(API key / private key / seed phrase). Treat it as exposed — rotate it.",
         }
     return {}
 
@@ -195,8 +194,8 @@ def handle_pre_tool_call(ev):
                 continue
             if _block_only_secret(val):
                 return {"decision": "block",
-                        "reason": "[security] I won't send this message — it contains what "
-                                  "looks like a wallet seed phrase or secret key. Treat that wallet as compromised."}
+                        "reason": "[security] Blocked send: message contains a seed phrase / "
+                                  "secret key. Treat that wallet as compromised."}
             masked = _mask(val)
             if masked != val:
                 new_ti[f] = masked
@@ -214,23 +213,20 @@ def handle_pre_tool_call(ev):
     for rx, why in DESTRUCTIVE:
         if rx.search(cmd):
             return {"decision": "block",
-                    "reason": f"[security] This command is irreversible ({why}) and would cause "
-                              f"permanent data loss, so I've blocked it: {cmd[:160]}"}
+                    "reason": f"[security] Blocked ({why}): {cmd[:120]}"}
     # Match against the command with quoted literals / heredoc bodies removed,
     # so text that merely MENTIONS .env + curl (PR bodies, grep patterns, docs)
     # is not mistaken for an actual exfiltration command.
     scan = _strip_data_regions(cmd)
     if (CRED_FILE_RX.search(scan) and NET_EXFIL_RX.search(scan)) or ENV_DUMP_RX.search(scan):
         return {"decision": "block",
-                "reason": "[security] This command looks like it reads credentials and sends "
-                          f"them off the box, so I've blocked it: {cmd[:160]}"}
+                "reason": f"[security] Blocked (credential exfiltration): {cmd[:120]}"}
     return {}
 
 
 def handle_transform_tool_result(ev):
     if _has_secret(ev.get("tool_result", "") or ""):
-        return {"add_warning": "This tool output contains what looks like a credential. "
-                               "Do not echo it back to the user; treat it as exposed."}
+        return {"add_warning": "Output contains a credential — don't echo it; treat as exposed."}
     return {}
 
 
@@ -244,8 +240,7 @@ def handle_on_outbound_message(ev):
     note = ev.get("notification", "") or ""
     if _block_only_secret(note):
         return {"decision": "block",
-                "reason": "[security] I've blocked this outbound message — it contains what "
-                          "looks like a wallet seed phrase or secret key."}
+                "reason": "[security] Blocked outbound: contains a seed phrase / secret key."}
     masked = _mask(note)
     return {"notification": masked} if masked != note else {}
 
@@ -259,6 +254,19 @@ HANDLERS = {
 }
 
 
+def _log(ev, decision):
+    """Append a one-line trigger log to output/hook.log (visible audit trail)."""
+    try:
+        import os, time
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "output", "hook.log")
+        d = decision or {}
+        kind = d.get("decision") or ("modify" if any(k in d for k in ("response","notification","tool_input","add_warning","context")) else "continue")
+        tool = ev.get("tool_name", "")
+        with open(p, "a") as f:
+            f.write(f"{time.strftime('%H:%M:%S')} | {ev.get('event','?'):22s} | {kind:8s} | {tool}\n")
+    except Exception:
+        pass
+
 def main():
     try:
         ev = json.loads(sys.stdin.read() or "{}")
@@ -270,9 +278,11 @@ def main():
         print("{}")
         return
     try:
-        print(json.dumps(handler(ev) or {}))
+        out = handler(ev) or {}
     except Exception:
-        print("{}")
+        out = {}
+    _log(ev, out)
+    print(json.dumps(out))
 
 
 if __name__ == "__main__":

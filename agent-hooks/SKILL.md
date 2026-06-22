@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.5.3
+version: 1.5.6
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -184,9 +184,21 @@ through to **continue** — a broken hook can never break the agent.
 ### Writing a readable `reason`
 
 The `reason` is shown to the **user** (on the blocked-action card) and to the
-**model**. Write a plain sentence a person can read — say *what* you blocked and
-*why*, not just a raw command. The UI splits one reason string into two parts
-for you, so you don't parse anything client-side:
+**model**. Keep it **short and scannable** — one clause for *why*, then the
+evidence. Don't write paragraphs: a reason fires on a card the user is already
+annoyed to see, and a wall of text buries the actual cause. Aim for the shape
+`[tag] Blocked (<why>): <evidence>` — ~8–12 words before the colon, never two
+sentences of hand-wringing.
+
+| Avoid (verbose) | Prefer (concise) |
+|---|---|
+| `This command is irreversible and would cause permanent data loss, so I've blocked it: rm -rf /` | `Blocked (recursive force-delete): rm -rf /` |
+| `That message contains what looks like an API key, private key, or seed phrase. I won't process it — treat it as exposed and rotate it.` | `Blocked: message contains a credential. Rotate it.` |
+| `You shared a preview link whose id isn't in the registry — it looks made up. Serve the preview first and use its real id` | `Preview id not in the registry. Serve it first: /preview/x/` |
+
+The model still gets enough to act (the *why* + the offending payload); the user
+gets a card they can read at a glance. The UI splits one reason string into two
+parts for you, so you don't parse anything client-side:
 
 - **Explanation + command box** — put the human sentence first, then `: `, then
   the offending command/payload. Everything after the first `": "` is rendered
@@ -201,13 +213,14 @@ for you, so you don't parse anything client-side:
   own `grep` without it leaking into the UI.
 
 ```jsonc
-// Good — readable sentence + a clean command box:
+// Good — short why + a clean command box:
 {"decision": "block",
- "reason": "[security] This command is irreversible and would erase the disk: mkfs.ext4 /dev/sda1"}
-//  ->  "This command is irreversible and would erase the disk"   +   [ mkfs.ext4 /dev/sda1 ]
+ "reason": "[security] Blocked (formats the disk): mkfs.ext4 /dev/sda1"}
+//  ->  "Blocked (formats the disk)"   +   [ mkfs.ext4 /dev/sda1 ]
 
-// Avoid — a bare command or lone tag as the whole reason:
-{"decision": "block", "reason": "mkfs /dev/sda1"}   // user sees no WHY
+// Avoid — a bare command (no WHY) or a verbose two-sentence lecture:
+{"decision": "block", "reason": "mkfs /dev/sda1"}
+{"decision": "block", "reason": "This command is irreversible and would cause permanent data loss across the entire filesystem, so I have decided to block it for your safety: mkfs /dev/sda1"}
 ```
 
 A hook that doesn't follow this still works — a plain string just renders as one

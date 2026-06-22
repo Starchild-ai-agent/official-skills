@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.1.0
+version: 1.5.3
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -35,41 +35,71 @@ or react to an event** without being asked each time. Examples:
 - "Never let a private key get pushed to Telegram" → `on_outbound_message` block
 - "Log every tool call for audit" → `post_tool_call` observe
 - "Remind the agent of X at the start of every model call" → `pre_llm_call` context
-- "Don't let the agent claim it published when it didn't" → `on_completion_claim`
+- "Don't let the agent claim it published when it didn't" → `on_completion_claim` (in `/goal`) or `on_stop` (in normal chat)
+- "If the answer fails my quality check, make the agent redo it" → `on_stop` block
 
 If the user just wants a one-off check, that's not a hook — hooks are for
 **recurring, automatic** lifecycle enforcement.
 
-## How configuration works (who does what)
+## How configuration works (the agent does it end-to-end)
 
-**The agent prepares everything; the user activates.** This split is a
-deliberate security property — slash commands are parsed *before* the LLM sees
-them, so prompt injection cannot forge an activation.
+**The agent installs and activates a hook with zero user copy-paste.** Write the
+script, write the config entry, then call the loopback self-approve API — it
+flips the master switch on, approves the script for every event it's wired to,
+and hot-mounts it live (no restart). The user just tests it afterward.
 
-| Agent does (in conversation) | User must type (activation) |
-|---|---|
-| Write the hook script (any language) | `/hooks approve <event> <command>` |
-| Write/extend `workspace/config/shell_hooks.yaml` | `/hooks on` (or the Preferences toggle) |
-| Dry-run the script via `bash` | `/hooks doctor` (verify) |
-| Explain / debug | |
+```bash
+curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+  -H 'Content-Type: application/json' \
+  -d '{"command": "/data/workspace/hooks/security_guard.py"}'
+# -> {"ok": true, "events": [...], "mounted": N, "master_enabled": true}
+```
 
-A hook is arbitrary code execution in the container, so the **"who may activate"**
-gate is reserved for a real human. Always finish by handing the user the exact
-`/hooks approve …` and `/hooks on` commands to paste.
+> ⚠️ **ALWAYS use an absolute path under `/data/workspace`** in both the yaml
+> `command:` and this call. **Never a relative path** like
+> `skills/agent-hooks/templates/security_guard.py`: the bridge spawns the script
+> with the *server* cwd (`/app`), so a relative path resolves to `/app/skills/…`
+> — an empty dir — and every spawn fails. Because the bridge fails OPEN (a script
+> it can't run = "continue"), the guard then silently protects nothing while
+> `/hooks list` still shows it "mounted". To avoid this, the standard install
+> **copies the template into `/data/workspace/hooks/` and points the yaml there**
+> (see the workflow below). `/app/skills` is NOT the skills dir — the real one is
+> `/data/workspace/skills/` (a.k.a. `/app/workspace/skills/` via symlink).
 
-## The two gates
+- `command` MUST be the exact `command:` string from the `shell_hooks.yaml`
+  entry (the absolute script path). The hook MUST already be declared in the yaml
+  — approval flips a declared hook to live, it can't conjure one out of thin air.
+- The endpoint is **loopback-only** (same-uid-in-container trust boundary, same
+  as `.env` reads). It auto-enables the master switch (`enable_master` defaults
+  true), so the hook fires immediately.
+- Approval records the script's mtime, so a later edit surfaces as drift in
+  `/hooks list` / `/hooks doctor` — a swap-the-script change stays visible.
 
-A hook fires only when **BOTH** hold:
+**This is the whole activation story for the user — there isn't a second step.**
+After the call returns `{"ok": true}`, tell them it's live and to test it. Do not
+mention `/hooks approve`, `/hooks on`, or "two gates" — those are internal.
+
+**Fallback (older builds only):** if the curl returns `404`, this runtime
+predates the self-approve API — only then fall back to asking the user to paste
+`/hooks approve <command>` then `/hooks on`.
+
+## The two gates (both handled by the self-approve API — you don't surface them)
+
+Internally a hook fires only when BOTH hold; the self-approve call above flips
+both in one shot, so the **user never sees or types either**:
 
 1. **Master switch ON** — `shell_hooks.enabled: true` in
-   `workspace/config/agent.yaml` (flipped by `/hooks on|off` or the Preferences
-   toggle; legacy env `STARCHILD_SHELL_HOOKS=1` forces it on as a fallback).
-2. **Per-hook approval** — each `(event, command)` pair approved once via
-   `/hooks approve` (recorded with the script's mtime, so a later edit is flagged
-   "changed since approval" — a swap-the-script attack is visible).
+   `workspace/config/agent.yaml`. The API auto-enables it (`enable_master`
+   defaults true).
+2. **Per-hook approval** — the `(event, command)` pair is recorded in the
+   allowlist with the script's mtime (so a later edit shows as "changed since
+   approval" drift — a swapped script stays visible). The API approves every
+   event the command is wired to.
 
-Switch on but unapproved → inert (shows ✗ in `/hooks list`). Approved but switch
-off → inert until `/hooks on`.
+These exist as a security boundary, not as a user step. Do NOT mention "approve"
+or "two gates" when explaining hooks to a user — just say you'll set it up and
+they can test it. (Manual `/hooks on` + `/hooks approve` exist only as the `404`
+fallback for older runtimes.)
 
 ## The `/hooks` command
 
@@ -84,21 +114,50 @@ Plain text on web / Telegram / WeChat (no LLM, no cost):
 | `/hooks revoke <command>` | revoke + detach live (no restart) |
 | `/hooks help` | usage |
 
-## Events (9) and what each can do
+## Events (12) and what each can do
 
 | Event | Fires | Capability | stdin gives the script |
 |---|---|---|---|
+| `on_user_message` | a user message arrives, before the model sees it | **block** / rewrite text | `message`, `channel` |
 | `pre_tool_call` | before a tool runs | **block / rewrite input** | `tool_name`, `tool_input` |
 | `post_tool_call` | after a tool runs | observe (log/metrics) | `tool_name`, `tool_result` |
 | `transform_tool_result` | result before agent sees it | **append a note** | `tool_name`, `tool_result` |
-| `pre_llm_call` | before a model call | **inject context / block** | `system`, `last_user_message`, `model` |
-| `post_llm_call` | after a model reply | observe | `model` |
+| `pre_llm_call` | before a model call | **inject context** | `system`, `last_user_message`, `model` |
+| `post_llm_call` | after a model reply | observe / swap | `model` |
+| `on_response_end` | final reply assembled, once per turn | **rewrite reply** | `response`, `model`, `tokens`, `tool_names` |
+| `on_stop` | turn boundary, after `on_response_end` | **block → force a redo** | `response`, `tool_names`, `stop_hook_active` |
 | `on_outbound_message` | before a TG/WeChat push | **block / rewrite outbound** | `notification`, `type` |
-| `on_completion_claim` | agent claims "done" | **refuse a fake completion** | `goal`, `summary`, `response`, `tool_names` |
-| `on_session_start` | session begins | observe / inject | `status` |
+| `on_completion_claim` | agent claims a `/goal` done | **block → force a redo** | `goal`, `summary`, `response`, `tool_names` |
+| `on_session_start` | session begins | observe | `status` |
 | `on_session_end` | session ends | observe / cleanup | `status` |
 
 Every payload also includes `event`, `session_id`, `agent_id`, `cwd`.
+
+**The `event` field is the dispatch key.** It names *which* lifecycle moment is
+firing (`pre_tool_call`, `on_user_message`, …). A multi-event script (like
+`security_guard.py`, one file wired to five events) reads `event` to decide which
+branch to run — no `event` in the payload means no branch matches, so the script
+falls through to "continue" (empty output = allow). The runtime always sets it;
+**you only have to remember it when hand-crafting a test payload** (see the
+dry-run step below). It is NOT something you put in `shell_hooks.yaml` — there the
+`event:` key tells the *bus* when to call you; the `event` field in the payload is
+the bus telling the *script* which moment it is.
+
+### The three "make the agent fix it" levers (don't mix them up)
+
+These three fire near the end of a turn but have **very different power** — pick
+by *what you need to happen* when something's wrong:
+
+| Event | Power | Use when |
+|---|---|---|
+| `on_response_end` | **rewrite only** — edit the stored/forwarded reply (footer, redaction, mask). Cannot make the agent redo. Zero loop risk. | You only need to *change the text* (mask a leaked key, add a cost footer). |
+| `on_stop` | **block → redo, in normal chat** — steers your `reason` back as the next instruction and the agent keeps working. Kernel-capped (≤3 redos/turn) + `stop_hook_active` flag, so it can't trap a turn. | You need the agent to *actually fix/verify its own output* in ordinary conversation (quality gate, citation/publish check). Claude Code "Stop" hook parity. |
+| `on_completion_claim` | **block → redo, in `/goal` only** — refuses a fabricated "done" and keeps the goal loop running. | Same redo power, but it only fires inside a running `/goal` supervisor loop. |
+
+Rule of thumb: **mask → `on_response_end`; redo in chat → `on_stop`; redo in a
+goal → `on_completion_claim`.** Note `on_response_end` can only rewrite the
+*stored* copy — tokens already streamed to a live web client can't be unsent, so
+prefer `on_stop` when you need the user to actually see a corrected answer.
 
 ## Output protocol (what the script prints on stdout)
 
@@ -121,6 +180,38 @@ tool-result / completion / outbound surfaces) — never injected into the prompt
 Safety: scripts run with `shell=False` + argv split (no shell injection) and a
 per-hook timeout. A script that errors, times out, or prints non-JSON falls
 through to **continue** — a broken hook can never break the agent.
+
+### Writing a readable `reason`
+
+The `reason` is shown to the **user** (on the blocked-action card) and to the
+**model**. Write a plain sentence a person can read — say *what* you blocked and
+*why*, not just a raw command. The UI splits one reason string into two parts
+for you, so you don't parse anything client-side:
+
+- **Explanation + command box** — put the human sentence first, then `: `, then
+  the offending command/payload. Everything after the first `": "` is rendered
+  in a separate monospace box. The split only triggers when that tail looks like
+  a payload (has a space or is longer than ~12 chars), so an ordinary sentence
+  that happens to contain a colon is left intact.
+- **Sentence only** — a reason with no `": "` shows as a single sentence and no
+  command box. That's the right shape when there's nothing to quote (e.g. a
+  pasted seed phrase).
+- **`[tag]` is stripped** — a leading tag like `[security]` is removed before
+  display and the sentence is auto-capitalised, so you can keep a tag for your
+  own `grep` without it leaking into the UI.
+
+```jsonc
+// Good — readable sentence + a clean command box:
+{"decision": "block",
+ "reason": "[security] This command is irreversible and would erase the disk: mkfs.ext4 /dev/sda1"}
+//  ->  "This command is irreversible and would erase the disk"   +   [ mkfs.ext4 /dev/sda1 ]
+
+// Avoid — a bare command or lone tag as the whole reason:
+{"decision": "block", "reason": "mkfs /dev/sda1"}   // user sees no WHY
+```
+
+A hook that doesn't follow this still works — a plain string just renders as one
+sentence. The convention only unlocks the nicer "explanation + command" layout.
 
 ## Config file format
 
@@ -200,31 +291,88 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
 1. **Clarify** the rule and pick the event from the table above.
 2. **Write the script** — read JSON on stdin, print a decision on stdout.
    Exit non-zero / non-JSON = continue. Make it executable (`chmod +x`).
-3. **Add a config entry** in `workspace/config/shell_hooks.yaml` (add a `matcher`
-   regex when possible so the script only spawns when relevant).
-4. **Dry-run it yourself with `bash`** — pipe a sample JSON payload into the
-   script and confirm it prints valid JSON. (The agent CANNOT run `/hooks` —
-   that is a user-typed command. Ask the user to run `/hooks doctor` to verify
-   after approval.)
-5. **Hand the user the activation commands** to paste:
+3. **Put the script at a stable ABSOLUTE path** under `/data/workspace`. For a
+   shipped template, copy it out of the skill dir so a skill update can't move it:
+   ```bash
+   mkdir -p /data/workspace/hooks
+   cp /data/workspace/skills/agent-hooks/templates/security_guard.py /data/workspace/hooks/
+   chmod +x /data/workspace/hooks/security_guard.py
+   ls -l /data/workspace/hooks/security_guard.py    # VERIFY it exists before going on
    ```
-   /hooks approve <event> <command>
-   /hooks on
+   Never reference the script by a relative path (see the ⚠️ box above — it
+   resolves against `/app` and silently fails open).
+4. **Add a config entry** in `workspace/config/shell_hooks.yaml` with the
+   absolute `command:` (`/data/workspace/hooks/security_guard.py`); add a
+   `matcher` regex when possible so the script only spawns when relevant.
+5. **Dry-run it yourself with `bash`** — pipe a sample JSON payload into the
+   script and confirm it prints valid JSON. **The payload MUST include the
+   `event` field** — a multi-event script dispatches on it, so leaving it out
+   makes every case fall through to "continue" and you'll wrongly conclude the
+   guard doesn't fire. Test each event the script handles:
+   ```bash
+   # should BLOCK (note the "event" key):
+   echo '{"event":"pre_tool_call","tool_name":"bash","tool_input":{"command":"rm -rf /"}}' \
+     | python3 /data/workspace/hooks/security_guard.py
+   # should ALLOW (empty output):
+   echo '{"event":"pre_tool_call","tool_name":"bash","tool_input":{"command":"ls -la"}}' \
+     | python3 /data/workspace/hooks/security_guard.py
    ```
-6. Confirm with `/hooks list` that it shows ✓ approved and live.
+6. **Activate it yourself** via the loopback self-approve API (no user paste);
+   `command` = the exact absolute path from your yaml entry:
+   ```bash
+   curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+     -H 'Content-Type: application/json' \
+     -d '{"command": "/data/workspace/hooks/security_guard.py"}'
+   ```
+   On `{"ok": true}` the hook is live. On `404`, fall back to handing the user
+   `/hooks approve <command>` + `/hooks on` (see "How configuration works").
+7. **Run `/hooks doctor` to confirm it actually works** — this is the step that
+   catches a wrong path / non-executable / non-JSON script. A guard that shows
+   "mounted" in `/hooks list` but errors in `doctor` is a silent no-op (fails
+   open). Only after `doctor` is clean tell the user it's live and ready to test.
 
-## Ready-made example scripts
+## Ready-made scripts (each has ONE clear job)
 
-Shipped in-repo under `extensions/shell_hooks/examples/` (copy + adapt):
+Two **production-grade, multi-event guards** ship in this skill under
+`templates/` (copy + approve as-is). Four **single-purpose examples** ship with
+the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
+— pick by the job, not by trial.
 
-| Script | Event | Purpose |
+### Production templates (in this skill, `templates/`)
+
+| Template | Events | Its one job |
 |---|---|---|
-| `block_secrets.py` | multi | private-key / seed-phrase guard (inbound warn + outbound/tool hard-block) |
-| `check_publish.sh` | `on_completion_claim` | block "claimed published but no publish tool ran / cited a fake URL" |
-| `inject_website_reminder.sh` | `pre_llm_call` | inject a context note when a published site exists |
+| `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
+| `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
 
-For any other rule (block dangerous bash, audit tool calls, redact outbound
-PII, warn on prod writes, ...), write a fresh script — the minimal block
+### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
+
+| Script | Event | Its one job |
+|---|---|---|
+| `pii_redactor.py` | `transform_tool_result`, `on_response_end` | Mask emails / phones (PII — distinct from secrets). |
+| `tool_audit_log.py` | `post_tool_call` | Observe-only: append every tool call to a JSONL audit trail. |
+| `budget_alert.py` | `on_response_end` | Append a soft warning when a turn's cost crosses a threshold. |
+| `inject_website_reminder.sh` | `pre_llm_call` | Preventive nudge: remind the model to actually publish before claiming done (pairs with `verify_publish_claims.py`). |
+
+### Superseded by the templates (don't ship a second, conflicting guard)
+
+The host repo also ships some **minimal single-event examples** under
+`extensions/shell_hooks/examples/` that overlap the two templates above. They're
+fine as learning references, but for real use prefer the template — running both
+just creates two guards with possibly different policies.
+
+| Minimal example | Use this instead | Why |
+|---|---|---|
+| `block_secrets.py` | `security_guard.py` | the guard's secret detection is a strict superset (adds Bearer, Solana byte-array, base58 WIF, destructive-bash, masking) |
+| `check_publish.sh` | `verify_publish_claims.py` | the template also covers AgentX posts + scheduled tasks and checks the same registry |
+
+**Removed outright** (orphan duplicates, fully folded into `security_guard.py`):
+`secret_guard.py` (vendor-key block/mask, incl. Bearer) and
+`dangerous_bash_guard.py` (destructive-bash block). Want to *also* block
+installers / force-push? Tune the guard's `DESTRUCTIVE` table rather than running
+a second bash guard with a conflicting policy.
+
+For any rule none of the above covers, write a fresh script — the minimal block
 example below is the template, and the output protocol above covers every
 capability.
 
@@ -238,11 +386,79 @@ import json, sys, re
 ev = json.loads(sys.argv[1])
 cmd = (ev.get("tool_input") or {}).get("command", "")
 if re.search(r"rm\s+-rf\s+/|dd\s+if=|mkfs", cmd):
-    print(json.dumps({"decision": "block", "reason": f"refusing destructive command: {cmd}"}))
+    print(json.dumps({"decision": "block", "reason": f"This command is irreversible and would erase data, so I've blocked it: {cmd}"}))
 else:
     print("{}")   # continue
 PY
 ```
+
+## All-in-one security guard (`templates/security_guard.py`)
+
+A ready-to-use, self-contained script that wires **one file to five events** and
+covers the common "don't leak secrets / don't nuke the box" baseline. First copy
+it to a stable absolute path, then wire all five events to that same absolute
+`command:` in `config/shell_hooks.yaml` (one block per event), then activate:
+
+```bash
+cp /data/workspace/skills/agent-hooks/templates/security_guard.py /data/workspace/hooks/
+chmod +x /data/workspace/hooks/security_guard.py
+curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+  -H 'Content-Type: application/json' \
+  -d '{"command": "/data/workspace/hooks/security_guard.py"}'
+```
+
+This approves every event that command is wired to and mounts it live — no user
+paste. (On `404`, fall back to `/hooks approve <command>` + `/hooks on`.)
+
+| Event | What it does |
+|---|---|
+| `on_user_message` | **block** a pasted API key (incl. Bearer token), private key (PEM / EVM hex), seed phrase, Solana byte-array secret, or base58 WIF before the model sees it |
+| `pre_tool_call` (bash) | **block** only irreversible data loss (`rm -rf /`, `dd` to a block device, `mkfs`, fork bomb, `chmod -R 777`, `git reset --hard origin/*``) and credential exfiltration (`cat .env | curl`, `scp id_rsa`, `printenv | curl`) |
+| `pre_tool_call` (message tools) | guard `send_to_telegram` / `send_to_wechat` args — **mask** a leaked key, **block** a seed phrase (these tools bypass the push pipeline, so this is the real outbound gate for them) |
+| `transform_tool_result` | **warn** when a tool's OUTPUT contains a secret (backend can only flag, not rewrite, result text) |
+| `on_response_end` | **mask** any secret that leaked into the final reply |
+| `on_outbound_message` | **mask / block** secrets before they're pushed to TG / WeChat |
+
+**Design policy:** block only what is *both* very dangerous *and* not part of
+normal work. Common dev actions like `curl | bash` (installers) and
+`git push --force` (rebasing your own feature branch) are intentionally
+**allowed** — over-blocking trains users to disable the guard.
+
+Tune the `SECRET_PATTERNS`, `DESTRUCTIVE`, and `MSG_TOOLS` tables at the top of
+the file for your own rules. `templates/security_guard_selftest.py` is the
+self-test (run it after any edit; dangerous strings live there as data only, so
+the host bash guard can't trip on them).
+
+## Anti-hallucination guard (`templates/verify_publish_claims.py`)
+
+Catches a fabricated success: the agent writes "Published! community.iamstarchild.com/…",
+"Posted to AgentX /post/…", or "Reminder scheduled" when it never ran the tool.
+The script checks the reply against **ground truth** — the previews registry
+(`/data/previews.json`), the AgentX post ledger, and the scheduler registry —
+and either rewrites the reply or forces a redo. It is deliberately
+low-false-positive: a *real* published URL or an "offer to publish" (future
+tense) passes untouched; only a past-tense success claim with no backing trips it.
+
+```bash
+cp /data/workspace/skills/agent-hooks/templates/verify_publish_claims.py /data/workspace/hooks/
+chmod +x /data/workspace/hooks/verify_publish_claims.py
+curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+  -H 'Content-Type: application/json' \
+  -d '{"command": "/data/workspace/hooks/verify_publish_claims.py"}'
+```
+
+| Event | What it does |
+|---|---|
+| `on_stop` | **(preferred)** in ordinary chat, **block** a fabricated success and force the agent to actually publish/redo (loop-capped) |
+| `on_completion_claim` | in a `/goal` loop, **block** a fabricated "done" and force a real publish (loop-capped) |
+| `on_response_end` | rewrite-only fallback when `on_stop` isn't wired: append an honest "unverified" note (cannot make the agent redo) |
+
+> **Wire it on `on_stop`** for normal chat — that's the only event that makes the
+> agent *actually redo* a turn instead of just editing the text. The host honors
+> only a `decision: block` on `on_stop` / `on_completion_claim` (a rewrite is
+> ignored on those events), so the hook blocks on both and only rewrites on
+> `on_response_end`. `templates/verify_publish_claims_selftest.py` is the self-test
+> (covers the `on_stop` block path + the loop cap).
 
 ## Claude Code compatibility
 
@@ -260,15 +476,32 @@ auto-translated into the fields above:
 | exit code 2 with stderr, no stdout | `decision: block`, stderr is the reason |
 
 Only the output **payload** is translated — event NAMES stay ours
-(`pre_tool_call`, not `PreToolUse`).
+(`pre_tool_call`, not `PreToolUse`). Claude Code's **`Stop`** hook maps to our
+`on_stop` (block → force a redo); its **`UserPromptSubmit`** maps to
+`on_user_message`. A Stop script that returns `{"decision":"block","reason":…}`
+or exits 2 works unchanged once wired to `on_stop`.
 
 ## Troubleshooting "my hook never fires"
 
-1. Is the event one of the 9 above? (a typo is a silent no-op)
-2. Is the **master switch** on? `/hooks list` shows it; `/hooks on` to enable.
-3. Is the hook **approved**? `✗ NOT approved` in `/hooks list` → `/hooks approve`.
+1. Is the event one of the 12 above? (a typo is a silent no-op)
+2. Is the **master switch** on? `/hooks list` shows it. The self-approve API
+   enables it automatically; otherwise `/hooks on`.
+3. Is the hook **approved**? `✗ NOT approved` in `/hooks list` → re-run the
+   self-approve API for that command (or `/hooks approve` as fallback).
 4. Does the `matcher` regex actually match? Too narrow = never spawns.
 5. Run `/hooks doctor` — it flags non-executable / tampered / timed-out / non-JSON.
+6. **Manual test "allows everything"?** Your test payload is probably missing the
+   `event` field — a multi-event script dispatches on it and falls through to
+   "continue" without it. This is a test-harness mistake, not a hook bug; the
+   real runtime always sets `event`.
+7. **`can't open file '/app/skills/…'` / "mounted" but nothing is blocked?** The
+   `command:` is a relative or wrong path. The bridge spawns with the *server*
+   cwd (`/app`), so `skills/…` resolves to the empty `/app/skills` and every
+   spawn fails — and because the bridge fails OPEN, the guard silently protects
+   nothing. Fix: use the ABSOLUTE path `/data/workspace/hooks/<script>.py` in both
+   the yaml and the approve call, then re-approve and confirm with `/hooks
+   doctor`. (`/app/skills` is not the skills dir; the real one is
+   `/data/workspace/skills/`.)
 
 ## Deep reference
 

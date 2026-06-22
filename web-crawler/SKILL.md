@@ -155,14 +155,24 @@ top actor for the target platform. A few common ones:
 | Platform | Actor ID | Input key |
 |---|---|---|
 | 抖音 search | `zen-studio~douyin-search-scraper` | `{"keywords": [...], "maxResultsPerQuery": N}` |
-| 小红书 search | `zen-studio~rednote-search-scraper` | `{"keywords": [...], "maxResultsPerQuery": N}` |
+| 小红书 search | `zen-studio~rednote-search-scraper` | `{"keywords": [...], "maxResults": N}` |
+| 小红书 note detail | `sian.agency~xiaohongshu-rednote-scraper` | `{"operation": "noteDetail", "noteId": "...", "xsecToken": "..."}` |
+| 微博 hot search | `gentle_cloud~weibo-hot-search-scraper` | `{"mode": "hot_band", "includeScores": true}` |
 | 微博 posts | `zhorex~weibo-scraper` | (see actor input schema) |
 | B站 videos | `zhorex~bilibili-scraper` | (see actor input schema) |
-| 京东 products | `sian.agency~jd-com-product-scraper` | (see actor input schema) |
-| 淘宝 products | `sian.agency~taobao-tmall-product-scraper` | (see actor input schema) |
+| 京东 search | `zen-studio~jd-com-search-scraper` | `{"keyword": "...", "maxProducts": N}` |
+| 京东 products | `sian.agency~jd-com-product-scraper` | `{"operation": "productSearch", "keyword": "...", "maxPages": 1}` |
+| 淘宝 products | `sian.agency~taobao-tmall-product-scraper` | `{"operation": "keywordSearch", "keyword": "...", "maxPages": 1}` |
 | 1688 wholesale | `zen-studio~1688-wholesale-scraper` | (see actor input schema) |
 | 闲鱼 search | `zen-studio~goofish-xianyu-search-scraper` | (see actor input schema) |
 | TikTok | `clockworks~tiktok-scraper` | `{"hashtags": [...]}` or `{"profiles": [...]}` |
+
+**Two-step Xiaohongshu workflow (search → note detail):**
+The search scraper (`zen-studio~rednote-search-scraper`) returns only a
+truncated `desc` (~60 chars). For the full post body, run a second call with
+`sian.agency~xiaohongshu-rednote-scraper` in `noteDetail` mode, passing the
+`id` and `xsec_token` from the search result row. This is the only reliable
+way to get full note text for price/lodge/itinerary details.
 
 **Usage:**
 

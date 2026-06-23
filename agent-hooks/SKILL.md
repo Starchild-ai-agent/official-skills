@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.5.6
+version: 1.6.0
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -346,8 +346,8 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
 
 ## Ready-made scripts (each has ONE clear job)
 
-Two **production-grade, multi-event guards** ship in this skill under
-`templates/` (copy + approve as-is). Four **single-purpose examples** ship with
+Three **production-grade guards** ship in this skill under `templates/`
+(copy + approve as-is). Four **single-purpose examples** ship with
 the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
 — pick by the job, not by trial.
 
@@ -357,6 +357,7 @@ the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
 | `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
+| `strip_fabricated_footer.py` | `on_response_end` | **Anti-hallucination (cost/model footer).** Strip a self-typed `Model: … \| Cost: …` footer the model invented (it cannot know its own per-reply cost / model id — that lives only in the runtime). Optionally re-append the REAL runtime footer. |
 
 ### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
 
@@ -472,6 +473,57 @@ curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
 > ignored on those events), so the hook blocks on both and only rewrites on
 > `on_response_end`. `templates/verify_publish_claims_selftest.py` is the self-test
 > (covers the `on_stop` block path + the loop cap).
+
+## Anti-hallucination footer guard (`templates/strip_fabricated_footer.py`)
+
+Catches a different fabrication from `verify_publish_claims.py`: a model **cannot
+know its own per-reply cost** — and often not even its own model id. That data
+lives only in the runtime. Yet some agents append a self-typed footer on every
+reply, e.g. `Model: GLM-5.2 | Cost: $0.038`, with invented numbers. Once that
+footer is in the agent's own context every turn, autocomplete locks it in and a
+one-line "I'll stop" never holds — so you fix it structurally here, not by asking
+the model.
+
+The hook runs on `on_response_end` and strips a **trailing** self-typed footer
+block (model / cost / token lines + their separators). Two modes via the
+`FOOTER_MODE` env var:
+
+- `strip` (default) — remove the fake footer, append nothing. Use when the agent
+  should show no footer.
+- `real` — remove it, then append the **true** runtime footer
+  `─ <model> · $<cost> · <in> in / <out> out`, built from the kernel-supplied
+  `model` + `turn_cost_usd` + `tokens`.
+
+```bash
+cp /data/workspace/skills/agent-hooks/templates/strip_fabricated_footer.py /data/workspace/hooks/
+chmod +x /data/workspace/hooks/strip_fabricated_footer.py
+curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+  -H 'Content-Type: application/json' \
+  -d '{"command": "/data/workspace/hooks/strip_fabricated_footer.py"}'
+```
+
+Wire it in `config/shell_hooks.yaml` with a `matcher` perf-gate so it only runs
+when a footer-ish line is present:
+
+```yaml
+hooks:
+  - event: on_response_end
+    matcher: "Model:|Cost:|💰|· \\$|\\$[0-9].*(in|out|tokens)"
+    command: /data/workspace/hooks/strip_fabricated_footer.py
+    timeout: 10
+```
+
+**Composition:** shell hooks register at priority 60, the host `turn_footer`
+extension at 200. In default `strip` mode you can pair this hook with
+`turn_footer` (or Telegram's `tg_show_usage`): strip runs first (removes the
+fake), the runtime appends the true one. Do **not** combine `FOOTER_MODE=real`
+with `turn_footer` — both append a real footer and you'd get two.
+
+**Safety:** pure text rewrite, never blocks. Strips only a tail block that
+contains a genuine footer line — a bare `---` separator, prose mentioning
+"model", and shell `$VAR` lines are left untouched; fail-open on any error.
+`templates/strip_fabricated_footer_selftest.py` is the self-test (15 cases incl.
+4 false-positive guards).
 
 ## Claude Code compatibility
 

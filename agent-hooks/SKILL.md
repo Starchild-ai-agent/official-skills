@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.5.6
+version: 1.7.0
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -346,8 +346,8 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
 
 ## Ready-made scripts (each has ONE clear job)
 
-Two **production-grade, multi-event guards** ship in this skill under
-`templates/` (copy + approve as-is). Four **single-purpose examples** ship with
+Three **production-grade guards** ship in this skill under `templates/`
+(copy + approve as-is). Four **single-purpose examples** ship with
 the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
 — pick by the job, not by trial.
 
@@ -357,6 +357,8 @@ the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
 | `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
+| `append_runtime_footer.py` | `on_response_end` | **True cost/model footer (1 of 2).** Append a footer built from the runtime's real `model` + `turn_cost_usd` + `tokens` (the model can't know these — they live only in the runtime). Append-only. Use **together** with `suppress_model_footer.py`. |
+| `suppress_model_footer.py` | `pre_llm_call` | **Footer policy injection (2 of 2).** Inject a system-prompt directive every turn telling the model NOT to type its own footer and NOT to imitate the runtime footers in chat history. The companion that stops the double-footer. |
 
 ### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
 
@@ -472,6 +474,75 @@ curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
 > ignored on those events), so the hook blocks on both and only rewrites on
 > `on_response_end`. `templates/verify_publish_claims_selftest.py` is the self-test
 > (covers the `on_stop` block path + the loop cap).
+
+## Cost/model footer — two hooks that MUST be used together
+
+A model **cannot know its own per-reply cost** — and often not even its own model
+id. That data lives only in the runtime. So if the model types its own footer
+(e.g. `Model: GLM-5.2 | Cost: $0.038`), the numbers are invented. And once a real
+footer is in the chat history every turn, the model's autocomplete starts
+imitating it — producing a *second*, fabricated footer. The footer is the
+runtime's job, not the model's, so the fix is two cooperating hooks:
+
+| # | Template | Event | Job |
+|---|---|---|---|
+| 1 | `suppress_model_footer.py` | `pre_llm_call` | inject a directive EVERY turn: don't type your own footer, don't imitate the ones in history |
+| 2 | `append_runtime_footer.py` | `on_response_end` | append the ONE true footer from runtime `model` + cost (+ tokens) |
+
+Hook 1 stops the model writing a footer; hook 2 adds the only trustworthy one.
+Use **both** — hook 2 alone leaves the double-footer (model imitates history),
+hook 1 alone leaves no footer at all.
+
+`append_runtime_footer.py` also carries a **safety net** (`FOOTER_STRIP`, on by
+default): before appending, it removes any footer the model typed at the very
+**end** of the reply. The match is deliberately narrow — only a box-drawing
+`─ … · $N` line or a `Model: … Cost: $N` line, and only on trailing lines — so a
+"Model:"/"Cost:" sentence in the body, or a shell `$VAR`, is never touched (an
+earlier version used an over-broad `Model:` regex that risked deleting legit
+prose; this is the tight redo). Hook 1 prevents the footer at the source; this
+catches the leftovers and replaces them with the one true footer. Set
+`FOOTER_STRIP=0` for pure append-only.
+
+```bash
+cp /data/workspace/skills/agent-hooks/templates/suppress_model_footer.py /data/workspace/hooks/
+cp /data/workspace/skills/agent-hooks/templates/append_runtime_footer.py /data/workspace/hooks/
+chmod +x /data/workspace/hooks/suppress_model_footer.py /data/workspace/hooks/append_runtime_footer.py
+for h in suppress_model_footer append_runtime_footer; do
+  curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+    -H 'Content-Type: application/json' \
+    -d "{\"command\": \"/data/workspace/hooks/$h.py\"}"
+done
+```
+
+Wire both in `config/shell_hooks.yaml` — no `matcher`, both run every turn:
+
+```yaml
+hooks:
+  - event: pre_llm_call
+    command: /data/workspace/hooks/suppress_model_footer.py
+    timeout: 10
+  - event: on_response_end
+    command: /data/workspace/hooks/append_runtime_footer.py
+    timeout: 10
+```
+
+By default the footer shows **model + cost only** (`─ z-ai/glm-5.2 · $0.0211`).
+Token detail is hidden. To show it, set `FOOTER_SHOW_TOKENS=1`
+(`─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out`). Override the suppression wording
+with `FOOTER_SUPPRESS_TEXT`, or the footer format with `FOOTER_TEMPLATE`
+(`{model} {cost} {input} {output}`, takes precedence over `FOOTER_SHOW_TOKENS`).
+
+**Don't double up:** `append_runtime_footer` is the shell-hook equivalent of the
+host `turn_footer` extension — enable one, not both. Same for Telegram's
+`tg_show_usage`.
+
+**Safety:** never block. The footer appends nothing when the event carries no
+cost data or the reply is empty (no `$0.0000` lie), and only ever strips a
+narrowly-matched footer at the reply's tail (`FOOTER_STRIP=0` to disable); the
+suppressor injects nothing on a missing/malformed payload. Fail-open on any
+error. Self-tests: `append_runtime_footer_selftest.py` (24 cases, incl. strip +
+false-positive guards for mid-body prose and shell `$VAR`) and
+`suppress_model_footer_selftest.py` (6 cases).
 
 ## Claude Code compatibility
 

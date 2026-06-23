@@ -71,6 +71,31 @@ check("empty reply: no footer", r is None, repr(r))
 r = run(BODY, omit_cost=True, omit_tokens=True)
 check("no cost data: no footer", r is None, repr(r))
 
+# 6b) [P2 REGRESSION] bridge defaults: cost=0.0 AND tokens={} explicitly
+#     present (as the clawd bridge sends them) → still no footer, not $0.0000.
+def run_raw(ev):
+    import subprocess as _sp
+    p = _sp.run([sys.executable, SCRIPT], input=json.dumps(ev),
+                capture_output=True, text=True, timeout=15,
+                env={k: v for k, v in os.environ.items() if k != "FOOTER_TEMPLATE"})
+    out = (p.stdout or "").strip()
+    return json.loads(out).get("response") if out else None
+
+r = run_raw({"event": "on_response_end", "response": BODY, "model": "z-ai/glm-5.2",
+             "turn_cost_usd": 0.0, "tokens": {}})
+check("bridge zero-defaults: no footer (P2)", r is None, repr(r))
+
+# 6c) [P2] cost=0.0 but tokens all explicitly 0 → still no footer.
+r = run_raw({"event": "on_response_end", "response": BODY, "model": "z-ai/glm-5.2",
+             "turn_cost_usd": 0.0,
+             "tokens": {"input": 0, "output": 0, "cache_read": 0, "cache_creation": 0}})
+check("bridge zero tokens: no footer (P2)", r is None, repr(r))
+
+# 6d) [P2] cost=0.0 but a positive cache_read token → real usage, DO append.
+r = run_raw({"event": "on_response_end", "response": BODY, "model": "z-ai/glm-5.2",
+             "turn_cost_usd": 0.0, "tokens": {"input": 0, "output": 0, "cache_read": 1500}})
+check("cache-only usage: footer appended (P2)", r is not None and "─ z-ai/glm-5.2" in (r or ""), repr(r))
+
 # 7) cost present but tokens missing → still appends (cost is the honest part)
 r = run(BODY, omit_tokens=True)
 check("cost only: footer appended", r and "$0.0211" in r, repr(r))

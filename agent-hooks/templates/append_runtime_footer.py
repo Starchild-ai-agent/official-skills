@@ -58,6 +58,29 @@ def _fmt_int(x) -> str:
         return "0"
 
 
+def _has_usage(ev: dict) -> bool:
+    """True only when the event carries real usage to report.
+
+    The bridge defaults turn_cost_usd to 0.0 and tokens to {}, so a turn with no
+    usage attached looks like a $0 turn. Require either a positive cost or at
+    least one positive token count before we append anything.
+    """
+    try:
+        cost = float(ev.get("turn_cost_usd") or 0.0)
+    except (TypeError, ValueError):
+        cost = 0.0
+    if cost > 0:
+        return True
+    toks = ev.get("tokens") or {}
+    for key in ("input", "output", "cache_read", "cache_creation"):
+        try:
+            if int(toks.get(key) or 0) > 0:
+                return True
+        except (TypeError, ValueError):
+            continue
+    return False
+
+
 def _build_footer(ev: dict) -> str:
     model = ev.get("model") or "?"
     cost = _fmt_usd(ev.get("turn_cost_usd"))
@@ -93,9 +116,13 @@ def main() -> None:
         print("")
         return
 
-    # Need a real cost source to append an honest footer; if the kernel didn't
-    # supply one, append nothing (better silent than a $0.0000 lie).
-    if ev.get("turn_cost_usd") is None and "tokens" not in ev:
+    # Need a real cost source to append an honest footer. The clawd shell-hook
+    # bridge ALWAYS sends turn_cost_usd (defaulting to 0.0) and tokens (default
+    # {}), so a `is None` check never fires — instead treat "cost <= 0 AND no
+    # positive token count" as missing data and append nothing. Otherwise a turn
+    # with no usage attached would render "$0.0000 · 0 in / 0 out", disguising
+    # missing data as a real zero-cost turn.
+    if not _has_usage(ev):
         print("")
         return
 

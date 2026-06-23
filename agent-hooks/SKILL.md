@@ -344,12 +344,37 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
    "mounted" in `/hooks list` but errors in `doctor` is a silent no-op (fails
    open). Only after `doctor` is clean tell the user it's live and ready to test.
 
+## One-click install all production hooks (`scripts/install_all.sh`)
+
+To install **every** production template at once instead of copy+approve one by
+one, run the bundled installer:
+
+```bash
+bash /data/workspace/skills/agent-hooks/scripts/install_all.sh
+```
+
+It installs 4 scripts = 10 hook entries in one shot: ① runs each script's
+selftest and aborts on any failure (never touches the live config on a failing
+test); ② copies the templates into `/data/workspace/hooks/` and `chmod +x`; ③
+writes the canonical `config/shell_hooks.yaml` (backing up any existing file to
+`*.bak.<ts>`); ④ calls the loopback self-approve API for each script to approve +
+hot-mount it (no restart). Idempotent — safe to re-run.
+
+Flags: `--no-footer` (skip the two footer hooks), `--footer-tokens` (footer
+shows token counts), `--dry-run` (print the plan, change nothing). Verify after
+with `/hooks list` or `/hooks doctor`.
+
+> Don't confuse this with the **All-in-one security guard** below: that's *one*
+> script (`security_guard.py`) wired to *five* events — many hooks from one file.
+> This installer is *all production scripts* in one command.
+
 ## Ready-made scripts (each has ONE clear job)
 
-Three **production-grade guards** ship in this skill under `templates/`
-(copy + approve as-is). Four **single-purpose examples** ship with
-the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
-— pick by the job, not by trial.
+Four **production-grade guards** ship in this skill under `templates/`
+(copy + approve as-is, or use `scripts/install_all.sh` for all at once). Four
+**single-purpose examples** ship with the host under
+`extensions/shell_hooks/examples/` (copy + adapt). No two overlap — pick by the
+job, not by trial.
 
 ### Production templates (in this skill, `templates/`)
 

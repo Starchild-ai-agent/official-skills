@@ -357,7 +357,8 @@ the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
 | `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
-| `append_runtime_footer.py` | `on_response_end` | **True cost/model footer.** Append a footer built from the runtime's real `model` + `turn_cost_usd` + `tokens` (the model can't know these — they live only in the runtime). Append-only: never deletes/rewrites the model's content. Tell the model in its prompt not to type its own footer. |
+| `append_runtime_footer.py` | `on_response_end` | **True cost/model footer (1 of 2).** Append a footer built from the runtime's real `model` + `turn_cost_usd` + `tokens` (the model can't know these — they live only in the runtime). Append-only. Use **together** with `suppress_model_footer.py`. |
+| `suppress_model_footer.py` | `pre_llm_call` | **Footer policy injection (2 of 2).** Inject a system-prompt directive every turn telling the model NOT to type its own footer and NOT to imitate the runtime footers in chat history. The companion that stops the double-footer. |
 
 ### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
 
@@ -474,36 +475,46 @@ curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
 > `on_response_end`. `templates/verify_publish_claims_selftest.py` is the self-test
 > (covers the `on_stop` block path + the loop cap).
 
-## True cost/model footer (`templates/append_runtime_footer.py`)
+## Cost/model footer — two hooks that MUST be used together
 
 A model **cannot know its own per-reply cost** — and often not even its own model
 id. That data lives only in the runtime. So if the model types its own footer
-(e.g. `Model: GLM-5.2 | Cost: $0.038`), the numbers are invented.
+(e.g. `Model: GLM-5.2 | Cost: $0.038`), the numbers are invented. And once a real
+footer is in the chat history every turn, the model's autocomplete starts
+imitating it — producing a *second*, fabricated footer. The footer is the
+runtime's job, not the model's, so the fix is two cooperating hooks:
 
-This hook does **one** thing: on `on_response_end` it **appends** a footer built
-from the kernel-supplied `model` + `turn_cost_usd` + `tokens` — real values,
-every turn:
+| # | Template | Event | Job |
+|---|---|---|---|
+| 1 | `suppress_model_footer.py` | `pre_llm_call` | inject a directive EVERY turn: don't type your own footer, don't imitate the ones in history |
+| 2 | `append_runtime_footer.py` | `on_response_end` | append the ONE true footer from runtime `model` + cost (+ tokens) |
 
-    ─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out
+Hook 1 stops the model writing a footer; hook 2 adds the only trustworthy one.
+Use **both** — hook 2 alone leaves the double-footer (model imitates history),
+hook 1 alone leaves no footer at all.
 
-It is **append-only**: it never deletes or rewrites the model's own content. The
-right way to stop the model from typing its own (fabricated) footer is to tell it
-not to in its prompt / SOUL — the model controls what it generates, this hook
-controls the single trustworthy footer appended after.
+`append_runtime_footer.py` is **append-only**: it never deletes or rewrites the
+model's content (an earlier strip-based version was dropped — deleting model text
+is too risky and unnecessary once hook 1 prevents the footer at the source).
 
 ```bash
+cp /data/workspace/skills/agent-hooks/templates/suppress_model_footer.py /data/workspace/hooks/
 cp /data/workspace/skills/agent-hooks/templates/append_runtime_footer.py /data/workspace/hooks/
-chmod +x /data/workspace/hooks/append_runtime_footer.py
-curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
-  -H 'Content-Type: application/json' \
-  -d '{"command": "/data/workspace/hooks/append_runtime_footer.py"}'
+chmod +x /data/workspace/hooks/suppress_model_footer.py /data/workspace/hooks/append_runtime_footer.py
+for h in suppress_model_footer append_runtime_footer; do
+  curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
+    -H 'Content-Type: application/json' \
+    -d "{\"command\": \"/data/workspace/hooks/$h.py\"}"
+done
 ```
 
-Wire it in `config/shell_hooks.yaml` — no `matcher` needed, it should run every
-turn:
+Wire both in `config/shell_hooks.yaml` — no `matcher`, both run every turn:
 
 ```yaml
 hooks:
+  - event: pre_llm_call
+    command: /data/workspace/hooks/suppress_model_footer.py
+    timeout: 10
   - event: on_response_end
     command: /data/workspace/hooks/append_runtime_footer.py
     timeout: 10
@@ -511,22 +522,19 @@ hooks:
 
 By default the footer shows **model + cost only** (`─ z-ai/glm-5.2 · $0.0211`).
 Token detail is hidden. To show it, set `FOOTER_SHOW_TOKENS=1`
-(`─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out`).
+(`─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out`). Override the suppression wording
+with `FOOTER_SUPPRESS_TEXT`, or the footer format with `FOOTER_TEMPLATE`
+(`{model} {cost} {input} {output}`, takes precedence over `FOOTER_SHOW_TOKENS`).
 
-**Custom format (optional):** set `FOOTER_TEMPLATE` with `{model} {cost} {input}
-{output}` placeholders (takes precedence over `FOOTER_SHOW_TOKENS`), e.g.
-`FOOTER_TEMPLATE="Model: {model} | Cost: {cost} | {input} in / {output} out"`.
+**Don't double up:** `append_runtime_footer` is the shell-hook equivalent of the
+host `turn_footer` extension — enable one, not both. Same for Telegram's
+`tg_show_usage`.
 
-**Don't double up:** this is the shell-hook equivalent of the host `turn_footer`
-extension — enable one, not both (or you'd get two footers). Same for Telegram's
-`tg_show_usage`. And tell the model in its prompt/SOUL **not to type its own
-footer** — otherwise a model-typed footer + this hook's footer = two footers.
-
-**Safety:** pure append, never blocks, never deletes. If the event carries no
-cost data, or the reply is empty, it appends nothing (no `$0.0000` lie).
-Fail-open on any error. `templates/append_runtime_footer_selftest.py` is the
-self-test (16 cases, incl. default-hides-tokens, content-preservation,
-bridge zero-default no-op, and bad-template fallback).
+**Safety:** both hooks are pure additions, never block, never delete. The footer
+appends nothing when the event carries no cost data or the reply is empty (no
+`$0.0000` lie); the suppressor injects nothing on a missing/malformed payload.
+Fail-open on any error. Self-tests: `append_runtime_footer_selftest.py` (16
+cases) and `suppress_model_footer_selftest.py` (6 cases).
 
 ## Claude Code compatibility
 

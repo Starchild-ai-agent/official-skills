@@ -12,7 +12,7 @@ SCRIPT = os.path.join(HERE, "append_runtime_footer.py")
 
 
 def run(reply, model="z-ai/glm-5.2", cost=0.0211, toks=None, template=None,
-        omit_cost=False, omit_tokens=False):
+        omit_cost=False, omit_tokens=False, show_tokens=False):
     ev = {"event": "on_response_end", "response": reply, "model": model}
     if not omit_cost:
         ev["turn_cost_usd"] = cost
@@ -23,6 +23,10 @@ def run(reply, model="z-ai/glm-5.2", cost=0.0211, toks=None, template=None,
         env["FOOTER_TEMPLATE"] = template
     else:
         env.pop("FOOTER_TEMPLATE", None)
+    if show_tokens:
+        env["FOOTER_SHOW_TOKENS"] = "1"
+    else:
+        env.pop("FOOTER_SHOW_TOKENS", None)
     p = subprocess.run([sys.executable, SCRIPT], input=json.dumps(ev),
                        capture_output=True, text=True, env=env, timeout=15)
     out = (p.stdout or "").strip()
@@ -44,16 +48,21 @@ def check(name, cond, detail=""):
 
 BODY = "Here is the answer you asked for.\nIt spans two lines."
 
-# 1) Appends the real footer with true model + cost + tokens
+# 1) DEFAULT: appends model + cost only, tokens HIDDEN
 r = run(BODY)
-check("footer appended", r and "─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out" in r, repr(r))
+check("default footer appended", r and "─ z-ai/glm-5.2 · $0.0211" in r, repr(r))
+check("default hides tokens", r and "in / " not in r, repr(r))
 check("body preserved verbatim", r and r.startswith(BODY), repr(r))
+
+# 1b) FOOTER_SHOW_TOKENS=1 → tokens shown
+r = run(BODY, show_tokens=True)
+check("show-tokens appends token detail", r and "─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out" in r, repr(r))
 
 # 2) Does NOT remove or alter the model's own content (even a self-typed footer)
 fake = f"{BODY}\n\nModel: claude-opus-4.5 | Cost: $9.99"
 r = run(fake)
 check("existing content untouched (no deletion)", r and "Model: claude-opus-4.5 | Cost: $9.99" in r, repr(r))
-check("real footer still appended after it", r and r.rstrip().endswith("900 in / 120 out"), repr(r))
+check("real footer still appended after it", r and r.rstrip().endswith("$0.0211"), repr(r))
 
 # 3) Custom FOOTER_TEMPLATE honored
 r = run(BODY, template="Model: {model} | Cost: {cost} | {input} in / {output} out")
@@ -99,7 +108,9 @@ check("cache-only usage: footer appended (P2)", r is not None and "─ z-ai/glm-
 # 7) cost present but tokens missing → still appends (cost is the honest part)
 r = run(BODY, omit_tokens=True)
 check("cost only: footer appended", r and "$0.0211" in r, repr(r))
-check("cost only: tokens show 0", r and "0 in / 0 out" in r, repr(r))
+# with tokens shown, missing tokens render as 0
+r = run(BODY, omit_tokens=True, show_tokens=True)
+check("cost only + show-tokens: tokens show 0", r and "0 in / 0 out" in r, repr(r))
 
 # 8) Separated from body by a blank line
 r = run(BODY)

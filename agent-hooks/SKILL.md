@@ -509,18 +509,24 @@ hooks:
     timeout: 10
 ```
 
+By default the footer shows **model + cost only** (`─ z-ai/glm-5.2 · $0.0211`).
+Token detail is hidden. To show it, set `FOOTER_SHOW_TOKENS=1`
+(`─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out`).
+
 **Custom format (optional):** set `FOOTER_TEMPLATE` with `{model} {cost} {input}
-{output}` placeholders, e.g.
+{output}` placeholders (takes precedence over `FOOTER_SHOW_TOKENS`), e.g.
 `FOOTER_TEMPLATE="Model: {model} | Cost: {cost} | {input} in / {output} out"`.
 
 **Don't double up:** this is the shell-hook equivalent of the host `turn_footer`
 extension — enable one, not both (or you'd get two footers). Same for Telegram's
-`tg_show_usage`.
+`tg_show_usage`. And tell the model in its prompt/SOUL **not to type its own
+footer** — otherwise a model-typed footer + this hook's footer = two footers.
 
 **Safety:** pure append, never blocks, never deletes. If the event carries no
 cost data, or the reply is empty, it appends nothing (no `$0.0000` lie).
 Fail-open on any error. `templates/append_runtime_footer_selftest.py` is the
-self-test (11 cases, incl. content-preservation + bad-template fallback).
+self-test (16 cases, incl. default-hides-tokens, content-preservation,
+bridge zero-default no-op, and bad-template fallback).
 
 ## Claude Code compatibility
 

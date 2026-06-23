@@ -27,8 +27,16 @@ should run every turn:
       command: /data/workspace/hooks/append_runtime_footer.py
       timeout: 10
 
+By default the footer shows model + cost only, e.g.
+
+    ─ z-ai/glm-5.2 · $0.0211
+
+Token detail is HIDDEN by default. To show it, set FOOTER_SHOW_TOKENS=1:
+
+    ─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out
+
 Format override (optional): set FOOTER_TEMPLATE with {model} {cost} {input}
-{output} placeholders, e.g.
+{output} placeholders (takes precedence over FOOTER_SHOW_TOKENS), e.g.
   FOOTER_TEMPLATE="Model: {model} | Cost: {cost} | {input} in / {output} out"
 
 Safety: pure append, never blocks, never deletes. If the event carries no cost
@@ -41,7 +49,11 @@ import json
 import os
 import sys
 
-DEFAULT_TEMPLATE = "─ {model} · {cost} · {input} in / {output} out"
+# Default footer shows model + cost only. Token detail is hidden unless the user
+# opts in with FOOTER_SHOW_TOKENS=1 (or a custom FOOTER_TEMPLATE with token
+# placeholders).
+DEFAULT_TEMPLATE = "─ {model} · {cost}"
+DEFAULT_TEMPLATE_WITH_TOKENS = "─ {model} · {cost} · {input} in / {output} out"
 
 
 def _fmt_usd(x) -> str:
@@ -81,11 +93,20 @@ def _has_usage(ev: dict) -> bool:
     return False
 
 
+def _show_tokens() -> bool:
+    return (os.environ.get("FOOTER_SHOW_TOKENS") or "").strip().lower() in (
+        "1", "true", "yes", "on",
+    )
+
+
 def _build_footer(ev: dict) -> str:
     model = ev.get("model") or "?"
     cost = _fmt_usd(ev.get("turn_cost_usd"))
     toks = ev.get("tokens") or {}
-    tmpl = os.environ.get("FOOTER_TEMPLATE") or DEFAULT_TEMPLATE
+    # Precedence: explicit FOOTER_TEMPLATE > FOOTER_SHOW_TOKENS > default (cost only)
+    tmpl = os.environ.get("FOOTER_TEMPLATE")
+    if not tmpl:
+        tmpl = DEFAULT_TEMPLATE_WITH_TOKENS if _show_tokens() else DEFAULT_TEMPLATE
     try:
         return tmpl.format(
             model=model,

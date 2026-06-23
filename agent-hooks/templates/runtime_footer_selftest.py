@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Selftest for footer_guard.py (one script, two events).
-Run: python3 footer_guard_selftest.py"""
+"""Selftest for runtime_footer.py (one script, two events).
+Run: python3 runtime_footer_selftest.py"""
 import json
 import os
 import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SCRIPT = os.path.join(HERE, "footer_guard.py")
+SCRIPT = os.path.join(HERE, "runtime_footer.py")
 
 PASS, FAIL = 0, 0
 

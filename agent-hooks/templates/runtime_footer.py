@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Footer guard — the model/cost footer policy. Default: on_response_end only.
+"""Runtime footer — the model/cost footer policy. Default: on_response_end only.
 
 A model **cannot know its own per-reply cost** — and often not even its own model
 id. That data lives only in the runtime. So if the model types a footer itself
@@ -26,11 +26,11 @@ Recommended wiring (workspace/config/shell_hooks.yaml, no matcher):
 
   hooks:
     - event: on_response_end
-      command: /data/workspace/hooks/footer_guard.py
+      command: /data/workspace/hooks/runtime_footer.py
       timeout: 10
     # optional extra nudge (fires per model-request):
     # - event: pre_llm_call
-    #   command: /data/workspace/hooks/footer_guard.py
+    #   command: /data/workspace/hooks/runtime_footer.py
     #   timeout: 10
 
 Env knobs:

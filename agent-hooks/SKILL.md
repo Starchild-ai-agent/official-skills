@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.9.1
+version: 1.10.0
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -357,7 +357,7 @@ job, not by trial.
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
 | `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
-| `footer_guard.py` | `on_response_end` (+ optional `pre_llm_call`) | **Model/cost footer.** On `on_response_end` (once/turn) it strips any model-typed footer at the reply end and appends the ONE true footer from the runtime's real `model` + cost. Optionally wire `pre_llm_call` too for a "don't type a footer" nudge (fires per model-request). See below. |
+| `runtime_footer.py` | `on_response_end` (+ optional `pre_llm_call`) | **Model/cost footer.** On `on_response_end` (once/turn) it strips any model-typed footer at the reply end and appends the ONE true footer from the runtime's real `model` + cost. Optionally wire `pre_llm_call` too for a "don't type a footer" nudge (fires per model-request). See below. |
 
 ### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
 
@@ -474,7 +474,7 @@ curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
 > `on_response_end`. `templates/verify_publish_claims_selftest.py` is the self-test
 > (covers the `on_stop` block path + the loop cap).
 
-## Cost/model footer (`templates/footer_guard.py`)
+## Cost/model footer (`templates/runtime_footer.py`)
 
 A model **cannot know its own per-reply cost** — and often not even its own model
 id. That data lives only in the runtime. So if the model types its own footer
@@ -483,7 +483,7 @@ footer is in the chat history, the model's autocomplete starts imitating it —
 producing a *second*, fabricated footer. The footer is the runtime's job, not the
 model's.
 
-`footer_guard.py` solves this entirely on **one event — `on_response_end`** —
+`runtime_footer.py` solves this entirely on **one event — `on_response_end`** —
 which fires **once per turn** on the final assembled reply: it ① **strips** any
 footer the model typed at the reply end, then ② **appends** the one true footer
 from the runtime's real `model` + cost. The strip is the guarantee; nothing
@@ -507,11 +507,11 @@ regex that risked deleting legit prose; this is the tight redo). Set
 `FOOTER_STRIP=0` for pure append-only.
 
 ```bash
-cp /data/workspace/skills/agent-hooks/templates/footer_guard.py /data/workspace/hooks/
-chmod +x /data/workspace/hooks/footer_guard.py
+cp /data/workspace/skills/agent-hooks/templates/runtime_footer.py /data/workspace/hooks/
+chmod +x /data/workspace/hooks/runtime_footer.py
 curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
   -H 'Content-Type: application/json' \
-  -d '{"command": "/data/workspace/hooks/footer_guard.py"}'
+  -d '{"command": "/data/workspace/hooks/runtime_footer.py"}'
 ```
 
 Wire it in `config/shell_hooks.yaml` — no `matcher`, runs every turn:
@@ -519,11 +519,11 @@ Wire it in `config/shell_hooks.yaml` — no `matcher`, runs every turn:
 ```yaml
 hooks:
   - event: on_response_end
-    command: /data/workspace/hooks/footer_guard.py
+    command: /data/workspace/hooks/runtime_footer.py
     timeout: 10
   # Optional extra nudge (fires per model-request, N times/turn):
   # - event: pre_llm_call
-  #   command: /data/workspace/hooks/footer_guard.py
+  #   command: /data/workspace/hooks/runtime_footer.py
   #   timeout: 10
 ```
 
@@ -534,7 +534,7 @@ suppression wording with `FOOTER_SUPPRESS_TEXT`, or the footer format with
 `FOOTER_TEMPLATE` (`{model} {cost} {input} {output}`, takes precedence over
 `FOOTER_SHOW_TOKENS`).
 
-**Don't double up:** `footer_guard` is the shell-hook equivalent of the host
+**Don't double up:** `runtime_footer` is the shell-hook equivalent of the host
 `turn_footer` extension — enable one, not both. Same for Telegram's
 `tg_show_usage`.
 
@@ -543,7 +543,7 @@ carries no cost data or the reply is empty (no `$0.0000` lie), and only ever
 strips a narrowly-matched footer at the reply's tail (`FOOTER_STRIP=0` to
 disable); the optional `pre_llm_call` injects nothing on a missing/malformed
 payload; an unknown event is a no-op. Fail-open on any error. Self-test:
-`templates/footer_guard_selftest.py` (25 cases — both handlers, strip +
+`templates/runtime_footer_selftest.py` (25 cases — both handlers, strip +
 false-positive guards for mid-body prose and shell `$VAR`, dispatch safety).
 
 ## Claude Code compatibility

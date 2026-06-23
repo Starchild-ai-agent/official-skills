@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.6.0
+version: 1.7.0
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]

@@ -357,7 +357,7 @@ job, not by trial.
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
 | `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
-| `footer_guard.py` | `pre_llm_call`, `on_response_end` | **Complete model/cost footer policy in one script.** `pre_llm_call` injects a directive (don't type your own footer, don't imitate history); `on_response_end` strips any model-typed footer at the reply end and appends the ONE true footer from the runtime's real `model` + cost. See below. |
+| `footer_guard.py` | `on_response_end` (+ optional `pre_llm_call`) | **Model/cost footer.** On `on_response_end` (once/turn) it strips any model-typed footer at the reply end and appends the ONE true footer from the runtime's real `model` + cost. Optionally wire `pre_llm_call` too for a "don't type a footer" nudge (fires per model-request). See below. |
 
 ### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
 
@@ -474,25 +474,30 @@ curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
 > `on_response_end`. `templates/verify_publish_claims_selftest.py` is the self-test
 > (covers the `on_stop` block path + the loop cap).
 
-## Cost/model footer — one script (`templates/footer_guard.py`), two events
+## Cost/model footer (`templates/footer_guard.py`)
 
 A model **cannot know its own per-reply cost** — and often not even its own model
 id. That data lives only in the runtime. So if the model types its own footer
 (e.g. `Model: GLM-5.2 | Cost: $0.038`), the numbers are invented. And once a real
-footer is in the chat history every turn, the model's autocomplete starts
-imitating it — producing a *second*, fabricated footer. The footer is the
-runtime's job, not the model's. `footer_guard.py` handles the whole policy in one
-file, dispatching on `event` (same one-file-many-events pattern as
-`security_guard.py`):
+footer is in the chat history, the model's autocomplete starts imitating it —
+producing a *second*, fabricated footer. The footer is the runtime's job, not the
+model's.
 
-| Event | What it does |
-|---|---|
-| `pre_llm_call` | inject a directive EVERY turn: don't type your own footer, don't imitate the ones in history (re-injected each turn because the tempting examples are in history each turn) |
-| `on_response_end` | strip any model-typed footer at the reply **end**, then append the ONE true footer from runtime `model` + cost (+ tokens) |
+`footer_guard.py` solves this entirely on **one event — `on_response_end`** —
+which fires **once per turn** on the final assembled reply: it ① **strips** any
+footer the model typed at the reply end, then ② **appends** the one true footer
+from the runtime's real `model` + cost. The strip is the guarantee; nothing
+per-call is needed.
 
-Wire **both events to the same file** — the `pre_llm_call` half prevents the
-footer at the source; the `on_response_end` half adds the only trustworthy one
-and cleans up any leftover the model still typed.
+> **Why on_response_end alone, not pre_llm_call.** There is no event that fires
+> "just before the final response". `pre_llm_call` fires before *every* model
+> request (N times/turn when tools are used) and can't know which call is the
+> last — the model decides to use tools dynamically. Wiring the suppression there
+> injects the directive N times/turn (visible as repeated injections in the call
+> trace). It's also redundant: `on_response_end` already removes the footer
+> post-hoc. So **default to on_response_end only.** The script *does* carry a
+> `pre_llm_call` handler (injects a "don't type a footer" directive) if you want
+> the extra nudge — wire it as a second event — but accept it runs per-call.
 
 The strip is a **safety net** (`FOOTER_STRIP`, on by default), deliberately
 narrow: it only removes a box-drawing `─ … · $N` line or a `Model: … Cost: $N`
@@ -507,26 +512,27 @@ chmod +x /data/workspace/hooks/footer_guard.py
 curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
   -H 'Content-Type: application/json' \
   -d '{"command": "/data/workspace/hooks/footer_guard.py"}'
-# -> {"ok": true, "events": ["pre_llm_call", "on_response_end"], "mounted": 2}
 ```
 
-Wire both events in `config/shell_hooks.yaml` — no `matcher`, both run every turn:
+Wire it in `config/shell_hooks.yaml` — no `matcher`, runs every turn:
 
 ```yaml
 hooks:
-  - event: pre_llm_call
-    command: /data/workspace/hooks/footer_guard.py
-    timeout: 10
   - event: on_response_end
     command: /data/workspace/hooks/footer_guard.py
     timeout: 10
+  # Optional extra nudge (fires per model-request, N times/turn):
+  # - event: pre_llm_call
+  #   command: /data/workspace/hooks/footer_guard.py
+  #   timeout: 10
 ```
 
 By default the footer shows **model + cost only** (`─ z-ai/glm-5.2 · $0.0211`).
 Token detail is hidden. To show it, set `FOOTER_SHOW_TOKENS=1`
-(`─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out`). Override the suppression wording
-with `FOOTER_SUPPRESS_TEXT`, or the footer format with `FOOTER_TEMPLATE`
-(`{model} {cost} {input} {output}`, takes precedence over `FOOTER_SHOW_TOKENS`).
+(`─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out`). Override the (optional)
+suppression wording with `FOOTER_SUPPRESS_TEXT`, or the footer format with
+`FOOTER_TEMPLATE` (`{model} {cost} {input} {output}`, takes precedence over
+`FOOTER_SHOW_TOKENS`).
 
 **Don't double up:** `footer_guard` is the shell-hook equivalent of the host
 `turn_footer` extension — enable one, not both. Same for Telegram's
@@ -535,9 +541,9 @@ with `FOOTER_SUPPRESS_TEXT`, or the footer format with `FOOTER_TEMPLATE`
 **Safety:** never blocks. `on_response_end` appends nothing when the event
 carries no cost data or the reply is empty (no `$0.0000` lie), and only ever
 strips a narrowly-matched footer at the reply's tail (`FOOTER_STRIP=0` to
-disable); `pre_llm_call` injects nothing on a missing/malformed payload; an
-unknown event is a no-op. Fail-open on any error. Self-test:
-`templates/footer_guard_selftest.py` (25 cases — both events, strip +
+disable); the optional `pre_llm_call` injects nothing on a missing/malformed
+payload; an unknown event is a no-op. Fail-open on any error. Self-test:
+`templates/footer_guard_selftest.py` (25 cases — both handlers, strip +
 false-positive guards for mid-body prose and shell `$VAR`, dispatch safety).
 
 ## Claude Code compatibility

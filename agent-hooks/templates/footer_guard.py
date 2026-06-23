@@ -1,37 +1,44 @@
 #!/usr/bin/env python3
-"""Footer guard — ONE script, TWO events. The complete model/cost footer policy.
+"""Footer guard — the model/cost footer policy. Default: on_response_end only.
 
 A model **cannot know its own per-reply cost** — and often not even its own model
 id. That data lives only in the runtime. So if the model types a footer itself
 (e.g. "Model: GLM-5.2 | Cost: $0.038"), the numbers are invented. And once a real
-footer sits in the chat history every turn, the model's autocomplete imitates it
-and types a second, fabricated one. The footer is the runtime's job, not the
-model's — so this one script handles both halves, dispatching on `event` (same
-one-file-many-events pattern as security_guard.py):
+footer sits in the chat history, the model's autocomplete imitates it and types a
+second, fabricated one. The footer is the runtime's job, not the model's.
 
-  • pre_llm_call    → inject a directive: don't type your own footer, don't
-                      imitate the runtime footers you see in history. Re-injected
-                      every turn (the tempting examples are in history every turn).
-  • on_response_end → strip any model-typed footer left at the END of the reply,
-                      then append the ONE true footer from runtime model + cost.
+This script dispatches on `event` and carries two handlers:
 
-Wire BOTH events to this single file in workspace/config/shell_hooks.yaml
-(no matcher — every turn):
+  • on_response_end → (DEFAULT) fires ONCE per turn on the final reply: strip any
+                      model-typed footer left at the END, then append the ONE true
+                      footer from runtime model + cost. This is the whole
+                      guarantee — wire just this.
+  • pre_llm_call    → (OPTIONAL) inject a directive: don't type your own footer,
+                      don't imitate the footers in history. NOTE: pre_llm_call
+                      fires before EVERY model request (N times/turn when tools
+                      are used) and can't know which call is the final one, so it
+                      injects the directive repeatedly. It's also redundant — the
+                      on_response_end strip already removes the footer. Wire it
+                      only if you want the extra nudge and accept the per-call
+                      injection.
+
+Recommended wiring (workspace/config/shell_hooks.yaml, no matcher):
 
   hooks:
-    - event: pre_llm_call
-      command: /data/workspace/hooks/footer_guard.py
-      timeout: 10
     - event: on_response_end
       command: /data/workspace/hooks/footer_guard.py
       timeout: 10
+    # optional extra nudge (fires per model-request):
+    # - event: pre_llm_call
+    #   command: /data/workspace/hooks/footer_guard.py
+    #   timeout: 10
 
 Env knobs:
   FOOTER_SHOW_TOKENS=1   show token counts (default: hidden, model + cost only)
   FOOTER_TEMPLATE=...    custom format, {model} {cost} {input} {output}
                          (takes precedence over FOOTER_SHOW_TOKENS)
   FOOTER_STRIP=0         disable the safety-net strip (pure append-only)
-  FOOTER_SUPPRESS_TEXT   override the injected pre_llm_call directive
+  FOOTER_SUPPRESS_TEXT   override the optional pre_llm_call directive
 
 Safety: never blocks. on_response_end appends nothing when there's no real cost
 data (and emits the cleaned body if it stripped a fabricated footer); pre_llm_call

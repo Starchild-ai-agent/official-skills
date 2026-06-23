@@ -357,7 +357,7 @@ the host under `extensions/shell_hooks/examples/` (copy + adapt). No two overlap
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
 | `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
-| `strip_fabricated_footer.py` | `on_response_end` | **Anti-hallucination (cost/model footer).** Strip a self-typed `Model: … \| Cost: …` footer the model invented (it cannot know its own per-reply cost / model id — that lives only in the runtime). Optionally re-append the REAL runtime footer. |
+| `append_runtime_footer.py` | `on_response_end` | **True cost/model footer.** Append a footer built from the runtime's real `model` + `turn_cost_usd` + `tokens` (the model can't know these — they live only in the runtime). Append-only: never deletes/rewrites the model's content. Tell the model in its prompt not to type its own footer. |
 
 ### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
 
@@ -474,56 +474,53 @@ curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
 > `on_response_end`. `templates/verify_publish_claims_selftest.py` is the self-test
 > (covers the `on_stop` block path + the loop cap).
 
-## Anti-hallucination footer guard (`templates/strip_fabricated_footer.py`)
+## True cost/model footer (`templates/append_runtime_footer.py`)
 
-Catches a different fabrication from `verify_publish_claims.py`: a model **cannot
-know its own per-reply cost** — and often not even its own model id. That data
-lives only in the runtime. Yet some agents append a self-typed footer on every
-reply, e.g. `Model: GLM-5.2 | Cost: $0.038`, with invented numbers. Once that
-footer is in the agent's own context every turn, autocomplete locks it in and a
-one-line "I'll stop" never holds — so you fix it structurally here, not by asking
-the model.
+A model **cannot know its own per-reply cost** — and often not even its own model
+id. That data lives only in the runtime. So if the model types its own footer
+(e.g. `Model: GLM-5.2 | Cost: $0.038`), the numbers are invented.
 
-The hook runs on `on_response_end` and strips a **trailing** self-typed footer
-block (model / cost / token lines + their separators). Two modes via the
-`FOOTER_MODE` env var:
+This hook does **one** thing: on `on_response_end` it **appends** a footer built
+from the kernel-supplied `model` + `turn_cost_usd` + `tokens` — real values,
+every turn:
 
-- `strip` (default) — remove the fake footer, append nothing. Use when the agent
-  should show no footer.
-- `real` — remove it, then append the **true** runtime footer
-  `─ <model> · $<cost> · <in> in / <out> out`, built from the kernel-supplied
-  `model` + `turn_cost_usd` + `tokens`.
+    ─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out
+
+It is **append-only**: it never deletes or rewrites the model's own content. The
+right way to stop the model from typing its own (fabricated) footer is to tell it
+not to in its prompt / SOUL — the model controls what it generates, this hook
+controls the single trustworthy footer appended after.
 
 ```bash
-cp /data/workspace/skills/agent-hooks/templates/strip_fabricated_footer.py /data/workspace/hooks/
-chmod +x /data/workspace/hooks/strip_fabricated_footer.py
+cp /data/workspace/skills/agent-hooks/templates/append_runtime_footer.py /data/workspace/hooks/
+chmod +x /data/workspace/hooks/append_runtime_footer.py
 curl -s -X POST http://localhost:8000/internal/runtime/hooks/approve \
   -H 'Content-Type: application/json' \
-  -d '{"command": "/data/workspace/hooks/strip_fabricated_footer.py"}'
+  -d '{"command": "/data/workspace/hooks/append_runtime_footer.py"}'
 ```
 
-Wire it in `config/shell_hooks.yaml` with a `matcher` perf-gate so it only runs
-when a footer-ish line is present:
+Wire it in `config/shell_hooks.yaml` — no `matcher` needed, it should run every
+turn:
 
 ```yaml
 hooks:
   - event: on_response_end
-    matcher: "Model:|Cost:|💰|· \\$|\\$[0-9].*(in|out|tokens)"
-    command: /data/workspace/hooks/strip_fabricated_footer.py
+    command: /data/workspace/hooks/append_runtime_footer.py
     timeout: 10
 ```
 
-**Composition:** shell hooks register at priority 60, the host `turn_footer`
-extension at 200. In default `strip` mode you can pair this hook with
-`turn_footer` (or Telegram's `tg_show_usage`): strip runs first (removes the
-fake), the runtime appends the true one. Do **not** combine `FOOTER_MODE=real`
-with `turn_footer` — both append a real footer and you'd get two.
+**Custom format (optional):** set `FOOTER_TEMPLATE` with `{model} {cost} {input}
+{output}` placeholders, e.g.
+`FOOTER_TEMPLATE="Model: {model} | Cost: {cost} | {input} in / {output} out"`.
 
-**Safety:** pure text rewrite, never blocks. Strips only a tail block that
-contains a genuine footer line — a bare `---` separator, prose mentioning
-"model", and shell `$VAR` lines are left untouched; fail-open on any error.
-`templates/strip_fabricated_footer_selftest.py` is the self-test (15 cases incl.
-4 false-positive guards).
+**Don't double up:** this is the shell-hook equivalent of the host `turn_footer`
+extension — enable one, not both (or you'd get two footers). Same for Telegram's
+`tg_show_usage`.
+
+**Safety:** pure append, never blocks, never deletes. If the event carries no
+cost data, or the reply is empty, it appends nothing (no `$0.0000` lie).
+Fail-open on any error. `templates/append_runtime_footer_selftest.py` is the
+self-test (11 cases, incl. content-preservation + bad-template fallback).
 
 ## Claude Code compatibility
 

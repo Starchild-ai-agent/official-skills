@@ -12,21 +12,21 @@ SCRIPT = os.path.join(HERE, "append_runtime_footer.py")
 
 
 def run(reply, model="z-ai/glm-5.2", cost=0.0211, toks=None, template=None,
-        omit_cost=False, omit_tokens=False, show_tokens=False):
+        omit_cost=False, omit_tokens=False, show_tokens=False, env_extra=None):
     ev = {"event": "on_response_end", "response": reply, "model": model}
     if not omit_cost:
         ev["turn_cost_usd"] = cost
     if not omit_tokens:
         ev["tokens"] = toks if toks is not None else {"input": 900, "output": 120}
     env = dict(os.environ)
+    for k in ("FOOTER_TEMPLATE", "FOOTER_SHOW_TOKENS", "FOOTER_STRIP"):
+        env.pop(k, None)
     if template is not None:
         env["FOOTER_TEMPLATE"] = template
-    else:
-        env.pop("FOOTER_TEMPLATE", None)
     if show_tokens:
         env["FOOTER_SHOW_TOKENS"] = "1"
-    else:
-        env.pop("FOOTER_SHOW_TOKENS", None)
+    if env_extra:
+        env.update(env_extra)
     p = subprocess.run([sys.executable, SCRIPT], input=json.dumps(ev),
                        capture_output=True, text=True, env=env, timeout=15)
     out = (p.stdout or "").strip()
@@ -58,11 +58,44 @@ check("body preserved verbatim", r and r.startswith(BODY), repr(r))
 r = run(BODY, show_tokens=True)
 check("show-tokens appends token detail", r and "─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out" in r, repr(r))
 
-# 2) Does NOT remove or alter the model's own content (even a self-typed footer)
+# 2) [SAFETY NET] strips a model-typed footer at the END, replaces with the real one
 fake = f"{BODY}\n\nModel: claude-opus-4.5 | Cost: $9.99"
 r = run(fake)
-check("existing content untouched (no deletion)", r and "Model: claude-opus-4.5 | Cost: $9.99" in r, repr(r))
-check("real footer still appended after it", r and r.rstrip().endswith("$0.0211"), repr(r))
+check("verbose fabricated footer stripped", r and "claude-opus-4.5" not in r and "$9.99" not in r, repr(r))
+check("body kept after strip", r and r.startswith(BODY), repr(r))
+check("real footer appended after strip", r and r.rstrip().endswith("$0.0211"), repr(r))
+
+# 2b) box-drawing fabricated footer (the GLM-style imitation) also stripped
+fake2 = f"{BODY}\n\n─ z-ai/glm-5.2 · $7.7777"
+r = run(fake2)
+check("box-drawing fabricated footer stripped", r and "$7.7777" not in r, repr(r))
+check("real footer replaces it (one footer)", r and r.count("─ z-ai/glm-5.2") == 1 and r.rstrip().endswith("$0.0211"), repr(r))
+
+# 2c) multiple stacked fabricated footers all stripped
+fake3 = f"{BODY}\n\n─ a · $1.0000\n\n─ b · $2.0000"
+r = run(fake3)
+check("stacked fabricated footers all stripped", r and "$1.0000" not in r and "$2.0000" not in r, repr(r))
+
+# 2d) [FALSE-POSITIVE GUARD] prose with the word "model" and a "Cost:" sentence
+#     in the MIDDLE of the body is NOT touched (only the trailing tail is).
+prose = ("Our model pipeline is great.\nModel: see the docs for setup.\n"
+         "The Cost: section explains pricing in detail below.\nFinal thoughts here.")
+r = run(prose)
+check("mid-body prose untouched", r and prose in r, repr(r))
+
+# 2e) [FALSE-POSITIVE GUARD] a shell line with $VAR at the end is NOT a footer
+shellish = f"Run this:\n\n    export PRICE=$VALUE  # set it"
+r = run(shellish)
+check("trailing shell $VAR not stripped", r and "export PRICE=$VALUE" in r, repr(r))
+
+# 2f) FOOTER_STRIP=0 disables the safety net (append-only fallback)
+fake4 = f"{BODY}\n\nModel: x | Cost: $9.99"
+r = run(fake4, env_extra={"FOOTER_STRIP": "0"})
+check("FOOTER_STRIP=0 keeps model footer", r and "$9.99" in r, repr(r))
+
+# 2g) no real usage BUT a fabricated footer present → strip it, emit cleaned body
+r = run(f"{BODY}\n\n─ glm-5.2 · $9.99", omit_cost=True, omit_tokens=True)
+check("no usage + fake footer: cleaned", r is not None and "$9.99" not in r and r.strip() == BODY, repr(r))
 
 # 3) Custom FOOTER_TEMPLATE honored
 r = run(BODY, template="Model: {model} | Cost: {cost} | {input} in / {output} out")

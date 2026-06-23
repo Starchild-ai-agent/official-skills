@@ -39,15 +39,65 @@ Format override (optional): set FOOTER_TEMPLATE with {model} {cost} {input}
 {output} placeholders (takes precedence over FOOTER_SHOW_TOKENS), e.g.
   FOOTER_TEMPLATE="Model: {model} | Cost: {cost} | {input} in / {output} out"
 
-Safety: pure append, never blocks, never deletes. If the event carries no cost
-data, or the reply is empty, it emits nothing (no change). Fail-open on any error
-so a broken hook can never alter or break a reply.
+Safety net (FOOTER_STRIP, on by default): before appending, it removes any
+model-typed footer the model emitted at the very END of the reply — recognised
+only by a tight shape (a box-drawing "─ … · $N" line, or "Model: … Cost: $N"),
+matched ONLY on trailing lines so the body is never touched. Set FOOTER_STRIP=0
+to disable and fall back to pure-append. Companion suppress_model_footer.py
+(pre_llm_call) stops the model writing one in the first place; this catches the
+leftovers.
+
+Safety: never blocks. If the event carries no cost data and nothing was stripped,
+it emits nothing (no change); if a fabricated footer was stripped, it emits the
+cleaned body even with no real footer to add. Fail-open on any error so a broken
+hook can never break a reply.
 """
 from __future__ import annotations
 
 import json
 import os
+import re
 import sys
+
+# A model-typed footer is recognised ONLY when it matches one of these tight
+# shapes — both REQUIRE a "$" followed by a digit, so prose containing the word
+# "model" or shell "$VAR" never matches. Anchored per-line; applied ONLY to
+# trailing lines (see _strip_trailing_footers), never the body.
+_FOOTER_PATTERNS = (
+    # box-drawing style: "─ model · $0.0211" / "— model · $0.02 · 900 in / 120 out"
+    re.compile(r"^\s*[\u2500\u2014\u2013\-]{1,4}\s.*\s[·•]\s*\$\d"),
+    # verbose style: "Model: claude-x | Cost: $0.04" / "Model: x · Cost: 0.04"
+    re.compile(r"^\s*Model:\s.*\bCost:\s*\$?\d", re.IGNORECASE),
+)
+
+
+def _is_footer_line(line: str) -> bool:
+    return any(p.match(line) for p in _FOOTER_PATTERNS)
+
+
+def _strip_enabled() -> bool:
+    # On by default; set FOOTER_STRIP=0 to disable the safety-net removal.
+    return (os.environ.get("FOOTER_STRIP") or "1").strip().lower() not in (
+        "0", "false", "no", "off",
+    )
+
+
+def _strip_trailing_footers(reply: str) -> str:
+    """Remove model-typed footer lines that appear at the very END of the reply.
+
+    Walks lines from the bottom: drops trailing blank lines and any footer-shaped
+    line, and STOPS at the first real content line. Only the tail is ever
+    touched — a "Model: ... Cost: $5" sentence in the middle of the body is left
+    untouched because we never look past the first non-footer line from the end.
+    """
+    lines = reply.split("\n")
+    while lines:
+        last = lines[-1]
+        if last.strip() == "" or _is_footer_line(last):
+            lines.pop()
+            continue
+        break
+    return "\n".join(lines)
 
 # Default footer shows model + cost only. Token detail is hidden unless the user
 # opts in with FOOTER_SHOW_TOKENS=1 (or a custom FOOTER_TEMPLATE with token
@@ -137,6 +187,14 @@ def main() -> None:
         print("")
         return
 
+    # Safety net: strip any model-typed footer the model emitted at the END of
+    # the reply (it can't know real cost/model id, so a self-typed footer is
+    # fabricated). Companion suppress_model_footer.py tells the model not to write
+    # one; this catches the cases where it does anyway. Narrow + tail-only, so the
+    # body is never touched.
+    body = _strip_trailing_footers(reply) if _strip_enabled() else reply.rstrip()
+    body = body.rstrip()
+
     # Need a real cost source to append an honest footer. The clawd shell-hook
     # bridge ALWAYS sends turn_cost_usd (defaulting to 0.0) and tokens (default
     # {}), so a `is None` check never fires — instead treat "cost <= 0 AND no
@@ -144,11 +202,16 @@ def main() -> None:
     # with no usage attached would render "$0.0000 · 0 in / 0 out", disguising
     # missing data as a real zero-cost turn.
     if not _has_usage(ev):
-        print("")
+        # No real footer to add. If we stripped a fabricated one, emit the
+        # cleaned body; otherwise leave the reply untouched.
+        if body != reply.rstrip():
+            print(json.dumps({"response": body}, ensure_ascii=False))
+        else:
+            print("")
         return
 
     footer = _build_footer(ev)
-    new_reply = f"{reply.rstrip()}\n\n{footer}"
+    new_reply = f"{body}\n\n{footer}"
     print(json.dumps({"response": new_reply}, ensure_ascii=False))
 
 

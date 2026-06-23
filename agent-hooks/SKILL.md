@@ -493,9 +493,15 @@ Hook 1 stops the model writing a footer; hook 2 adds the only trustworthy one.
 Use **both** — hook 2 alone leaves the double-footer (model imitates history),
 hook 1 alone leaves no footer at all.
 
-`append_runtime_footer.py` is **append-only**: it never deletes or rewrites the
-model's content (an earlier strip-based version was dropped — deleting model text
-is too risky and unnecessary once hook 1 prevents the footer at the source).
+`append_runtime_footer.py` also carries a **safety net** (`FOOTER_STRIP`, on by
+default): before appending, it removes any footer the model typed at the very
+**end** of the reply. The match is deliberately narrow — only a box-drawing
+`─ … · $N` line or a `Model: … Cost: $N` line, and only on trailing lines — so a
+"Model:"/"Cost:" sentence in the body, or a shell `$VAR`, is never touched (an
+earlier version used an over-broad `Model:` regex that risked deleting legit
+prose; this is the tight redo). Hook 1 prevents the footer at the source; this
+catches the leftovers and replaces them with the one true footer. Set
+`FOOTER_STRIP=0` for pure append-only.
 
 ```bash
 cp /data/workspace/skills/agent-hooks/templates/suppress_model_footer.py /data/workspace/hooks/
@@ -530,11 +536,13 @@ with `FOOTER_SUPPRESS_TEXT`, or the footer format with `FOOTER_TEMPLATE`
 host `turn_footer` extension — enable one, not both. Same for Telegram's
 `tg_show_usage`.
 
-**Safety:** both hooks are pure additions, never block, never delete. The footer
-appends nothing when the event carries no cost data or the reply is empty (no
-`$0.0000` lie); the suppressor injects nothing on a missing/malformed payload.
-Fail-open on any error. Self-tests: `append_runtime_footer_selftest.py` (16
-cases) and `suppress_model_footer_selftest.py` (6 cases).
+**Safety:** never block. The footer appends nothing when the event carries no
+cost data or the reply is empty (no `$0.0000` lie), and only ever strips a
+narrowly-matched footer at the reply's tail (`FOOTER_STRIP=0` to disable); the
+suppressor injects nothing on a missing/malformed payload. Fail-open on any
+error. Self-tests: `append_runtime_footer_selftest.py` (24 cases, incl. strip +
+false-positive guards for mid-body prose and shell `$VAR`) and
+`suppress_model_footer_selftest.py` (6 cases).
 
 ## Claude Code compatibility
 

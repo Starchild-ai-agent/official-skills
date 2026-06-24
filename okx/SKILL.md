@@ -1,8 +1,8 @@
 ---
 name: okx
-version: 1.0.6
+version: 1.0.7
 description: |
-  OKX OnChainOS: on-chain trading, analytics, security, DeFi, bridging across 20+ chains.
+  OKX OnChainOS: on-chain trading, analytics, security, DeFi across 20+ chains.
 
   Use when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio).
 
@@ -27,11 +27,11 @@ disable-model-invocation: false
 > below lives upstream at [`okx/onchainos-skills`](https://github.com/okx/onchainos-skills)
 > and is fetched fresh on install, so you always get the latest version.
 
-OKX OnChainOS is a suite of **22 specialized sub-skills** covering on-chain
+OKX OnChainOS is a suite of **16 specialized sub-skills** covering on-chain
 trading, market analytics, smart-money signals, DeFi investing & positions,
-cross-chain bridging, wallet ops, security scanning, payment protocols, and
-real-time data streams across 20+ blockchains (Ethereum, Solana, XLayer, Base,
-BSC, Arbitrum, Polygon, Optimism, Avalanche, TRON, …).
+wallet ops, security scanning, payment protocols, and crypto news & sentiment
+across 20+ blockchains (Ethereum, Solana, XLayer, Base, BSC, Arbitrum, Polygon,
+Optimism, Avalanche, TRON, …).
 
 Most sub-skills drive a single binary, `onchainos`, which is downloaded on first
 use. A subset of capabilities (read-only data) can also be accessed without the
@@ -47,10 +47,34 @@ npx skills add okx/onchainos-skills@<sub-skill-name>
 
 # Or via long form
 npx skills add https://github.com/okx/onchainos-skills --skill <sub-skill-name>
+
+# Install everything (auto-detects your environment and installs accordingly)
+npx skills add okx/onchainos-skills
 ```
 
-There is **no batched "install all"** — install the sub-skills you actually
-need. Each sub-skill ships its own SKILL.md + reference docs + trigger phrases.
+Each sub-skill ships its own SKILL.md + reference docs + trigger phrases, so you
+can pull just what you need.
+
+**Plugin marketplace** (alternative):
+
+```text
+/plugin marketplace add okx/onchainos-skills
+/plugin install onchainos-skills
+```
+
+**CLI install** (the `onchainos` binary — auto-detects platform, verifies SHA256,
+installs to `~/.local/bin` or `%USERPROFILE%\.local\bin`):
+
+```bash
+# macOS / Linux
+curl -sSL https://raw.githubusercontent.com/okx/onchainos-skills/main/install.sh | sh
+# add `-s -- --beta` for the latest pre-release (opt-in only; never downgrades)
+```
+
+```powershell
+# Windows
+irm https://raw.githubusercontent.com/okx/onchainos-skills/main/install.ps1 | iex
+```
 
 ---
 
@@ -96,11 +120,17 @@ HMAC-SHA256, and bills the caller's Starchild credits.
 ### Path B — `onchainos` CLI with your own OKX Web3 API Key
 
 For wallet ops (`wallet login`, `wallet send`, `wallet contract-call`), DEX
-swaps that need execution, cross-chain bridges, strategy orders, payments, and
-any other CLI-driven workflow, the user must bring their own credentials:
+swaps that need execution, payments, and any other CLI-driven workflow.
+
+The `onchainos` CLI ships with **built-in sandbox API keys** that work out of the
+box for local testing — no setup required. These keys are **shared, rate-limited,
+and for evaluation only**: do NOT use them in production or with real assets. Any
+failures or losses from using the built-in keys are the caller's responsibility.
+
+For production, bring your own credentials:
 
 1. Apply at [web3.okx.com → Build → Dev Portal](https://web3.okx.com/build/dev-portal)
-2. Set env vars:
+2. Set env vars (or a `.env` in the project root — never commit it):
    ```bash
    export OKX_API_KEY=<your key>
    export OKX_SECRET_KEY=<your secret>
@@ -124,57 +154,51 @@ account — it does NOT import your existing OKX App / extension wallet.
 
 ## Sub-skills by category
 
-### 📊 Discovery & Market Data (8)
+### 📊 Discovery & Market Data (7)
 
 | Sub-skill | Use for |
 |---|---|
-| `okx-dex-market` | Real-time prices, K-line / OHLC, index price, wallet PnL, address tracker |
-| `okx-dex-token` | Token search, holder distribution (whales / smart money / snipers), top traders, cluster analysis, honeypot/rug checks |
-| `okx-dex-signal` | Smart-money / whale / KOL buy signals, top-trader leaderboards |
-| `okx-dex-trenches` | Meme launchpad scanning (pump.fun, BSC, X Layer, TRON), dev rug history, bundle/sniper detection, co-investor tracking |
-| `okx-dex-social` | Crypto news feed + search, social sentiment ranking, KOL vibe & leaderboard |
-| `okx-dex-ws` | WebSocket real-time streams (price, candle, trades, signals, tracker, meme) — CLI + custom script use |
-| `okx-defi-portfolio` | View existing DeFi positions across protocols (lending / LP / staking) |
-| `okx-dapp-discovery` | Bootstrap router: resolves a named DApp (Polymarket, Aave, Hyperliquid, etc.) to its plugin and forwards the prompt |
+| `okx-dex-market` | Real-time prices, K-line charts, index prices, wallet PnL analysis, address tracker activities |
+| `okx-dex-token` | Token search, metadata, market cap, rankings, liquidity pools, hot tokens, advanced info, holder analysis, top traders, trade history, holder cluster analysis |
+| `okx-dex-signal` | Smart money / whale / KOL signal tracking, leaderboard rankings |
+| `okx-dex-trenches` | Meme pump/trenches token scanning, dev reputation, bundle detection, aped wallets |
+| `okx-dex-social` | Crypto news (latest, by symbol, search, detail, source platforms), market-wide sentiment ranking + per-coin sentiment with trend, per-token vibe timeline + TOP50 KOL leaderboard |
+| `okx-defi-portfolio` | DeFi positions and holdings overview across protocols and chains |
+| `okx-dapp-discovery` | Third-party DApp discovery and direct plugin routing — currently supports Polymarket, Aave V3, Hyperliquid, PancakeSwap V3 AMM, Morpho V1 Optimizer |
 
-### 🔄 Trading & Execution (5)
+### 🔄 Trading & Execution (3)
 
 | Sub-skill | Use for |
 |---|---|
-| `okx-dex-swap` | Multi-chain DEX aggregation across 500+ liquidity sources — quote, approve, swap |
-| `okx-dex-bridge` | Cross-chain swap/transfer via Stargate / Across / Relay / Gas.zip — quote, build, track |
-| `okx-dex-strategy` | Limit orders (TP / SL / buy-dip / chase-high) stored & auto-executed in TEE |
-| `okx-defi-invest` | DApp-agnostic DeFi yield discovery + deposit/withdraw/claim (no named protocol) |
-| `okx-onchain-gateway` | Gas price + estimate, transaction simulation, signed-tx broadcast, order tracking |
+| `okx-dex-swap` | Token swap via DEX aggregation (500+ liquidity sources) |
+| `okx-defi-invest` | DeFi product discovery, deposit, withdraw, claim rewards across Aave, Lido, PancakeSwap, Kamino, NAVI and more |
+| `okx-onchain-gateway` | Gas estimation, transaction simulation, broadcasting, order tracking |
 
 ### 💼 Wallet (2)
 
 | Sub-skill | Use for |
 |---|---|
-| `okx-agentic-wallet` | OnchainOS wallet lifecycle: login / verify OTP / status / addresses / balance / send (native + ERC-20 + SPL) / tx history / contract-call |
-| `okx-wallet-portfolio` | Read-only portfolio for any public address — total value, all token balances, per-token lookup |
+| `okx-agentic-wallet` | Wallet lifecycle: auth, balance, portfolio PnL, send, tx history, contract call |
+| `okx-wallet-portfolio` | Public address balance, token holdings, portfolio value |
 
 ### 🔐 Security (1)
 
 | Sub-skill | Use for |
 |---|---|
-| `okx-security` | Token risk & honeypot scan, DApp phishing scan, transaction pre-execution sim, signature safety, ERC-20/Permit2 approvals management |
+| `okx-security` | Security scanning: token risk, DApp phishing, tx pre-execution, signature safety, approval management |
 
-### 💸 Payments (3)
-
-| Sub-skill | Use for |
-|---|---|
-| `okx-agent-payments-protocol` | **Unified dispatcher** — handles x402 (`exact` / `aggr_deferred`), MPP (`charge` / `session`), and a2a-pay paymentId flows. Auto-detects 402 protocol from response headers. |
-| `okx-x402-payment` | Direct x402 signing entry (still supported; new code prefers `okx-agent-payments-protocol`) |
-| `okx-a2a-payment` | ⚠️ DEPRECATED — folded into `okx-agent-payments-protocol`. Stub kept only for legacy aliases. |
-
-### 🛠️ Ops & Onboarding (3)
+### 💸 Payments (1)
 
 | Sub-skill | Use for |
 |---|---|
-| `okx-how-to-play` | Entry router for blank/onboarding prompts ("what does this do", "how do I start"). Routes to a concrete workflow in ≤ 3 turns. |
-| `okx-growth-competition` | Agentic Wallet exclusive trading competitions: list → join → rank → claim |
-| `okx-audit-log` | Audit log file path for offline debugging (`~/.onchainos/audit.jsonl`) |
+| `okx-agent-payments-protocol` | Unified payment dispatcher across x402 (`exact` / `aggr_deferred` schemes — TEE or local-key sign), MPP (`charge` / `session` intents — open / voucher / topUp / close, transaction or hash mode), and a2a-pay (paymentId-based create / pay / status). Routes to per-scheme/intent references. |
+
+### 🛠️ Ops (2)
+
+| Sub-skill | Use for |
+|---|---|
+| `okx-growth-competition` | Agentic Wallet exclusive trading competitions: list, join, view leaderboard, claim rewards |
+| `okx-audit-log` | Audit log export and troubleshooting |
 
 ---
 
@@ -186,20 +210,75 @@ account — it does NOT import your existing OKX App / extension wallet.
 | Search / analyze a token's holders | `okx-dex-token` | A (no key) |
 | Follow smart money buys | `okx-dex-signal` | A (no key) |
 | Scan new meme launches | `okx-dex-trenches` | A (no key) |
-| Stream live market data over WS | `okx-dex-ws` | B (CLI/WS client) |
 | Look at any public wallet | `okx-wallet-portfolio` | A (no key) |
 | Scan a token / dApp for risk | `okx-security` | A (no key) |
 | Estimate gas / simulate a tx | `okx-onchain-gateway` | A or B |
 | Manage / send from my own wallet | `okx-agentic-wallet` | B (requires login) |
-| Swap tokens (same chain) | `okx-dex-swap` REST + sign with the `wallet` skill (Agent Wallet) |
-| Bridge tokens (cross chain) | `okx-dex-bridge` | B (signing) |
-| Place a limit order | `okx-dex-strategy` | B (TEE storage) |
+| Swap tokens | `okx-dex-swap` REST + sign with the `wallet` skill (Agent Wallet) |
 | Find best DeFi yield (any protocol) | `okx-defi-invest` | B (signing) |
 | View my DeFi positions | `okx-defi-portfolio` | A (no key) |
 | Use a specific DApp (Aave, Polymarket, …) | `okx-dapp-discovery` | B (full DApp flow) |
 | Pay an x402 / MPP / a2a-pay gated resource | `okx-agent-payments-protocol` | B (signing) |
 | Join a trading competition | `okx-growth-competition` | B (wallet required) |
 | Debug a CLI failure | `okx-audit-log` | B (local CLI logs) |
+
+---
+
+## Workflows — pre-built multi-skill orchestrations
+
+Beyond individual sub-skills, the repo ships **workflow orchestrations** under
+`workflows/` that compose several skills into one complete operation. The agent
+reads `workflows/INDEX.md` to route a request, then follows the step-by-step
+instructions in the matched workflow file.
+
+| Workflow | What it does | CLI command |
+|---|---|---|
+| Token Research | Price, security, holders, cluster, smart-money signals, optional launchpad deep-dive | `onchainos workflow token-research --address <addr>` |
+| Daily Brief | Market pulse + smart money + new-token activity + portfolio alerts | — |
+| Smart Money Signals | SM signal list aggregated by token + per-token due diligence | `onchainos workflow smart-money` |
+| New Token Screening | MIGRATED launchpad scan + safety & dev enrichment for top 10 | `onchainos workflow new-tokens` |
+| Wallet Analysis | 7d/30d PnL, trading behaviour, recent on-chain activity | `onchainos workflow wallet-analysis --address <addr>` |
+| Portfolio Check | Balances, total value, 30d PnL overview | `onchainos workflow portfolio --address <addr>` |
+| Wallet Monitor | In-session polling — alert on new trades from watched wallets | — |
+| Wallet Monitor (WS) | Background WebSocket session for offline wallet monitoring | — |
+
+### Composite CLI commands
+
+Single commands that replace multiple individual tool calls:
+
+```bash
+# Token report: info + price + advanced-info + security scan (parallel)
+onchainos token report --address <addr> --chain solana
+
+# Full workflow commands
+onchainos workflow token-research --address <addr> [--chain solana]
+onchainos workflow smart-money [--chain solana]
+onchainos workflow new-tokens [--chain solana] [--stage MIGRATED]
+onchainos workflow wallet-analysis --address <addr> [--chain ethereum]
+onchainos workflow portfolio --address <addr> [--chains ethereum,solana]
+```
+
+### Typical skill flows
+
+- **Search & buy**: `okx-dex-token` (find token) → `okx-wallet-portfolio` (check funds) → `okx-dex-swap` (execute trade)
+- **Portfolio overview**: `okx-wallet-portfolio` (holdings) → `okx-dex-token` (enrich with analytics) → `okx-dex-market` (price charts)
+- **Market research**: `okx-dex-token` (trending/rankings) → `okx-dex-market` (candles/history) → `okx-dex-swap` (trade)
+- **Swap & broadcast**: `okx-dex-swap` (get tx data) → sign locally → `okx-onchain-gateway` (broadcast → track order)
+- **Pre-flight check**: `okx-onchain-gateway` (estimate gas → simulate → broadcast → track order)
+- **Full trading flow**: `okx-dex-token` (search) → `okx-dex-market` (price/chart) → `okx-wallet-portfolio` (check balance) → `okx-dex-swap` (get tx) → `okx-onchain-gateway` (simulate + broadcast + track)
+- **Leaderboard → research → trade**: `okx-dex-signal` (top traders by PnL/win rate) → `okx-dex-token` (token analytics) → `okx-dex-swap` (execute trade)
+- **Follow smart money**: `okx-dex-signal` (KOL/smart money buys) → `okx-dex-token` (details + holder cluster) → `okx-dex-market` (price chart) → `okx-dex-swap` (trade)
+
+---
+
+## MCP server
+
+The `onchainos` CLI doubles as a native MCP server, exposing its tools to any
+MCP-compatible client. Start it with:
+
+```bash
+onchainos mcp
+```
 
 ---
 

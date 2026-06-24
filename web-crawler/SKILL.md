@@ -1,14 +1,20 @@
 ---
 name: web-crawler
 version: 2.4.0
-description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
-  Reddit, Threads, plus robust web-page fallback extraction.
+description: 'Web scraping plus social data from Instagram, TikTok, YouTube, Twitter/X,
+  Facebook, LinkedIn, Reddit, Threads, Bluesky, Pinterest, Snapchat, Twitch, Truth Social,
+  plus Google search, Facebook/Google/LinkedIn/Reddit ad libraries, TikTok Shop, and
+  link-in-bio pages (Linktree etc.) — plus robust browser-rendered fallback for any
+  JS-heavy / anti-bot web page.
 
 
-  Use when extracting public posts, transcripts, or pages JS-heavy enough to block
-  plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages
-  behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403,
-  anti-bot, cloudflare, JS-heavy page.
+  USE THIS (not web_fetch) for ANY social-media link or post — Instagram, TikTok, YouTube,
+  Twitter/X, Facebook, LinkedIn, Reddit, Threads, etc. web_fetch only sees the empty JS
+  shell of those pages; this skill has a dedicated API per platform (profiles, posts,
+  videos, comments, transcripts, search). Also use when extracting transcripts, or when
+  any page is JS-heavy / behind anti-bot / Cloudflare. Auto-fallback trigger terms:
+  web_fetch failed, empty_extraction, 403, anti-bot, cloudflare, JS-heavy page, instagram,
+  tiktok, youtube, reel, social media link.
 
   '
 metadata:

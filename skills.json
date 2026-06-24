@@ -346,8 +346,8 @@
     {
       "name": "okx",
       "path": "okx/SKILL.md",
-      "version": "1.0.6",
-      "description": "OKX OnChainOS: on-chain trading, analytics, security, DeFi, bridging across 20+ chains.\n\nUse when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio).\n\nWallet: default to the user's Agent Wallet (via the `wallet` skill). Only use the OnchainOS TEE wallet (`onchainos wallet login <email>`) when the user explicitly asks for it."
+      "version": "1.0.7",
+      "description": "OKX OnChainOS: on-chain trading, analytics, security, DeFi across 20+ chains.\n\nUse when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio).\n\nWallet: default to the user's Agent Wallet (via the `wallet` skill). Only use the OnchainOS TEE wallet (`onchainos wallet login <email>`) when the user explicitly asks for it."
     },
     {
       "name": "okx-account",

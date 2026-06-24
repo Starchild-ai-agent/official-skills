@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.4.0
+version: 2.5.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -96,6 +96,7 @@ Fallback rule:
 | `web_fetch` HTTP 401/403/429/5xx | Call Firecrawl `POST /v2/scrape` once with `formats:["markdown","links"]` + `onlyMainContent:true` |
 | Cloudflare/challenge page text in body | Same Firecrawl call as above |
 | Markdown still misses key fields | Retry once with `formats:["rawHtml"]` |
+| **Firecrawl returns 403 / empty for a social media URL** | Check the intent-routing tables below for a **ScrapeCreators platform-specific endpoint** for this domain (e.g. `sc_get('/v1/instagram/post', url=...)`, `sc_get('/v2/tiktok/video', url=...)`). If one exists, use it — these have dedicated extraction that bypasses anti-bot. If no dedicated endpoint exists, fall through to `archive_fallback` or ask the user. |
 | **Firecrawl itself returns 403 / empty** (hard paywall: NYT, WSJ, Economist, FT, Bloomberg) | Call `archive_fallback(url)` — recovers full text from a web archive snapshot |
 | **Need structured data from a China app** (抖音/小红书/微博/B站/京东/淘宝/1688/闲鱼/得物 etc.) | Call `apify_run()` — Apify Store has purpose-built actors for these platforms that Firecrawl/ScrapeCreators don't cover |
 

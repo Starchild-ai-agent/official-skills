@@ -550,7 +550,7 @@
     {
       "name": "web-crawler",
       "path": "web-crawler/SKILL.md",
-      "version": "2.4.0",
+      "version": "2.5.0",
       "description": "Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn, Reddit, Threads, plus robust web-page fallback extraction.\n\nUse when extracting public posts, transcripts, or pages JS-heavy enough to block plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403, anti-bot, cloudflare, JS-heavy page."
     },
     {

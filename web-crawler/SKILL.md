@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.4.0
+version: 2.4.1
 description: 'Web scraping plus social data from Instagram, TikTok, YouTube, Twitter/X,
   Facebook, LinkedIn, Reddit, Threads, Bluesky, Pinterest, Snapchat, Twitch, Truth Social,
   plus Google search, Facebook/Google/LinkedIn/Reddit ad libraries, TikTok Shop, and

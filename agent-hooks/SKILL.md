@@ -353,6 +353,13 @@ job, not by trial.
 
 ### Production templates (in this skill, `templates/`)
 
+> ⚠️ **Copy before you edit — for every template here.** Always `cp` a template
+> into `/data/workspace/hooks/` and wire your hook at THAT path, then make any
+> changes (rule tweaks, the `runtime_footer` CONFIG block, etc.) in the copy.
+> Editing a file in place under `skills/agent-hooks/templates/` is pointless: the
+> next skill update overwrites it and your changes vanish. The copy in `hooks/`
+> is yours and is never touched by updates.
+
 | Template | Events | Its one job |
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |

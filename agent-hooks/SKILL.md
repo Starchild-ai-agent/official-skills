@@ -527,20 +527,37 @@ hooks:
   #   timeout: 10
 ```
 
-By default the footer shows **model + cost only** (`─ z-ai/glm-5.2 · $0.0211`).
-Token detail is hidden. To show it, set `FOOTER_SHOW_TOKENS=1`
-(`─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out`). Override the (optional)
-suppression wording with `FOOTER_SUPPRESS_TEXT`, or the footer format with
-`FOOTER_TEMPLATE` (`{model} {cost} {input} {output} {credit}`, takes precedence
-over `FOOTER_SHOW_TOKENS` / `FOOTER_SHOW_CREDIT`).
+**Configure by editing your copy — not env vars.** The recommended way to turn
+options on is the `CONFIG` block at the top of the script. Edit it in the copy
+you just made under `/data/workspace/hooks/` (NOT in `skills/…` — that gets
+overwritten on the next skill update). Hooks run with the *server* process
+environment, not your shell, so env vars are awkward to set and invisible in
+`/hooks list`; an in-file constant is reliable, visible, and travels with the
+script:
 
-**Show remaining credit:** set `FOOTER_SHOW_CREDIT=1` to append your balance
+```python
+# ─── CONFIG — edit your copy ───
+SHOW_TOKENS = False   # True → append "· N in / N out"
+SHOW_CREDIT = False   # True → append "· 💰 $bal"  (1 HTTP call/turn, fail-open)
+TEMPLATE    = None    # custom format str: {model} {cost} {input} {output} {credit}
+CREDIT_URL  = None    # override credit endpoint for self-hosted setups
+STRIP       = True    # strip a model-typed footer at the tail
+```
+
+Each constant also has a matching env override (`FOOTER_SHOW_TOKENS`,
+`FOOTER_SHOW_CREDIT`, `FOOTER_TEMPLATE`, `FOOTER_CREDIT_URL`, `FOOTER_STRIP`,
+`FOOTER_SUPPRESS_TEXT`) which **wins when set** — handy for a one-off without
+touching the file, but the in-file constant is the durable default.
+
+Default footer is **model + cost only** (`─ z-ai/glm-5.2 · $0.0211`).
+`SHOW_TOKENS = True` → `─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out`.
+
+**Show remaining credit:** `SHOW_CREDIT = True` appends your balance
 (`─ z-ai/glm-5.2 · $0.0211 · 💰 $271.64`). Off by default because it adds **one
 internal HTTP call per turn** to the credit API — the same endpoint the `credit`
 tool reads, authenticated automatically by source IPv6 (no key needed). It's
 fail-open: a 2s timeout caps the wait, and if the lookup errors or times out the
 balance is silently omitted (the footer still fires, no dangling separator).
-Point it at a different endpoint with `FOOTER_CREDIT_URL` for self-hosted setups.
 Note the model can't see this number unless you wire the hook — it lives only in
 the runtime, like cost.
 
@@ -550,12 +567,12 @@ the runtime, like cost.
 
 **Safety:** never blocks. `on_response_end` appends nothing when the event
 carries no cost data or the reply is empty (no `$0.0000` lie), and only ever
-strips a narrowly-matched footer at the reply's tail (`FOOTER_STRIP=0` to
+strips a narrowly-matched footer at the reply's tail (`STRIP = False` to
 disable); the optional `pre_llm_call` injects nothing on a missing/malformed
 payload; an unknown event is a no-op. Fail-open on any error. Self-test:
-`templates/runtime_footer_selftest.py` (32 cases — both handlers, strip +
+`templates/runtime_footer_selftest.py` (35 cases — both handlers, strip +
 false-positive guards for mid-body prose and shell `$VAR`, credit balance +
-fail-open, dispatch safety).
+fail-open, in-file CONFIG constants + env-override precedence, dispatch safety).
 
 ## Claude Code compatibility
 

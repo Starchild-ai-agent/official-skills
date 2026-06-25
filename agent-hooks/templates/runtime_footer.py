@@ -35,8 +35,19 @@ Recommended wiring (workspace/config/shell_hooks.yaml, no matcher):
 
 Env knobs:
   FOOTER_SHOW_TOKENS=1   show token counts (default: hidden, model + cost only)
-  FOOTER_TEMPLATE=...    custom format, {model} {cost} {input} {output}
-                         (takes precedence over FOOTER_SHOW_TOKENS)
+  FOOTER_SHOW_CREDIT=1   append remaining credit balance (default: hidden). This
+                         adds ONE internal HTTP call per turn to the credit API
+                         (~2s timeout, fail-open: if it errors/times out the
+                         balance is silently omitted and the footer still fires).
+                         Off by default so a footer never costs a network round-
+                         trip unless you opt in.
+  FOOTER_TEMPLATE=...    custom format, {model} {cost} {input} {output} {credit}
+                         (takes precedence over FOOTER_SHOW_TOKENS /
+                         FOOTER_SHOW_CREDIT). {credit} renders the balance only
+                         when the fetch succeeds, else an empty string.
+  FOOTER_CREDIT_URL=...  override the credit-balance endpoint (default: the
+                         internal credit API). Mostly for self-hosted setups and
+                         tests.
   FOOTER_STRIP=0         disable the safety-net strip (pure append-only)
   FOOTER_SUPPRESS_TEXT   override the optional pre_llm_call directive
 
@@ -68,6 +79,12 @@ DEFAULT_SUPPRESS_TEXT = (
 DEFAULT_TEMPLATE = "─ {model} · {cost}"
 DEFAULT_TEMPLATE_WITH_TOKENS = "─ {model} · {cost} · {input} in / {output} out"
 
+# Internal credit-balance endpoint. Authenticated automatically by source IPv6
+# (same mechanism the `credit` tool uses) — no headers/keys needed. Reachable
+# from any in-container subprocess. Only hit when FOOTER_SHOW_CREDIT is on.
+CREDIT_API_URL = "http://starchild-credit-api.internal:8080/api/credits"
+CREDIT_TIMEOUT_SECS = 2  # a footer must never hang the turn waiting on this
+
 # A model-typed footer is recognised ONLY by one of these tight shapes — both
 # REQUIRE a "$" then a digit, so prose with the word "model" or shell "$VAR"
 # never matches. Applied ONLY to trailing lines, never the body.
@@ -98,6 +115,34 @@ def _fmt_int(x) -> str:
         return f"{int(x):,}"
     except (TypeError, ValueError):
         return "0"
+
+
+def _fmt_credit(x) -> str:
+    """Balance with thousands separators + 2 decimals, e.g. '$1,234.56'."""
+    try:
+        return f"${float(x):,.2f}"
+    except (TypeError, ValueError):
+        return ""
+
+
+def _fetch_credit_balance() -> str:
+    """Return the formatted remaining credit (e.g. '$271.64'), or '' on any
+    failure. Fail-open by design: a footer must never break or stall a turn, so
+    every error path (no curl, network down, timeout, bad JSON, missing field)
+    silently yields an empty string and the footer renders without a balance."""
+    try:
+        import subprocess
+        url = os.environ.get("FOOTER_CREDIT_URL") or CREDIT_API_URL
+        out = subprocess.run(
+            ["curl", "-s", "-X", "GET", url],
+            capture_output=True, text=True, timeout=CREDIT_TIMEOUT_SECS,
+        )
+        if out.returncode != 0 or not out.stdout:
+            return ""
+        bal = json.loads(out.stdout).get("credit_balance")
+        return _fmt_credit(bal) if bal is not None else ""
+    except Exception:
+        return ""
 
 
 # ── pre_llm_call: suppress the model from typing its own footer ─────────────
@@ -150,20 +195,31 @@ def _build_footer(ev: dict) -> str:
     cost = _fmt_usd(ev.get("turn_cost_usd"))
     toks = ev.get("tokens") or {}
     tmpl = os.environ.get("FOOTER_TEMPLATE")
+
+    # Fetch the balance ONLY when it will actually render: a custom template that
+    # references {credit}, or FOOTER_SHOW_CREDIT on a default template. This
+    # keeps the extra HTTP call strictly opt-in — the default footer stays a
+    # zero-network operation.
+    want_credit = (bool(tmpl) and "{credit}" in tmpl) or _env_on("FOOTER_SHOW_CREDIT", False)
+    credit_str = _fetch_credit_balance() if want_credit else ""
+
     if not tmpl:
         tmpl = DEFAULT_TEMPLATE_WITH_TOKENS if _env_on("FOOTER_SHOW_TOKENS", False) else DEFAULT_TEMPLATE
+        # Append to the default footer only when the fetch succeeded, so a failed
+        # lookup never leaves a dangling " · 💰 " separator.
+        if _env_on("FOOTER_SHOW_CREDIT", False) and credit_str:
+            tmpl = tmpl + " · 💰 {credit}"
+
+    fmt_kwargs = dict(
+        model=model, cost=cost,
+        input=_fmt_int(toks.get("input")),
+        output=_fmt_int(toks.get("output")),
+        credit=credit_str,
+    )
     try:
-        return tmpl.format(
-            model=model, cost=cost,
-            input=_fmt_int(toks.get("input")),
-            output=_fmt_int(toks.get("output")),
-        )
+        return tmpl.format(**fmt_kwargs)
     except (KeyError, IndexError, ValueError):
-        return DEFAULT_TEMPLATE.format(
-            model=model, cost=cost,
-            input=_fmt_int(toks.get("input")),
-            output=_fmt_int(toks.get("output")),
-        )
+        return DEFAULT_TEMPLATE.format(**fmt_kwargs)
 
 
 def handle_on_response_end(ev: dict) -> None:

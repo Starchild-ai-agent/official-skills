@@ -24,7 +24,8 @@ def check(name, cond, detail=""):
 
 def _run(ev, env_extra=None):
     env = dict(os.environ)
-    for k in ("FOOTER_TEMPLATE", "FOOTER_SHOW_TOKENS", "FOOTER_STRIP", "FOOTER_SUPPRESS_TEXT"):
+    for k in ("FOOTER_TEMPLATE", "FOOTER_SHOW_TOKENS", "FOOTER_STRIP",
+              "FOOTER_SUPPRESS_TEXT", "FOOTER_SHOW_CREDIT", "FOOTER_CREDIT_URL"):
         env.pop(k, None)
     if env_extra:
         env.update(env_extra)
@@ -111,6 +112,42 @@ check("bridge zero-defaults: no footer", r is None, repr(r))
 # cache-only usage → append
 r = resp(BODY, toks={"input": 0, "output": 0, "cache_read": 1500})
 check("cache-only usage: footer appended", r and "─ z-ai/glm-5.2" in r, repr(r))
+
+# ── credit balance (FOOTER_SHOW_CREDIT / {credit}) ──────────────────────────
+# A file:// URL is a deterministic, network-free stand-in for the credit API:
+# curl reads the file and returns its JSON, exactly like the real endpoint.
+import tempfile
+_stub = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
+_stub.write('{"credit_balance": 271.64}')
+_stub.close()
+STUB_URL = f"file://{_stub.name}"
+BROKEN_URL = "http://127.0.0.1:1/nope"  # connection refused → fail-open
+
+# default footer never fetches/shows credit
+r = resp(BODY)
+check("credit off by default", r and "💰" not in r, repr(r))
+
+# FOOTER_SHOW_CREDIT=1 appends the balance to the default footer
+r = resp(BODY, env_extra={"FOOTER_SHOW_CREDIT": "1", "FOOTER_CREDIT_URL": STUB_URL})
+check("show-credit appends balance", r and r.rstrip().endswith("💰 $271.64"), repr(r))
+check("credit keeps model+cost", r and "─ z-ai/glm-5.2 · $0.0211" in r, repr(r))
+
+# fail-open: unreachable endpoint → footer still fires, no balance, no dangling sep
+r = resp(BODY, env_extra={"FOOTER_SHOW_CREDIT": "1", "FOOTER_CREDIT_URL": BROKEN_URL})
+check("credit fail-open: footer intact", r and r.rstrip().endswith("$0.0211"), repr(r))
+check("credit fail-open: no emoji", r and "💰" not in r, repr(r))
+
+# custom template {credit} renders the balance
+r = resp(BODY, env_extra={"FOOTER_TEMPLATE": "{model} · {cost} · bal {credit}",
+                          "FOOTER_CREDIT_URL": STUB_URL})
+check("custom {credit} renders balance", r and r.rstrip().endswith("bal $271.64"), repr(r))
+
+# custom template {credit} with unreachable endpoint → empty, no crash
+r = resp(BODY, env_extra={"FOOTER_TEMPLATE": "{model} · {cost} · bal {credit}",
+                          "FOOTER_CREDIT_URL": BROKEN_URL})
+check("custom {credit} fail-open empty", r and r.rstrip().endswith("· bal"), repr(r))
+
+os.unlink(_stub.name)
 
 # empty reply → no change
 r = resp("")

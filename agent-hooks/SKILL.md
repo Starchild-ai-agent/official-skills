@@ -531,8 +531,18 @@ By default the footer shows **model + cost only** (`─ z-ai/glm-5.2 · $0.0211`
 Token detail is hidden. To show it, set `FOOTER_SHOW_TOKENS=1`
 (`─ z-ai/glm-5.2 · $0.0211 · 900 in / 120 out`). Override the (optional)
 suppression wording with `FOOTER_SUPPRESS_TEXT`, or the footer format with
-`FOOTER_TEMPLATE` (`{model} {cost} {input} {output}`, takes precedence over
-`FOOTER_SHOW_TOKENS`).
+`FOOTER_TEMPLATE` (`{model} {cost} {input} {output} {credit}`, takes precedence
+over `FOOTER_SHOW_TOKENS` / `FOOTER_SHOW_CREDIT`).
+
+**Show remaining credit:** set `FOOTER_SHOW_CREDIT=1` to append your balance
+(`─ z-ai/glm-5.2 · $0.0211 · 💰 $271.64`). Off by default because it adds **one
+internal HTTP call per turn** to the credit API — the same endpoint the `credit`
+tool reads, authenticated automatically by source IPv6 (no key needed). It's
+fail-open: a 2s timeout caps the wait, and if the lookup errors or times out the
+balance is silently omitted (the footer still fires, no dangling separator).
+Point it at a different endpoint with `FOOTER_CREDIT_URL` for self-hosted setups.
+Note the model can't see this number unless you wire the hook — it lives only in
+the runtime, like cost.
 
 **Don't double up:** `runtime_footer` is the shell-hook equivalent of the host
 `turn_footer` extension — enable one, not both. Same for Telegram's
@@ -543,8 +553,9 @@ carries no cost data or the reply is empty (no `$0.0000` lie), and only ever
 strips a narrowly-matched footer at the reply's tail (`FOOTER_STRIP=0` to
 disable); the optional `pre_llm_call` injects nothing on a missing/malformed
 payload; an unknown event is a no-op. Fail-open on any error. Self-test:
-`templates/runtime_footer_selftest.py` (25 cases — both handlers, strip +
-false-positive guards for mid-body prose and shell `$VAR`, dispatch safety).
+`templates/runtime_footer_selftest.py` (32 cases — both handlers, strip +
+false-positive guards for mid-body prose and shell `$VAR`, credit balance +
+fail-open, dispatch safety).
 
 ## Claude Code compatibility
 

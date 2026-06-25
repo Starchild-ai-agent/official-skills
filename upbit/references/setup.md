@@ -88,7 +88,6 @@ Required permissions for full CLI functionality:
 | 자산 조회 (Asset inquiry) | `accounts list`, `api-keys list` |
 | 주문 조회 (Order inquiry) | `orders list-open`, `orders list-closed` |
 | 주문하기 (Place orders) | `orders create`, `orders cancel` |
-| 출금하기 (Withdraw) | `withdraws create-withdrawal`, `withdraws create-krw-withdrawal` |
 | 입금 주소 발급 (Deposit address) | `deposits create-coin-address` |
 
 Public endpoints (`tickers`, `orderbooks`, `candles`, etc.) do not require API keys.

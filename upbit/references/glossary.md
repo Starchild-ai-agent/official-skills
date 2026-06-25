@@ -53,21 +53,18 @@ Use the terms below according to the user's language.
 
 ---
 
-## Deposits & Withdrawals / 입출금 관련
+## Deposits / 입금 관련
 
 | English | 한국어 | 비고 |
 |---|---|---|
 | Deposit | 입금 | |
-| Withdrawal / Withdraw | 출금 | ※ "withdrawal" 대신 "withdraw" 사용 |
 | Deposit address | 입금 주소 | |
-| Allowed withdrawal address | 출금 허용 주소 | 사전 등록 필요 |
 | Network / Net type | 네트워크 | `net_type` 필드 |
 | Two-factor authentication | 2차 인증 | `two_factor_type` |
 | Kakao authentication | 카카오 인증 | `two_factor_type=kakao` |
 | Naver authentication | 네이버 인증 | `two_factor_type=naver` |
 | Hana certificate authentication | 하나 인증 | `two_factor_type=hana` |
 | Secondary address | 보조 주소 | Destination Tag / Memo |
-| Internal (instant) withdrawal | 즉시 출금 | `transaction_type=internal` |
 | Processing | 처리 중 | `PROCESSING` |
 | Accepted / Completed | 완료 | `ACCEPTED` |
 | Cancelled | 취소됨 | `CANCELLED` |

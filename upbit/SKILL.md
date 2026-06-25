@@ -1,6 +1,6 @@
 ---
 name: upbit
-version: 0.9.1
+version: 0.9.2
 description: |
   Use upbit CLI for Upbit REST API — spot orders, market data, withdrawals, deposits, travel rule, account management.
   업비트 CLI로 시세 조회, 주문, 잔고 확인, 입출금을 처리합니다.
@@ -25,6 +25,39 @@ disable-model-invocation: false
 # Upbit Skill
 
 Use the `upbit` CLI binary for all Upbit REST API interactions.
+
+## ⚠️ Onboarding — when credentials are missing
+
+When `UPBIT_ACCESS_KEY` / `UPBIT_SECRET_KEY` are not set, or an authenticated command returns 401:
+
+**In a single turn, do ALL of the following in this exact order:**
+
+1. Call `bash("curl -s https://api.ipify.org")` to get the outbound IP.
+2. Write the setup instructions below in your reply text (substitute `<ip>` with the real IP from step 1):
+
+---
+
+### Step 1 — Allowlist this IP on Upbit
+Upbit only accepts API calls from IP addresses you explicitly allow. Add this IP:
+```
+<ip>
+```
+
+### Step 2 — Create an API key
+1. Log in to [upbit.com](https://upbit.com) → profile → **API 관리** (API Management)
+2. Click **API 키 발급** (Issue API Key)
+3. When prompted for an IP, paste `<ip>`
+4. Enable scopes:
+   - **자산조회** (View assets) — always required
+   - **주문조회** (View orders) — required
+   - **주문생성** (Place orders) — required to trade
+   - **출금** (Withdraw) — only if you want withdrawal support
+5. Complete 2FA + email verification, then copy your **Access Key** and **Secret Key**
+
+### Step 3 — Enter your keys
+Enter your Access Key and Secret Key in the secure input card below.
+
+---
 
 ## Language Behavior
 

@@ -33,23 +33,20 @@ Recommended wiring (workspace/config/shell_hooks.yaml, no matcher):
     #   command: /data/workspace/hooks/runtime_footer.py
     #   timeout: 10
 
-Env knobs:
-  FOOTER_SHOW_TOKENS=1   show token counts (default: hidden, model + cost only)
-  FOOTER_SHOW_CREDIT=1   append remaining credit balance (default: hidden). This
-                         adds ONE internal HTTP call per turn to the credit API
-                         (~2s timeout, fail-open: if it errors/times out the
-                         balance is silently omitted and the footer still fires).
-                         Off by default so a footer never costs a network round-
-                         trip unless you opt in.
-  FOOTER_TEMPLATE=...    custom format, {model} {cost} {input} {output} {credit}
-                         (takes precedence over FOOTER_SHOW_TOKENS /
-                         FOOTER_SHOW_CREDIT). {credit} renders the balance only
-                         when the fetch succeeds, else an empty string.
-  FOOTER_CREDIT_URL=...  override the credit-balance endpoint (default: the
-                         internal credit API). Mostly for self-hosted setups and
-                         tests.
-  FOOTER_STRIP=0         disable the safety-net strip (pure append-only)
-  FOOTER_SUPPRESS_TEXT   override the optional pre_llm_call directive
+Configuration — TWO ways, in-file wins as the recommended path:
+
+  1. (RECOMMENDED) Edit the CONFIG block below in YOUR OWN COPY of this file.
+     Hooks run with the SERVER process environment (the bridge passes no env=),
+     so env vars are awkward to set and invisible in `/hooks list`. Editing a
+     constant here is reliable, self-documenting, and travels with the script.
+     ⚠️ COPY THIS TEMPLATE to /data/workspace/hooks/runtime_footer.py FIRST and
+     point your hook at that path — editing it inside skills/ gets clobbered on
+     the next skill update.
+
+  2. (OVERRIDE) Each setting also reads a matching env var, which WINS over the
+     in-file constant when set — handy for a one-off without touching the file:
+       FOOTER_SHOW_TOKENS  FOOTER_SHOW_CREDIT  FOOTER_TEMPLATE
+       FOOTER_CREDIT_URL   FOOTER_STRIP        FOOTER_SUPPRESS_TEXT
 
 Safety: never blocks. on_response_end appends nothing when there's no real cost
 data (and emits the cleaned body if it stripped a fabricated footer); pre_llm_call
@@ -62,6 +59,21 @@ import json
 import os
 import re
 import sys
+
+# ═══════════════════════════ CONFIG — edit your copy ═══════════════════════
+# Copy this file to /data/workspace/hooks/runtime_footer.py and edit it THERE,
+# then point your hook command at that path. Editing it inside skills/ is
+# pointless — the next skill update overwrites it. Each constant can also be
+# overridden by the matching env var (env wins when set), but in-file is the
+# reliable, visible default because hooks don't inherit your shell env.
+SHOW_TOKENS = False   # True → append "· N in / N out"          env FOOTER_SHOW_TOKENS
+SHOW_CREDIT = False   # True → append "· 💰 $bal" (1 HTTP/turn)  env FOOTER_SHOW_CREDIT
+TEMPLATE    = None    # custom format str, else None            env FOOTER_TEMPLATE
+                      #   fields: {model} {cost} {input} {output} {credit}
+CREDIT_URL  = None    # override credit endpoint, else None      env FOOTER_CREDIT_URL
+STRIP       = True    # strip a model-typed footer at the tail   env FOOTER_STRIP
+SUPPRESS_TEXT = None  # custom pre_llm_call directive, else None env FOOTER_SUPPRESS_TEXT
+# ═══════════════════════════════════════════════════════════════════════════
 
 # ── shared ────────────────────────────────────────────────────────────────
 DEFAULT_SUPPRESS_TEXT = (
@@ -96,11 +108,19 @@ _FOOTER_PATTERNS = (
 )
 
 
-def _env_on(name: str, default: bool) -> bool:
-    v = (os.environ.get(name) or "").strip().lower()
+def _cfg_bool(env_name: str, const_default: bool) -> bool:
+    """Resolve a boolean setting: env var wins when set, else the in-file
+    constant. Empty/unset env falls through to the constant."""
+    v = (os.environ.get(env_name) or "").strip().lower()
     if v == "":
-        return default
+        return const_default
     return v not in ("0", "false", "no", "off")
+
+
+def _cfg_str(env_name: str, const_default):
+    """Resolve a string setting: a non-empty env var wins, else the constant."""
+    v = os.environ.get(env_name)
+    return v if v not in (None, "") else const_default
 
 
 def _fmt_usd(x) -> str:
@@ -132,7 +152,7 @@ def _fetch_credit_balance() -> str:
     silently yields an empty string and the footer renders without a balance."""
     try:
         import subprocess
-        url = os.environ.get("FOOTER_CREDIT_URL") or CREDIT_API_URL
+        url = _cfg_str("FOOTER_CREDIT_URL", CREDIT_URL) or CREDIT_API_URL
         out = subprocess.run(
             ["curl", "-s", "-X", "GET", url],
             capture_output=True, text=True, timeout=CREDIT_TIMEOUT_SECS,
@@ -147,7 +167,7 @@ def _fetch_credit_balance() -> str:
 
 # ── pre_llm_call: suppress the model from typing its own footer ─────────────
 def handle_pre_llm_call(ev: dict) -> None:
-    text = os.environ.get("FOOTER_SUPPRESS_TEXT") or DEFAULT_SUPPRESS_TEXT
+    text = _cfg_str("FOOTER_SUPPRESS_TEXT", SUPPRESS_TEXT) or DEFAULT_SUPPRESS_TEXT
     print(json.dumps({"context": text}, ensure_ascii=False))
 
 
@@ -194,20 +214,20 @@ def _build_footer(ev: dict) -> str:
     model = ev.get("model") or "?"
     cost = _fmt_usd(ev.get("turn_cost_usd"))
     toks = ev.get("tokens") or {}
-    tmpl = os.environ.get("FOOTER_TEMPLATE")
+    tmpl = _cfg_str("FOOTER_TEMPLATE", TEMPLATE)
+    show_credit = _cfg_bool("FOOTER_SHOW_CREDIT", SHOW_CREDIT)
 
     # Fetch the balance ONLY when it will actually render: a custom template that
-    # references {credit}, or FOOTER_SHOW_CREDIT on a default template. This
-    # keeps the extra HTTP call strictly opt-in — the default footer stays a
-    # zero-network operation.
-    want_credit = (bool(tmpl) and "{credit}" in tmpl) or _env_on("FOOTER_SHOW_CREDIT", False)
+    # references {credit}, or show_credit on a default template. This keeps the
+    # extra HTTP call strictly opt-in — the default footer stays zero-network.
+    want_credit = (bool(tmpl) and "{credit}" in tmpl) or show_credit
     credit_str = _fetch_credit_balance() if want_credit else ""
 
     if not tmpl:
-        tmpl = DEFAULT_TEMPLATE_WITH_TOKENS if _env_on("FOOTER_SHOW_TOKENS", False) else DEFAULT_TEMPLATE
+        tmpl = DEFAULT_TEMPLATE_WITH_TOKENS if _cfg_bool("FOOTER_SHOW_TOKENS", SHOW_TOKENS) else DEFAULT_TEMPLATE
         # Append to the default footer only when the fetch succeeded, so a failed
         # lookup never leaves a dangling " · 💰 " separator.
-        if _env_on("FOOTER_SHOW_CREDIT", False) and credit_str:
+        if show_credit and credit_str:
             tmpl = tmpl + " · 💰 {credit}"
 
     fmt_kwargs = dict(
@@ -228,7 +248,7 @@ def handle_on_response_end(ev: dict) -> None:
         print("")
         return
 
-    body = (_strip_trailing_footers(reply) if _env_on("FOOTER_STRIP", True)
+    body = (_strip_trailing_footers(reply) if _cfg_bool("FOOTER_STRIP", STRIP)
             else reply.rstrip()).rstrip()
 
     if not _has_usage(ev):

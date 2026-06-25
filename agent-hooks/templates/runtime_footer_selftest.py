@@ -147,6 +147,55 @@ r = resp(BODY, env_extra={"FOOTER_TEMPLATE": "{model} · {cost} · bal {credit}"
                           "FOOTER_CREDIT_URL": BROKEN_URL})
 check("custom {credit} fail-open empty", r and r.rstrip().endswith("· bal"), repr(r))
 
+# ── in-file CONFIG constants (no env) — the recommended config path ──────────
+# Prove the script honours its top-of-file constants when NO env var is set,
+# by writing a temp copy with the constants flipped and running it with a clean
+# env. This mirrors the real deploy: user copies the template, edits constants.
+def _run_variant(src_path, ev):
+    env = dict(os.environ)
+    for k in ("FOOTER_TEMPLATE", "FOOTER_SHOW_TOKENS", "FOOTER_STRIP",
+              "FOOTER_SUPPRESS_TEXT", "FOOTER_SHOW_CREDIT", "FOOTER_CREDIT_URL"):
+        env.pop(k, None)
+    p = subprocess.run([sys.executable, src_path], input=json.dumps(ev),
+                       capture_output=True, text=True, env=env, timeout=15)
+    out = (p.stdout or "").strip()
+    return json.loads(out)["response"] if out else None
+
+_src = open(SCRIPT, encoding="utf-8").read()
+EV = {"event": "on_response_end", "response": BODY, "model": "z-ai/glm-5.2",
+      "turn_cost_usd": 0.0211, "tokens": {"input": 900, "output": 120}}
+
+# SHOW_CREDIT constant flipped on (+ CREDIT_URL constant pointed at the stub)
+_v = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False)
+_v.write(_src.replace("SHOW_CREDIT = False", "SHOW_CREDIT = True")
+              .replace("CREDIT_URL  = None", f'CREDIT_URL  = {STUB_URL!r}'))
+_v.close()
+r = _run_variant(_v.name, EV)
+check("in-file SHOW_CREDIT constant works (no env)",
+      r and r.rstrip().endswith("💰 $271.64"), repr(r))
+os.unlink(_v.name)
+
+# TEMPLATE constant honoured without env
+_v = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False)
+_v.write(_src.replace("TEMPLATE    = None", 'TEMPLATE    = "{model} :: {cost}"'))
+_v.close()
+r = _run_variant(_v.name, EV)
+check("in-file TEMPLATE constant works (no env)",
+      r and r.rstrip().endswith("z-ai/glm-5.2 :: $0.0211"), repr(r))
+os.unlink(_v.name)
+
+# env overrides the in-file constant when both are set (env wins)
+_v = tempfile.NamedTemporaryFile("w", suffix=".py", delete=False)
+_v.write(_src.replace("SHOW_CREDIT = False", "SHOW_CREDIT = True")
+              .replace("CREDIT_URL  = None", f'CREDIT_URL  = {STUB_URL!r}'))
+_v.close()
+_env = dict(os.environ); _env["FOOTER_SHOW_CREDIT"] = "0"
+_p = subprocess.run([sys.executable, _v.name], input=json.dumps(EV),
+                    capture_output=True, text=True, env=_env, timeout=15)
+_r = json.loads(_p.stdout.strip())["response"] if _p.stdout.strip() else None
+check("env overrides in-file constant (env wins)", _r and "💰" not in _r, repr(_r))
+os.unlink(_v.name)
+
 os.unlink(_stub.name)
 
 # empty reply → no change

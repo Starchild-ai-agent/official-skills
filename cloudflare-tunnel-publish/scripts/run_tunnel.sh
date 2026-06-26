@@ -29,7 +29,12 @@ if [[ ! -f "$STATE" ]]; then
     exit 2
 fi
 
-TOKEN=$(python3 -c "import json; print(json.load(open('$STATE'))['run_token'])")
+# Allow the caller to pass a run token explicitly (used by keepalive.sh when
+# guarding multiple sites, each with its own token). Fall back to the state file.
+TOKEN="${1:-}"
+if [[ -z "$TOKEN" ]]; then
+    TOKEN=$(python3 -c "import json; print(json.load(open('$STATE'))['run_token'])")
+fi
 
 if [[ -z "$TOKEN" ]]; then
     echo "❌ run_token missing from state."

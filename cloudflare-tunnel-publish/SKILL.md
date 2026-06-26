@@ -1,6 +1,6 @@
 ---
 name: cloudflare-tunnel-publish
-version: 1.2.1
+version: 1.3.0
 description: |
   Publish a local service to a user-owned custom domain via Cloudflare Tunnel.
 
@@ -124,12 +124,23 @@ Default service URL: `http://localhost:<port>`.
 
 Run `python3 skills/cloudflare-tunnel-publish/scripts/setup.py --hostname <full_hostname> --port <port>`.
 
+**Tunnel reuse is the default.** If a healthy tunnel already exists on the
+account, `setup.py` adds the new hostname to that tunnel's ingress and points
+the DNS CNAME at it — instead of creating a separate tunnel. One tunnel =
+one `cloudflared` process = one keepalive watchdog. Creating a new tunnel per
+site is how you end up with N processes to babysit and N ways to silently go
+dark (the exact bug that prompted this: a second tunnel's `cloudflared` died
+and nothing was watching it, because the watchdog only knew about the first).
+
+Pass `--new-tunnel` only when you have a reason to isolate traffic (e.g. very
+high volume on one site that would saturate the shared edge connections).
+
 The script does, in order:
-1. Create a remotely-managed tunnel (`config_src: "cloudflare"`) named `starchild-<hostname>`
+1. Reuse a healthy tunnel if one exists (or create one named `starchild-<hostname>` if none, or use `--new-tunnel` to force a new one)
 2. Fetch the tunnel **run token** (a long base64 string used to start `cloudflared`)
-3. PUT the ingress configuration: `<hostname>` → `http://localhost:<port>`, fallback `404`
+3. PUT the ingress configuration: merge `<hostname>` → `http://localhost:<port>` into the existing ingress rules (preserving other hostnames), fallback `404`
 4. Create a CNAME DNS record: `<hostname>` → `<tunnel_id>.cfargotunnel.com`, **proxied = true**
-5. Save tunnel_id + run_token + hostname to `workspace/.cf_state.json`
+5. Append the site to the `sites` array in `workspace/.cf_state.json` (multi-site support — see "Multiple sites" below)
 
 If a tunnel with the same name exists, reuse it instead of erroring.
 
@@ -167,7 +178,7 @@ Three possible outcomes:
   - Linux/Windows: link to https://github.com/cloudflare/cloudflared/releases/latest
   Send the run_token via `request_env_input` if needed, or just print it once and tell them to copy it (it's safe to share with their own machine, but never paste back to chat).
 
-- **User wants multiple subdomains** → reuse the same tunnel; PUT a new ingress config that lists all hostnames; create one CNAME per hostname.
+- **User wants multiple subdomains** → reuse the same tunnel; PUT a new ingress config that lists all hostnames; create one CNAME per hostname. This is now the default behavior — just run `setup.py` for each subdomain and it will merge into the existing tunnel's ingress.
 
 - **User wants to remove it** → run `python3 skills/cloudflare-tunnel-publish/scripts/teardown.py` (deletes DNS + tunnel + kills the local cloudflared process).
 
@@ -291,12 +302,14 @@ fi
 
 ### Step 4 — survive mid-life process death (watchdog trigger)
 
-Schedule the SAME script as a cheap `command`-mode task:
+Schedule the SAME script as a cheap `command`-mode task. **One schedule
+guards all sites** — keepalive.sh iterates every site in `.cf_state.json`
+in a single pass, so you never need a per-site watchdog:
 ```
 scheduled_task(action="schedule",
   schedule="every 2 minutes",
   command="cd /data/workspace && bash skills/cloudflare-tunnel-publish/scripts/keepalive.sh",
-  title="<hostname> keepalive")
+  title="cloudflare tunnel keepalive (all sites)")
 ```
 - Use a **relative** command with `cd /data/workspace &&`. An absolute
   `/data/workspace/...` path can be normalized by the scheduler into a
@@ -339,20 +352,63 @@ content (`curl https://yourdomain.com | head`), not just a 200.
 
 ## State file format
 
-`workspace/.cf_state.json`:
+`workspace/.cf_state.json` supports **multiple sites**. The canonical store is
+the `sites` array; the flat top-level fields are kept for backward compat and
+always reflect the last-configured site:
+
 ```json
 {
   "account_id": "...",
   "zone_id": "...",
   "zone_name": "example.com",
-  "hostname": "app.example.com",
-  "port": 8080,
+  "sites": [
+    {
+      "hostname": "app.example.com",
+      "port": 8080,
+      "tunnel_id": "...",
+      "tunnel_name": "starchild-app-example-com",
+      "run_token": "...",
+      "app_cmd": "python3 server.py",
+      "app_dir": "/data/workspace/projects/myapp"
+    },
+    {
+      "hostname": "blog.example.com",
+      "port": 3000,
+      "tunnel_id": "...",
+      "run_token": "...",
+      "app_cmd": "",
+      "app_dir": ""
+    }
+  ],
+  "hostname": "blog.example.com",
+  "port": 3000,
   "tunnel_id": "...",
-  "tunnel_name": "starchild-app-example-com",
   "run_token": "...",
-  "app_cmd": "python3 server.py",
-  "app_dir": "/data/workspace/projects/myapp"
+  "app_cmd": "",
+  "app_dir": ""
 }
 ```
 
-Use this for teardown, status checks, and re-runs without re-asking the user.
+`keepalive.sh` reads `sites[]` and guards **every** site in one pass — one
+watchdog, all hostnames. This is the fix for the "each site got its own tunnel
++ its own keepalive, and only one was watched" bug: there is now exactly one
+keepalive process that knows about every configured site.
+
+### Multiple sites — the design
+
+**One tunnel, many hostnames, one watchdog.** This is the only sane topology:
+
+- `setup.py` defaults to **reusing** the first healthy tunnel it finds on the
+  account. It merges the new hostname into the tunnel's existing ingress rules
+  (preserving other hostnames) and points the DNS CNAME at that tunnel.
+- `.cf_state.json` holds a `sites[]` array. Each `setup.py` run appends (or
+  replaces) one entry. `teardown.py` removes one entry.
+- `keepalive.sh` iterates `sites[]` and guards every site. One process, one
+  watchdog, all hostnames. If a site shares a tunnel with another, the same
+  `cloudflared` process serves both — keepalive won't start a second one.
+
+**When the agent gets this wrong** (the bug that prompted this section):
+creating a new tunnel per site means N `cloudflared` processes, N PID files,
+N watchdogs to wire — and in practice only one watchdog ever gets set up. The
+other tunnels silently die and nobody notices for weeks. Reuse the tunnel,
+append to `sites[]`, let one keepalive guard them all.

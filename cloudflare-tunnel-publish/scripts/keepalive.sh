@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# keepalive.sh — the SINGLE recovery brain for a Cloudflare-tunnel site.
+# keepalive.sh — the SINGLE recovery brain for Cloudflare-tunnel sites.
 #
 # One idempotent script used in BOTH places, so start-up and self-heal can
 # never drift apart:
@@ -11,6 +11,12 @@
 #   hostname, port, tunnel_name, and (optional) app_cmd + app_dir.
 # So the same file works for ANY domain published with this skill — the calling
 # agent writes ZERO project-specific shell.
+#
+# MULTIPLE SITES: .cf_state.json can hold one site (flat) OR many (under a
+# "sites" array). When "sites" exists, this script guards EVERY site in the
+# list — one process, one watchdog, all hostnames. This is the fix for the
+# "each site got its own tunnel + its own keepalive, and only one was watched"
+# bug. See SKILL.md § "Multiple sites" for the state format.
 #
 # It NEVER calls the Cloudflare API and NEVER needs CLOUDFLARE_API_TOKEN.
 # Configuration (tunnel/DNS creation, run_token) is done once by setup.py and
@@ -29,7 +35,6 @@ WS="/data/workspace"
 STATE="$WS/.cf_state.json"
 LOGDIR="$WS/logs"; PIDDIR="$WS/run"
 mkdir -p "$LOGDIR" "$PIDDIR"
-LASTSTATE="$PIDDIR/keepalive.state"
 
 ts()  { date -u +'%Y-%m-%dT%H:%M:%SZ'; }
 log() { echo "[$(ts)] $*" >> "$LOGDIR/keepalive.log"; }
@@ -39,24 +44,51 @@ log() { echo "[$(ts)] $*" >> "$LOGDIR/keepalive.log"; }
   exit 0
 }
 
-# --- read config from state (pure local read, no API) ---
-read_state() { python3 -c "import json,sys;print(json.load(open('$STATE')).get('$1',''))" 2>/dev/null; }
-HOST="$(read_state hostname)"
-PORT="$(read_state port)"
-APP_CMD="$(read_state app_cmd)"
-APP_DIR="$(read_state app_dir)"
-[ -n "$HOST" ] || { log "no hostname in state — cannot guard."; exit 0; }
-[ -n "$APP_DIR" ] || APP_DIR="$WS"
+# --- enumerate sites to guard ---
+# Each site is a flat dict: hostname, port, app_cmd, app_dir, run_token,
+# tunnel_id, tunnel_name. When .cf_state.json has a top-level "sites" array,
+# guard every entry. Otherwise (legacy single-site state), wrap the flat state
+# into a one-element list.
+mapfile -t SITES < <(python3 -c "
+import json, sys
+s = json.load(open('$STATE'))
+sites = s.get('sites') if isinstance(s, dict) else None
+if not sites and isinstance(s, dict) and s.get('hostname'):
+    sites = [s]
+if not sites:
+    sys.exit(0)
+for s in sites:
+    h = s.get('hostname','')
+    if not h: continue
+    # Escape for tab-separated output (newlines/tabs in values are unlikely
+    # but we strip them defensively).
+    vals = [str(s.get(k,'')).replace('\t',' ').replace('\n',' ') for k in
+            ('hostname','port','app_cmd','app_dir','run_token','tunnel_id','tunnel_name')]
+    print('\t'.join(vals))
+")
 
-APP_PID="$PIDDIR/app.pid"
-TUN_PID="$PIDDIR/cloudflared.pid"
+[ "${#SITES[@]}" -gt 0 ] || {
+  log "no sites in .cf_state.json — run setup.py once to configure. nothing to do."
+  exit 0
+}
 
-# --- probes ---
-public_ok() { curl -fsS --max-time 12 "https://$HOST/" >/dev/null 2>&1; }
+# --- per-site helpers ---
+guard_site() {
+  local HOST PORT APP_CMD APP_DIR RUN_TOKEN TUNNEL_ID TUNNEL_NAME
+  IFS=$'\t' read -r HOST PORT APP_CMD APP_DIR RUN_TOKEN TUNNEL_ID TUNNEL_NAME <<<"$1"
+  [ -n "$HOST" ] || return 0
+  [ -n "$APP_DIR" ] || APP_DIR="$WS"
 
-local_ok() {
-  [ -n "$PORT" ] || { echo skip; return; }   # no app to manage -> tunnel-only mode
-  python3 - "$PORT" <<'PY'
+  # PID files are per-tunnel (one cloudflared process serves all hostnames
+  # on that tunnel, but we track it under the first hostname for simplicity).
+  local SAFE_HOST; SAFE_HOST="${HOST//[^a-zA-Z0-9]/_}"
+  local APP_PID="$PIDDIR/app-${SAFE_HOST}.pid"
+  local TUN_PID="$PIDDIR/cloudflared-${SAFE_HOST}.pid"
+  local LASTSTATE="$PIDDIR/keepalive-${SAFE_HOST}.state"
+
+  local_ok() {
+    [ -n "$PORT" ] || { echo skip; return; }   # no app to manage -> tunnel-only mode
+    python3 - "$PORT" <<'PY'
 import socket, sys
 s = socket.socket(); s.settimeout(1.0)
 try:
@@ -66,69 +98,92 @@ except Exception:
 finally:
     s.close()
 PY
-}
+  }
 
-# --- recovery actions (idempotent) ---
-start_app() {
-  [ -n "$APP_CMD" ] || { log "app down but no app_cmd in state — skipping app start"; return 1; }
-  cd "$APP_DIR" 2>/dev/null || { log "ERROR app_dir not found: $APP_DIR"; return 1; }
-  setsid bash -c "exec $APP_CMD" >> "$LOGDIR/app.log" 2>&1 < /dev/null &
-  echo $! > "$APP_PID"
-  log "started app: ($APP_CMD) in $APP_DIR pid=$(cat "$APP_PID")"
-}
+  public_ok() { curl -fsS --max-time 12 "https://$HOST/" >/dev/null 2>&1; }
 
-start_tunnel() {
-  [ -f "$TUN_PID" ] && kill "$(cat "$TUN_PID" 2>/dev/null)" 2>/dev/null || true
-  pkill -f "cloudflared tunnel .* run --token" 2>/dev/null || true
-  rm -f "$TUN_PID"; sleep 2
-  setsid bash -c "exec bash $WS/skills/cloudflare-tunnel-publish/scripts/run_tunnel.sh" \
-    >> "$LOGDIR/cloudflared.log" 2>&1 < /dev/null &
-  echo $! > "$TUN_PID"
-  log "(re)started cloudflared pid=$(cat "$TUN_PID")"
-}
+  start_app() {
+    [ -n "$APP_CMD" ] || { log "$HOST: app down but no app_cmd — skipping app start"; return 1; }
+    cd "$APP_DIR" 2>/dev/null || { log "$HOST: ERROR app_dir not found: $APP_DIR"; return 1; }
+    setsid bash -c "exec $APP_CMD" >> "$LOGDIR/app-${SAFE_HOST}.log" 2>&1 < /dev/null &
+    echo $! > "$APP_PID"
+    local apid; apid=$(cat "$APP_PID" 2>/dev/null)
+    log "$HOST: started app ($APP_CMD) in $APP_DIR pid=$apid"
+  }
 
-heal() {
-  local lo; lo="$(local_ok)"
-  if [ "$lo" = "closed" ]; then
-    log "WARN local app :$PORT down -> restart app + tunnel"
-    start_app
-    start_tunnel
+  start_tunnel() {
+    # Kill the tunnel process for THIS site only (match by PID file, then by
+    # run token so we don't clobber a different site's cloudflared).
+    if [ -f "$TUN_PID" ]; then
+      local old; old=$(cat "$TUN_PID" 2>/dev/null)
+      [ -n "$old" ] && kill "$old" 2>/dev/null || true
+    fi
+    # Also kill any stale cloudflared holding this exact token
+    if [ -n "$RUN_TOKEN" ]; then
+      pkill -f "cloudflared tunnel .* --token .*${RUN_TOKEN:0:32}" 2>/dev/null || true
+    fi
+    rm -f "$TUN_PID"; sleep 2
+    if [ -z "$RUN_TOKEN" ]; then
+      log "$HOST: ERROR no run_token in state — cannot start tunnel"
+      return 1
+    fi
+    setsid bash -c "exec bash $WS/skills/cloudflare-tunnel-publish/scripts/run_tunnel.sh '$RUN_TOKEN'" \
+      >> "$LOGDIR/cloudflared-${SAFE_HOST}.log" 2>&1 < /dev/null &
+    echo $! > "$TUN_PID"
+    local pid; pid=$(cat "$TUN_PID" 2>/dev/null)
+    log "$HOST: (re)started cloudflared pid=$pid"
+  }
+
+  heal() {
+    local lo; lo="$(local_ok)"
+    if [ "$lo" = "closed" ]; then
+      log "$HOST: WARN local app :$PORT down -> restart app + tunnel"
+      start_app
+      start_tunnel
+    else
+      log "$HOST: WARN tunnel down (local :$PORT ${lo}) -> restart tunnel"
+      start_tunnel
+    fi
+  }
+
+  prev="UP"; [ -f "$LASTSTATE" ] && prev="$(cat "$LASTSTATE" 2>/dev/null || echo UP)"
+
+  # fast path: healthy
+  if public_ok; then
+    log "ok https://$HOST"
+    if [ "$prev" = "DOWN" ]; then
+      echo "✅ $HOST recovered at $(ts)"
+    fi
+    echo "UP" > "$LASTSTATE"
+    return 0
+  fi
+
+  # down: heal, then verify with a few retries
+  heal
+  local ok=0
+  for _ in 1 2 3; do
+    sleep 5
+    if public_ok; then ok=1; break; fi
+  done
+
+  if [ "$ok" = "1" ]; then
+    log "$HOST: recovered"
+    echo "🔧 $HOST was down — auto-recovered at $(ts)"
+    echo "UP" > "$LASTSTATE"
+    return 0
   else
-    log "WARN tunnel down (local :$PORT ${lo}) -> restart tunnel"
-    start_tunnel
+    log "$HOST: ERROR still down after heal"
+    if [ "$prev" != "DOWN" ]; then
+      echo "🚨 $HOST is DOWN and auto-recovery failed at $(ts) — check logs/cloudflared-${SAFE_HOST}.log, logs/app-${SAFE_HOST}.log"
+    fi
+    echo "DOWN" > "$LASTSTATE"
+    return 1
   fi
 }
 
-prev="UP"; [ -f "$LASTSTATE" ] && prev="$(cat "$LASTSTATE" 2>/dev/null || echo UP)"
-
-# --- fast path: healthy ---
-if public_ok; then
-  log "ok https://$HOST"
-  if [ "$prev" = "DOWN" ]; then
-    echo "✅ $HOST recovered at $(ts)"
-  fi
-  echo "UP" > "$LASTSTATE"
-  exit 0
-fi
-
-# --- down: heal, then verify with a few retries (covers cold-start tunnel warm-up) ---
-heal
-ok=0
-for _ in 1 2 3; do
-  sleep 5
-  if public_ok; then ok=1; break; fi
+# --- guard every site ---
+overall=0
+for site in "${SITES[@]}"; do
+  guard_site "$site" || overall=1
 done
-
-if [ "$ok" = "1" ]; then
-  log "recovered https://$HOST"
-  echo "🔧 $HOST was down — auto-recovered at $(ts)"
-  echo "UP" > "$LASTSTATE"
-  exit 0
-else
-  log "ERROR still down https://$HOST after heal"
-  if [ "$prev" != "DOWN" ]; then
-    echo "🚨 $HOST is DOWN and auto-recovery failed at $(ts) — needs a manual look (check logs/cloudflared.log, logs/app.log)"
-  fi
-  echo "DOWN" > "$LASTSTATE"
-  exit 1
-fi
+exit $overall

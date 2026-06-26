@@ -42,16 +42,24 @@ def tls_check(host: str) -> tuple[bool, str]:
         return False, f"{type(e).__name__}: {e}"
 
 
-def http_check(host: str) -> tuple[int, int]:
-    """Returns (status_code, body_size)."""
+def http_check(host: str) -> tuple[int, int, str]:
+    """Returns (status_code, body_size, server_header)."""
+    req = urllib.request.Request(
+        f"https://{host}/",
+        headers={
+            "user-agent": "Mozilla/5.0 (compatible; StarchildStatusCheck/1.0)",
+            "accept": "text/html,application/xhtml+xml",
+        },
+    )
     try:
-        with urllib.request.urlopen(f"https://{host}/", timeout=15) as r:
+        with urllib.request.urlopen(req, timeout=15) as r:
             body = r.read()
-            return r.status, len(body)
+            return r.status, len(body), (r.headers.get("server") or "")
     except urllib.error.HTTPError as e:
-        return e.code, 0
+        body = e.read() or b""
+        return e.code, len(body), (e.headers.get("server") or "")
     except Exception:
-        return 0, 0
+        return 0, 0, ""
 
 
 def main() -> int:
@@ -91,12 +99,19 @@ def main() -> int:
         return 0
 
     # Stage 3: HTTP
-    code, size = http_check(host)
+    code, size, server = http_check(host)
     if code == 200:
         print(f"✅ HTTP:  200 OK ({size} bytes)")
         print(f"\n🎉 https://{host}/ is LIVE.")
     elif code in (301, 302):
         print(f"✅ HTTP:  {code} redirect")
+    elif code in (403, 429):
+        if "cloudflare" in (server or "").lower():
+            print(f"✅ HTTP:  {code} from Cloudflare edge (bot/rate-limit challenge in checker)")
+            print(f"         → Real browsers can still access the site normally.")
+            print(f"         → If your browser also gets 403, disable WAF/Bot Fight for this hostname.")
+        else:
+            print(f"⚠ HTTP:  {code}")
     elif code in (502, 521, 522, 523, 530):
         print(f"❌ HTTP:  {code} — Tunnel up but local service unreachable.")
         print(f"         → Make sure your service is running on port {state.get('port')}")

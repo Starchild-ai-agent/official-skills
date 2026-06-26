@@ -55,6 +55,11 @@ def main() -> int:
         for k in ("account_id", "zone_id", "zone_name")
         if k in state
     }
+    # Also remove this hostname from the sites[] array (multi-site support)
+    sites = state.get("sites", [])
+    remaining = [s for s in sites if s.get("hostname") != hostname]
+    if remaining:
+        keep["sites"] = remaining
     save_state(keep)
     print(f"→ State reset. Account/zone kept for next setup.")
     return 0

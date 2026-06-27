@@ -32,6 +32,12 @@
       "description": "Abstract L2 hub: wallets, contracts, multisig, prediction markets, agent identity.\n\nUse when building on Abstract L2 (e.g. deploy Anchor contract, set up AGW login, create a Safe, integrate Myriad markets, register ERC-8004 agent)."
     },
     {
+      "name": "across-bridge",
+      "path": "across-bridge/SKILL.md",
+      "version": "1.0.0",
+      "description": "Bridge ETH and ERC-20 tokens across EVM chains via Across Protocol v3.\nOne function for a quote, one function for the entire end-to-end bridge\n(approval + deposit + arrival verification).\n\nUse when the user wants to move tokens between chains (e.g. \"bridge 50 USDC\nfrom Base to Arbitrum\", \"send ETH from Ethereum to Optimism\", \"move USDT\nArbitrum → Base\"). Supports Ethereum, Arbitrum, Optimism, Base, Polygon,\nBSC, Linea, zkSync, Scroll, Mantle. Fast settlement (seconds to minutes)."
+    },
+    {
       "name": "agent-builder",
       "path": "agent-builder/SKILL.md",
       "version": "2.0.1",

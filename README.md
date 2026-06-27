@@ -2,6 +2,8 @@
 
 Official skills maintained by the Starchild team. Installed via [`npx skills`](https://github.com/vercel-labs/skills).
 
+> **Building a new skill?** See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full guide — directory structure, `SKILL.md` frontmatter, `exports.py` patterns, function design best practices, logo specs, and a publishing checklist.
+
 ## Install a Skill
 
 ```bash
@@ -81,6 +83,8 @@ birdeye/
 `npx skills add` copies the entire directory recursively.
 
 ## Development Workflow
+
+> The quick steps below cover the basics. For the full guide — including `exports.py` patterns, function design principles (one-function-per-intent, read+execute pairing), logo sourcing, and a publishing checklist — see **[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
 ### Add a New Skill
 

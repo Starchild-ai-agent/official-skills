@@ -42,8 +42,16 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
     }, tool_default='video')
 
     body = {'prompt': prompt, 'duration': duration, 'aspect_ratio': "16:9"}
-    if 'happy-horse' in model or 'kling' in model:
+    if 'happy-horse' in model or 'kling' in model or 'seedance-2.0/mini' in model:
         body['resolution'] = resolution
+
+    # Seedance 2.0 Mini has a strict duration schema: it requires a STRING
+    # ('4', '5', '6', ... '15', 'auto'), NOT an int and NOT '5s'. Other
+    # Seedance variants accept int or '5s'. Sending int 5 or '5s' to mini
+    # returns HTTP 422 literal_error. Encode the format per-model.
+    # Verified against fal upstream 2026-06-29.
+    if 'seedance-2.0/mini' in model:
+        body['duration'] = str(duration)
     
     # Handle image input — must be a public https URL.
     # Recommended: publish via skills/video/publish_asset.py + community preview slug `fal-assets`.
@@ -170,16 +178,22 @@ def estimate_cost(model, duration, resolution="720p"):
         "fal-ai/wan/v2.5/text-to-video": 0.05,
         "fal-ai/kling-video/v2.6/pro/text-to-video": 0.07,
         "bytedance/seedance-2.0/fast/text-to-video": 0.2419,
+        # Seedance 2.0 Mini — resolution-tiered. Base price below is 720p;
+        # 480p is cheaper. No 1080p tier exists for mini.
+        "bytedance/seedance-2.0/mini/text-to-video": 0.1547,  # 720p
         "fal-ai/hunyuanvideo": 0.40,  # flat rate
     }
-    
+
     if model == "fal-ai/hunyuanvideo":
         return 0.40
-    
+
     unit_price = prices.get(model, 0.10)  # default fallback
     if 'happy-horse' in model and resolution == "1080p":
         unit_price *= 2
-    
+    # Seedance Mini 480p discount tier (720p is the base price above).
+    if 'seedance-2.0/mini' in model and resolution == "480p":
+        unit_price = 0.0721
+
     return round(unit_price * duration, 4)
 
 # NOTE 2026-05-11: 'fal-ai/wan/v2.5/text-to-video' was removed from the
@@ -189,7 +203,8 @@ def estimate_cost(model, duration, resolution="720p"):
 QUICK_MODELS = {
     "budget": "alibaba/happy-horse/text-to-video",
     "balanced": "alibaba/happy-horse/text-to-video",
-    "premium": "bytedance/seedance-2.0/fast/text-to-video"
+    "premium": "bytedance/seedance-2.0/fast/text-to-video",
+    "mini": "bytedance/seedance-2.0/mini/text-to-video",  # 480p $0.0721/s, 720p $0.1547/s
 }
 
 if __name__ == "__main__":

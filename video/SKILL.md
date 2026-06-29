@@ -148,6 +148,7 @@ If `preview(action='serve')` returns `No available ports in pool`, ask the user 
 | **budget** | `fal-ai/wan/v2.5/text-to-video` | $0.25 | Fastest, cheapest; good for prompt iteration |
 | **balanced** | `alibaba/happy-horse/text-to-video` | $0.70 | Default; best lip-sync, most use cases |
 | **premium** | `bytedance/seedance-2.0/fast/text-to-video` | $1.20 | Best motion + camera direction |
+| **mini** | `bytedance/seedance-2.0/mini/text-to-video` | $0.36 (480p) / $0.77 (720p) | Cheapest Seedance; resolution-tiered, no 1080p. **Duration must be a string** (`"5"`, not `5` or `"5s"`) — see gotcha below |
 
 Override by passing the full model id to `generate_video(model=...)`. Image-to-video variants are auto-derived by replacing `text-to-video` with `image-to-video`.
 
@@ -184,6 +185,7 @@ Use this when an earlier `generate_video` call timed out or you only have a `req
 | `HTTP 402 insufficient_credits` | Top up balance; cost is pre-charged on submit |
 | `HTTP 403 endpoint_not_allowed` | sc-proxy only allows approved fal video endpoints; pick one from the model table |
 | Generation `FAILED` upstream | Shorten prompt, drop unusual tokens, retry once before changing model |
+| `HTTP 422 literal_error` on `duration` (Seedance Mini) | Mini requires `duration` as a **string** (`"5"`, `"10"`, `"auto"`), not an int and not `"5s"`. `generate_video()` encodes this automatically when `model` contains `seedance-2.0/mini` — only hit this if you hand-build the request body. Other Seedance variants accept int/`"5s"` as before. |
 | Job stuck `IN_PROGRESS` >15 min | Save `request_id`, resume later with `poll_status.py` |
 | User reports the fal.media link "shows nothing" / "blank page" | Expected — fal serves with `CSP: sandbox; default-src 'none'`. Deliver the local file at `result["local_path"]` instead of the raw URL (see §1). |
 

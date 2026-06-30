@@ -3,7 +3,7 @@ name: x-mcp-onboarding
 description: Connect a user's own X (Twitter) dev app (BYOK) for the official X API MCP (reads) plus X v2 REST writes — post, reply, like, retweet, DM.
 
   Use when the user wants to act on X with their OWN X account/app: search, read timeline/users/news/trends/bookmarks via MCP, and post/reply/like/retweet/DM via REST. Walks through OAuth 2.0 setup in the X portal, xurl CLI registration, headless OAuth (user pastes the redirect URL back), the client-not-enrolled / Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring, and FAQ. For read-only scraping WITHOUT the user's own app, use the `twitter` skill instead.
-version: 1.0.0
+version: 1.0.1
 ---
 
 # X API Onboarding — MCP (reads) + REST (writes), BYOK
@@ -133,14 +133,17 @@ static `headers`). Add under `defaults.mcp_servers:` (or the user's agent.yaml):
 
 ```yaml
 defaults:
-  mcp_servers:
-    - name: xmcp
+  mcp_servers:        # MAPPING keyed by server name (NOT a YAML list)
+    xmcp:
       transport: streamable-http
       url: https://api.x.com/mcp
       headers:
         Authorization: "Bearer <ACCESS_TOKEN_FROM_~/.xurl>"
       timeout: 30
 ```
+
+⚠️ `mcp_servers` is a **mapping** (server name → definition), not a list. A list
+form (`- name: xmcp`) is silently ignored (logged `must be a mapping, got list`).
 
 Then `/mcp` to confirm the 24 tools register as `mcp__xmcp__<tool>`.
 

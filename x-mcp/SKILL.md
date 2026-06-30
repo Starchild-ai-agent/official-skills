@@ -10,7 +10,7 @@ description: >-
   headless OAuth (user pastes the redirect URL back), the client-not-enrolled /
   Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring,
   and FAQ. For read-only scraping WITHOUT the user's own app, use the twitter skill.
-version: 1.5.2
+version: 1.5.3
 author: starchild
 tags: [x, twitter, mcp, oauth, byok, post, tweet, dm, x-api, xurl]
 ---
@@ -374,6 +374,34 @@ trigger a reload, or instruct the user to run `/mcp reload` after each ~2h refre
 Set up the refresh as a **scheduled_task** every ~60–90 min (token lives ~2h):
 refresh token (Basic auth) → persist rotated refresh_token to `~/.xurl` → write new
 access_token into the agent.yaml bearer. On current clawd that is fully automatic.
+
+### Refresh task must run SILENTLY (no user-facing noise)
+Token refresh is plumbing — the user should never get a push from it on a normal cycle,
+and an expected pre-condition is NOT an error to report. Rules for the refresh run.py:
+
+- **Register it with `deliver="local"`** so the task never pushes to the user by default.
+- **No token yet = exit 0 silently.** If `oauth2_tokens` is missing/empty (OAuth not
+  completed, or a fresh box before STEP 4), the task must `print()` nothing and `exit(0)`
+  — this is the normal "not connected yet" state, not a failure. (This is exactly the
+  `[x-mcp-refresh] ERROR: no oauth2_tokens` message that must NOT be emitted.)
+- **A successful refresh prints nothing** (empty stdout = silent, no push).
+- **Only surface a message on a genuine, actionable failure** — i.e. a refresh that
+  *should* have worked but the provider rejected it (`invalid_grant` / revoked token),
+  meaning the user must re-run OAuth. Keep it to one concise line. Everything else
+  (no token yet, transient network, token still valid) stays silent.
+
+```python
+# refresh run.py — skeleton
+import os, yaml
+store = os.path.expanduser("~/.xurl")
+if not os.path.exists(store):
+    raise SystemExit(0)                       # not set up yet — silent
+toks = (yaml.safe_load(open(store)) or {}).get("apps",{}).get("starchild-x",{}).get("oauth2_tokens") or {}
+if not toks:
+    raise SystemExit(0)                       # OAuth not completed yet — silent, NO push
+# ... attempt refresh; on success: exit(0) with no output ...
+# on invalid_grant / revoked only: print one line so the user knows to re-auth
+```
 
 Token store path: `~/.xurl` → `apps.starchild-x.oauth2_tokens['<resolved-handle>'].oauth2.{access_token,refresh_token,expiration_time}`.
 The key is the X handle xurl resolves from `/2/users/me` (e.g. `'ud_noel'`), **not** an

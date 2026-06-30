@@ -18,6 +18,17 @@ cannot tell a code edit from a README edit, nor a test run from `ls`. Only
 pre_tool_call carries `tool_input` (the path / the command). So the recorder
 leg classifies the evidence; the decider leg reads it.
 
+CODE-EDIT DETECTION covers BOTH paths agents actually use:
+  * file tools — edit_file / write_file targeting a source-code path.
+  * bash writes — heredoc/redirect (`cat > foo.py <<EOF`, `echo … > foo.py`,
+    `>> foo.py`), `tee foo.py`, and in-place `sed -i … foo.py`. These are
+    common ways an agent generates or patches code and would otherwise slip
+    past the guard entirely. (Toggle with DETECT_BASH_WRITES.)
+  NOTE: this does not parse every conceivable shell write (a python/node
+  script that itself writes a file, `cp`/`mv` of a code file, awk-rewrite,
+  etc. are not detected) — it covers the common, literal cases. The guard is
+  a nudge, not a sandbox.
+
 DESIGN POLICY — built to be lenient, never naggy (over-blocking trains users
 to disable the guard):
   * Only known SOURCE-CODE extensions trigger. Docs/data (.md/.txt/.json/
@@ -49,6 +60,7 @@ from pathlib import Path
 VERIFY_TTL_MIN = 30          # only nudge if the unverified edit is younger than this
 MAX_NAGS_PER_SESSION = 3     # hard cap on nudges per session (anti-spam)
 COUNT_SCRIPT_RUN = True      # running the edited file (python foo.py) counts as verify
+DETECT_BASH_WRITES = True    # treat bash heredoc/redirect/tee/sed -i to a code file as a code edit
 
 # Source-code extensions that REQUIRE verification when edited.
 CODE_EXTENSIONS = frozenset({
@@ -113,6 +125,15 @@ _SCRIPT_RUN_RE = re.compile(
 STATE_DIR = Path("/data/workspace/.verify_guard")
 _SHELL_SPLIT_RE = re.compile(r"\s*(?:&&|\|\||;)\s*")
 
+# bash code-write detection. Each finds candidate target paths; only those with
+# a code extension (and not an exempt one) count, via _is_code_path.
+#   redirect:  `… > foo.py`, `… >> foo.py`, `cat > foo.py <<EOF` (NOT 2>&1 / &>)
+#   tee:       `tee foo.py`, `tee -a foo.py`
+#   sed -i:    `sed -i 's/…/…/' foo.py` (in-place edit → scan the segment's tokens)
+_REDIRECT_RE = re.compile(r"(?:^|\s)>>?\s*([^\s;|&<>()]+)")
+_TEE_RE = re.compile(r"\btee\b\s+(?:-a\s+|--append\s+)?([^\s;|&<>()]+)")
+_SED_INPLACE_RE = re.compile(r"\bsed\b[^|&;]*?\s-i(?:\.\S+)?\b")
+
 
 # ─────────────────────────── helpers ───────────────────────────────────────
 def _now() -> float:
@@ -126,6 +147,35 @@ def _is_code_path(path: str) -> bool:
     if ext in EXEMPT_EXTENSIONS:
         return False
     return ext in CODE_EXTENSIONS
+
+
+def _bash_writes_code(command: str) -> list[str]:
+    """Return code-file paths this bash command writes/edits in place.
+
+    Covers the common literal cases (redirect/heredoc, tee, sed -i). Deliberately
+    NOT exhaustive — a script that writes a file, cp/mv, awk, etc. are out of
+    scope. De-duped, order-preserving.
+    """
+    if not command:
+        return []
+    found: list[str] = []
+    for seg in _SHELL_SPLIT_RE.split(command):
+        seg = seg.strip()
+        if not seg:
+            continue
+        for m in _REDIRECT_RE.finditer(seg):
+            if _is_code_path(m.group(1)):
+                found.append(m.group(1).strip())
+        for m in _TEE_RE.finditer(seg):
+            if _is_code_path(m.group(1)):
+                found.append(m.group(1).strip())
+        if _SED_INPLACE_RE.search(seg):
+            # in-place edit: the file arg(s) are bare tokens with a code ext
+            for tok in seg.split():
+                if _is_code_path(tok):
+                    found.append(tok.strip())
+    # de-dup, preserve order
+    return list(dict.fromkeys(found))
 
 
 def _looks_like_verification(command: str) -> bool:
@@ -197,9 +247,28 @@ def _handle_pre_tool_call(payload: dict, session_id: str) -> None:
     elif tool == "bash":
         cmd = str(ti.get("command") or "")
         if _looks_like_verification(cmd):
-            # any verification clears ALL pending — proof of life on the workspace
+            # any verification clears ALL pending — proof of life on the workspace.
+            # Takes precedence over write-detection: a `… && pytest` that both
+            # writes and tests is verified, so don't re-add it as pending.
             state["pending"] = []
             _save_state(session_id, state)
+        elif DETECT_BASH_WRITES:
+            written = _bash_writes_code(cmd)
+            if written:
+                pending = state.get("pending") or []
+                existing = {e.get("path") for e in pending}
+                for path in written:
+                    if path in existing:
+                        # refresh ts + re-arm so the new write can nudge again
+                        for e in pending:
+                            if e.get("path") == path:
+                                e["ts"] = _now()
+                                e["nagged"] = False
+                    else:
+                        pending.append({"path": path, "ts": _now(), "nagged": False})
+                        existing.add(path)
+                state["pending"] = pending
+                _save_state(session_id, state)
 
     _emit(None)  # recorder never blocks
 

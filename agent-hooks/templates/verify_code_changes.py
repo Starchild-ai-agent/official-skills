@@ -72,6 +72,17 @@ EXEMPT_EXTENSIONS = frozenset({
 
 EDIT_TOOLS = frozenset({"edit_file", "write_file"})
 
+# Bash can write code without edit_file/write_file (heredoc, redirect, tee,
+# in-place sed/perl). These patterns extract the WRITTEN target path(s) so a
+# bash-authored code file is held to the same verify-before-done bar.
+#   >  path / >> path / cat > path <<EOF      (redirection, incl. heredoc)
+#   tee [flags] path                          (pipe-to-file)
+_BASH_REDIRECT_RE = re.compile(r">>?\s*(\"[^\"]+\"|'[^']+'|[^\s|;&>()]+)")
+_BASH_TEE_RE = re.compile(r"\btee\b\s+(?:-\S+\s+)*(\"[^\"]+\"|'[^']+'|[^\s|;&]+)")
+# in-place editors rewrite an existing file in place; the code path is somewhere
+# in the args, so when one is present we scan every token for a code extension.
+_BASH_INPLACE_RE = re.compile(r"\b(?:sed\s+-i|perl\s+-\S*i\S*)\b")
+
 # Commands that count as verification. Matched against the canonical command
 # text (after splitting on && ; |). Broad on purpose.
 _VERIFY_TOKEN_RE = re.compile(
@@ -126,6 +137,29 @@ def _is_code_path(path: str) -> bool:
     if ext in EXEMPT_EXTENSIONS:
         return False
     return ext in CODE_EXTENSIONS
+
+
+def _bash_code_write_targets(command: str) -> list:
+    """Code-file paths a bash command WRITES (redirect / heredoc / tee / in-place
+    sed-perl). Returns de-duped code paths only; empty when none. Conservative:
+    a token must end in a known code extension to count, so log/data/doc
+    redirections (>/dev/null, > out.json, >> app.log) are ignored."""
+    if not command:
+        return []
+    cands = []
+    for m in _BASH_REDIRECT_RE.finditer(command):
+        cands.append(m.group(1))
+    for m in _BASH_TEE_RE.finditer(command):
+        cands.append(m.group(1))
+    if _BASH_INPLACE_RE.search(command):
+        # in-place editor present: any code-extension token is the target
+        cands.extend(re.split(r"[\s=]+", command))
+    out = []
+    for c in cands:
+        c = c.strip().strip("\"'")
+        if c and _is_code_path(c) and c not in out:
+            out.append(c)
+    return out
 
 
 def _looks_like_verification(command: str) -> bool:
@@ -198,8 +232,20 @@ def _handle_pre_tool_call(payload: dict, session_id: str) -> None:
         cmd = str(ti.get("command") or "")
         if _looks_like_verification(cmd):
             # any verification clears ALL pending — proof of life on the workspace
+            # (checked first: a write-then-run one-liner is already verified)
             state["pending"] = []
             _save_state(session_id, state)
+        else:
+            # bash that WRITES code (heredoc/redirect/tee/sed -i) but runs no
+            # verification is held to the same bar as edit_file/write_file
+            written = _bash_code_write_targets(cmd)
+            if written:
+                pending = state.get("pending") or []
+                for path in written:
+                    pending = [e for e in pending if e.get("path") != path]
+                    pending.append({"path": path, "ts": _now(), "nagged": False})
+                state["pending"] = pending
+                _save_state(session_id, state)
 
     _emit(None)  # recorder never blocks
 

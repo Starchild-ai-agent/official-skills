@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.14.0
+version: 1.15.0
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -375,7 +375,7 @@ reordered). If a self-test exists (`templates/<name>_selftest.py`), run it first
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
 | `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
-| `verify_code_changes.py` | `pre_tool_call` (recorder) + `on_stop` (decider) | **Anti-"false done" for code.** When you edit a source file but run no test/build/lint to check it, blocks the stop once and steers you to verify (or say plainly there's nothing to run) before finishing. Docs/data edits (`.md`/`.json`/`.yaml`/…) are exempt; one nudge per edit-set, self-disarms, fails open. Wire BOTH events to the same script path. |
+| `verify_code_changes.py` | `pre_tool_call` (recorder) + `on_stop` (decider) | **Anti-"false done" for code.** When you change a source file but run no test/build/lint to check it, blocks the stop once and steers you to verify (or say plainly there's nothing to run) before finishing. Counts both `edit_file`/`write_file` AND code written via bash (heredoc, `>`/`>>` redirect, `tee`, in-place `sed -i`/`perl -i`). Docs/data edits (`.md`/`.json`/`.yaml`/…) are exempt; one nudge per edit-set, self-disarms, fails open. Wire BOTH events to the same script path. |
 | `verify_commitments.py` | `on_stop` (chat redo) | **Anti-broken-promise.** When the reply makes a future notify-promise ("I'll let you know when the build finishes", "明早提醒你") but registers nothing to make it happen, blocks the stop once and steers you to actually register it — `scheduled_task(once)` for time-bound, `sessions_spawn` (bash poll + `announce=followup`) for completion-bound. Fires only when a notify verb AND a time/condition cue both appear; immediate-delivery framing ("here's", "下面就是") and cross-round registration (recent active job / recent spawn) suppress it. Capped, self-disarms, fails open. |
 | `runtime_footer.py` | `on_response_end` (+ optional `pre_llm_call`) | **Model/cost footer.** On `on_response_end` (once/turn) it strips any model-typed footer at the reply end and appends the ONE true footer from the runtime's real `model` + cost. Optionally wire `pre_llm_call` too for a "don't type a footer" nudge (fires per model-request). See below. |
 

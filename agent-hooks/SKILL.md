@@ -1,6 +1,6 @@
 ---
 name: agent-hooks
-version: 1.12.0
+version: 1.13.0
 description: "Manage shell hooks — user scripts that run at agent lifecycle points to block, rewrite, or warn on actions, via the /hooks command."
 author: starchild
 tags: [hooks, automation, security, lifecycle, scripts]
@@ -346,10 +346,21 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
 
 ## Ready-made scripts (each has ONE clear job)
 
-Three **production-grade guards** ship in this skill under `templates/`
+Four **production-grade guards** ship in this skill under `templates/`
 (copy + approve as-is). Four **single-purpose examples** ship with the host under
 `extensions/shell_hooks/examples/` (copy + adapt). No two overlap — pick by the
 job, not by trial.
+
+### Installing from a `/hooks` number or name
+
+`/hooks` (empty state) and `/hooks help` show a **numbered** ready-made list. The
+`/hooks` command itself is static text — it never installs. When the user replies
+with a number (`"1"`, `"1,3"`), a name (`"security_guard"`), or `"install all"`,
+THAT reply lands on you: resolve it to the template **by the name shown next to
+the number in that list** (number→`templates/<name>.py`), then run the Standard
+workflow below for each — copy → yaml entry → dry-run → self-approve → `doctor`.
+Map by the visible name, never a memorised number→path table (the list may be
+reordered). If a self-test exists (`templates/<name>_selftest.py`), run it first.
 
 ### Production templates (in this skill, `templates/`)
 
@@ -364,6 +375,7 @@ job, not by trial.
 |---|---|---|
 | `security_guard.py` | `on_user_message`, `pre_tool_call`, `transform_tool_result`, `on_response_end`, `on_outbound_message` | **Secrets + destructive bash.** Block pasted/exfiltrated secrets (API keys incl. Bearer, PEM/EVM private keys, BIP-39 seeds, Solana byte-array & base58 WIF), mask leaked keys in replies/pushes, block irreversible-data-loss bash. See below. |
 | `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
+| `verify_code_changes.py` | `pre_tool_call` (recorder) + `on_stop` (decider) | **Anti-"false done" for code.** When you edit a source file but run no test/build/lint to check it, blocks the stop once and steers you to verify (or say plainly there's nothing to run) before finishing. Docs/data edits (`.md`/`.json`/`.yaml`/…) are exempt; one nudge per edit-set, self-disarms, fails open. Wire BOTH events to the same script path. |
 | `runtime_footer.py` | `on_response_end` (+ optional `pre_llm_call`) | **Model/cost footer.** On `on_response_end` (once/turn) it strips any model-typed footer at the reply end and appends the ONE true footer from the runtime's real `model` + cost. Optionally wire `pre_llm_call` too for a "don't type a footer" nudge (fires per model-request). See below. |
 
 ### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)

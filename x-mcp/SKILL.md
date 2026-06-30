@@ -30,14 +30,14 @@ never proxied.
 
 ## When to use this skill
 
-✅ **Use** when the user wants to act on X with their OWN account/app:
+Use when the user wants to act on X with their OWN account/app:
 - "Connect my X / Twitter account so you can post for me"
 - "Set up the X API with my dev app", "use my X developer keys"
 - "Search recent tweets / read my timeline / read mentions" (with their own app)
 - "Post / reply / like / retweet / DM on X as me"
 - "Bookmark this tweet"
 
-❌ **Do NOT use** — pick the right alternative instead:
+Do NOT use — pick the right alternative instead:
 - "Summarize this tweet" / "what's @user posting" / cashtag scan, **no account needed**
   → use the `twitter` skill (read-only scraping via twitterapi.io, no OAuth)
 - "Add the X / Grok *model*" → that's `xai-grok-onboarding` (chat model), unrelated
@@ -54,14 +54,14 @@ the user's OWN authenticated account, can WRITE, needs one-time OAuth setup.
 
 ## Preflight — build compatibility (check before you start)
 
-This skill drives two platform capabilities. Confirm both, or the setup half-works:
+This skill drives two platform capabilities. Confirm both before setup:
 
 1. **Native MCP client (required for reads).** starchild-clawd must include
    `core/mcp/*` and read `defaults.mcp_servers` from agent.yaml. Quick check: run
    `/mcp` — if it returns a status block, the client exists. If `/mcp` is unknown or
    errors, the running build predates MCP support → reads via MCP won't work. The REST
    write path (xurl) still works regardless; or update the platform image.
-2. **Per-turn hot-reload (required for zero-manual token refresh).** Needed so the
+2. **Per-turn hot-reload (required for automatic token refresh).** Needed so the
    ~2h token rotation reconnects automatically (STEP 7). Builds without it still work
    but need a manual `/mcp reload` after each refresh — documented as the fallback in
    STEP 7. There is no clean runtime probe; assume current builds have it, treat
@@ -71,12 +71,12 @@ This skill drives two platform capabilities. Confirm both, or the setup half-wor
 If neither MCP capability is present and the user only needs to read public tweets,
 stop here and use the `twitter` skill instead — it needs no build support.
 
-## ⚠️ Reads vs writes — two separate systems (do not confuse)
+## Reads vs writes — two separate systems
 
 | Capability | Channel | Validated |
 |---|---|---|
-| search posts/users/news, timeline, mentions, trends, bookmarks | **MCP** (24 tools) | ✅ connected |
-| **post / delete / reply / like / retweet / follow / DM** | **REST `/2/...`** (NOT in MCP) | ✅ post+delete tested |
+| search posts/users/news, timeline, mentions, trends, bookmarks | **MCP** (24 tools) | connected |
+| **post / delete / reply / like / retweet / follow / DM** | **REST `/2/...`** (NOT in MCP) | post+delete tested |
 
 The MCP `tools/list` returns ONLY the 24 read/bookmark tools. Write endpoints are a
 **separate REST API** documented at docs.x.com — they are NOT discoverable through
@@ -137,17 +137,7 @@ that process's memory** — if the process dies before the user pastes back, the
 can never be exchanged. So the whole flow must keep ONE xurl process alive from
 "print URL" all the way through "exchange code".
 
-### ❌ Failure mode that WILL bite you (learned the hard way)
-The naive `mkfifo` + `sleep 1800 > fifo &` + `bash(background=true)` approach is
-fragile: a background bash auto-detaches/gets reaped, the holder dies, xurl dies, and
-you restart. **Every restart generates a NEW code_challenge + state, which silently
-invalidates the authorize URL you already showed the user.** The classic symptom:
-the user authorizes, pastes the callback, and xurl returns
-`Auth Error: InvalidCode (cause: state mismatch: the pasted URL is from a different
-login attempt)`. It means the URL the user opened belonged to a now-dead process,
-while the live process has a different state/verifier.
-
-### ✅ Robust pattern — ONE persistent Python driver
+### Persistent driver pattern
 Run a single Python driver that holds xurl's stdin open via `subprocess.PIPE`,
 writes the authorize URL to a file, waits up to ~10 min for a code file, then feeds
 the code and captures the result. Key shape:
@@ -179,7 +169,7 @@ authorize URL to `/tmp/xurl_auth_url.txt`, waits up to 600s (~10 min) for
 `/tmp/xurl_code_input.txt`, feeds the code, and writes the outcome to
 `/tmp/xurl_oauth_done.json`.
 
-### IRON RULES (these are what actually prevent the bug)
+### OAuth driver rules
 1. **Exactly ONE driver alive at a time.** Before starting, kill any stale
    `xurl auth oauth2` / `oauth_driver` PIDs **by exact PID, excluding your own shell**
    (NEVER `pkill -f oauth_driver.py` — that pattern matches your own bash command line
@@ -198,7 +188,7 @@ authorize URL to `/tmp/xurl_auth_url.txt`, waits up to 600s (~10 min) for
    discard it and use only the newest one.
 4. **Verify the `state` matches** if exchange fails: the `state=` in the user's
    pasted callback must equal the `state=` in the URL the live driver generated. A
-   mismatch = you showed a stale URL (see failure mode above), not a user error.
+   mismatch means the callback came from an older authorize URL.
 
 **Tell the user, clearly, in the visible reply:**
 1. Open the `https://x.com/i/oauth2/authorize?...` URL (the one the live driver wrote)
@@ -218,7 +208,7 @@ The driver exchanges it for a token in `~/.xurl` and writes `/tmp/xurl_oauth_don
 A warning "could not resolve username via /2/users/me" is NOT a failure — that's the
 enrollment trap below.
 
-## STEP 5 — ⚠️ The `client-not-enrolled` trap (very common, happens AFTER successful OAuth)
+## STEP 5 — The `client-not-enrolled` enrollment gate
 
 `xurl --app starchild-x /2/users/me` returns:
 ```json
@@ -228,9 +218,8 @@ enrollment trap below.
 OAuth succeeded but the app lacks v2 API access. Fix in the portal (manual):
 
 - **Free tier:** in the Dashboard you can **Move to Pay-per-use** directly on the
-  free app — that grants v2 access. (The app being parked under "Standalone Apps" vs a
-  Project is a red herring on current portal versions; the real gate is the
-  **Pay-per-use / Production** enrollment.) Pay-per-use may require a card on file.
+  free app — that grants v2 access. The required gate is **Pay-per-use /
+  Production** enrollment. Pay-per-use may require a card on file.
 - After enrolling, **no re-authorization needed** — token persists. Just re-run the
   test. Propagation can take a minute or two.
 
@@ -253,19 +242,19 @@ defaults:
       timeout: 30
 ```
 
-⚠️ `mcp_servers` is a **mapping** (server name → definition), not a list. A list
+`mcp_servers` is a **mapping** (server name → definition), not a list. A list
 form (`- name: xmcp`) is silently ignored (logged `must be a mapping, got list`).
 
 Then `/mcp` to confirm the 24 tools register as `mcp__xmcp__<tool>`.
 
-## STEP 7 — ⚠️⚠️ Token expiry & auto-refresh (THE make-or-break step)
+## STEP 7 — Token expiry & auto-refresh
 
 The OAuth2 **access token expires in ~2 hours** (`offline.access` scope grants a
 refresh_token, so renewal is possible). The bearer in agent.yaml `headers` is static —
 nothing refreshes the TOKEN VALUE on its own. **If you only paste the current token
 into agent.yaml and never refresh, MCP dies in ~2 hours.** You MUST run a refresh loop
 that rewrites the bearer. (Reconnecting with the new bearer IS automatic on current
-clawd — see "Reload is zero-manual" below — but the token itself still has to be
+clawd — see "Automatic reload on current clawd" below — but the token itself still has to be
 refreshed and written.)
 
 Refresh with xurl, then rewrite the bearer in agent.yaml (reconnect is automatic):
@@ -278,15 +267,15 @@ ACCESS=$(python3 -c "import yaml,os; d=yaml.safe_load(open(os.path.expanduser('~
 # On current clawd that's all — the next chat turn auto-reconnects (see below).
 ```
 
-### Refresh mechanics (VERIFIED)
+### Refresh mechanics
 - Confidential client refresh: `POST https://api.x.com/2/oauth2/token` with HTTP
   **Basic auth** (`base64(client_id:client_secret)`) and body
   `grant_type=refresh_token&refresh_token=<rt>`. Returns a fresh `access_token`
   (expires_in 7200) AND a **NEW rotated `refresh_token`**.
-- ⚠️ **refresh_token ROTATES every refresh** — the old one is invalidated. You MUST
+- **refresh_token ROTATES every refresh** — the old one is invalidated. You MUST
   persist the new refresh_token (back into `~/.xurl`) or the next refresh fails.
 
-### Reload is zero-manual on current clawd (per-turn hot-reload)
+### Automatic reload on current clawd
 Current starchild-clawd calls `maybe_hot_reload()` at the START of every `/chat`
 and `/chat/stream` turn (mtime-gated, cheap single stat). So after the refresh task
 rewrites the bearer in agent.yaml, **the very next chat turn auto-reconnects with the
@@ -301,7 +290,7 @@ No `/mcp reload`, no manual step. (A scheduled task can't reload the connection
 itself — task run.py is a separate process and can't touch the in-process MCP
 manager singleton — but it doesn't need to: the per-turn hook handles reconnection.)
 
-⚠️ **Older clawd builds without per-turn hot-reload**: if running a build that predates
+**Older clawd builds without per-turn hot-reload**: if running a build that predates
 the per-turn `maybe_hot_reload()` call, the live connection won't pick up the new
 bearer until someone runs `/mcp reload` — in that case have the refresh task additionally
 trigger a reload, or instruct the user to run `/mcp reload` after each ~2h refresh.
@@ -320,10 +309,10 @@ All authenticated with the OAuth2 bearer. `xurl` handles auth+refresh automatica
 
 | Action | Method + endpoint | Body / notes | Status |
 |---|---|---|---|
-| **Post a tweet** | `POST /2/tweets` | `{"text":"..."}` | ✅ tested |
+| **Post a tweet** | `POST /2/tweets` | `{"text":"..."}` | tested |
 | **Reply** | `POST /2/tweets` | `{"text":"...","reply":{"in_reply_to_tweet_id":"<id>"}}` | documented |
 | **Quote** | `POST /2/tweets` | `{"text":"...","quote_tweet_id":"<id>"}` | documented |
-| **Delete tweet** | `DELETE /2/tweets/{id}` | — | ✅ tested |
+| **Delete tweet** | `DELETE /2/tweets/{id}` | — | tested |
 | **Like** | `POST /2/users/{user_id}/likes` | `{"tweet_id":"<id>"}` | documented |
 | **Unlike** | `DELETE /2/users/{user_id}/likes/{tweet_id}` | — | documented |
 | **Retweet** | `POST /2/users/{user_id}/retweets` | `{"tweet_id":"<id>"}` | documented |

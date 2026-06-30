@@ -3,7 +3,7 @@ name: x-mcp-onboarding
 description: Connect a user's own X (Twitter) dev app (BYOK) for the official X API MCP (reads) plus X v2 REST writes — post, reply, like, retweet, DM.
 
   Use when the user wants to act on X with their OWN X account/app: search, read timeline/users/news/trends/bookmarks via MCP, and post/reply/like/retweet/DM via REST. Walks through OAuth 2.0 setup in the X portal, xurl CLI registration, headless OAuth (user pastes the redirect URL back), the client-not-enrolled / Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring, and FAQ. For read-only scraping WITHOUT the user's own app, use the `twitter` skill instead.
-version: 1.0.1
+version: 1.0.2
 ---
 
 # X API Onboarding — MCP (reads) + REST (writes), BYOK
@@ -150,18 +150,21 @@ Then `/mcp` to confirm the 24 tools register as `mcp__xmcp__<tool>`.
 ## STEP 7 — ⚠️⚠️ Token expiry & auto-refresh (THE make-or-break step)
 
 The OAuth2 **access token expires in ~2 hours** (`offline.access` scope grants a
-refresh_token, so renewal is possible). The native MCP client reads a **STATIC**
-`headers` dict — it does NOT refresh on its own. **If you only paste the current token
-into agent.yaml, MCP dies in ~2 hours.** You MUST run a refresh loop.
+refresh_token, so renewal is possible). The bearer in agent.yaml `headers` is static —
+nothing refreshes the TOKEN VALUE on its own. **If you only paste the current token
+into agent.yaml and never refresh, MCP dies in ~2 hours.** You MUST run a refresh loop
+that rewrites the bearer. (Reconnecting with the new bearer IS automatic on current
+clawd — see "Reload is zero-manual" below — but the token itself still has to be
+refreshed and written.)
 
-Refresh with xurl, then rewrite the bearer in agent.yaml and reload:
+Refresh with xurl, then rewrite the bearer in agent.yaml (reconnect is automatic):
 
 ```bash
 # read current access token after xurl refreshes it
 xurl --app starchild-x /2/users/me >/dev/null 2>&1   # xurl auto-refreshes when near expiry on use
 ACCESS=$(python3 -c "import yaml,os; d=yaml.safe_load(open(os.path.expanduser('~/.xurl'))); print(d['apps']['starchild-x']['oauth2_tokens']['']['oauth2']['access_token'])")
-# patch agent.yaml header to the fresh token (use a small python/yaml rewrite), then:
-# trigger /mcp reload so the new header takes effect
+# patch agent.yaml header to the fresh token (a small python/yaml rewrite).
+# On current clawd that's all — the next chat turn auto-reconnects (see below).
 ```
 
 ### Refresh mechanics (VERIFIED)
@@ -172,26 +175,29 @@ ACCESS=$(python3 -c "import yaml,os; d=yaml.safe_load(open(os.path.expanduser('~
 - ⚠️ **refresh_token ROTATES every refresh** — the old one is invalidated. You MUST
   persist the new refresh_token (back into `~/.xurl`) or the next refresh fails.
 
-### Making reload zero-manual (IMPORTANT — current code reality)
-`core/mcp` has an mtime-gated `maybe_hot_reload()` (cheap single stat), BUT it is
-currently called ONLY from the `/mcp reload` slash command (`force=True`). Nothing
-calls it automatically per turn. So **out of the box, after a token refresh the live
-MCP connection does NOT pick up the new bearer until someone runs `/mcp reload`**.
-A scheduled task can't fix this from outside — task run.py runs in a separate process
-and can't touch the server's in-process MCP manager singleton.
+### Reload is zero-manual on current clawd (per-turn hot-reload)
+Current starchild-clawd calls `maybe_hot_reload()` at the START of every `/chat`
+and `/chat/stream` turn (mtime-gated, cheap single stat). So after the refresh task
+rewrites the bearer in agent.yaml, **the very next chat turn auto-reconnects with the
+new token — the user NEVER runs `/mcp reload`.** The MCP server config signature
+includes sorted headers, so a bearer change is correctly classified as a reconnect.
 
-Two options:
-1. **(recommended) Add a per-turn auto-reload hook** to starchild-clawd: call
-   `maybe_hot_reload(registry)` (no force, mtime-gated) at the start of each agent
-   turn. Then refresh task rewrites agent.yaml → next user message auto-reloads →
-   user NEVER types `/mcp`. This is a small core change (PR to leon-dev). The header
-   signature includes sorted headers, so a bearer change correctly triggers reconnect.
-2. **(no code change)** Document that the user must run `/mcp reload` after each
-   ~2h token expiry. Degraded UX — connection drops every 2 hours until reloaded.
+So the refresh task only needs to do TWO things:
+1. refresh the token (Basic auth) and **persist the rotated refresh_token** to `~/.xurl`,
+2. **write the new access_token into the agent.yaml `headers.Authorization`** bearer.
 
-Set up the refresh as a **scheduled_task** every ~60–90 min:
-refresh token (Basic auth) → write new access_token into agent.yaml header → persist
-new refresh_token to `~/.xurl`. With option 1 in place this is fully automatic.
+No `/mcp reload`, no manual step. (A scheduled task can't reload the connection
+itself — task run.py is a separate process and can't touch the in-process MCP
+manager singleton — but it doesn't need to: the per-turn hook handles reconnection.)
+
+⚠️ **Older clawd builds without per-turn hot-reload**: if running a build that predates
+the per-turn `maybe_hot_reload()` call, the live connection won't pick up the new
+bearer until someone runs `/mcp reload` — in that case have the refresh task additionally
+trigger a reload, or instruct the user to run `/mcp reload` after each ~2h refresh.
+
+Set up the refresh as a **scheduled_task** every ~60–90 min (token lives ~2h):
+refresh token (Basic auth) → persist rotated refresh_token to `~/.xurl` → write new
+access_token into the agent.yaml bearer. On current clawd that is fully automatic.
 
 Token store path: `~/.xurl` → `apps.starchild-x.oauth2_tokens[''].oauth2.{access_token,refresh_token,expiration_time}`.
 
@@ -251,8 +257,9 @@ takes a `query` (supports operators like `from:`, `min_faves:`, `$CASHTAG`).
   Pay-per-use (STEP 5).
 - **The callback page won't load.** Expected — it's the remote box's localhost. The
   code is in the address bar; paste the full URL back.
-- **MCP worked, then stopped ~2h later.** Access token expired and the static header
-  went stale. Set up the refresh task (STEP 7).
+- **MCP worked, then stopped ~2h later.** Access token expired and the bearer in
+  agent.yaml went stale. Set up the refresh task that rewrites the bearer (STEP 7) —
+  on current clawd the next chat turn then reconnects automatically, no `/mcp reload`.
 - **Can I post through MCP?** No. Writes go through REST `/2/...` (see table). MCP is
   reads + bookmarks only.
 

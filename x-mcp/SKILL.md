@@ -10,7 +10,7 @@ description: >-
   headless OAuth (user pastes the redirect URL back), the client-not-enrolled /
   Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring,
   and FAQ. For read-only scraping WITHOUT the user's own app, use the twitter skill.
-version: 1.4.0
+version: 1.5.0
 author: starchild
 tags: [x, twitter, mcp, oauth, byok, post, tweet, dm, x-api, xurl]
 ---

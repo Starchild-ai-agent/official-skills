@@ -160,6 +160,32 @@ safe = _re.sub(r"[^A-Za-z0-9._-]", "_", s)[:120]
 (STATE_DIR / f"{safe}.json").write_text(json.dumps(stale))
 check("stale edit beyond TTL", _run(_stop(s)), expect_block=False)
 
+# 12b. bash writes code (heredoc) but runs nothing → BLOCK
+s = sid()
+_run(_pre(s, "bash", command="cat > app.py <<'EOF'\nprint(1)\nEOF"))
+check("bash heredoc writes code, no verify", _run(_stop(s)), expect_block=True)
+
+# 12c. bash sed -i on code, no verify → BLOCK
+s = sid()
+_run(_pre(s, "bash", command="sed -i 's/a/b/' core/handler.py"))
+check("bash sed -i code, no verify", _run(_stop(s)), expect_block=True)
+
+# 12d. bash writes code then runs it in the SAME command → ALLOW (verified)
+s = sid()
+_run(_pre(s, "bash", command="cat > t.py <<'EOF'\nprint(1)\nEOF\npython t.py"))
+check("bash write-then-run one-liner", _run(_stop(s)), expect_block=False)
+
+# 12e. bash writes code, THEN a separate verify command → ALLOW
+s = sid()
+_run(_pre(s, "bash", command="cat > m.py <<'EOF'\nx=1\nEOF"))
+_run(_pre(s, "bash", command="python m.py"))
+check("bash write then separate verify", _run(_stop(s)), expect_block=False)
+
+# 12f. bash redirects to NON-code (log/json) → ALLOW (no false positive)
+s = sid()
+_run(_pre(s, "bash", command="echo done > out.log && cat data >> report.json"))
+check("bash writes non-code only", _run(_stop(s)), expect_block=False)
+
 # 13. Per-session cap: after MAX_NAGS distinct edit sets, stop nagging.
 s = sid()
 blocked_count = 0

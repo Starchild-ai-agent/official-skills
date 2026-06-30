@@ -149,6 +149,49 @@ for cmd in ["ruff check .", "tsc --noEmit", "go test ./...",
     _run(_pre(s, "bash", command=cmd))
     check(f"verify via: {cmd}", _run(_stop(s)), expect_block=False)
 
+# 11b. BASH WRITES code → must be detected as a code edit.
+# heredoc/redirect to a .py, no verify → BLOCK
+s = sid()
+_run(_pre(s, "bash", command="cat > core/gen.py <<'EOF'\nprint('hi')\nEOF"))
+check("bash heredoc writes .py, no verify", _run(_stop(s)), expect_block=True)
+
+# echo redirect to a .js → BLOCK
+s = sid()
+_run(_pre(s, "bash", command="echo 'export const x=1' > src/x.js"))
+check("bash echo > .js, no verify", _run(_stop(s)), expect_block=True)
+
+# tee to a code file → BLOCK
+s = sid()
+_run(_pre(s, "bash", command="tee app/main.go <<'EOF'\npackage main\nEOF"))
+check("bash tee .go, no verify", _run(_stop(s)), expect_block=True)
+
+# sed -i in-place edit of a code file → BLOCK
+s = sid()
+_run(_pre(s, "bash", command="sed -i 's/foo/bar/g' lib/util.rb"))
+check("bash sed -i .rb, no verify", _run(_stop(s)), expect_block=True)
+
+# bash writes code THEN tests in the same command → ALLOW (verified)
+s = sid()
+_run(_pre(s, "bash", command="cat > t.py <<'EOF'\nx=1\nEOF\n && pytest t.py"))
+check("bash write .py && pytest", _run(_stop(s)), expect_block=False)
+
+# bash writes code, then a separate verify command → ALLOW
+s = sid()
+_run(_pre(s, "bash", command="echo 'def f(): pass' >> mod.py"))
+_run(_pre(s, "bash", command="ruff check mod.py"))
+check("bash append .py then ruff", _run(_stop(s)), expect_block=False)
+
+# FALSE-POSITIVE GUARD: bash redirect to a NON-code file → ALLOW
+s = sid()
+_run(_pre(s, "bash", command="echo 'logline' >> output.log"))
+_run(_pre(s, "bash", command="cat data.csv > backup.csv"))
+check("bash redirect to .log/.csv only", _run(_stop(s)), expect_block=False)
+
+# FALSE-POSITIVE GUARD: 2>&1 / &> stderr redirect must NOT count as a write
+s = sid()
+_run(_pre(s, "bash", command="python app.py > out.txt 2>&1"))
+check("bash stderr redirect, not a code write", _run(_stop(s)), expect_block=False)
+
 # 12. TTL: an edit older than the window must NOT block.
 #     We simulate by writing a stale state file directly.
 s = sid()

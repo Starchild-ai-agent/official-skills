@@ -317,6 +317,22 @@ ACCESS=$(python3 -c "import yaml,os; d=yaml.safe_load(open(os.path.expanduser('~
   (expires_in 7200) AND a **NEW rotated `refresh_token`**.
 - **refresh_token ROTATES every refresh** — the old one is invalidated. You MUST
   persist the new refresh_token (back into `~/.xurl`) or the next refresh fails.
+- ✅ **Prefer xurl's own on-use refresh** (`xurl --app starchild-x /2/users/me`): xurl
+  refreshes when near expiry and writes the rotated token back to `~/.xurl` itself,
+  **through the symlink** (verified) — persistence stays intact, you don't touch the file.
+- 🚫 **If you DO write `~/.xurl` yourself, NEVER use an atomic-rename write**
+  (`tempfile` + `os.replace`/`os.rename`). Since `~/.xurl` is a **symlink** to the
+  persistent workspace store (STEP 3), a rename **replaces the symlink with a regular
+  file in ephemeral `/root`** — persistence silently breaks and the token vanishes on
+  the next restart. (This is the standard "safe" pattern the ChatGPT/Grok `store.py`
+  use — correct for real files, fatal for a symlink.) Verified: `os.replace` clobbers
+  the symlink; in-place `open(path,"w")` and xurl both write **through** it. So write
+  in place only:
+  ```python
+  # safe: follows the symlink, lands in the persistent workspace store
+  with open(os.path.expanduser("~/.xurl"), "w") as f:
+      yaml.safe_dump(data, f)
+  ```
 
 ### Automatic reload on current clawd
 Current starchild-clawd calls `maybe_hot_reload()` at the START of every `/chat`
@@ -326,8 +342,10 @@ new token — the user NEVER runs `/mcp reload`.** The MCP server config signatu
 includes sorted headers, so a bearer change is correctly classified as a reconnect.
 
 So the refresh task only needs to do TWO things:
-1. refresh the token (Basic auth) and **persist the rotated refresh_token** to `~/.xurl`,
-2. **write the new access_token into the agent.yaml `headers.Authorization`** bearer.
+1. refresh the token (Basic auth) and **persist the rotated refresh_token** to `~/.xurl`
+   (in-place write or via xurl only — NOT atomic-rename, see the symlink warning above),
+2. **write the new access_token into the agent.yaml `headers.Authorization`** bearer
+   (agent.yaml is already in the workspace, so atomic write is fine there).
 
 No `/mcp reload`, no manual step. (A scheduled task can't reload the connection
 itself — task run.py is a separate process and can't touch the in-process MCP

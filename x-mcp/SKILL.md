@@ -10,7 +10,7 @@ description: >-
   headless OAuth (user pastes the redirect URL back), the client-not-enrolled /
   Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring,
   and FAQ. For read-only scraping WITHOUT the user's own app, use the twitter skill.
-version: 1.5.1
+version: 1.5.2
 author: starchild
 tags: [x, twitter, mcp, oauth, byok, post, tweet, dm, x-api, xurl]
 ---
@@ -25,7 +25,8 @@ Connects the user's **own** X developer app so this agent can:
 (~app-wide caps), pay-per-use billed to the app owner, and TOS liability sits with
 the app owner. A shared app = single point of failure + neighbors starving each
 other + concentrated billing + content-moderation liability. So every user brings
-their own app + OAuth token. The token lives only on this machine (`~/.xurl`),
+their own app + OAuth token. The token lives only on this machine (`~/.xurl`,
+symlinked to the persistent workspace — see STEP 3),
 never proxied.
 
 ## When to use this skill
@@ -115,11 +116,35 @@ the web portal. Make them copy-paste exact.
 Remind the user: it's the OAuth 2.0 pair (after enabling User authentication
 settings + Confidential), NOT API Key/Secret (1.0a), NOT Bearer Token.
 
-## STEP 3 — Install xurl + register the app
+## STEP 3 — Install xurl + persist the credential store + register the app
+
+⚠️ **Persistence is REQUIRED, not optional.** xurl keeps BOTH the app registration
+AND the OAuth token in `~/.xurl` (i.e. `/root/.xurl`). `/root` is **ephemeral** — it is
+wiped on every container restart, so without this step the user loses the connection
+(and even the app registration) on the next restart and has to re-OAuth from scratch.
+Keep the real file in the persistent workspace and symlink it back each boot. xurl
+writes through symlinks (verified), so every xurl call transparently uses the
+persistent file — no per-command `HOME` prefix needed.
 
 ```bash
 npm install -g @xdevplatform/xurl          # validated v1.2.2
-echo 'npm install -g @xdevplatform/xurl' >> setup.sh   # survive container restarts
+
+# Persist install + credential store across container restarts (idempotent).
+# Append ONCE to workspace/setup.sh (which re-runs at every boot):
+cat >> setup.sh <<'SH'
+npm install -g @xdevplatform/xurl
+# X (xurl) credential store: /root is ephemeral, keep ~/.xurl in the workspace
+XURL_STORE=/data/workspace/.config/x-mcp/xurl_store
+mkdir -p "$(dirname "$XURL_STORE")"; chmod 700 "$(dirname "$XURL_STORE")" 2>/dev/null || true
+if [ -f /root/.xurl ] && [ ! -L /root/.xurl ]; then mv /root/.xurl "$XURL_STORE"; fi
+ln -sf "$XURL_STORE" /root/.xurl
+SH
+
+# Run it now so the store is live for this session BEFORE registering the app:
+XURL_STORE=/data/workspace/.config/x-mcp/xurl_store
+mkdir -p "$(dirname "$XURL_STORE")"; chmod 700 "$(dirname "$XURL_STORE")" 2>/dev/null || true
+if [ -f /root/.xurl ] && [ ! -L /root/.xurl ]; then mv /root/.xurl "$XURL_STORE"; fi
+ln -sf "$XURL_STORE" /root/.xurl
 
 xurl auth apps add starchild-x \
   --client-id "$X_OAUTH_CLIENT_ID" \
@@ -127,7 +152,12 @@ xurl auth apps add starchild-x \
   --redirect-uri "http://localhost:8080/callback"
 
 xurl auth status      # confirm app registered, redirect_uri shows [app config]
+ls -la /data/workspace/.config/x-mcp/xurl_store   # confirm store lives in workspace
 ```
+
+The OAuth token from STEP 4 lands in this same persistent file, so once connected the
+connection survives restarts. (`agent.yaml`'s MCP bearer is separate and already lives
+in the workspace; the refresh task in STEP 7 keeps both in sync.)
 
 ## STEP 4 — Headless OAuth (this machine has no browser → user pastes the URL back)
 
@@ -315,6 +345,8 @@ access_token into the agent.yaml bearer. On current clawd that is fully automati
 Token store path: `~/.xurl` → `apps.starchild-x.oauth2_tokens['<resolved-handle>'].oauth2.{access_token,refresh_token,expiration_time}`.
 The key is the X handle xurl resolves from `/2/users/me` (e.g. `'ud_noel'`), **not** an
 empty string — read it dynamically with `next(iter(oauth2_tokens))` (one token per app).
+`~/.xurl` is a symlink to the persistent `/data/workspace/.config/x-mcp/xurl_store`
+(set up in STEP 3) — read/write `~/.xurl` as normal; persistence is transparent.
 
 ---
 

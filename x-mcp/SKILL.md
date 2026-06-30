@@ -153,7 +153,7 @@ writes the authorize URL to a file, waits up to ~10 min for a code file, then fe
 the code and captures the result. Key shape:
 
 ```python
-proc = subprocess.Popen(["xurl","auth","oauth2","leon","--app","starchild-x","--headless"],
+proc = subprocess.Popen(["xurl","auth","oauth2","--app","starchild-x","--headless"],  # no USERNAME -> token under oauth2_tokens['']
     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0)
 # 1) read stdout until the oauth2/authorize line → write it to /tmp/xurl_auth_url.txt
 # 2) poll /tmp/xurl_code_input.txt (up to 600s) for the pasted callback URL/code
@@ -360,8 +360,9 @@ takes a `query` (supports operators like `from:`, `min_faves:`, `$CASHTAG`).
 - **Never ask for the Client ID / Secret in chat.** Always collect via
   `request_env_input` (STEP 2).
 - **Don't auto-poll / rush the OAuth step.** After printing the authorize URL, WAIT
-  for the user to say they approved and paste the redirected URL back. Feeding the
-  FIFO before they've pasted just hangs.
+  for the user to say they approved and paste the redirected URL back. Writing the
+  code file (`/tmp/xurl_code_input.txt`) before they've pasted just makes the driver
+  wait on empty input.
 - **On `client-not-enrolled`, don't retry blindly.** It's a portal enrollment gate
   (STEP 5), not a transient error — retrying the same call keeps failing. Guide the
   user to Move to Pay-per-use, then re-test once.

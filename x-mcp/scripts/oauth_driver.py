@@ -12,8 +12,12 @@ for f in (CODE_FILE, URL_FILE, DONE_FILE):
     try: os.remove(f)
     except FileNotFoundError: pass
 
+# NOTE: no USERNAME arg on purpose. xurl stores the token under the empty-string
+# profile key, i.e. apps.starchild-x.oauth2_tokens[''] — which is exactly the path
+# the rest of this skill (SKILL.md, refresh task) reads. Passing a username here
+# would key the token elsewhere and break every downstream lookup.
 proc = subprocess.Popen(
-    ["xurl", "auth", "oauth2", "leon", "--app", "starchild-x", "--headless"],
+    ["xurl", "auth", "oauth2", "--app", "starchild-x", "--headless"],
     stdin=subprocess.PIPE,
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
@@ -55,7 +59,7 @@ if not url:
 with open(URL_FILE, "w") as f: f.write(url)
 
 # Phase 2: wait for code file (up to 10 min)
-deadline = time.time() + 1800
+deadline = time.time() + 600   # ~10 min for the user to authorize (matches SKILL.md)
 code = None
 while time.time() < deadline:
     if os.path.exists(CODE_FILE):

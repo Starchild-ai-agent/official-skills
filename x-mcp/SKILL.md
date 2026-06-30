@@ -131,33 +131,70 @@ xurl auth status      # confirm app registered, redirect_uri shows [app config]
 
 ## STEP 4 — Headless OAuth (this machine has no browser → user pastes the URL back)
 
-`xurl auth oauth2 --headless` prompts on stdin for the pasted code and BLOCKS. A
-plain `bash(background=true)` hits EOF immediately and fails. **Feed stdin via a FIFO
-you write to later** when the user pastes the code:
+`xurl auth oauth2 --headless` prints an authorize URL, then BLOCKS on stdin waiting
+for the pasted code. The code is bound to a **PKCE code_verifier that lives only in
+that process's memory** — if the process dies before the user pastes back, the code
+can never be exchanged. So the whole flow must keep ONE xurl process alive from
+"print URL" all the way through "exchange code".
 
-```bash
-rm -f /tmp/xurl_fifo && mkfifo /tmp/xurl_fifo
-sleep 1800 > /tmp/xurl_fifo &                       # holder keeps FIFO open (no premature EOF)
-xurl auth oauth2 --app starchild-x --headless < /tmp/xurl_fifo   # run via bash(background=true)
+### ❌ Failure mode that WILL bite you (learned the hard way)
+The naive `mkfifo` + `sleep 1800 > fifo &` + `bash(background=true)` approach is
+fragile: a background bash auto-detaches/gets reaped, the holder dies, xurl dies, and
+you restart. **Every restart generates a NEW code_challenge + state, which silently
+invalidates the authorize URL you already showed the user.** The classic symptom:
+the user authorizes, pastes the callback, and xurl returns
+`Auth Error: InvalidCode (cause: state mismatch: the pasted URL is from a different
+login attempt)`. It means the URL the user opened belonged to a now-dead process,
+while the live process has a different state/verifier.
+
+### ✅ Robust pattern — ONE persistent Python driver
+Run a single Python driver that holds xurl's stdin open via `subprocess.PIPE`,
+writes the authorize URL to a file, waits up to ~10 min for a code file, then feeds
+the code and captures the result. Key shape:
+
+```python
+proc = subprocess.Popen(["xurl","auth","oauth2","leon","--app","starchild-x","--headless"],
+    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0)
+# 1) read stdout until the oauth2/authorize line → write it to /tmp/xurl_auth_url.txt
+# 2) poll /tmp/xurl_code_input.txt (up to 600s) for the pasted callback URL/code
+# 3) proc.stdin.write(code+"\n"); flush  → 4) read result → write /tmp/xurl_oauth_done.json
 ```
+Launch it so it SURVIVES the 180s foreground limit: write a `scripts/oauth_driver.py`
+and start it with stdout redirected to a file and detached (e.g. `python3
+scripts/oauth_driver.py >/tmp/oauth_driver_console.log 2>&1 &` then verify with
+`pgrep -f oauth_driver.py`). Do NOT block the foreground bash waiting on it.
 
-Then `bash_process(action='log')` to grab the printed authorization URL.
+### IRON RULES (these are what actually prevent the bug)
+1. **Exactly ONE driver alive at a time.** Before starting, kill any stale
+   `xurl auth oauth2` / `oauth_driver` PIDs (by exact PID, NOT `pkill -f oauth_driver.py`
+   — that pattern matches your own shell command line and kills your bash) and wipe
+   `/tmp/xurl_*` stale files.
+2. **Give the user ONLY the URL the LIVE driver just wrote** — read it from
+   `/tmp/xurl_auth_url.txt` AFTER this driver started. Never paste a URL from an
+   earlier attempt or from chat history.
+3. **If you ever restart, the previous authorize URL is DEAD.** Tell the user to
+   discard it and use only the newest one.
+4. **Verify the `state` matches** if exchange fails: the `state=` in the user's
+   pasted callback must equal the `state=` in the URL the live driver generated. A
+   mismatch = you showed a stale URL (see failure mode above), not a user error.
 
 **Tell the user, clearly, in the visible reply:**
-1. Open the printed `https://x.com/i/oauth2/authorize?...` URL in a browser on ANY device.
+1. Open the `https://x.com/i/oauth2/authorize?...` URL (the one the live driver wrote)
+   in a browser on ANY device.
 2. Click **Authorize app**.
 3. The browser redirects to `http://localhost:8080/callback?state=...&code=...` — **the
    page will fail to load (it's THIS remote box's localhost, the user's browser can't
    reach it). That is EXPECTED. The code is in the address bar.**
 4. Copy the **full** redirected URL from the address bar and paste it back in chat.
 
-Feed it to the waiting process:
+Feed it to the waiting driver:
 ```bash
-echo '<full redirected URL with code=>' > /tmp/xurl_fifo
+echo '<full redirected URL with code=>' > /tmp/xurl_code_input.txt
 ```
 
-xurl exchanges it for a token in `~/.xurl`. A warning "could not resolve username via
-/2/users/me" is NOT a failure — that's the enrollment trap below.
+The driver exchanges it for a token in `~/.xurl` and writes `/tmp/xurl_oauth_done.json`.
+A warning "could not resolve username via /2/users/me" is NOT a failure — that's the
+enrollment trap below.
 
 ## STEP 5 — ⚠️ The `client-not-enrolled` trap (very common, happens AFTER successful OAuth)
 

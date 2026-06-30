@@ -10,7 +10,7 @@ description: >-
   headless OAuth (user pastes the redirect URL back), the client-not-enrolled /
   Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring,
   and FAQ. For read-only scraping WITHOUT the user's own app, use the twitter skill.
-version: 1.4.0
+version: 1.5.0
 author: starchild
 tags: [x, twitter, mcp, oauth, byok, post, tweet, dm, x-api, xurl]
 ---
@@ -30,14 +30,14 @@ never proxied.
 
 ## When to use this skill
 
-✅ **Use** when the user wants to act on X with their OWN account/app:
+Use when the user wants to act on X with their OWN account/app:
 - "Connect my X / Twitter account so you can post for me"
 - "Set up the X API with my dev app", "use my X developer keys"
 - "Search recent tweets / read my timeline / read mentions" (with their own app)
 - "Post / reply / like / retweet / DM on X as me"
 - "Bookmark this tweet"
 
-❌ **Do NOT use** — pick the right alternative instead:
+Do NOT use — pick the right alternative instead:
 - "Summarize this tweet" / "what's @user posting" / cashtag scan, **no account needed**
   → use the `twitter` skill (read-only scraping via twitterapi.io, no OAuth)
 - "Add the X / Grok *model*" → that's `xai-grok-onboarding` (chat model), unrelated
@@ -54,14 +54,14 @@ the user's OWN authenticated account, can WRITE, needs one-time OAuth setup.
 
 ## Preflight — build compatibility (check before you start)
 
-This skill drives two platform capabilities. Confirm both, or the setup half-works:
+This skill drives two platform capabilities. Confirm both before setup:
 
 1. **Native MCP client (required for reads).** starchild-clawd must include
    `core/mcp/*` and read `defaults.mcp_servers` from agent.yaml. Quick check: run
    `/mcp` — if it returns a status block, the client exists. If `/mcp` is unknown or
    errors, the running build predates MCP support → reads via MCP won't work. The REST
    write path (xurl) still works regardless; or update the platform image.
-2. **Per-turn hot-reload (required for zero-manual token refresh).** Needed so the
+2. **Per-turn hot-reload (required for automatic token refresh).** Needed so the
    ~2h token rotation reconnects automatically (STEP 7). Builds without it still work
    but need a manual `/mcp reload` after each refresh — documented as the fallback in
    STEP 7. There is no clean runtime probe; assume current builds have it, treat
@@ -71,12 +71,12 @@ This skill drives two platform capabilities. Confirm both, or the setup half-wor
 If neither MCP capability is present and the user only needs to read public tweets,
 stop here and use the `twitter` skill instead — it needs no build support.
 
-## ⚠️ Reads vs writes — two separate systems (do not confuse)
+## Reads vs writes — two separate systems
 
 | Capability | Channel | Validated |
 |---|---|---|
-| search posts/users/news, timeline, mentions, trends, bookmarks | **MCP** (24 tools) | ✅ connected |
-| **post / delete / reply / like / retweet / follow / DM** | **REST `/2/...`** (NOT in MCP) | ✅ post+delete tested |
+| search posts/users/news, timeline, mentions, trends, bookmarks | **MCP** (24 tools) | connected |
+| **post / delete / reply / like / retweet / follow / DM** | **REST `/2/...`** (NOT in MCP) | post+delete tested |
 
 The MCP `tools/list` returns ONLY the 24 read/bookmark tools. Write endpoints are a
 **separate REST API** documented at docs.x.com — they are NOT discoverable through
@@ -131,35 +131,84 @@ xurl auth status      # confirm app registered, redirect_uri shows [app config]
 
 ## STEP 4 — Headless OAuth (this machine has no browser → user pastes the URL back)
 
-`xurl auth oauth2 --headless` prompts on stdin for the pasted code and BLOCKS. A
-plain `bash(background=true)` hits EOF immediately and fails. **Feed stdin via a FIFO
-you write to later** when the user pastes the code:
+`xurl auth oauth2 --headless` prints an authorize URL, then BLOCKS on stdin waiting
+for the pasted code. The code is bound to a **PKCE code_verifier that lives only in
+that process's memory** — if the process dies before the user pastes back, the code
+can never be exchanged. So the whole flow must keep ONE xurl process alive from
+"print URL" all the way through "exchange code".
+
+### Persistent driver pattern
+Run a single Python driver that holds xurl's stdin open via `subprocess.PIPE`,
+writes the authorize URL to a file, waits up to ~10 min for a code file, then feeds
+the code and captures the result. Key shape:
+
+```python
+proc = subprocess.Popen(["xurl","auth","oauth2","--app","starchild-x","--headless"],  # no USERNAME -> token under oauth2_tokens['']
+    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0)
+# 1) read stdout until the oauth2/authorize line → write it to /tmp/xurl_auth_url.txt
+# 2) poll /tmp/xurl_code_input.txt (up to 600s) for the pasted callback URL/code
+# 3) proc.stdin.write(code+"\n"); flush  → 4) read result → write /tmp/xurl_oauth_done.json
+```
+**Use the driver SHIPPED WITH THIS SKILL** — do NOT re-author it from memory (that's
+how the hardcoded-username and wrong-timeout bugs creep back). It lives at
+`skills/x-mcp/scripts/oauth_driver.py`. Launch it so it SURVIVES the 180s foreground
+limit — stdout redirected to a file, detached, and DON'T block the foreground bash
+on it:
 
 ```bash
-rm -f /tmp/xurl_fifo && mkfifo /tmp/xurl_fifo
-sleep 1800 > /tmp/xurl_fifo &                       # holder keeps FIFO open (no premature EOF)
-xurl auth oauth2 --app starchild-x --headless < /tmp/xurl_fifo   # run via bash(background=true)
+# clean any stale driver/xurl FIRST (see IRON RULE #1), then:
+python3 skills/x-mcp/scripts/oauth_driver.py >/tmp/oauth_driver_console.log 2>&1 &
+sleep 8
+cat /tmp/xurl_auth_url.txt        # the URL THIS live driver just wrote — give the user THIS one
+pgrep -f oauth_driver.py >/dev/null && echo "driver alive, waiting for code"
 ```
 
-Then `bash_process(action='log')` to grab the printed authorization URL.
+The driver runs `xurl auth oauth2 --app starchild-x --headless` (no USERNAME — the
+token then lands under `oauth2_tokens['']`, the exact path STEP 7 reads), captures the
+authorize URL to `/tmp/xurl_auth_url.txt`, waits up to 600s (~10 min) for
+`/tmp/xurl_code_input.txt`, feeds the code, and writes the outcome to
+`/tmp/xurl_oauth_done.json`.
+
+### OAuth driver rules
+1. **Exactly ONE driver alive at a time.** Before starting, kill any stale
+   `xurl auth oauth2` / `oauth_driver` PIDs **by exact PID, excluding your own shell**
+   (NEVER `pkill -f oauth_driver.py` — that pattern matches your own bash command line
+   and kills the shell running the cleanup). Safe snippet:
+   ```bash
+   SELF=$$
+   for pat in "xurl auth oauth2" "oauth_driver.py"; do
+     for pid in $(pgrep -f "$pat"); do [ "$pid" != "$SELF" ] && kill "$pid" 2>/dev/null; done
+   done
+   rm -f /tmp/xurl_auth_url.txt /tmp/xurl_code_input.txt /tmp/xurl_oauth_done.json /tmp/xurl_oauth.pid
+   ```
+2. **Give the user ONLY the URL the LIVE driver just wrote** — read it from
+   `/tmp/xurl_auth_url.txt` AFTER this driver started. Never paste a URL from an
+   earlier attempt or from chat history.
+3. **If you ever restart, the previous authorize URL is DEAD.** Tell the user to
+   discard it and use only the newest one.
+4. **Verify the `state` matches** if exchange fails: the `state=` in the user's
+   pasted callback must equal the `state=` in the URL the live driver generated. A
+   mismatch means the callback came from an older authorize URL.
 
 **Tell the user, clearly, in the visible reply:**
-1. Open the printed `https://x.com/i/oauth2/authorize?...` URL in a browser on ANY device.
+1. Open the `https://x.com/i/oauth2/authorize?...` URL (the one the live driver wrote)
+   in a browser on ANY device.
 2. Click **Authorize app**.
 3. The browser redirects to `http://localhost:8080/callback?state=...&code=...` — **the
    page will fail to load (it's THIS remote box's localhost, the user's browser can't
    reach it). That is EXPECTED. The code is in the address bar.**
 4. Copy the **full** redirected URL from the address bar and paste it back in chat.
 
-Feed it to the waiting process:
+Feed it to the waiting driver:
 ```bash
-echo '<full redirected URL with code=>' > /tmp/xurl_fifo
+echo '<full redirected URL with code=>' > /tmp/xurl_code_input.txt
 ```
 
-xurl exchanges it for a token in `~/.xurl`. A warning "could not resolve username via
-/2/users/me" is NOT a failure — that's the enrollment trap below.
+The driver exchanges it for a token in `~/.xurl` and writes `/tmp/xurl_oauth_done.json`.
+A warning "could not resolve username via /2/users/me" is NOT a failure — that's the
+enrollment trap below.
 
-## STEP 5 — ⚠️ The `client-not-enrolled` trap (very common, happens AFTER successful OAuth)
+## STEP 5 — The `client-not-enrolled` enrollment gate
 
 `xurl --app starchild-x /2/users/me` returns:
 ```json
@@ -169,9 +218,8 @@ xurl exchanges it for a token in `~/.xurl`. A warning "could not resolve usernam
 OAuth succeeded but the app lacks v2 API access. Fix in the portal (manual):
 
 - **Free tier:** in the Dashboard you can **Move to Pay-per-use** directly on the
-  free app — that grants v2 access. (The app being parked under "Standalone Apps" vs a
-  Project is a red herring on current portal versions; the real gate is the
-  **Pay-per-use / Production** enrollment.) Pay-per-use may require a card on file.
+  free app — that grants v2 access. The required gate is **Pay-per-use /
+  Production** enrollment. Pay-per-use may require a card on file.
 - After enrolling, **no re-authorization needed** — token persists. Just re-run the
   test. Propagation can take a minute or two.
 
@@ -194,19 +242,19 @@ defaults:
       timeout: 30
 ```
 
-⚠️ `mcp_servers` is a **mapping** (server name → definition), not a list. A list
+`mcp_servers` is a **mapping** (server name → definition), not a list. A list
 form (`- name: xmcp`) is silently ignored (logged `must be a mapping, got list`).
 
 Then `/mcp` to confirm the 24 tools register as `mcp__xmcp__<tool>`.
 
-## STEP 7 — ⚠️⚠️ Token expiry & auto-refresh (THE make-or-break step)
+## STEP 7 — Token expiry & auto-refresh
 
 The OAuth2 **access token expires in ~2 hours** (`offline.access` scope grants a
 refresh_token, so renewal is possible). The bearer in agent.yaml `headers` is static —
 nothing refreshes the TOKEN VALUE on its own. **If you only paste the current token
 into agent.yaml and never refresh, MCP dies in ~2 hours.** You MUST run a refresh loop
 that rewrites the bearer. (Reconnecting with the new bearer IS automatic on current
-clawd — see "Reload is zero-manual" below — but the token itself still has to be
+clawd — see "Automatic reload on current clawd" below — but the token itself still has to be
 refreshed and written.)
 
 Refresh with xurl, then rewrite the bearer in agent.yaml (reconnect is automatic):
@@ -219,15 +267,15 @@ ACCESS=$(python3 -c "import yaml,os; d=yaml.safe_load(open(os.path.expanduser('~
 # On current clawd that's all — the next chat turn auto-reconnects (see below).
 ```
 
-### Refresh mechanics (VERIFIED)
+### Refresh mechanics
 - Confidential client refresh: `POST https://api.x.com/2/oauth2/token` with HTTP
   **Basic auth** (`base64(client_id:client_secret)`) and body
   `grant_type=refresh_token&refresh_token=<rt>`. Returns a fresh `access_token`
   (expires_in 7200) AND a **NEW rotated `refresh_token`**.
-- ⚠️ **refresh_token ROTATES every refresh** — the old one is invalidated. You MUST
+- **refresh_token ROTATES every refresh** — the old one is invalidated. You MUST
   persist the new refresh_token (back into `~/.xurl`) or the next refresh fails.
 
-### Reload is zero-manual on current clawd (per-turn hot-reload)
+### Automatic reload on current clawd
 Current starchild-clawd calls `maybe_hot_reload()` at the START of every `/chat`
 and `/chat/stream` turn (mtime-gated, cheap single stat). So after the refresh task
 rewrites the bearer in agent.yaml, **the very next chat turn auto-reconnects with the
@@ -242,7 +290,7 @@ No `/mcp reload`, no manual step. (A scheduled task can't reload the connection
 itself — task run.py is a separate process and can't touch the in-process MCP
 manager singleton — but it doesn't need to: the per-turn hook handles reconnection.)
 
-⚠️ **Older clawd builds without per-turn hot-reload**: if running a build that predates
+**Older clawd builds without per-turn hot-reload**: if running a build that predates
 the per-turn `maybe_hot_reload()` call, the live connection won't pick up the new
 bearer until someone runs `/mcp reload` — in that case have the refresh task additionally
 trigger a reload, or instruct the user to run `/mcp reload` after each ~2h refresh.
@@ -261,10 +309,10 @@ All authenticated with the OAuth2 bearer. `xurl` handles auth+refresh automatica
 
 | Action | Method + endpoint | Body / notes | Status |
 |---|---|---|---|
-| **Post a tweet** | `POST /2/tweets` | `{"text":"..."}` | ✅ tested |
+| **Post a tweet** | `POST /2/tweets` | `{"text":"..."}` | tested |
 | **Reply** | `POST /2/tweets` | `{"text":"...","reply":{"in_reply_to_tweet_id":"<id>"}}` | documented |
 | **Quote** | `POST /2/tweets` | `{"text":"...","quote_tweet_id":"<id>"}` | documented |
-| **Delete tweet** | `DELETE /2/tweets/{id}` | — | ✅ tested |
+| **Delete tweet** | `DELETE /2/tweets/{id}` | — | tested |
 | **Like** | `POST /2/users/{user_id}/likes` | `{"tweet_id":"<id>"}` | documented |
 | **Unlike** | `DELETE /2/users/{user_id}/likes/{tweet_id}` | — | documented |
 | **Retweet** | `POST /2/users/{user_id}/retweets` | `{"tweet_id":"<id>"}` | documented |
@@ -323,8 +371,9 @@ takes a `query` (supports operators like `from:`, `min_faves:`, `$CASHTAG`).
 - **Never ask for the Client ID / Secret in chat.** Always collect via
   `request_env_input` (STEP 2).
 - **Don't auto-poll / rush the OAuth step.** After printing the authorize URL, WAIT
-  for the user to say they approved and paste the redirected URL back. Feeding the
-  FIFO before they've pasted just hangs.
+  for the user to say they approved and paste the redirected URL back. Writing the
+  code file (`/tmp/xurl_code_input.txt`) before they've pasted just makes the driver
+  wait on empty input.
 - **On `client-not-enrolled`, don't retry blindly.** It's a portal enrollment gate
   (STEP 5), not a transient error — retrying the same call keeps failing. Guide the
   user to Move to Pay-per-use, then re-test once.

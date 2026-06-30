@@ -159,16 +159,38 @@ proc = subprocess.Popen(["xurl","auth","oauth2","--app","starchild-x","--headles
 # 2) poll /tmp/xurl_code_input.txt (up to 600s) for the pasted callback URL/code
 # 3) proc.stdin.write(code+"\n"); flush  → 4) read result → write /tmp/xurl_oauth_done.json
 ```
-Launch it so it SURVIVES the 180s foreground limit: write a `scripts/oauth_driver.py`
-and start it with stdout redirected to a file and detached (e.g. `python3
-scripts/oauth_driver.py >/tmp/oauth_driver_console.log 2>&1 &` then verify with
-`pgrep -f oauth_driver.py`). Do NOT block the foreground bash waiting on it.
+**Use the driver SHIPPED WITH THIS SKILL** — do NOT re-author it from memory (that's
+how the hardcoded-username and wrong-timeout bugs creep back). It lives at
+`skills/x-mcp/scripts/oauth_driver.py`. Launch it so it SURVIVES the 180s foreground
+limit — stdout redirected to a file, detached, and DON'T block the foreground bash
+on it:
+
+```bash
+# clean any stale driver/xurl FIRST (see IRON RULE #1), then:
+python3 skills/x-mcp/scripts/oauth_driver.py >/tmp/oauth_driver_console.log 2>&1 &
+sleep 8
+cat /tmp/xurl_auth_url.txt        # the URL THIS live driver just wrote — give the user THIS one
+pgrep -f oauth_driver.py >/dev/null && echo "driver alive, waiting for code"
+```
+
+The driver runs `xurl auth oauth2 --app starchild-x --headless` (no USERNAME — the
+token then lands under `oauth2_tokens['']`, the exact path STEP 7 reads), captures the
+authorize URL to `/tmp/xurl_auth_url.txt`, waits up to 600s (~10 min) for
+`/tmp/xurl_code_input.txt`, feeds the code, and writes the outcome to
+`/tmp/xurl_oauth_done.json`.
 
 ### IRON RULES (these are what actually prevent the bug)
 1. **Exactly ONE driver alive at a time.** Before starting, kill any stale
-   `xurl auth oauth2` / `oauth_driver` PIDs (by exact PID, NOT `pkill -f oauth_driver.py`
-   — that pattern matches your own shell command line and kills your bash) and wipe
-   `/tmp/xurl_*` stale files.
+   `xurl auth oauth2` / `oauth_driver` PIDs **by exact PID, excluding your own shell**
+   (NEVER `pkill -f oauth_driver.py` — that pattern matches your own bash command line
+   and kills the shell running the cleanup). Safe snippet:
+   ```bash
+   SELF=$$
+   for pat in "xurl auth oauth2" "oauth_driver.py"; do
+     for pid in $(pgrep -f "$pat"); do [ "$pid" != "$SELF" ] && kill "$pid" 2>/dev/null; done
+   done
+   rm -f /tmp/xurl_auth_url.txt /tmp/xurl_code_input.txt /tmp/xurl_oauth_done.json /tmp/xurl_oauth.pid
+   ```
 2. **Give the user ONLY the URL the LIVE driver just wrote** — read it from
    `/tmp/xurl_auth_url.txt` AFTER this driver started. Never paste a URL from an
    earlier attempt or from chat history.

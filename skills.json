@@ -592,7 +592,7 @@
     {
       "name": "x-mcp",
       "path": "x-mcp/SKILL.md",
-      "version": "1.2.0",
+      "version": "1.4.0",
       "description": "Connect a user's own X (Twitter) dev app (BYOK) for the official X API MCP (reads) plus X v2 REST writes — post, reply, like, retweet, DM.\nUse when the user wants to act on X with their OWN X account or app — search, read timeline/users/news/trends/bookmarks via MCP, and post/reply/like/retweet/DM via REST. Walks through OAuth 2.0 setup in the X portal, xurl CLI registration, headless OAuth (user pastes the redirect URL back), the client-not-enrolled / Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring, and FAQ. For read-only scraping WITHOUT the user's own app, use the twitter skill."
     },
     {

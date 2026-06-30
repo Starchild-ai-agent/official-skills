@@ -179,14 +179,13 @@ proc = subprocess.Popen(["xurl","auth","oauth2","--app","starchild-x","--headles
 # 2) poll /tmp/xurl_code_input.txt (up to 600s) for the pasted callback URL/code
 # 3) proc.stdin.write(code+"\n"); flush  → 4) read result → write /tmp/xurl_oauth_done.json
 ```
-**Use the driver SHIPPED WITH THIS SKILL** — do NOT re-author it from memory (that's
-how the hardcoded-username and wrong-timeout bugs creep back). It lives at
-`skills/x-mcp/scripts/oauth_driver.py`. Launch it so it SURVIVES the 180s foreground
-limit — stdout redirected to a file, detached, and DON'T block the foreground bash
-on it:
+**Use the driver shipped with this skill** at `skills/x-mcp/scripts/oauth_driver.py`
+rather than re-writing it inline — that keeps the no-USERNAME launch and the 600s
+timeout consistent. Launch it so it survives the 180s foreground limit — stdout
+redirected to a file, detached, and don't block the foreground bash on it:
 
 ```bash
-# clean any stale driver/xurl FIRST (see IRON RULE #1), then:
+# clean any stale driver/xurl FIRST (see driver rule 1), then:
 python3 skills/x-mcp/scripts/oauth_driver.py >/tmp/oauth_driver_console.log 2>&1 &
 sleep 8
 cat /tmp/xurl_auth_url.txt        # the URL THIS live driver just wrote — give the user THIS one
@@ -198,24 +197,33 @@ captures the authorize URL to `/tmp/xurl_auth_url.txt`, waits up to 600s (~10 mi
 `/tmp/xurl_code_input.txt`, feeds the code, and writes the outcome to
 `/tmp/xurl_oauth_done.json`.
 
-> **⚠️ Token-key note (this WILL KeyError if you get it wrong).** Regardless of
-> whether you pass a USERNAME, xurl resolves the account via `/2/users/me` and stores
-> the token under that **resolved X handle** (e.g. `oauth2_tokens['ud_noel']`), NOT
-> under an empty-string key. So **never hardcode the key** — discover it dynamically
-> (one token per app):
+> **Token key = the resolved X handle.** Regardless of whether a USERNAME is passed,
+> xurl resolves the account via `/2/users/me` and stores the token under the resolved
+> X handle (e.g. `oauth2_tokens['ud_noel']`), not under an empty-string key. Read the
+> key dynamically rather than hardcoding it. Use this helper everywhere a token is
+> read — it expects exactly one token, and if it finds several it stops and lists the
+> handles so you can confirm which account to use or clear stale ones:
 > ```python
 > import yaml, os
-> d = yaml.safe_load(open(os.path.expanduser('~/.xurl')))
-> toks = d['apps']['starchild-x']['oauth2_tokens']   # {'<handle>': {...}}
-> key = next(iter(toks))                              # the resolved handle
-> oauth = toks[key]['oauth2']                         # access_token / refresh_token / expiration_time
+>
+> def _xurl_token(app="starchild-x"):
+>     d = yaml.safe_load(open(os.path.expanduser("~/.xurl")))
+>     toks = d["apps"][app]["oauth2_tokens"]          # {'<handle>': {...}}
+>     keys = list(toks)
+>     if not keys:
+>         raise SystemExit(f"No OAuth token for app '{app}' — run STEP 4 first.")
+>     if len(keys) > 1:
+>         raise SystemExit(
+>             f"Multiple X accounts authorized under '{app}': {keys}. "
+>             "Confirm which handle to use (or remove stale tokens) before continuing.")
+>     return keys[0], toks[keys[0]]["oauth2"]          # (handle, {access_token, refresh_token, expiration_time})
 > ```
 
 ### OAuth driver rules
-1. **Exactly ONE driver alive at a time.** Before starting, kill any stale
-   `xurl auth oauth2` / `oauth_driver` PIDs **by exact PID, excluding your own shell**
-   (NEVER `pkill -f oauth_driver.py` — that pattern matches your own bash command line
-   and kills the shell running the cleanup). Safe snippet:
+1. **Run exactly one driver at a time.** Before starting, kill any stale
+   `xurl auth oauth2` / `oauth_driver` PIDs **by exact PID, excluding the current shell**.
+   Avoid `pkill -f oauth_driver.py` here — that pattern also matches the cleanup
+   command's own shell. Use:
    ```bash
    SELF=$$
    for pat in "xurl auth oauth2" "oauth_driver.py"; do
@@ -304,8 +312,15 @@ Refresh with xurl, then rewrite the bearer in agent.yaml (reconnect is automatic
 ```bash
 # read current access token after xurl refreshes it
 xurl --app starchild-x /2/users/me >/dev/null 2>&1   # xurl auto-refreshes when near expiry on use
-# token key = the resolved X handle, NOT '' — discover it dynamically (see token-key note in STEP 4)
-ACCESS=$(python3 -c "import yaml,os; d=yaml.safe_load(open(os.path.expanduser('~/.xurl'))); t=d['apps']['starchild-x']['oauth2_tokens']; k=next(iter(t)); print(t[k]['oauth2']['access_token'])")
+# read the token via the _xurl_token() helper from STEP 4 (single-token check + handle-keyed lookup)
+ACCESS=$(python3 -c "
+import yaml, os
+d = yaml.safe_load(open(os.path.expanduser('~/.xurl')))
+t = d['apps']['starchild-x']['oauth2_tokens']
+keys = list(t)
+assert len(keys) == 1, f'expected one X account, found {keys} — confirm/clean before refresh'
+print(t[keys[0]]['oauth2']['access_token'])
+")
 # patch agent.yaml header to the fresh token (a small python/yaml rewrite).
 # On current clawd that's all — the next chat turn auto-reconnects (see below).
 ```
@@ -362,7 +377,8 @@ access_token into the agent.yaml bearer. On current clawd that is fully automati
 
 Token store path: `~/.xurl` → `apps.starchild-x.oauth2_tokens['<resolved-handle>'].oauth2.{access_token,refresh_token,expiration_time}`.
 The key is the X handle xurl resolves from `/2/users/me` (e.g. `'ud_noel'`), **not** an
-empty string — read it dynamically with `next(iter(oauth2_tokens))` (one token per app).
+empty string — read it dynamically via the `_xurl_token()` helper in STEP 4 (normally
+one token per app; the helper flags the case of several so you can pick/clean).
 `~/.xurl` is a symlink to the persistent `/data/workspace/.config/x-mcp/xurl_store`
 (set up in STEP 3) — read/write `~/.xurl` as normal; persistence is transparent.
 

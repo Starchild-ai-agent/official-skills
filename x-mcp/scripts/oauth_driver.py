@@ -12,10 +12,11 @@ for f in (CODE_FILE, URL_FILE, DONE_FILE):
     try: os.remove(f)
     except FileNotFoundError: pass
 
-# NOTE: no USERNAME arg on purpose. xurl stores the token under the empty-string
-# profile key, i.e. apps.starchild-x.oauth2_tokens[''] — which is exactly the path
-# the rest of this skill (SKILL.md, refresh task) reads. Passing a username here
-# would key the token elsewhere and break every downstream lookup.
+# NOTE: no USERNAME arg. xurl resolves the account via /2/users/me and stores the
+# token under the resolved X handle key, e.g. apps.starchild-x.oauth2_tokens['ud_noel']
+# (NOT an empty-string key). Downstream readers must discover the key dynamically:
+#   toks = d['apps']['starchild-x']['oauth2_tokens']; key = next(iter(toks))
+# Never hardcode the handle or '' — that KeyErrors on a different account.
 proc = subprocess.Popen(
     ["xurl", "auth", "oauth2", "--app", "starchild-x", "--headless"],
     stdin=subprocess.PIPE,

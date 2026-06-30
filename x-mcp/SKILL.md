@@ -10,7 +10,7 @@ description: >-
   headless OAuth (user pastes the redirect URL back), the client-not-enrolled /
   Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring,
   and FAQ. For read-only scraping WITHOUT the user's own app, use the twitter skill.
-version: 1.5.0
+version: 1.5.1
 author: starchild
 tags: [x, twitter, mcp, oauth, byok, post, tweet, dm, x-api, xurl]
 ---
@@ -143,7 +143,7 @@ writes the authorize URL to a file, waits up to ~10 min for a code file, then fe
 the code and captures the result. Key shape:
 
 ```python
-proc = subprocess.Popen(["xurl","auth","oauth2","--app","starchild-x","--headless"],  # no USERNAME -> token under oauth2_tokens['']
+proc = subprocess.Popen(["xurl","auth","oauth2","--app","starchild-x","--headless"],  # no USERNAME (see token-key note)
     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=0)
 # 1) read stdout until the oauth2/authorize line → write it to /tmp/xurl_auth_url.txt
 # 2) poll /tmp/xurl_code_input.txt (up to 600s) for the pasted callback URL/code
@@ -163,11 +163,23 @@ cat /tmp/xurl_auth_url.txt        # the URL THIS live driver just wrote — give
 pgrep -f oauth_driver.py >/dev/null && echo "driver alive, waiting for code"
 ```
 
-The driver runs `xurl auth oauth2 --app starchild-x --headless` (no USERNAME — the
-token then lands under `oauth2_tokens['']`, the exact path STEP 7 reads), captures the
-authorize URL to `/tmp/xurl_auth_url.txt`, waits up to 600s (~10 min) for
+The driver runs `xurl auth oauth2 --app starchild-x --headless` (no USERNAME arg),
+captures the authorize URL to `/tmp/xurl_auth_url.txt`, waits up to 600s (~10 min) for
 `/tmp/xurl_code_input.txt`, feeds the code, and writes the outcome to
 `/tmp/xurl_oauth_done.json`.
+
+> **⚠️ Token-key note (this WILL KeyError if you get it wrong).** Regardless of
+> whether you pass a USERNAME, xurl resolves the account via `/2/users/me` and stores
+> the token under that **resolved X handle** (e.g. `oauth2_tokens['ud_noel']`), NOT
+> under an empty-string key. So **never hardcode the key** — discover it dynamically
+> (one token per app):
+> ```python
+> import yaml, os
+> d = yaml.safe_load(open(os.path.expanduser('~/.xurl')))
+> toks = d['apps']['starchild-x']['oauth2_tokens']   # {'<handle>': {...}}
+> key = next(iter(toks))                              # the resolved handle
+> oauth = toks[key]['oauth2']                         # access_token / refresh_token / expiration_time
+> ```
 
 ### OAuth driver rules
 1. **Exactly ONE driver alive at a time.** Before starting, kill any stale
@@ -262,7 +274,8 @@ Refresh with xurl, then rewrite the bearer in agent.yaml (reconnect is automatic
 ```bash
 # read current access token after xurl refreshes it
 xurl --app starchild-x /2/users/me >/dev/null 2>&1   # xurl auto-refreshes when near expiry on use
-ACCESS=$(python3 -c "import yaml,os; d=yaml.safe_load(open(os.path.expanduser('~/.xurl'))); print(d['apps']['starchild-x']['oauth2_tokens']['']['oauth2']['access_token'])")
+# token key = the resolved X handle, NOT '' — discover it dynamically (see token-key note in STEP 4)
+ACCESS=$(python3 -c "import yaml,os; d=yaml.safe_load(open(os.path.expanduser('~/.xurl'))); t=d['apps']['starchild-x']['oauth2_tokens']; k=next(iter(t)); print(t[k]['oauth2']['access_token'])")
 # patch agent.yaml header to the fresh token (a small python/yaml rewrite).
 # On current clawd that's all — the next chat turn auto-reconnects (see below).
 ```
@@ -299,7 +312,9 @@ Set up the refresh as a **scheduled_task** every ~60–90 min (token lives ~2h):
 refresh token (Basic auth) → persist rotated refresh_token to `~/.xurl` → write new
 access_token into the agent.yaml bearer. On current clawd that is fully automatic.
 
-Token store path: `~/.xurl` → `apps.starchild-x.oauth2_tokens[''].oauth2.{access_token,refresh_token,expiration_time}`.
+Token store path: `~/.xurl` → `apps.starchild-x.oauth2_tokens['<resolved-handle>'].oauth2.{access_token,refresh_token,expiration_time}`.
+The key is the X handle xurl resolves from `/2/users/me` (e.g. `'ud_noel'`), **not** an
+empty string — read it dynamically with `next(iter(oauth2_tokens))` (one token per app).
 
 ---
 

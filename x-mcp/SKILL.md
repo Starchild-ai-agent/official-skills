@@ -10,7 +10,9 @@ description: >-
   headless OAuth (user pastes the redirect URL back), the client-not-enrolled /
   Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring,
   and FAQ. For read-only scraping WITHOUT the user's own app, use the twitter skill.
-version: 1.2.0
+version: 1.4.0
+author: starchild
+tags: [x, twitter, mcp, oauth, byok, post, tweet, dm, x-api, xurl]
 ---
 
 # X API — MCP (reads) + REST (writes), BYOK
@@ -25,6 +27,49 @@ the app owner. A shared app = single point of failure + neighbors starving each
 other + concentrated billing + content-moderation liability. So every user brings
 their own app + OAuth token. The token lives only on this machine (`~/.xurl`),
 never proxied.
+
+## When to use this skill
+
+✅ **Use** when the user wants to act on X with their OWN account/app:
+- "Connect my X / Twitter account so you can post for me"
+- "Set up the X API with my dev app", "use my X developer keys"
+- "Search recent tweets / read my timeline / read mentions" (with their own app)
+- "Post / reply / like / retweet / DM on X as me"
+- "Bookmark this tweet"
+
+❌ **Do NOT use** — pick the right alternative instead:
+- "Summarize this tweet" / "what's @user posting" / cashtag scan, **no account needed**
+  → use the `twitter` skill (read-only scraping via twitterapi.io, no OAuth)
+- "Add the X / Grok *model*" → that's `xai-grok-onboarding` (chat model), unrelated
+- The user has no X developer app and doesn't want one → `twitter` skill, or explain
+  that writes require their own app
+
+Disambiguator: `twitter` = read-only, no setup, anyone's public tweets. `x-mcp` =
+the user's OWN authenticated account, can WRITE, needs one-time OAuth setup.
+
+## See also
+- `twitter` skill — read-only X scraping (no account, no OAuth) for any public tweet
+- `config/context/references/model-onboarding.md` — if the user actually meant a chat
+  model (Grok), not the X data API
+
+## Preflight — build compatibility (check before you start)
+
+This skill drives two platform capabilities. Confirm both, or the setup half-works:
+
+1. **Native MCP client (required for reads).** starchild-clawd must include
+   `core/mcp/*` and read `defaults.mcp_servers` from agent.yaml. Quick check: run
+   `/mcp` — if it returns a status block, the client exists. If `/mcp` is unknown or
+   errors, the running build predates MCP support → reads via MCP won't work. The REST
+   write path (xurl) still works regardless; or update the platform image.
+2. **Per-turn hot-reload (required for zero-manual token refresh).** Needed so the
+   ~2h token rotation reconnects automatically (STEP 7). Builds without it still work
+   but need a manual `/mcp reload` after each refresh — documented as the fallback in
+   STEP 7. There is no clean runtime probe; assume current builds have it, treat
+   "MCP silently dies ~2h after a refresh and only `/mcp reload` revives it" as the
+   signal that the build lacks the per-turn hook.
+
+If neither MCP capability is present and the user only needs to read public tweets,
+stop here and use the `twitter` skill instead — it needs no build support.
 
 ## ⚠️ Reads vs writes — two separate systems (do not confuse)
 
@@ -269,6 +314,24 @@ takes a `query` (supports operators like `from:`, `min_faves:`, `$CASHTAG`).
   on current clawd the next chat turn then reconnects automatically, no `/mcp reload`.
 - **Can I post through MCP?** No. Writes go through REST `/2/...` (see table). MCP is
   reads + bookmarks only.
+
+## Critical rules
+
+- **Never echo the access_token or refresh_token to chat.** They are persistent
+  credentials in `~/.xurl`. When showing config, mask the bearer
+  (`Bearer S0tHdk…`). The token never goes through the proxy or into chat history.
+- **Never ask for the Client ID / Secret in chat.** Always collect via
+  `request_env_input` (STEP 2).
+- **Don't auto-poll / rush the OAuth step.** After printing the authorize URL, WAIT
+  for the user to say they approved and paste the redirected URL back. Feeding the
+  FIFO before they've pasted just hangs.
+- **On `client-not-enrolled`, don't retry blindly.** It's a portal enrollment gate
+  (STEP 5), not a transient error — retrying the same call keeps failing. Guide the
+  user to Move to Pay-per-use, then re-test once.
+- **Writes are REST, not MCP.** Don't look for a `create_post` MCP tool — it doesn't
+  exist. Use the REST table.
+- **Token rotates on every refresh.** Always persist the NEW refresh_token or the
+  next refresh dies (STEP 7).
 
 ## Update policy (X changes → bump this skill)
 

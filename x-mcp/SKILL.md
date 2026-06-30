@@ -1,12 +1,19 @@
 ---
-name: x-mcp-onboarding
-description: Connect a user's own X (Twitter) dev app (BYOK) for the official X API MCP (reads) plus X v2 REST writes — post, reply, like, retweet, DM.
+name: x-mcp
+description: >-
+  Connect a user's own X (Twitter) dev app (BYOK) for the official X API MCP
+  (reads) plus X v2 REST writes — post, reply, like, retweet, DM.
 
-  Use when the user wants to act on X with their OWN X account/app: search, read timeline/users/news/trends/bookmarks via MCP, and post/reply/like/retweet/DM via REST. Walks through OAuth 2.0 setup in the X portal, xurl CLI registration, headless OAuth (user pastes the redirect URL back), the client-not-enrolled / Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring, and FAQ. For read-only scraping WITHOUT the user's own app, use the `twitter` skill instead.
-version: 1.0.2
+  Use when the user wants to act on X with their OWN X account or app — search,
+  read timeline/users/news/trends/bookmarks via MCP, and post/reply/like/retweet/DM
+  via REST. Walks through OAuth 2.0 setup in the X portal, xurl CLI registration,
+  headless OAuth (user pastes the redirect URL back), the client-not-enrolled /
+  Pay-per-use trap, the token-expiry auto-refresh mechanism, agent.yaml MCP wiring,
+  and FAQ. For read-only scraping WITHOUT the user's own app, use the twitter skill.
+version: 1.2.0
 ---
 
-# X API Onboarding — MCP (reads) + REST (writes), BYOK
+# X API — MCP (reads) + REST (writes), BYOK
 
 Connects the user's **own** X developer app so this agent can:
 - **Read** via the official hosted **X MCP** (`https://api.x.com/mcp`) — 24 tools

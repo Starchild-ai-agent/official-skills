@@ -1,6 +1,6 @@
 ---
 name: cli-bridge
-version: 0.3.0
+version: 0.3.3
 description: |
   Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.
 
@@ -67,6 +67,59 @@ to that user's own clawd. It is **not** a chatroom membership credential.
 | Personal CLI ↔ own clawd (this skill) | `chat:bridge:cli` AKM, fronted by `sc_…` code | — |
 | Join an sc-chatroom room | `chat:thread:chatroom-{room_id}` AKM via `chatroom join` | `chat:bridge:cli` AKM |
 | Browse a public room as a guest | no credential needed | any AKM |
+
+## Install the CLI
+
+The rest of this skill assumes `starchild` is on the user's `$PATH` — install
+it first if it isn't.
+
+### One-liner (auto-detects OS + arch)
+
+```bash
+curl -fsSL https://workroom.iamstarchild.com/install/cli | bash
+```
+
+Picks the right binary for darwin/linux × arm64/amd64, drops it on
+`$PATH` (Apple Silicon lands in `/opt/homebrew/bin`; Linux falls back to
+`~/.local/bin`; `sudo` only when the dir isn't user-writable), patches the
+user's shell rc if the install dir wasn't already on `$PATH`, and runs
+`starchild --version` as a self-check. SHA256 etag means re-running is a
+cheap "already current" no-op (HTTP 304, no download). Source for review:
+[tools/install-cli.sh](https://workroom.iamstarchild.com/install/cli)
+(`__SERVER_URL__` is rewritten at request time).
+
+### Homebrew
+
+```bash
+brew tap starchild/tap https://github.com/Starchild-ai-agent/homebrew-tap
+brew trust starchild/tap
+brew install starchild
+```
+
+The `starchild` formula ships binaries for **macOS (arm64 / amd64) and
+Linux (arm64 / amd64)** — `brew install` picks the right one for the host.
+The formula has no `bottle` block, so install runs a tiny Ruby script that
+downloads the prebuilt binary from the server (`workroom.iamstarchild.com`)
+and drops it on `$PATH` — there's no local compile step. To upgrade later:
+`brew update && brew upgrade starchild`.
+
+**Linux caveat:** Homebrew itself works on Linux, but expects a Ruby +
+build toolchain (one-time `apt install build-essential ruby` / distro
+equivalent). For a Linux host, the oneliner above skips that and is
+functionally identical, so prefer it unless the user is already a brew
+user. **`starchild-app` (the desktop workspace) is macOS-only** — that
+formula builds from source (rust + node) and only the macOS build is
+meaningful.
+
+### Verify
+
+```bash
+starchild --version
+```
+
+If you just ran the one-liner and your shell still says `command not found`,
+open a new terminal — the PATH update is in your rc, not the current
+session.
 
 ## Prerequisites
 
@@ -177,6 +230,12 @@ On connect, the daemon sends a `hello` frame advertising:
 - **Policy summary** — `mode` (`default-deny` when no allow rules exist, else
   `allowlist`), the user's `allowed` rules, explicit `denied_extra` rules,
   and the always-on `builtin_denied` list.
+- **File-transfer policy** — the `transfer_dir` (always-allowed workspace),
+  `yolo` flag, and the `read_allow` / `write_allow` globs from
+  `~/.config/starchild/file-policy.toml`. Present only when the bundle
+  carries the `files` capability. See "File path policy" below for the
+  full rules; this bullet is just so the agent knows the laptop
+  advertised file transfer at all.
 
 clawd renders this into the agent's system prompt (only while connected),
 so the agent picks a permitted command — or tells the user plainly that the

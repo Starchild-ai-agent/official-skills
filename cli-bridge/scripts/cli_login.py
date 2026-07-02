@@ -167,9 +167,13 @@ def main(argv: list[str]) -> int:
         C.info("  • chat bridge only (no shell, no files). Re-run with "
                "--enable-shell and/or --enable-files to allow local access.")
     C.info("")
-    C.info("First time on this device? Grab the starchild binary "
-           "(auto-detects your OS):")
-    C.info(f"  {C.CHATROOM_PUBLIC_URL.rstrip('/')}/starchild")
+    C.info("First time on this device? Install the starchild CLI:")
+    C.info("")
+    C.info(f"  curl -fsSL {C.CHATROOM_PUBLIC_URL.rstrip('/')}/install/cli | bash")
+    C.info("")
+    C.info("(or via Homebrew: `brew tap starchild/tap "
+           "https://github.com/Starchild-ai-agent/homebrew-tap && "
+           "brew trust starchild/tap && brew install starchild`)")
     C.info("")
     C.info("Then pair the CLI by pasting this into your terminal:")
     C.info("")

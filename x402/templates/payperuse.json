@@ -1,0 +1,13 @@
+{
+  "_comment": "单次收费模板：每次调用付费，无账户。适合低频/高价值调用（AI 推理、报告生成、数据查询）",
+  "mode": "payperuse",
+  "upstream": "http://127.0.0.1:UPSTREAM_PORT",
+  "pay_to": "YOUR_WALLET_ADDRESS",
+  "network": "eip155:8453",
+  "facilitator": "https://starchild-x402-facilitator.fly.dev",
+  "port": 8402,
+  "routes": {
+    "GET /api/premium": {"price": "$0.05", "description": "premium data"},
+    "POST /api/generate": {"price": "$0.25", "description": "generation job"}
+  }
+}

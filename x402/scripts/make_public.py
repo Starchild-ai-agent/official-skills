@@ -13,7 +13,11 @@ Usage:
 import argparse, json, os, sys
 
 WS = "/data/workspace"
-FACILITATOR = "https://starchild-x402-facilitator.fly.dev"
+# Default: LOCAL self-hosted facilitator (skills/x402/facilitator/server.py).
+# The platform facilitator (starchild-x402-facilitator.fly.dev) is access-
+# controlled (payTo allowlist / gateway tokens) — pass it explicitly via
+# --facilitator plus --facilitator-token if you have been granted access.
+FACILITATOR = os.environ.get("X402_FACILITATOR_URL", "http://127.0.0.1:8410")
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--name", required=True)
@@ -24,6 +28,8 @@ ap.add_argument("--pay-to", required=True)
 ap.add_argument("--gateway-port", type=int, default=8420)
 ap.add_argument("--network", default="eip155:8453")
 ap.add_argument("--facilitator", default=FACILITATOR)
+ap.add_argument("--facilitator-token", default=os.environ.get("X402_FACILITATOR_TOKEN", ""),
+                help="bearer token if the facilitator enforces caller auth")
 ap.add_argument("--price-per-credit", type=float, default=0.01)
 ap.add_argument("--min-credits", type=int, default=100)
 ap.add_argument("--pass-days", type=float, default=30)
@@ -42,6 +48,7 @@ cfg = {"mode": args.mode, "port": args.gateway_port,
        "upstream": f"http://127.0.0.1:{args.upstream_port}",
        "pay_to": args.pay_to, "network": args.network,
        "facilitator": args.facilitator,
+       **({"facilitator_token": args.facilitator_token} if args.facilitator_token else {}),
        "state_dir": os.path.join(WS, ".x402", args.name, "state"),
        "routes": routes}
 if args.mode in ("subscription", "metered"):

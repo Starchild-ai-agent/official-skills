@@ -40,6 +40,28 @@ STATE_DIR = os.environ.get("X402_FACILITATOR_STATE",
                            "/data/workspace/.x402/facilitator")
 MAX_SETTLES_PER_PAYER_PER_MIN = int(os.environ.get("X402_PAYER_RATE_LIMIT", "30"))
 
+# ---- caller controls (anti gas-drain: the settler pays gas for every settle) ----
+# X402_PAYTO_ALLOWLIST: comma-separated recipient addresses. If set, verify &
+#   settle are refused for any requirements.payTo outside the list.
+# X402_GATEWAY_TOKENS: comma-separated bearer tokens. If set, callers must send
+#   Authorization: Bearer <token> (registered gateways only).
+PAYTO_ALLOWLIST = {a.strip().lower() for a in
+                   os.environ.get("X402_PAYTO_ALLOWLIST", "").split(",") if a.strip()}
+GATEWAY_TOKENS = {t.strip() for t in
+                  os.environ.get("X402_GATEWAY_TOKENS", "").split(",") if t.strip()}
+
+
+def _caller_allowed(request: Request, requirements: dict) -> str | None:
+    """Returns an error reason, or None if the caller may use this facilitator."""
+    if GATEWAY_TOKENS:
+        tok = request.headers.get("authorization", "")
+        if not (tok.startswith("Bearer ") and tok[7:] in GATEWAY_TOKENS):
+            return "gateway_auth_required"
+    if PAYTO_ALLOWLIST:
+        if str(requirements.get("payTo", "")).lower() not in PAYTO_ALLOWLIST:
+            return "pay_to_not_allowed"
+    return None
+
 app = FastAPI(title="starchild x402 facilitator")
 ledger = FacilitatorLedger(os.path.join(STATE_DIR, "facilitator.db"))
 settler = Settler(STATE_DIR)
@@ -135,6 +157,9 @@ def _verify_core(payload: dict, requirements: dict) -> tuple[bool, str, dict]:
 async def verify(request: Request):
     body = await request.json()
     payload, requirements = _extract(body)
+    denied = _caller_allowed(request, requirements)
+    if denied:
+        return {"isValid": False, "payer": "", "invalidReason": denied}
     valid, reason, auth = _verify_core(payload, requirements)
     ledger.record_verify(auth.get("from", ""), auth.get("to", ""),
                          str(auth.get("value", "")),
@@ -150,6 +175,12 @@ async def settle(request: Request):
     body = await request.json()
     payload, requirements = _extract(body)
 
+    denied = _caller_allowed(request, requirements)
+    if denied:
+        return {"success": False, "payer": "", "transaction": "",
+                "network": str(requirements.get("network", "")),
+                "errorReason": denied}
+
     # re-verify at settle time (state may have changed since /verify)
     valid, reason, auth = _verify_core(payload, requirements)
     network = str(requirements.get("network", ""))
@@ -164,24 +195,34 @@ async def settle(request: Request):
     if ledger.payer_recent_count(payer) >= MAX_SETTLES_PER_PAYER_PER_MIN:
         return {**fail_base, "errorReason": "rate_limited"}
 
-    # idempotency on the authorization nonce
+    # idempotency on (payer, nonce, asset, network) — EIP-3009 nonce is per-payer
+    resource = str(requirements.get("resource", ""))
     if not ledger.begin_settlement(auth["nonce"], payer, auth["to"].lower(),
                                    str(auth["value"]), asset, network,
-                                   resource=str(requirements.get("resource", ""))):
-        prev = ledger.get_settlement(auth["nonce"])
+                                   resource=resource):
+        prev = ledger.get_settlement(payer, auth["nonce"], asset, network)
         if prev and prev["status"] == "confirmed":
-            return {"success": True, "payer": payer, "network": network,
-                    "transaction": prev["tx_hash"]}
+            # Echo success ONLY if every binding field matches the original —
+            # otherwise a caller could replay a public on-chain nonce to spoof
+            # payment for a different recipient/amount/resource.
+            same = (prev["pay_to"] == auth["to"].lower()
+                    and prev["amount_atomic"] == str(auth["value"])
+                    and (prev["resource"] or "") == resource)
+            if same:
+                return {"success": True, "payer": payer, "network": network,
+                        "transaction": prev["tx_hash"]}
+            return {**fail_base, "errorReason": "nonce_reuse_mismatch"}
         return {**fail_base, "errorReason": "settlement_in_progress_or_failed"}
 
     result = settler.settle(network, asset, auth, payload.get("payload", {}).get("signature", ""))
     if result["success"]:
-        ledger.update_settlement(auth["nonce"], status="confirmed",
-                                 tx_hash=result["tx_hash"], gas_used=result["gas_used"],
-                                 confirmed_at=time.time())
+        ledger.update_settlement(payer, auth["nonce"], asset, network,
+                                 status="confirmed", tx_hash=result["tx_hash"],
+                                 gas_used=result["gas_used"], confirmed_at=time.time())
         return {"success": True, "payer": payer, "network": network,
                 "transaction": result["tx_hash"]}
-    ledger.update_settlement(auth["nonce"], status="failed", error=result["error"],
+    ledger.update_settlement(payer, auth["nonce"], asset, network,
+                             status="failed", error=result["error"],
                              tx_hash=result.get("tx_hash"))
     return {**fail_base, "errorReason": result["error"] or "settle_failed"}
 
@@ -196,7 +237,10 @@ async def supported():
 @app.get("/facilitator/stats")
 async def stats(request: Request):
     admin = os.environ.get("X402_ADMIN_TOKEN")
-    if admin and request.headers.get("X-Admin-Token") != admin:
+    if not admin:
+        # deny-by-default: never expose stats on an unconfigured deployment
+        return JSONResponse({"error": "stats_disabled_no_admin_token"}, status_code=503)
+    if request.headers.get("X-Admin-Token") != admin:
         return JSONResponse({"error": "unauthorized"}, status_code=401)
     out = ledger.stats()
     out["settler_address"] = settler.address

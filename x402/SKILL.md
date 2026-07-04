@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 1.5.0
+version: 1.5.2
 description: |
   Monetize any user project/service with the x402 payment protocol on Base, and pay other agents' x402 services.
 
@@ -151,13 +151,16 @@ on Base mainnet (tx 0x73669f5f…a6d6, $0.01).
 | Layer | Protection | Where |
 |---|---|---|
 | Payment forgery | EIP-3009 signature verified off-chain + on-chain `eth_call` simulation before any gas is spent | facilitator |
-| Double-credit / replay | settlement `tx_hash` UNIQUE in ledger; authorization-nonce idempotency | ledger + facilitator |
+| Double-credit / replay | settlement `tx_hash` UNIQUE in gateway ledger; facilitator idempotency on `(payer, nonce, asset, network)` — EIP-3009 nonces are per-payer, NOT global; confirmed replays echo success only when pay_to/amount/resource all match (`nonce_reuse_mismatch` otherwise) | ledger + facilitator |
+| Gas-drain via open facilitator | `X402_PAYTO_ALLOWLIST` (recipient allowlist) and/or `X402_GATEWAY_TOKENS` (bearer auth) — set at least one on any public deployment; plus per-payer settle rate limit | facilitator |
+| Gateway ↔ token-auth facilitator wiring | gateway config `facilitator_token` (env fallback `X402_FACILITATOR_TOKEN`) sends `Authorization: Bearer …` on verify/settle/supported; `monetize.py` / `make_public.py` accept `--facilitator-token`. Templates default to the LOCAL facilitator (`http://127.0.0.1:8410`) — the platform public facilitator is access-controlled and needs explicit facilitator + token | gateway config |
 | API key theft | keys are per-payer deterministic HMAC (salt on disk, 0600); no key material in logs | gateway ledger |
 | Request flooding | sliding-window rate limit per caller (X-API-Key else IP), `rate_limit_per_min` (default 120) → 429 | gateway |
 | Key brute-force | ≥`ban_after_invalid_keys` (default 20) 401s/min from one IP → `ban_seconds` (default 300) temp ban | gateway |
 | Settler key risk | key only pays gas — fund flow fixed by buyer signature; can never redirect funds | protocol |
 | Buyer overspend | session-EOA budget IS the hard cap + `X402_MAX_ATOMIC` guard | client |
-| Admin endpoints | `/x402/stats` + facilitator `/facilitator/stats` require admin token | config |
+| Admin endpoints | `/x402/stats` + facilitator `/facilitator/stats` are deny-by-default: 503 until an admin token is configured, 401 on mismatch | config |
+| Upstream header leak | gateway strips `X-API-Key`, `X-Admin-Token`, `PAYMENT-*` before forwarding to the upstream service | gateway |
 
 Free endpoints (`/x402/info`, `/x402/health`, `/.well-known/x402`) are rate-limited
 but unauthenticated by design (discovery must be public).

@@ -261,7 +261,10 @@ async def balance(request: Request):
 @app.get("/x402/stats")
 async def stats(request: Request):
     admin = CFG.get("admin_token")
-    if admin and request.headers.get("X-Admin-Token") != admin:
+    if not admin:
+        # deny-by-default: stats stay closed until an admin_token is configured
+        return _err(503, "stats_disabled", "set admin_token in config to enable /x402/stats")
+    if request.headers.get("X-Admin-Token") != admin:
         return _err(401, "unauthorized", "admin token required")
     return ledger.stats() if ledger else {"mode": MODE}
 
@@ -344,8 +347,12 @@ async def proxy(path: str, request: Request):
             return _err(401, "invalid_key", "unknown or revoked API key")
 
     body = await request.body()
+    # strip gateway-only headers before forwarding: the upstream service must
+    # never see API keys, payment signatures, or admin tokens (log-leak risk).
+    _GATEWAY_HEADERS = ("host", "content-length", "x-api-key", "x-admin-token")
     fwd_headers = {k: v for k, v in request.headers.items()
-                   if k.lower() not in ("host", "content-length")}
+                   if k.lower() not in _GATEWAY_HEADERS
+                   and not k.lower().startswith("payment-")}
     try:
         async with httpx.AsyncClient(timeout=60) as c:
             r = await c.request(request.method, f"{UPSTREAM}{full}",

@@ -1,0 +1,14 @@
+{
+  "_comment": "包月/时长通行证模板：一次 x402 支付购买 N 天无限访问。适合内容站、工具站的包月订阅",
+  "mode": "timepass",
+  "upstream": "http://127.0.0.1:UPSTREAM_PORT",
+  "pay_to": "YOUR_WALLET_ADDRESS",
+  "network": "eip155:8453",
+  "facilitator": "https://starchild-x402-facilitator.fly.dev",
+  "port": 8405,
+  "topup": {"price_usd": "4.99", "pass_days": 30},
+  "routes": {
+    "GET /api/*": {"units": 1},
+    "POST /api/*": {"units": 1}
+  }
+}

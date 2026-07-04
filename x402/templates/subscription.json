@@ -1,0 +1,13 @@
+{
+  "_comment": "订阅充值模板：一次 x402 支付购买 N 个 credits，每次调用扣 1 credit。适合高频 API（省 gas：N 次调用只有 1 笔链上结算）",
+  "mode": "subscription",
+  "upstream": "http://127.0.0.1:UPSTREAM_PORT",
+  "pay_to": "YOUR_WALLET_ADDRESS",
+  "network": "eip155:8453",
+  "facilitator": "https://starchild-x402-facilitator.fly.dev",
+  "port": 8403,
+  "topup": {"price_per_credit_usd": 0.01, "min_credits": 100},
+  "routes": {
+    "GET /api/*": {"units": 1}
+  }
+}

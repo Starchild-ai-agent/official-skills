@@ -78,6 +78,8 @@ def main():
                     help="eip155:84532 = Base Sepolia (test), eip155:8453 = Base mainnet")
     ap.add_argument("--facilitator", default=os.environ.get("X402_FACILITATOR", ""),
                     help="empty = x402.org (testnet only). Mainnet needs CDP facilitator URL.")
+    ap.add_argument("--facilitator-token", default=os.environ.get("X402_FACILITATOR_TOKEN", ""),
+                    help="bearer token if the facilitator enforces caller auth (X402_GATEWAY_TOKENS)")
     ap.add_argument("--pay-to", default="")
     ap.add_argument("--price-per-credit", type=float, default=0.01)
     ap.add_argument("--min-credits", type=int, default=100)
@@ -117,6 +119,8 @@ def main():
     }
     if args.facilitator:
         cfg["facilitator"] = args.facilitator
+    if args.facilitator_token:
+        cfg["facilitator_token"] = args.facilitator_token
     if args.mode in ("subscription", "metered"):
         cfg["topup"] = {"price_per_credit_usd": args.price_per_credit,
                         "min_credits": args.min_credits}

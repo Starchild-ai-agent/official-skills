@@ -58,13 +58,26 @@ UPSTREAM = CFG["upstream"].rstrip("/")  # http://127.0.0.1:PORT
 PAY_TO = CFG["pay_to"]
 NETWORK = CFG.get("network", "eip155:8453")
 FACILITATOR_URL = CFG.get("facilitator") or None
+# bearer token for facilitators that enforce caller auth (X402_GATEWAY_TOKENS
+# on the self-hosted facilitator). Config key `facilitator_token`, env fallback.
+FACILITATOR_TOKEN = CFG.get("facilitator_token") or os.environ.get("X402_FACILITATOR_TOKEN", "")
 ROUTES = CFG.get("routes", {})          # pattern -> {price | units}
 TOPUP = CFG.get("topup", {})            # {price_per_credit_usd, min_credits}
 STATE_DIR = CFG.get("state_dir") or os.path.join(os.path.dirname(os.path.abspath(CONFIG_PATH)), ".x402_state")
 
 app = FastAPI(title=f"x402 gateway ({MODE})")
 
-fac = HTTPFacilitatorClient({"url": FACILITATOR_URL}) if FACILITATOR_URL else HTTPFacilitatorClient()
+def _fac_client() -> HTTPFacilitatorClient:
+    if not FACILITATOR_URL:
+        return HTTPFacilitatorClient()
+    fc: dict = {"url": FACILITATOR_URL}
+    if FACILITATOR_TOKEN:
+        _auth = {"Authorization": f"Bearer {FACILITATOR_TOKEN}"}
+        fc["create_headers"] = lambda: {"verify": _auth, "settle": _auth, "supported": _auth}
+    return HTTPFacilitatorClient(fc)
+
+
+fac = _fac_client()
 server = x402ResourceServer(fac)
 register_exact_evm_server(server)
 

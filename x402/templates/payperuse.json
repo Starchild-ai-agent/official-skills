@@ -1,13 +1,20 @@
 {
   "_comment": "单次收费模板：每次调用付费，无账户。适合低频/高价值调用（AI 推理、报告生成、数据查询）",
+  "_comment_facilitator": "默认本地自托管 facilitator（先启动 skills/x402/facilitator/server.py）。平台公开 facilitator (https://starchild-x402-facilitator.fly.dev) 受访问控制（payTo allowlist / gateway token）——获授权后改 facilitator 并加 facilitator_token",
   "mode": "payperuse",
   "upstream": "http://127.0.0.1:UPSTREAM_PORT",
   "pay_to": "YOUR_WALLET_ADDRESS",
   "network": "eip155:8453",
-  "facilitator": "https://starchild-x402-facilitator.fly.dev",
+  "facilitator": "http://127.0.0.1:8410",
   "port": 8402,
   "routes": {
-    "GET /api/premium": {"price": "$0.05", "description": "premium data"},
-    "POST /api/generate": {"price": "$0.25", "description": "generation job"}
+    "GET /api/premium": {
+      "price": "$0.05",
+      "description": "premium data"
+    },
+    "POST /api/generate": {
+      "price": "$0.25",
+      "description": "generation job"
+    }
   }
 }

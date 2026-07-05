@@ -2,9 +2,9 @@
 name: x402
 version: 1.5.2
 description: |
-  Monetize any user project/service with the x402 payment protocol on Base, and pay other agents' x402 services.
+  Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / monthly), and pay other agents' x402 services.
 
-  Use when the user wants to charge for an API/service (per-call, subscription top-up, or metered billing), accept USDC from other agents, or call a paid x402 endpoint.
+  Use when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint.
 author: starchild
 tags: [x402, payments, base, usdc, monetization, api, subscription, metered, agent-commerce]
 delivery: script
@@ -32,10 +32,45 @@ buyer agent ──402/PAYMENT-SIGNATURE──> gateway :840x ──plain HTTP─
               facilitator (verify + settle on Base) ──USDC──> user's Privy wallet
 ```
 
-## Quick start — monetize a service
+## Quick start — monetize a service (PLATFORM MODES, use these by default)
+
+Platform modes implement the Starchild community-gateway billing contract
+(x402-facilitator `docs/pricing-models.md`): 402 JSON body with
+`accepts.pricingModel`, buyer sends `X-PAYMENT`, the **facilitator is the
+single source of truth for "already paid"** (no local payment state), and
+every settle auto-callbacks community-gateway for purchase/call records.
 
 ```bash
-# per-call pricing (pure x402, no accounts)
+FAC=https://starchild-x402-facilitator.fly.dev
+
+# pay_per_use: verify -> settle on EVERY request
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode pay_per_use --price 0.01 --network eip155:8453 --facilitator $FAC
+
+# lifetime: one payment = permanent access (checked via /facilitator/access-status)
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode lifetime --price 5.00 --network eip155:8453 --facilitator $FAC \
+    --facilitator-admin-token $ADMIN_TOKEN
+
+# monthly: natural-month subscription (same day next month, clamped to month end;
+# expiry computed from /facilitator/settlements confirmed_at)
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode monthly --price 10.00 --network eip155:8453 --facilitator $FAC \
+    --facilitator-admin-token $ADMIN_TOKEN
+```
+
+Default protected routes: `/api/*` (override with `--route 'METHOD /path'`;
+one service price via `--price` — platform modes have no per-route pricing).
+lifetime/monthly need `--facilitator-admin-token` because
+`/facilitator/access-status` + `/facilitator/settlements` are admin-gated
+(platform ops holds the token; ask for a scoped one per deployment).
+E2E verified on Base mainnet 2026-07-05: lifetime first call settled, repeat
+calls passed the already-paid check with NO second charge.
+
+## Legacy/extended modes (local-ledger billing — still supported)
+
+```bash
+# per-call pricing via x402 SDK middleware (V2 PAYMENT-REQUIRED headers)
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode payperuse --route 'GET /api/*=$0.01'
 
@@ -50,6 +85,10 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --route 'GET /api/cheap/*=1' --route 'POST /api/heavy=25'
 ```
 
+These keep payment state in the gateway's local SQLite ledger (deterministic
+API keys, credit refunds on upstream 5xx). Use them for prepaid-credit or
+usage-weighted billing until the platform contract adds those models.
+
 Output includes `gateway_port`. **Expose the GATEWAY port, not the upstream**
 (via `preview` or community-publish). `pay_to` defaults to the user's Privy
 EVM wallet — revenue lands there directly.
@@ -59,15 +98,25 @@ Per-service config/log/state: `/data/workspace/.x402/<name>/`.
 
 ## Billing mode decision table
 
-| Mode | Buyer UX | When |
-|------|----------|------|
-| `payperuse` | pay per request, no account | simple data endpoints, agent-to-agent one-shots |
-| `subscription` | x402 top-up → API key + N credits, 1 credit/call | repeat customers, avoids per-call payment latency |
-| `metered` | like subscription, route-weighted units | mixed cheap/expensive endpoints (LLM calls etc.) |
-| `timepass` | x402 payment → N-day unlimited access pass on an API key | monthly plans, content/tool sites |
+| Mode | Tier | Buyer UX | When |
+|------|------|----------|------|
+| `pay_per_use` | **platform** | X-PAYMENT each request, settled every call | simple data endpoints, agent-to-agent one-shots |
+| `lifetime` | **platform** | pay once, permanent access (facilitator-verified) | one-time unlock, buyout pricing |
+| `monthly` | **platform** | pay once per natural month | SaaS-style subscriptions |
+| `payperuse` | legacy | SDK V2 headers, pay per request | pre-2.0 deployments |
+| `subscription` | extended | x402 top-up → API key + N credits, 1 credit/call | prepaid credits, avoids per-call payment latency |
+| `metered` | extended | like subscription, route-weighted units | mixed cheap/expensive endpoints (LLM calls etc.) |
+| `timepass` | extended | x402 payment → N-day pass on an API key | fixed-duration passes (non-natural-month) |
 
-Ready-to-use config templates (fill `pay_to` + `upstream`): `templates/payperuse.json`,
-`templates/subscription.json`, `templates/metered.json`, `templates/timepass.json`.
+Prefer **platform** modes: they match the community-gateway audit checklist,
+get automatic purchase/call records via the settle callback, and keep zero
+payment state in the gateway. Extended modes are the local-ledger superset
+(prepaid/metered) the platform contract doesn't cover yet.
+
+Ready-to-use config templates (fill `pay_to` + `upstream`):
+platform — `templates/pay_per_use.json`, `templates/lifetime.json`, `templates/monthly.json`;
+legacy/extended — `templates/payperuse.json`, `templates/subscription.json`,
+`templates/metered.json`, `templates/timepass.json`.
 All four modes verified with REAL Base-mainnet settlements (2026-07-03):
 subscription 0x3c4a9371…, metered 0xd1070f32…/0x81e668b7…, timepass pass_active
 until expiry, payperuse 0x671119cb…. Timepass CLI: `--mode timepass
@@ -118,6 +167,12 @@ restarted (upstream has its own supervisor via previews — don't fight it).
 python3 skills/x402/client.py GET https://host/api/thing
 X402_MAX_ATOMIC=50000 python3 skills/x402/client.py POST https://host/x402/topup
 ```
+
+`paid_request` auto-detects BOTH 402 flavors: V2 header challenge
+(PAYMENT-REQUIRED → x402 SDK path) and the platform JSON-body challenge
+(`accepts.pricingModel` → manual EIP-3009 sign → retry with `X-PAYMENT`).
+For lifetime/monthly services, repeat calls within the paid period verify but
+do NOT settle — the result has `paid: true` with no new on-chain tx.
 
 **Buyer signer = session EOA by default** (`.x402/buyer.key`, auto-generated).
 ⚠️ Do NOT sign EIP-3009 with the Privy wallet on Base mainnet: the Privy

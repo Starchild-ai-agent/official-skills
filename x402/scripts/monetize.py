@@ -69,7 +69,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
     ap.add_argument("--upstream-port", type=int, required=True)
-    ap.add_argument("--mode", choices=["payperuse", "subscription", "metered", "timepass"], default="payperuse")
+    ap.add_argument("--mode", default="payperuse",
+                    choices=["pay_per_use", "lifetime", "monthly",          # platform (Starchild community-gateway contract)
+                             "payperuse", "subscription", "metered", "timepass"])  # legacy/extended
+    ap.add_argument("--price", default="0.01",
+                    help="platform modes: service price in USD (pay_per_use per call, lifetime one-time, monthly per month)")
+    ap.add_argument("--facilitator-admin-token", default=os.environ.get("X402_FACILITATOR_ADMIN_TOKEN", ""),
+                    help="platform modes lifetime/monthly: token for facilitator /access-status + /settlements")
     ap.add_argument("--pass-days", type=float, default=30, help="timepass: pass validity in days")
     ap.add_argument("--pass-price", default="5", help="timepass: pass price in USD, e.g. 5 or $4.99")
     ap.add_argument("--route", action="append", default=[],
@@ -91,9 +97,13 @@ def main():
         args.facilitator = os.environ.get(
             "X402_FACILITATOR_URL", "http://127.0.0.1:8410")
 
+    PLATFORM = ("pay_per_use", "lifetime", "monthly")
     routes = {}
     for spec in args.route:
         pattern, _, val = spec.rpartition("=")
+        if not pattern and args.mode in PLATFORM:
+            # platform modes: bare pattern OK (single service price via --price)
+            pattern, val = spec, "1"
         if not pattern:
             sys.exit(f"bad --route {spec!r}, expected 'METHOD /path=value'")
         if args.mode == "payperuse":
@@ -101,7 +111,10 @@ def main():
         else:
             routes[pattern] = {"units": int(val)}
     if not routes:
-        sys.exit("at least one --route required")
+        if args.mode in PLATFORM:
+            routes["* /api/*"] = {"units": 1}   # sensible default: protect /api/*
+        else:
+            sys.exit("at least one --route required")
 
     pay_to = args.pay_to or default_pay_to()
     port = args.port or free_port()
@@ -121,6 +134,12 @@ def main():
         cfg["facilitator"] = args.facilitator
     if args.facilitator_token:
         cfg["facilitator_token"] = args.facilitator_token
+    if args.mode in PLATFORM:
+        cfg["price_usd"] = str(args.price).lstrip("$")
+        if args.facilitator_admin_token:
+            cfg["facilitator_admin_token"] = args.facilitator_admin_token
+        if not args.facilitator:
+            sys.exit("platform modes require --facilitator (e.g. https://starchild-x402-facilitator.fly.dev)")
     if args.mode in ("subscription", "metered"):
         cfg["topup"] = {"price_per_credit_usd": args.price_per_credit,
                         "min_credits": args.min_credits}

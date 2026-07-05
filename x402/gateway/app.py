@@ -47,6 +47,7 @@ from x402.mechanisms.evm.exact.register import register_exact_evm_server
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ledger import Ledger  # noqa: E402
+from platform_modes import PLATFORM_MODES, PlatformBilling, decode_payment_header  # noqa: E402
 
 # --------------------------------------------------------------------------
 CONFIG_PATH = os.environ.get("X402_CONFIG") or (sys.argv[1] if len(sys.argv) > 1 else "x402.config.json")
@@ -82,6 +83,7 @@ server = x402ResourceServer(fac)
 register_exact_evm_server(server)
 
 ledger = Ledger(os.path.join(STATE_DIR, "ledger.db")) if MODE in ("subscription", "metered", "timepass") else None
+platform_billing = PlatformBilling(CFG) if MODE in PLATFORM_MODES else None
 
 
 def _err(status: int, code: str, message: str, **extra) -> JSONResponse:
@@ -93,7 +95,9 @@ def _err(status: int, code: str, message: str, **extra) -> JSONResponse:
 # --------------------------------------------------------------------------
 x402_routes: dict = {}
 
-if MODE == "payperuse":
+if MODE in PLATFORM_MODES:
+    pass  # platform modes bypass the SDK middleware — handled in proxy()
+elif MODE == "payperuse":
     for pattern, rc in ROUTES.items():
         x402_routes[pattern] = {
             "accepts": {"scheme": "exact", "payTo": PAY_TO,
@@ -228,7 +232,10 @@ async def info():
     body = {"mode": MODE, "network": NETWORK, "pay_to": PAY_TO,
             "facilitator": FACILITATOR_URL or "https://x402.org/facilitator",
             "routes": ROUTES}
-    if MODE != "payperuse":
+    if platform_billing is not None:
+        body["pricingModel"] = MODE
+        body["price_usd"] = CFG.get("price_usd", "0.01")
+    elif MODE != "payperuse":
         body["topup"] = {"endpoint": "POST /x402/topup", **TOPUP}
     return body
 
@@ -334,6 +341,38 @@ async def proxy(path: str, request: Request):
             ],
             "routes": CFG.get("routes", {}),
         }
+
+    # ---- platform pricing modes (community-gateway contract) -------------
+    if platform_billing is not None and units > 0:
+        pb = platform_billing
+        raw = request.headers.get("X-PAYMENT") or request.headers.get("PAYMENT-SIGNATURE") or ""
+        if not raw:
+            return JSONResponse(pb.challenge_body(full), status_code=402)
+        payload, payer = decode_payment_header(raw)
+        if not payer:
+            return JSONResponse(pb.challenge_body(full, error="malformed X-PAYMENT header"),
+                                status_code=402)
+        try:
+            v = await pb.verify(payload, full)
+        except Exception as e:
+            return _err(502, "facilitator_error", f"payment facilitator unreachable: {e}")
+        if not v.get("isValid"):
+            return JSONResponse(pb.challenge_body(
+                full, error=v.get("invalidReason", "payment verification failed")),
+                status_code=402)
+        payer = v.get("payer") or payer
+
+        if not await pb.already_paid(payer):
+            try:
+                s = await pb.settle(payload, full)
+            except Exception as e:
+                return _err(502, "facilitator_error", f"settle failed: {e}")
+            if not s.get("success"):
+                return JSONResponse(pb.challenge_body(
+                    full, error=s.get("errorReason", "payment settlement failed")),
+                    status_code=402)
+            if MODE != "pay_per_use":
+                pb.grant_cache(payer)
 
     if MODE == "timepass" and units > 0:
         if not key:

@@ -120,21 +120,29 @@ class PlatformBilling:
         has = False
         try:
             async with httpx.AsyncClient(timeout=15) as c:
-                if self.mode == "lifetime":
-                    r = await c.get(f"{self.facilitator}/facilitator/access-status",
-                                    params={"payer": payer, "pay_to": self.pay_to},
-                                    headers=self._headers(admin=True))
-                    if r.status_code == 200:
-                        has = bool(r.json().get("has_access"))
-                else:  # monthly — need confirmed_at, pull recent settlements
+                # Single endpoint for both models. min_amount = the service
+                # price, so historic smaller payments to the same pay_to
+                # (e.g. old pay_per_use calls) can never unlock this service.
+                # For monthly the facilitator computes natural-month expiry
+                # server-side and returns expires_at.
+                r = await c.get(f"{self.facilitator}/facilitator/access-status",
+                                params={"payer": payer, "pay_to": self.pay_to,
+                                        "min_amount": self.amount_atomic,
+                                        "pricing_model": self.mode},
+                                headers=self._headers(admin=True))
+                if r.status_code == 200:
+                    has = bool(r.json().get("has_access"))
+                elif self.mode == "monthly":
+                    # fallback for facilitators without pricing_model support:
+                    # pull this payer/pay_to pair's settlements and compute expiry
                     since = now - 40 * 86400  # covers any natural month
                     r = await c.get(f"{self.facilitator}/facilitator/settlements",
-                                    params={"since": since, "limit": 1000},
+                                    params={"since": since, "limit": 1000,
+                                            "payer": payer, "pay_to": self.pay_to},
                                     headers=self._headers(admin=True))
                     if r.status_code == 200:
                         for s in r.json().get("settlements", []):
-                            if (s.get("payer", "").lower() == payer
-                                    and s.get("pay_to", "").lower() == self.pay_to.lower()
+                            if (int(s.get("amount_atomic") or 0) >= int(self.amount_atomic)
                                     and s.get("status") == "confirmed"
                                     and self._monthly_valid(float(s.get("confirmed_at") or 0))):
                                 has = True

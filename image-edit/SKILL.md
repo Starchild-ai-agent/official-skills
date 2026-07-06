@@ -1,6 +1,6 @@
 ---
 name: image-edit
-version: 1.0.2
+version: 1.0.3
 description: |
   Image editing and enhancement of an existing image. Covers background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.
 
@@ -37,24 +37,26 @@ Covers: general editing, background replacement, super-resolution, old photo res
 > The code blocks below are **Python**, not shell commands. Starchild's `bash` tool
 > runs `/bin/bash -c`, which cannot parse `exec(open(...))` — pasting them directly
 > into a bash command will fail with `syntax error near unexpected token 'open'`.
+> Also, `exec(open(...))` inside `python3 -c` fails with `NameError: __file__`
+> because the script uses `__file__` for path resolution.
 >
-> **Always wrap the Python code in `python3 -c "..."` when calling via the bash tool:**
+> **Use `python3 - <<'EOF'` with `from exports import` when calling via the bash tool:**
 >
 > ```bash
-> python3 -c "
-> exec(open('skills/image-edit/edit_image.py').read())
+> python3 - <<'EOF'
+> import sys
+> sys.path.insert(0, "skills/image-edit")
+> from exports import edit_image
 > result = edit_image(
->     image_path='uploads/photo.jpg',
->     prompt='make the sky more dramatic with golden sunset colors',
->     action='enhance',
+>     image_path="uploads/photo.jpg",
+>     prompt="make the sky more dramatic with golden sunset colors",
+>     action="enhance",
 > )
 > print(result)
-> "
+> EOF
 > ```
 >
-> Use single quotes for string arguments inside the `python3 -c "..."` block to
-> avoid quote-conflict with the outer double quotes. If a prompt itself contains
-> single quotes, escape them as `\'`.
+> The heredoc (`<<'EOF'`) preserves all quotes and newlines — no escaping needed.
 
 ```python
 exec(open('skills/image-edit/edit_image.py').read())

@@ -1,6 +1,6 @@
 ---
 name: video
-version: 3.3.2
+version: 3.3.3
 description: |
   AI video generation: text-to-video, image-to-video, video-to-video, model selection.
 
@@ -30,24 +30,27 @@ Use this skill for **all video-generation requests** on Starchild.
 > The code blocks below are **Python**, not shell commands. Starchild's `bash` tool
 > runs `/bin/bash -c`, which cannot parse `exec(open(...))` — pasting them directly
 > into a bash command will fail with `syntax error near unexpected token 'open'`.
+> Also, `exec(open(...))` inside `python3 -c` fails with `NameError: __file__`
+> because the script uses `__file__` for path resolution.
 >
-> **Always wrap the Python code in `python3 -c "..."` when calling via the bash tool:**
+> **Use `python3 - <<'EOF'` with `from exports import` when calling via the bash tool:**
 >
 > ```bash
-> python3 -c "
-> exec(open('skills/video/generate_video.py').read())
+> python3 - <<'EOF'
+> import sys
+> sys.path.insert(0, "skills/video")
+> from generate_video import generate_video
 > result = generate_video(
->     prompt='A cinematic drone shot over snowy mountains at sunrise',
->     model='balanced',
+>     prompt="A cinematic drone shot over snowy mountains at sunrise",
+>     model="balanced",
 >     duration=5,
 > )
 > print(result)
-> "
+> EOF
 > ```
 >
-> Use single quotes for string arguments inside the `python3 -c "..."` block to
-> avoid quote-conflict with the outer double quotes. If a prompt itself contains
-> single quotes, escape them as `\'`.
+> The heredoc (`<<'EOF'`) preserves all quotes and newlines — no escaping needed.
+> Note: video skill has no `exports.py` — import directly from `generate_video`.
 
 ```python
 exec(open('skills/video/generate_video.py').read())

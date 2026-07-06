@@ -1,6 +1,6 @@
 ---
 name: image-portrait
-version: 1.0.2
+version: 1.0.3
 description: |
   Identity-consistent portrait generation from a reference photo. Covers professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.
 
@@ -32,23 +32,25 @@ Covers: professional headshots, dating/social photos, artistic style transfers, 
 > The code blocks below are **Python**, not shell commands. Starchild's `bash` tool
 > runs `/bin/bash -c`, which cannot parse `exec(open(...))` — pasting them directly
 > into a bash command will fail with `syntax error near unexpected token 'open'`.
+> Also, `exec(open(...))` inside `python3 -c` fails with `NameError: __file__`
+> because the script uses `__file__` for path resolution.
 >
-> **Always wrap the Python code in `python3 -c "..."` when calling via the bash tool:**
+> **Use `python3 - <<'EOF'` with `from exports import` when calling via the bash tool:**
 >
 > ```bash
-> python3 -c "
-> exec(open('skills/image-portrait/generate_portrait.py').read())
+> python3 - <<'EOF'
+> import sys
+> sys.path.insert(0, "skills/image-portrait")
+> from exports import generate_portrait
 > result = generate_portrait(
->     image_path='path/to/user/photo.jpg',
->     style='professional',
+>     image_path="path/to/user/photo.jpg",
+>     style="professional",
 > )
 > print(result)
-> "
+> EOF
 > ```
 >
-> Use single quotes for string arguments inside the `python3 -c "..."` block to
-> avoid quote-conflict with the outer double quotes. If a prompt itself contains
-> single quotes, escape them as `\'`.
+> The heredoc (`<<'EOF'`) preserves all quotes and newlines — no escaping needed.
 
 ```python
 exec(open('skills/image-portrait/generate_portrait.py').read())

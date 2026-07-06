@@ -1,6 +1,6 @@
 ---
 name: image-ecommerce
-version: 1.0.1
+version: 1.0.2
 description: |
   E-commerce product photography: white-background hero shots, lifestyle scenes, flat lay, detail close-ups, packaging shots, group/collection displays, scale references, seasonal/holiday themes, 360-degree views, comparison layouts, infographics, and platform-optimized images (Amazon, Shopify, Taobao, Instagram, Xiaohongshu, Etsy, eBay).
 
@@ -39,24 +39,26 @@ Covers: white-background hero shots, lifestyle product scenes, flat lay arrangem
 > The code blocks below are **Python**, not shell commands. Starchild's `bash` tool
 > runs `/bin/bash -c`, which cannot parse `exec(open(...))` — pasting them directly
 > into a bash command will fail with `syntax error near unexpected token 'open'`.
+> Also, `exec(open(...))` inside `python3 -c` fails with `NameError: __file__`
+> because the script uses `__file__` for path resolution.
 >
-> **Always wrap the Python code in `python3 -c "..."` when calling via the bash tool:**
+> **Use `python3 - <<'EOF'` with `from exports import` when calling via the bash tool:**
 >
 > ```bash
-> python3 -c "
-> exec(open('skills/image-ecommerce/product_photo.py').read())
+> python3 - <<'EOF'
+> import sys
+> sys.path.insert(0, "skills/image-ecommerce")
+> from exports import product_photo
 > result = product_photo(
->     product_path='uploads/product.jpg',
->     style='hero',
->     background='white',
+>     product_path="uploads/product.jpg",
+>     style="hero",
+>     background="white",
 > )
 > print(result)
-> "
+> EOF
 > ```
 >
-> Use single quotes for string arguments inside the `python3 -c "..."` block to
-> avoid quote-conflict with the outer double quotes. If a prompt itself contains
-> single quotes, escape them as `\'`.
+> The heredoc (`<<'EOF'`) preserves all quotes and newlines — no escaping needed.
 
 ```python
 exec(open('skills/image-ecommerce/product_photo.py').read())

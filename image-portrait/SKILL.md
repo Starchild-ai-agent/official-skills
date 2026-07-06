@@ -1,6 +1,6 @@
 ---
 name: image-portrait
-version: 1.0.1
+version: 1.0.2
 description: |
   Identity-consistent portrait generation from a reference photo. Covers professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.
 
@@ -27,6 +27,28 @@ Covers: professional headshots, dating/social photos, artistic style transfers, 
 ---
 
 ## 1. Quick start — single portrait (most common)
+
+> **⚠️ Execution context — read this first.**
+> The code blocks below are **Python**, not shell commands. Starchild's `bash` tool
+> runs `/bin/bash -c`, which cannot parse `exec(open(...))` — pasting them directly
+> into a bash command will fail with `syntax error near unexpected token 'open'`.
+>
+> **Always wrap the Python code in `python3 -c "..."` when calling via the bash tool:**
+>
+> ```bash
+> python3 -c "
+> exec(open('skills/image-portrait/generate_portrait.py').read())
+> result = generate_portrait(
+>     image_path='path/to/user/photo.jpg',
+>     style='professional',
+> )
+> print(result)
+> "
+> ```
+>
+> Use single quotes for string arguments inside the `python3 -c "..."` block to
+> avoid quote-conflict with the outer double quotes. If a prompt itself contains
+> single quotes, escape them as `\'`.
 
 ```python
 exec(open('skills/image-portrait/generate_portrait.py').read())

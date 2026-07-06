@@ -1,6 +1,6 @@
 ---
 name: image-3d
-version: 1.0.0
+version: 1.0.1
 description: |
   3D-style image generation: 3D characters, product renders, isometric dioramas, 3D icons, 3D text, interior design renders, architectural visualization, 3D scenes, game assets.
 
@@ -39,6 +39,29 @@ Covers: 3D character design (chibi, realistic, cartoon, fantasy), 3D product ren
 ---
 
 ## 1. Quick start — text-to-3D image (most common)
+
+> **⚠️ Execution context — read this first.**
+> The code blocks below are **Python**, not shell commands. Starchild's `bash` tool
+> runs `/bin/bash -c`, which cannot parse `exec(open(...))` — pasting them directly
+> into a bash command will fail with `syntax error near unexpected token 'open'`.
+>
+> **Always wrap the Python code in `python3 -c "..."` when calling via the bash tool:**
+>
+> ```bash
+> python3 -c "
+> exec(open('skills/image-3d/generate_3d.py').read())
+> result = generate_3d(
+>     prompt='a cute robot assistant with big eyes and antenna',
+>     category='character',
+>     style='chibi',
+> )
+> print(result)
+> "
+> ```
+>
+> Use single quotes for string arguments inside the `python3 -c "..."` block to
+> avoid quote-conflict with the outer double quotes. If a prompt itself contains
+> single quotes, escape them as `\'`.
 
 ```python
 exec(open('skills/image-3d/generate_3d.py').read())

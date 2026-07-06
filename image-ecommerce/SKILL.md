@@ -1,6 +1,6 @@
 ---
 name: image-ecommerce
-version: 1.0.0
+version: 1.0.1
 description: |
   E-commerce product photography: white-background hero shots, lifestyle scenes, flat lay, detail close-ups, packaging shots, group/collection displays, scale references, seasonal/holiday themes, 360-degree views, comparison layouts, infographics, and platform-optimized images (Amazon, Shopify, Taobao, Instagram, Xiaohongshu, Etsy, eBay).
 
@@ -34,6 +34,29 @@ Covers: white-background hero shots, lifestyle product scenes, flat lay arrangem
 ---
 
 ## 1. Quick start — single product photo (most common)
+
+> **⚠️ Execution context — read this first.**
+> The code blocks below are **Python**, not shell commands. Starchild's `bash` tool
+> runs `/bin/bash -c`, which cannot parse `exec(open(...))` — pasting them directly
+> into a bash command will fail with `syntax error near unexpected token 'open'`.
+>
+> **Always wrap the Python code in `python3 -c "..."` when calling via the bash tool:**
+>
+> ```bash
+> python3 -c "
+> exec(open('skills/image-ecommerce/product_photo.py').read())
+> result = product_photo(
+>     product_path='uploads/product.jpg',
+>     style='hero',
+>     background='white',
+> )
+> print(result)
+> "
+> ```
+>
+> Use single quotes for string arguments inside the `python3 -c "..."` block to
+> avoid quote-conflict with the outer double quotes. If a prompt itself contains
+> single quotes, escape them as `\'`.
 
 ```python
 exec(open('skills/image-ecommerce/product_photo.py').read())

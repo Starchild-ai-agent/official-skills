@@ -142,6 +142,12 @@ def main():
             cfg["deposit_usd"] = str(args.deposit).lstrip("$")
         if args.facilitator_admin_token:
             cfg["facilitator_admin_token"] = args.facilitator_admin_token
+        elif args.mode in ("lifetime", "monthly"):
+            # fail-closed: without this token the gateway can't ask the
+            # facilitator "already paid?" and would re-settle every request,
+            # silently double-charging buyers.
+            sys.exit(f"mode {args.mode} requires --facilitator-admin-token "
+                     "(facilitator /access-status and /settlements are admin-gated)")
         if not args.facilitator:
             sys.exit("platform modes require --facilitator (e.g. https://starchild-x402-facilitator.fly.dev)")
     if args.mode in ("subscription", "metered"):

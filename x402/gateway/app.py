@@ -49,7 +49,8 @@ from x402.mechanisms.evm.exact.register import register_exact_evm_server
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ledger import Ledger  # noqa: E402
-from platform_modes import PLATFORM_MODES, PlatformBilling, decode_payment_header  # noqa: E402
+from platform_modes import (AccessCheckError, PLATFORM_MODES, PlatformBilling,  # noqa: E402
+                            decode_payment_header)
 
 # --------------------------------------------------------------------------
 CONFIG_PATH = os.environ.get("X402_CONFIG") or (sys.argv[1] if len(sys.argv) > 1 else "x402.config.json")
@@ -329,6 +330,21 @@ async def proxy(path: str, request: Request):
 
     if full in ("/.well-known/x402", "/.well-known/x402/"):
         # discovery endpoint (Coinbase Bazaar / Cloudflare-style price discovery)
+        if platform_billing is not None:
+            # platform modes don't build x402_routes (no SDK middleware) —
+            # generate accepts from the billing contract so pay_per_use /
+            # lifetime / monthly / prepaid services are discoverable too.
+            resources = [
+                {"resource": route, "units": (spec or {}).get("units", 1),
+                 "accepts": platform_billing.requirements(route)}
+                for route, spec in CFG.get("routes", {}).items()
+            ]
+        else:
+            resources = [
+                {"resource": route, **{k: v for k, v in spec.items() if k != "accepts"},
+                 "accepts": spec.get("accepts")}
+                for route, spec in x402_routes.items()
+            ]
         return {
             "x402Version": 2,
             "kind": "http",
@@ -336,11 +352,7 @@ async def proxy(path: str, request: Request):
             "network": NETWORK,
             "payTo": PAY_TO,
             "facilitator": FACILITATOR_URL or "default",
-            "resources": [
-                {"resource": route, **{k: v for k, v in spec.items() if k != "accepts"},
-                 "accepts": spec.get("accepts")}
-                for route, spec in x402_routes.items()
-            ],
+            "resources": resources,
             "routes": CFG.get("routes", {}),
         }
 
@@ -405,17 +417,24 @@ async def proxy(path: str, request: Request):
                         status_code=402)
                 return _err(502, "facilitator_error", f"debit rejected: {d.get('error')}")
             prepaid_charge = (payer, request_id, units)
-        elif not await pb.already_paid(payer):
+        else:
             try:
-                s = await pb.settle(payload, full)
-            except Exception as e:
-                return _err(502, "facilitator_error", f"settle failed: {e}")
-            if not s.get("success"):
-                return JSONResponse(pb.challenge_body(
-                    full, error=s.get("errorReason", "payment settlement failed")),
-                    status_code=402)
-            if MODE != "pay_per_use":
-                pb.grant_cache(payer)
+                paid = await pb.already_paid(payer)
+            except AccessCheckError as e:
+                # unknown != unpaid: settling on an auth/availability failure
+                # would re-charge an already-paid buyer on every request
+                return _err(502, "facilitator_error", f"access check failed: {e}")
+            if not paid:
+                try:
+                    s = await pb.settle(payload, full)
+                except Exception as e:
+                    return _err(502, "facilitator_error", f"settle failed: {e}")
+                if not s.get("success"):
+                    return JSONResponse(pb.challenge_body(
+                        full, error=s.get("errorReason", "payment settlement failed")),
+                        status_code=402)
+                if MODE != "pay_per_use":
+                    pb.grant_cache(payer)
 
     if MODE == "timepass" and units > 0:
         if not key:

@@ -48,6 +48,9 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode pay_per_use --price 0.01 --network eip155:8453 --facilitator $FAC
 
 # lifetime: one payment = permanent access (checked via /facilitator/access-status)
+# NOTE: lifetime/monthly REQUIRE --facilitator-admin-token (fail-closed at startup;
+# access-status/settlements are admin-gated — without it the gateway cannot know
+# "already paid" and would re-settle every request, double-charging buyers)
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode lifetime --price 5.00 --network eip155:8453 --facilitator $FAC \
     --facilitator-admin-token $ADMIN_TOKEN

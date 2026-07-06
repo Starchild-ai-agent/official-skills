@@ -37,6 +37,13 @@ import httpx
 
 PLATFORM_MODES = ("pay_per_use", "lifetime", "monthly", "prepaid")
 
+
+class AccessCheckError(Exception):
+    """already_paid() could not get an authoritative answer (auth failure,
+    facilitator down, ...). Callers MUST surface an error instead of settling —
+    'unknown' is not 'unpaid'; treating it as unpaid re-settles on every
+    request and silently double-charges the buyer."""
+
 # network -> (usdc_asset, extra name/version) — mirror of facilitator KNOWN_ASSETS
 ASSETS = {
     "eip155:8453": ("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", {"name": "USD Coin", "version": "2"}),
@@ -63,6 +70,14 @@ class PlatformBilling:
         self.fac_token = cfg.get("facilitator_token") or ""
         # settlements/access-status are admin-gated on the platform facilitator
         self.fac_admin_token = cfg.get("facilitator_admin_token") or ""
+        if self.mode in ("lifetime", "monthly") and not self.fac_admin_token:
+            # fail-closed at STARTUP: without this token every already_paid()
+            # lookup would 401 and, if treated as unpaid, the gateway would
+            # re-settle on EVERY request — silently double-charging buyers and
+            # destroying lifetime/monthly semantics.
+            raise ValueError(
+                f"mode '{self.mode}' requires `facilitator_admin_token` "
+                "(facilitator /access-status and /settlements are admin-gated)")
         # prepaid: suggested deposit size. Default 100 calls worth, floored at
         # the facilitator's default minimum deposit ($0.10 = 100000 atomic).
         dep = cfg.get("deposit_usd")
@@ -233,23 +248,34 @@ class PlatformBilling:
                                 headers=self._headers(admin=True))
                 if r.status_code == 200:
                     has = bool(r.json().get("has_access"))
-                elif self.mode == "monthly":
-                    # fallback for facilitators without pricing_model support:
-                    # pull this payer/pay_to pair's settlements and compute expiry
+                elif r.status_code == 400 and self.mode == "monthly":
+                    # fallback ONLY for facilitators that reject the
+                    # pricing_model param (pre-support versions): pull this
+                    # payer/pay_to pair's settlements and compute expiry.
                     since = now - 40 * 86400  # covers any natural month
                     r = await c.get(f"{self.facilitator}/facilitator/settlements",
                                     params={"since": since, "limit": 1000,
                                             "payer": payer, "pay_to": self.pay_to},
                                     headers=self._headers(admin=True))
-                    if r.status_code == 200:
-                        for s in r.json().get("settlements", []):
-                            if (int(s.get("amount_atomic") or 0) >= int(self.amount_atomic)
-                                    and s.get("status") == "confirmed"
-                                    and self._monthly_valid(float(s.get("confirmed_at") or 0))):
-                                has = True
-                                break
-        except Exception as e:  # facilitator unreachable -> treat as unpaid (will 402)
-            print(f"[x402-platform] already_paid check failed: {e}", flush=True)
+                    if r.status_code != 200:
+                        raise AccessCheckError(
+                            f"settlements fallback -> HTTP {r.status_code}: {r.text[:200]}")
+                    for s in r.json().get("settlements", []):
+                        if (int(s.get("amount_atomic") or 0) >= int(self.amount_atomic)
+                                and s.get("status") == "confirmed"
+                                and self._monthly_valid(float(s.get("confirmed_at") or 0))):
+                            has = True
+                            break
+                else:
+                    # 401/403/5xx/anything: NOT an authoritative "unpaid".
+                    # Treating it as unpaid would settle again -> double charge.
+                    raise AccessCheckError(
+                        f"access-status -> HTTP {r.status_code}: {r.text[:200]}")
+        except AccessCheckError:
+            raise
+        except Exception as e:
+            # facilitator unreachable is equally non-authoritative
+            raise AccessCheckError(f"facilitator unreachable: {e}") from e
 
         # only cache positives — negatives must re-check right after a settle
         if has:

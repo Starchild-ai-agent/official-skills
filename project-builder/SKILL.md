@@ -231,6 +231,14 @@ Decide sensible defaults yourself and render real data on first load. Treat filt
   charging for the project, selling API access, or agent-to-agent payments,
   read `skills/x402/SKILL.md` after the build phase and wrap the service with
   `scripts/monetize.py` (expose the GATEWAY port, not the upstream).
+- **Always-on services (long-running / published / paid)**: agent machines
+  auto-suspend when idle and auto-update restarts kill service processes. Any
+  service that must stay reachable 24/7 needs: ① a keepalive watchdog
+  (scheduled task restarting the service — see `skills/x402/SKILL.md`
+  "Always-on availability"), ② the machine switched to MANUAL update mode
+  (web dashboard toggle; the agent can only READ the mode in-machine — if it
+  reads "auto", remind the user to flip the switch, or the next platform
+  update will take the service down).
 
 ---
 

@@ -177,7 +177,9 @@ Map a running service to `https://community.iamstarchild.com/{user_id}-{slug}`.
 - `title`: display name for the listing.
 - `publisher_code_slug`: optional cross-link binding to a code project's slug.
 
-Returns `{"ok": True, "url": "...", "publisher": {...}, "hint": "..."}`.
+Returns `{"ok": True, "url": "...", "publisher": {...}, "hint": "...",
+"x402_detected": bool}` — plus a `next_step` warning when `x402_detected`
+is true (complete the paid-listing chain).
 
 **Constraints:**
 - **`publish_preview` does NOT create a paid listing.** If the endpoint

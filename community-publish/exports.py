@@ -564,6 +564,10 @@ def _detect_x402_billing(port: int) -> bool:
     Checks /.well-known/x402 (discovery index) and whether the root route
     answers 402. 2s timeout each; any failure returns False — detection
     must never break or slow down publishing.
+
+    Known limitation: a service that bills only on sub-routes AND has no
+    discovery document is not detected. Acceptable — the x402 quickstart
+    ships /.well-known/x402 on every gateway.
     """
     import json
     import urllib.request

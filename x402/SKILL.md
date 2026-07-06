@@ -345,6 +345,21 @@ Monetization Gateway, self-hosted):
 3. `community-publish` skill → `publish_preview(preview_id, slug='my-api')` → public URL
 4. Price discovery is built in: `GET <public-url>/.well-known/x402` returns machine-readable routes/prices/payTo/network (Bazaar-compatible shape).
 
+**A public URL is NOT a marketplace listing.** Steps 1–4 only make the
+service reachable — the Service Marketplace will show nothing (or "free")
+until you complete the LIST chain (community-publish skill):
+
+5. `create_paid_service(name=..., service_type=..., api_endpoint=<public paid
+   route>, pricing_model=..., price=..., pricing_options=[...] for
+   multi-plan)` → draft service record.
+6. `submit_for_review(service_id)` → poll `get_review_status()` until
+   `approved` (5 automated checks: 402 reachable, price consistency, x402
+   validity, response match, doc completeness) → `publish_service(service_id)`
+   → live paid listing.
+
+Skipping 5–6 is the #1 cause of "why does my paid service show as free /
+not appear in the marketplace".
+
 ## Consuming any x402 service from just a URL
 
 Given ONLY a service URL (no docs, no guidance), onboard and verify it with

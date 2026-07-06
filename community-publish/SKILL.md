@@ -180,6 +180,11 @@ Map a running service to `https://community.iamstarchild.com/{user_id}-{slug}`.
 Returns `{"ok": True, "url": "...", "publisher": {...}, "hint": "..."}`.
 
 **Constraints:**
+- **`publish_preview` does NOT create a paid listing.** If the endpoint
+  charges via x402 (returns 402), the publish flow is INCOMPLETE until you
+  also run `create_paid_service` → `submit_for_review` → `publish_service`
+  — otherwise the marketplace shows nothing or "free". The return value
+  flags this (`x402_detected: true` + `next_step`) when billing is detected.
 - Max 20 published previews per user (gateway returns 429 over).
 - Service must be running. Stops working when the container goes down.
 - Only works inside the Starchild Fly container (needs `FLY_MACHINE_ID`).
@@ -545,6 +550,7 @@ EOF
 | `list_in_dashboard`: `404 No preview found` | `publish_preview()` hasn't run for this slug yet | Call `publish_preview()` first |
 | `open_source`: `400 Validation failed: env names not in .env.example` | Listed `MY_KEY` in `env_required` but forgot `.env.example` | Add the missing key to `.env.example` |
 | `open_source`: `400 Possible secret detected` | Secret scanner found a real-looking API key | Move to env var; `.env.example` value should be `your-key-here` |
+| Marketplace shows service as free / missing after publish | Only `publish_preview()` was run — URL publish ≠ paid listing | Complete the chain: `create_paid_service` → `submit_for_review` → `publish_service` |
 | `create_paid_service`: `400 Free services should be published through the Project publish flow` | Tried `service_type: "free_project"` | Use `list_in_dashboard()` for free projects, not `create_paid_service()` |
 | `publish_service`: `400 not in a publishable state` | Service isn't `approved` yet | Poll `get_review_status()` — if rejected, fix and re-submit |
 | Review rejected: `pricing_consistency` failed | 402 response `amount` doesn't match declared `price` | Ensure `amount` = `price * 1000000` (USDC 6 decimals) |

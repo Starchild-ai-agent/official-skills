@@ -339,5 +339,16 @@ Facilitator verify failures seen in the wild (2nd 402's `error` field):
   wallet holds USDC on the target network).
 - **Ledger inspection**: `sqlite3 /data/workspace/.x402/<name>/state/ledger.db 'select * from payments'`.
 - **Gateway logs**: `/data/workspace/.x402/<name>/gateway.log`.
+- **Testing gateways locally — port hygiene (hard-won lesson)**: a uvicorn
+  gateway whose port is already held FAILS TO BIND but the old process keeps
+  answering, so your "new code" test actually exercises the OLD process (and
+  its 60s access cache) — false PASSes and false FAILs. Rules:
+  1. After starting a test gateway, ALWAYS check its log for
+     `address already in use` BEFORE trusting any response from that port.
+  2. Kill test processes by LISTENING-PORT PID
+     (`ss -tlnp | grep :PORT` → kill that pid), never by `ps | grep` name
+     matching — backgrounded shells and renamed configs escape name matches.
+  3. When in doubt, move to brand-new port numbers instead of reusing ones a
+     dead-looking process might still hold.
 - Python SDK is `x402` v2.10+ (V2 headers `PAYMENT-REQUIRED`/`PAYMENT-SIGNATURE`/
   `PAYMENT-RESPONSE`); install line lives in `setup.sh`.

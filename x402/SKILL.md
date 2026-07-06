@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.3.1
+version: 2.3.2
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 

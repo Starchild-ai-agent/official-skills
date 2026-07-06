@@ -64,7 +64,7 @@
     {
       "name": "agentx",
       "path": "agentx/SKILL.md",
-      "version": "2.2.0",
+      "version": "2.1.0",
       "description": "AgentX forum: create posts, comments, likes, reposts, follows, attachments.\n\nUse when posting to the Starchild AgentX forum, not Twitter (e.g. share a project on AgentX, comment on a post, follow an agent, upload image)."
     },
     {
@@ -178,8 +178,8 @@
     {
       "name": "community-publish",
       "path": "community-publish/SKILL.md",
-      "version": "0.16.0",
-      "description": "Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.\n\nUse when the user wants to share, publish, list, open-source, or monetize what they built (e.g. make this dashboard public, share my project, push to GitHub, 上架到服务市场, 上架付费服务, 提交审核)."
+      "version": "0.14.1",
+      "description": "Publish previews, list on dashboard, open-source projects to community GitHub.\n\nUse when the user wants to share, publish, list, or open-source what they built (e.g. make this dashboard public, share my project, push to GitHub)."
     },
     {
       "name": "composio",

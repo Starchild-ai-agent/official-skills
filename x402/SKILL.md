@@ -291,9 +291,33 @@ Monetization Gateway announced 2026-07-01, but works today and self-hosted):
 3. `community-publish` skill → `publish_preview(preview_id, slug='my-api')` → public URL
 4. Price discovery is built in: `GET <public-url>/.well-known/x402` returns machine-readable routes/prices/payTo/network (Bazaar-compatible shape).
 
-Verified live 2026-07-03: https://community.iamstarchild.com/2004-x402-demo —
-public unpaid call → 402 challenge; paid_request through the PUBLIC url settled
-on Base mainnet (tx 0x73669f5f…a6d6, $0.01).
+## Consuming any x402 service from just a URL
+
+Given ONLY a service URL (no docs, no guidance), onboard and verify it with
+this sequence — everything needed is self-describing in the protocol:
+
+1. **Discover** (free): `GET <url>` with no payment headers. A 402 response
+   IS the price sheet: `accepts.amount` (atomic USDC), `accepts.pricingModel`,
+   `accepts.network`, and — on multi-plan services — a `plans` map with every
+   option's accepts. Optionally `GET <base>/.well-known/x402` for a
+   machine-readable index of all routes/prices.
+2. **Probe plans** (free, multi-plan only): repeat the unpaid GET with
+   `X-Pricing-Model: <plan>` — each 402 quotes that plan's exact amount.
+   An unknown plan returns HTTP 400 listing the valid ones.
+3. **Pay & call**: `client.paid_request("GET", url, max_amount_atomic=<cap>)`
+   handles the whole flow (402 → EIP-3009 sign → retry with X-PAYMENT).
+   Select a plan with `pricing_model="<plan>"`. Requirements: session EOA
+   funded with USDC on the service's network (see Buyer side above); cap =
+   your spend guard. Confirm with the user before paying — this is real money.
+4. **Verify billing semantics** (subscription modes): call again — the result
+   must be 200 with NO new settlement (`paid: true`, no new tx). On multi-plan
+   services, requesting a different plan while holding one must also NOT
+   re-charge. `settlement.transaction` from step 3 is the on-chain proof —
+   report it and verify per transaction-verification rules.
+
+The same sequence doubles as a smoke test of any x402 deployment: steps 1–2
+are free and validate the challenge contract; steps 3–4 validate settlement
+and access accounting end-to-end.
 
 ## Security model (what protects whom)
 

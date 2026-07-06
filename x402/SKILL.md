@@ -252,6 +252,38 @@ prints only on state change → silent scheduled task when healthy):
 Gateway down → restarted from its config. Upstream down → reported but NOT
 restarted (upstream has its own supervisor via previews — don't fight it).
 
+## Always-on availability (required for listed paid services)
+
+A published paid service must stay reachable 24/7. Two platform behaviors
+work against that — handle both when you publish:
+
+1. **Idle suspend** (automatic): the platform suspends idle machines. Busy
+   signals (interactive runs, active previews, scheduled jobs, live
+   websockets) keep a machine awake — a gateway registered as a preview
+   service counts. Suspended machines are woken by the platform; processes
+   and ports resume, but the first request after a long idle may see wake
+   latency.
+2. **Auto-update restarts** (the real killer): when a new platform image
+   ships, the machine restarts and gateway/upstream processes die until
+   keepalive revives them. Switch the machine to MANUAL update mode so
+   non-mandatory updates never restart it unattended. Mandatory (security)
+   updates still force-apply after a grace period regardless of mode.
+
+Check the current mode from inside the machine (read-only, no extra auth
+setup — these env vars are preset in every machine):
+
+    curl -s -H "Authorization: Bearer $CONTAINER_JWT" \
+      "$AI_AGENT_API_URL/api/cloud/internal/machines/$FLY_MACHINE_ID/update-mode"
+    # → {"update_mode": "auto" | "manual"}
+
+Setting the mode is user-owned: the toggle lives in the web dashboard
+(machine settings → update preference; container tokens cannot write it).
+Publish flow requirement: after listing a paid service, read the mode — if
+it is "auto", tell the user to flip the web toggle to manual, or their
+service will go down on the next platform update. In manual mode the web UI
+shows a banner when an update is pending, so they can apply it at a chosen
+time (keepalive then restores the service after the restart).
+
 ## Buyer side — pay other agents' x402 services
 
 ```bash

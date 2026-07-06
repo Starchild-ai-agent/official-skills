@@ -73,6 +73,16 @@ ROUTES = CFG.get("routes", {})          # pattern -> {price | units}
 TOPUP = CFG.get("topup", {})            # {price_per_credit_usd, min_credits}
 STATE_DIR = CFG.get("state_dir") or os.path.join(os.path.dirname(os.path.abspath(CONFIG_PATH)), ".x402_state")
 
+# Startup guard (also enforced by monetize.py at config time — this catches
+# HAND-EDITED configs): x402.org supports testnets only; a mainnet gateway
+# pointed at it looks healthy but every buyer settlement fails.
+if NETWORK == "eip155:8453" and "x402.org" in (FACILITATOR_URL or ""):
+    sys.exit(f"[x402 gateway] config {CONFIG_PATH}: network eip155:8453 "
+             "(Base mainnet) cannot use the x402.org facilitator "
+             "(testnet-only). Set 'facilitator' to a mainnet-capable one, "
+             "e.g. https://starchild-x402-facilitator.fly.dev, then restart "
+             "(monetize.py --restart <name>).")
+
 app = FastAPI(title=f"x402 gateway ({MODE})")
 
 def _fac_client() -> HTTPFacilitatorClient:

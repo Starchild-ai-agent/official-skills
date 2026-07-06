@@ -1,12 +1,12 @@
 ---
 name: treasures
-version: 1.0.0
+version: 1.0.1
 description: |
   Treasures Finance: tokenized stocks (xStocks / Ondo) trading, USDC bridging, and delegated wallet ops on Solana and Ethereum.
 
-  Use when running Treasures-routed finance ops (e.g. discover tokenized stocks, quote/execute a trade, bridge USDC across chains, check a delegated wallet's portfolio).
+  Use when running Treasures-routed finance ops (e.g. discover tokenized stocks, quote/execute a trade, bridge USDC across chains, check a wallet's portfolio).
 
-  Wallet: default to the `treasures-wallet` skill (non-custodial delegated signer, scoped strictly to RWA trades — the agent never signs). Only use raw B2B API signing (`treasures-b2b-api`) when the user explicitly asks for direct wallet-pair control.
+  Wallet: default to `treasures-b2b-api` against the user's own wallet (e.g. their Agent Wallet) — no fresh wallet to fund with gas/USDC, and the user keeps control of the keys. Only use the `treasures-wallet` delegated flow (provisions a new Treasures-managed wallet) when the user explicitly wants Treasures to hold signing authority.
 metadata:
   starchild:
     emoji: "💎"
@@ -25,6 +25,27 @@ disable-model-invocation: false
 **Agent Skills** for building AI agents on the Treasures finance APIs.
 
 A skill is a folder of plain-Markdown instructions (`SKILL.md`) that a coding agent loads on demand. The skills here teach an agent to call the Treasures finance APIs correctly — discover tokenized stocks, quote and execute trades, bridge USDC across chains, operate a delegated wallet, and read portfolios — including the signing details and footguns that are easy to get wrong.
+
+## Wallet — which path to use
+
+There are two ways to trade tokenized stocks through Treasures. Pick based on
+whether the user wants to keep control of their own wallet:
+
+- **Default → `treasures-b2b-api`**: drives the raw Treasures B2B API against
+  the user's *own* wallet (e.g. their Agent Wallet). No new wallet to
+  provision, nothing extra to fund with gas or USDC, and the user already
+  holds the keys. This is also how Treasures itself tested its agentic flow
+  before `treasures-wallet` existed.
+- **Only when explicitly requested → `treasures-wallet`**: provisions a
+  *fresh*, Treasures-managed delegated wallet (non-custodial, scoped strictly
+  to RWA trades — the agent never signs, Treasures signs as delegated
+  signer). This is the right call when the user wants Treasures to fully
+  manage signing, but it means funding a brand-new wallet with gas + USDC
+  that the user can't directly control day-to-day (the private key can be
+  exported from the Treasures website if they need it).
+
+If in doubt, prefer `treasures-b2b-api` — most users would rather trade from
+a wallet they already hold than fund and manage a new one.
 
 ## Skill catalog
 

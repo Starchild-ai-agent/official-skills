@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.2.4
+version: 2.2.5
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -303,7 +303,32 @@ address carries EIP-7702 delegation code, so USDC verifies via EIP-1271 and
 rejects plain ECDSA on-chain (`FiatTokenV2: invalid signature`) — even though
 off-chain recovery passes. Fund the session EOA with a small
 USDC budget from the Privy wallet (ERC20 transfer); the budget IS the hard
-spend cap. **Spend guard**: additionally refuses to sign above
+spend cap.
+
+**Funding the session EOA (when target-chain balance is 0):** signature
+verification passes with an empty wallet — settlement then fails with
+`invalid_exact_evm_insufficient_balance`. Check before paying, and bridge if
+the user's funds sit on a different chain:
+
+1. Snapshot all chains: `wallet_get_all_balances()` (wallet skill).
+2. USDC on the wrong chain → move it to the service's network first
+   (cross-chain: okx / bridge skills; same-chain swap: 1inch / openocean).
+3. Privy → session EOA on the target chain via `wallet_transfer` — an ERC20
+   transfer is a CONTRACT call, not a native send: `to` = the token contract
+   (Base USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`), `amount` = 0,
+   `data` = transfer calldata `0xa9059cbb` + recipient (the session EOA,
+   zero-padded to 32 bytes) + atomic amount (32 bytes). Build it:
+   `"0xa9059cbb" + eoa[2:].lower().zfill(64) + hex(atomic)[2:].zfill(64)`.
+   Setting `to` = the EOA directly sends NATIVE currency instead — wrong tx.
+   (The EOA address is printed by client.py on first run.)
+4. Re-check the EOA balance, then `paid_request(...)`.
+5. No USDC anywhere → stop and tell the user to acquire some (on-ramp /
+   exchange withdrawal). Never fabricate funds or skip the payment.
+
+**Privy signer compatibility:** `signer_mode="privy"` is rejected on-chain
+for Base mainnet USDC (EIP-7702 delegation → EIP-1271 → no plain ECDSA);
+other chain/token combos are untested. Treat the session EOA as the only
+supported signer unless a specific combo has been verified. **Spend guard**: additionally refuses to sign above
 `X402_MAX_ATOMIC` (default 1_000_000 = 1 USDC). ⚠️ Signing = spending real
 money once settled — confirm with the user before paying unfamiliar services
 or raising the cap. Result includes `settlement.transaction` (on-chain tx hash)
@@ -404,4 +429,6 @@ Facilitator verify failures seen in the wild (2nd 402's `error` field):
   3. When in doubt, move to brand-new port numbers instead of reusing ones a
      dead-looking process might still hold.
 - Python SDK is `x402` v2.10+ (V2 headers `PAYMENT-REQUIRED`/`PAYMENT-SIGNATURE`/
-  `PAYMENT-RESPONSE`); install line lives in `setup.sh`.
+  `PAYMENT-RESPONSE`). Deps are NOT auto-installed: run
+  `bash skills/x402/setup.sh` once per machine (also append it to
+  `/data/workspace/setup.sh` so restarts reinstall).

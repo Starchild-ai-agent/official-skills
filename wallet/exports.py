@@ -18,15 +18,55 @@ try:
 except ImportError:
     pass
 
-# Import core functions from /app/tools/wallet
-from tools.wallet import (
-    _wallet_request,
-    _is_fly_machine,
-    _get_wallet_addresses,
-    _validate_and_clean_rules,
-    DEBANK_CHAIN_MAP,
-)
+# Import core functions from /app/tools/wallet.
+# Older platform images ship a thin bridge module that only forwards
+# _wallet_request/_is_fly_machine — import the rest defensively so the
+# skill still loads there (fallbacks reimplement them on the bridge API).
+from tools.wallet import _wallet_request, _is_fly_machine
 from core.http_client import proxied_get
+
+try:
+    from tools.wallet import _get_wallet_addresses
+except ImportError:
+    async def _get_wallet_addresses() -> dict:
+        """Fallback: same contract as the full module — returns
+        {"evm": "0x...", "sol": "..."} from GET /agent/wallet."""
+        data = await _wallet_request("GET", "/agent/wallet")
+        wallets = data if isinstance(data, list) else (data or {}).get("wallets", [])
+        result = {}
+        for w in wallets:
+            if not isinstance(w, dict):
+                continue
+            chain_type = w.get("chain_type", "")
+            addr = w.get("wallet_address", "") or w.get("address", "")
+            if chain_type == "ethereum" and addr and "evm" not in result:
+                result["evm"] = addr
+            elif chain_type == "solana" and addr and "sol" not in result:
+                result["sol"] = addr
+        return result
+
+try:
+    from tools.wallet import DEBANK_CHAIN_MAP
+except ImportError:
+    # Same shape as tools/wallet.py's fallback: {chain_name: debank_chain_id}
+    DEBANK_CHAIN_MAP = {
+        "ethereum": "eth", "base": "base", "arbitrum": "arb",
+        "optimism": "op", "polygon": "matic", "linea": "linea",
+        "bsc": "bsc", "avalanche": "avax", "fantom": "ftm",
+        "gnosis": "xdai", "zksync": "era", "scroll": "scrl",
+        "blast": "blast", "mantle": "mnt", "celo": "celo",
+        "aurora": "aurora",
+    }
+
+try:
+    from tools.wallet import _validate_and_clean_rules
+except ImportError:
+    def _validate_and_clean_rules(rules, chain_type):
+        raise RuntimeError(
+            "wallet policy validation unavailable on this platform image "
+            "(bridge tools/wallet.py) — update the platform image or use "
+            "the wallet_propose_policy platform tool instead"
+        )
 
 EVM_CHAINS = list(DEBANK_CHAIN_MAP.keys())
 

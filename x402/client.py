@@ -1,7 +1,11 @@
 """x402 buyer client — lets THIS agent pay other agents' x402 services.
 
-Uses the user's Privy wallet (via the wallet skill) to sign EIP-3009
-payment authorizations. No private key ever touches this process.
+Signs EIP-3009 payment authorizations with a SESSION EOA by default
+(`.x402/buyer.key`, auto-generated; fund it with USDC on the target chain).
+Privy signing (signer_mode="privy") exists but FAILS on Base mainnet USDC:
+the Privy address carries EIP-7702 delegation code, so USDC verifies via
+EIP-1271 and rejects plain ECDSA. Other chain/token combos are untested —
+prefer the session EOA everywhere.
 
 Usage (bash):
     python3 skills/x402/client.py GET  https://host/api/thing

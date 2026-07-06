@@ -18,15 +18,48 @@ try:
 except ImportError:
     pass
 
-# Import core functions from /app/tools/wallet
-from tools.wallet import (
-    _wallet_request,
-    _is_fly_machine,
-    _get_wallet_addresses,
-    _validate_and_clean_rules,
-    DEBANK_CHAIN_MAP,
-)
+# Import core functions from /app/tools/wallet.
+# Older platform images ship a thin bridge module that only forwards
+# _wallet_request/_is_fly_machine — import the rest defensively so the
+# skill still loads there (fallbacks reimplement them on the bridge API).
+from tools.wallet import _wallet_request, _is_fly_machine
 from core.http_client import proxied_get
+
+try:
+    from tools.wallet import _get_wallet_addresses
+except ImportError:
+    async def _get_wallet_addresses() -> dict:
+        """Fallback: fetch {chain_type: address} via the wallet service."""
+        resp = await _wallet_request("GET", "/wallets")
+        out = {}
+        for w in (resp or {}).get("wallets", []):
+            ct, addr = w.get("chain_type"), w.get("address")
+            if ct and addr:
+                out[ct] = addr
+        return out
+
+try:
+    from tools.wallet import DEBANK_CHAIN_MAP
+except ImportError:
+    # Same shape as tools/wallet.py's fallback: {chain_name: debank_chain_id}
+    DEBANK_CHAIN_MAP = {
+        "ethereum": "eth", "base": "base", "arbitrum": "arb",
+        "optimism": "op", "polygon": "matic", "linea": "linea",
+        "bsc": "bsc", "avalanche": "avax", "fantom": "ftm",
+        "gnosis": "xdai", "zksync": "era", "scroll": "scrl",
+        "blast": "blast", "mantle": "mnt", "celo": "celo",
+        "aurora": "aurora",
+    }
+
+try:
+    from tools.wallet import _validate_and_clean_rules
+except ImportError:
+    def _validate_and_clean_rules(rules, chain_type):
+        raise RuntimeError(
+            "wallet policy validation unavailable on this platform image "
+            "(bridge tools/wallet.py) — update the platform image or use "
+            "the wallet_propose_policy platform tool instead"
+        )
 
 EVM_CHAINS = list(DEBANK_CHAIN_MAP.keys())
 

@@ -1024,6 +1024,10 @@ def create_paid_service(
     NOT publish a URL or push code — use publish_preview() and open_source()
     first.
 
+    Required by service_type (validated here; the reviewer rejects if missing):
+        - paid_project: service_description
+        - paid_api: api_documentation, example_request, example_response
+
     Prerequisites:
         - The project must have a public URL (publish_preview() first).
         - The api_endpoint must implement x402 charging (return 402 when
@@ -1067,6 +1071,23 @@ def create_paid_service(
         return {"ok": False, "error": f"pricing_model must be one of {_MODES}, got: {pricing_model!r}"}
     if price <= 0:
         return {"ok": False, "error": f"price must be positive, got: {price}"}
+    _missing = []
+    if service_type == "paid_project" and not service_description:
+        _missing.append("service_description (what subscribers get)")
+    if service_type == "paid_api":
+        if not api_documentation:
+            _missing.append("api_documentation (markdown with a parameter "
+                            "table, a non-empty Response/响应格式 section, "
+                            "and an example)")
+        if not example_request:
+            _missing.append("example_request")
+        if not example_response:
+            _missing.append("example_response")
+    if _missing:
+        return {"ok": False, "error":
+                f"{service_type} requires: {', '.join(_missing)} — the "
+                "automated reviewer rejects submissions without them, so "
+                "they are enforced at call time."}
 
     payload: dict[str, Any] = {
         "name": name,

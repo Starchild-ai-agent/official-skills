@@ -162,7 +162,9 @@ def main():
     ap.add_argument("--network", default=os.environ.get("X402_NETWORK", "eip155:84532"),
                     help="eip155:84532 = Base Sepolia (test), eip155:8453 = Base mainnet")
     ap.add_argument("--facilitator", default=os.environ.get("X402_FACILITATOR", ""),
-                    help="empty = x402.org (testnet only). Mainnet needs CDP facilitator URL.")
+                    help="empty = x402.org for testnet; mainnet auto-defaults to "
+                         "X402_FACILITATOR_URL or the self-hosted facilitator. "
+                         "x402.org is REJECTED for mainnet (testnet-only).")
     ap.add_argument("--facilitator-token", default=os.environ.get("X402_FACILITATOR_TOKEN", ""),
                     help="bearer token if the facilitator enforces caller auth (X402_GATEWAY_TOKENS)")
     ap.add_argument("--pay-to", default="")
@@ -175,6 +177,18 @@ def main():
         # default to the self-hosted facilitator (local Phase-1, platform URL later)
         args.facilitator = os.environ.get(
             "X402_FACILITATOR_URL", "http://127.0.0.1:8410")
+
+    # Hard guard: x402.org facilitator supports TESTNETS ONLY (verified via
+    # /supported — no eip155:8453). A mainnet service pointed at it looks
+    # healthy (discovery + 402 work) but EVERY buyer settlement fails with
+    # 402 unexpected_error. Seen live on a community machine.
+    if (args.network == "eip155:8453"
+            and "x402.org" in (args.facilitator or "")):
+        sys.exit("network eip155:8453 (Base mainnet) cannot use the x402.org "
+                 "facilitator (testnet-only). Use a mainnet-capable "
+                 "facilitator, e.g. --facilitator "
+                 "https://starchild-x402-facilitator.fly.dev "
+                 "or your self-hosted facilitator/server.py")
 
     PLATFORM = ("pay_per_use", "lifetime", "monthly", "weekly",
                 "quarterly", "yearly", "prepaid")

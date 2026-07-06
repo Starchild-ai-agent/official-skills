@@ -1,10 +1,10 @@
 ---
 name: x402
-version: 1.5.2
+version: 2.2.1
 description: |
-  Monetize any user project/service with the x402 payment protocol on Base, and pay other agents' x402 services.
+  Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
-  Use when the user wants to charge for an API/service (per-call, subscription top-up, or metered billing), accept USDC from other agents, or call a paid x402 endpoint.
+  Use when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint.
 author: starchild
 tags: [x402, payments, base, usdc, monetization, api, subscription, metered, agent-commerce]
 delivery: script
@@ -32,10 +32,71 @@ buyer agent ──402/PAYMENT-SIGNATURE──> gateway :840x ──plain HTTP─
               facilitator (verify + settle on Base) ──USDC──> user's Privy wallet
 ```
 
-## Quick start — monetize a service
+## Quick start — monetize a service (PLATFORM MODES, use these by default)
+
+Platform modes implement the Starchild community-gateway billing contract
+(x402-facilitator `docs/pricing-models.md`): 402 JSON body with
+`accepts.pricingModel`, buyer sends `X-PAYMENT`, the **facilitator is the
+single source of truth for "already paid"** (no local payment state), and
+every settle auto-callbacks community-gateway for purchase/call records.
 
 ```bash
-# per-call pricing (pure x402, no accounts)
+FAC=https://starchild-x402-facilitator.fly.dev
+
+# pay_per_use: verify -> settle on EVERY request
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode pay_per_use --price 0.01 --network eip155:8453 --facilitator $FAC
+
+# lifetime: one payment = permanent access (checked via /facilitator/access-status)
+# NOTE: lifetime/monthly REQUIRE --facilitator-admin-token (fail-closed at startup;
+# access-status/settlements are admin-gated — without it the gateway cannot know
+# "already paid" and would re-settle every request, double-charging buyers)
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode lifetime --price 5.00 --network eip155:8453 --facilitator $FAC \
+    --facilitator-admin-token $ADMIN_TOKEN
+
+# monthly: natural-month subscription (same day next month, clamped to month end;
+# expiry computed from /facilitator/settlements confirmed_at)
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode monthly --price 10.00 --network eip155:8453 --facilitator $FAC \
+    --facilitator-admin-token $ADMIN_TOKEN
+
+# weekly / quarterly / yearly: fixed-length subscriptions (7/90/365 days after the
+# newest qualifying payment). Same admin-token requirement as lifetime/monthly.
+# Facilitator contract: queried as access-status pricing_model=monthly +
+# period_days=7/90/365 (monthly WITHOUT period_days = natural-month semantics).
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode weekly --price 3.00 --network eip155:8453 --facilitator $FAC \
+    --facilitator-admin-token $ADMIN_TOKEN
+
+# multi-plan (docs/pricing-models.md 多支付方式): --mode is the DEFAULT plan,
+# each --plan MODE=PRICE adds an option. Buyers pick a plan per request with the
+# X-Pricing-Model header; the 402 quotes THAT plan's amount (audit requirement).
+# pay_per_use cannot be combined with other plans.
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode monthly --price 10.00 --plan weekly=3 --plan yearly=90 \
+    --network eip155:8453 --facilitator $FAC --facilitator-admin-token $ADMIN_TOKEN
+
+# prepaid: one on-chain deposit, then every call is a millisecond off-chain debit.
+# For HIGH-FREQUENCY / metered APIs: no per-call settle (2-5s + gas + 30/min
+# rate limit), per-call price can be sub-cent. --deposit = suggested top-up size
+# (default 100 calls worth, min $0.10 = facilitator X402_MIN_DEPOSIT_AMOUNT).
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode prepaid --price 0.001 --deposit 1.00 --network eip155:8453 --facilitator $FAC
+```
+
+Default protected routes: `/api/*` (override with `--route 'METHOD /path'`;
+one service price via `--price` — platform modes have no per-route pricing).
+lifetime/monthly need `--facilitator-admin-token` because
+`/facilitator/access-status` + `/facilitator/settlements` are admin-gated
+(platform ops holds the token; ask for a scoped one per deployment).
+E2E verified on Base mainnet 2026-07-05: lifetime first call settled, repeat
+calls passed the already-paid check with NO second charge.
+
+## Legacy/extended modes (local-ledger billing — still supported)
+
+```bash
+# per-call pricing via x402 SDK middleware (V2 PAYMENT-REQUIRED headers)
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode payperuse --route 'GET /api/*=$0.01'
 
@@ -50,6 +111,12 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --route 'GET /api/cheap/*=1' --route 'POST /api/heavy=25'
 ```
 
+These keep payment state in the gateway's local SQLite ledger (deterministic
+API keys, credit refunds on upstream 5xx). **Deprecated for new deployments**
+since v2.1: prefer `--mode prepaid` (same prepaid-credit UX, balance held by
+the facilitator instead of a local SQLite file). Still fully supported for
+existing deployments; `timepass` has no platform equivalent yet.
+
 Output includes `gateway_port`. **Expose the GATEWAY port, not the upstream**
 (via `preview` or community-publish). `pay_to` defaults to the user's Privy
 EVM wallet — revenue lands there directly.
@@ -59,20 +126,96 @@ Per-service config/log/state: `/data/workspace/.x402/<name>/`.
 
 ## Billing mode decision table
 
-| Mode | Buyer UX | When |
-|------|----------|------|
-| `payperuse` | pay per request, no account | simple data endpoints, agent-to-agent one-shots |
-| `subscription` | x402 top-up → API key + N credits, 1 credit/call | repeat customers, avoids per-call payment latency |
-| `metered` | like subscription, route-weighted units | mixed cheap/expensive endpoints (LLM calls etc.) |
-| `timepass` | x402 payment → N-day unlimited access pass on an API key | monthly plans, content/tool sites |
+| Mode | Tier | Buyer UX | When |
+|------|------|----------|------|
+| `pay_per_use` | **platform** | X-PAYMENT each request, settled every call | simple data endpoints, agent-to-agent one-shots |
+| `lifetime` | **platform** | pay once, permanent access (facilitator-verified) | one-time unlock, buyout pricing |
+| `monthly` | **platform** | pay once per natural month | SaaS-style subscriptions |
+| `weekly` / `quarterly` / `yearly` | **platform** | fixed-length pass: 7 / 90 / 365 days from newest payment | short trials, annual discounts |
+| `prepaid` | **platform** | one on-chain deposit → off-chain debit per call | high-frequency / sub-cent / usage-metered APIs |
+| `payperuse` | legacy | SDK V2 headers, pay per request | pre-2.0 deployments |
+| `subscription` | extended | x402 top-up → API key + N credits, 1 credit/call | prepaid credits, avoids per-call payment latency |
+| `metered` | extended | like subscription, route-weighted units | mixed cheap/expensive endpoints (LLM calls etc.) |
+| `timepass` | extended | x402 payment → N-day pass on an API key | fixed-duration passes (non-natural-month) |
 
-Ready-to-use config templates (fill `pay_to` + `upstream`): `templates/payperuse.json`,
-`templates/subscription.json`, `templates/metered.json`, `templates/timepass.json`.
+Prefer **platform** modes: they match the community-gateway audit checklist,
+get automatic purchase/call records via the settle callback, and keep zero
+payment state in the gateway. `prepaid` supersedes the local-ledger
+`subscription`/`metered` modes for new deployments: same prepaid-credit UX,
+but the balance lives in the FACILITATOR (survives gateway restarts/moves,
+auditable by platform ops) instead of a gateway-local SQLite file. The
+legacy/extended modes remain for pre-2.1 deployments and for the timepass
+model the platform contract doesn't cover.
+
+### How prepaid works (v2.1, facilitator balance primitives)
+
+```
+first call    buyer signs deposit ($1)  -> gateway -> /facilitator/deposit-settle
+                                            (ONE on-chain settle, credits balance)
+every call    buyer signs per-call price -> gateway verifies sig (auth only,
+                                            NEVER settled) -> /facilitator/debit
+                                            (off-chain, ~ms) -> forward upstream
+upstream 5xx  gateway auto-refunds the debit (negative debit, request_id:refund)
+balance empty gateway answers 402 insufficient_balance with accepts.amount =
+              deposit size -> client auto-signs the top-up and retries
+```
+
+Contract details (all verified against the deployed platform facilitator):
+- 402 challenge: `accepts.pricingModel = "prepaid"`, `accepts.amount` = per-call
+  price normally, deposit size when topping up; extra fields
+  `accepts.depositAtomic` + `accepts.pricePerCallAtomic` tell buyers both numbers.
+- The per-call X-PAYMENT signature is authentication only — the gateway calls
+  /verify (cached per signature until its validBefore) then /facilitator/debit;
+  the signed value is settled ONLY when it is an actual deposit (value >=
+  depositAtomic AND balance insufficient). Buyer exposure to a malicious
+  gateway is therefore one per-call price, same as pay_per_use.
+- Debit idempotency: gateway generates a fresh `request_id` (uuid) per call;
+  the facilitator binds request_id to (payer, amount) — cross-payer reuse is 409.
+- Route `units` multiply the per-call price (metered pricing, e.g.
+  `--route 'POST /api/heavy=25'` charges 25x).
+- Deposit minimum: facilitator `X402_MIN_DEPOSIT_AMOUNT` (default $0.10).
+
+### Multi-plan services (v2.2, docs/pricing-models.md 多支付方式)
+
+One service can offer several pricing options simultaneously (e.g. weekly $3 /
+monthly $10 / yearly $90 / lifetime $150). Contract (community-gateway audits
+this per plan before listing):
+
+- Config: `"plans": {"weekly": {"price_usd": "3"}, ...}`; `"mode"` is the
+  DEFAULT plan. CLI: `--plan MODE=PRICE` (repeatable).
+- Buyer selects a plan per request with the `X-Pricing-Model` header
+  (`client.paid_request(..., pricing_model="yearly")`); the 402 then quotes
+  THAT plan's `accepts.amount` + `pricingModel`. Unknown plan -> HTTP 400
+  listing available plans. No header -> default plan; its 402 (and
+  `/.well-known/x402`) carries a `plans` map with every option's accepts.
+- Combination rules (enforced by the gateway): `pay_per_use` cannot be
+  combined with anything (startup error). Before charging under ANY plan the
+  gateway checks access under ALL subscription plans of the service — a
+  lifetime holder requesting the weekly plan is never re-charged (verified:
+  access-status consulted per plan until hit, zero settles).
+- Subscriptions + prepaid can be combined: a subscription holder is forwarded
+  without debiting the prepaid balance.
+- weekly/quarterly/yearly access checks go to the facilitator as
+  `pricing_model=monthly&period_days=7|90|365` (period_days contract) with
+  `min_amount` = that plan's price; the access cache is keyed per
+  (payer, plan).
+
+Ready-to-use config templates (fill `pay_to` + `upstream`):
+platform — `templates/pay_per_use.json`, `templates/lifetime.json`,
+`templates/monthly.json`, `templates/weekly.json`, `templates/quarterly.json`,
+`templates/yearly.json`, `templates/prepaid.json`, `templates/multi_plan.json`;
+legacy/extended — `templates/payperuse.json`, `templates/subscription.json`,
+`templates/metered.json`, `templates/timepass.json`.
 All four modes verified with REAL Base-mainnet settlements (2026-07-03):
 subscription 0x3c4a9371…, metered 0xd1070f32…/0x81e668b7…, timepass pass_active
 until expiry, payperuse 0x671119cb…. Timepass CLI: `--mode timepass
 --pass-days 30 --pass-price 4.99`; repeat purchases EXTEND expiry from
-max(now, current expiry).
+max(now, current expiry). Prepaid E2E verified on Base mainnet 2026-07-06:
+deposit 0x45946e23… (100000 atomic, block 48257298), then 2 pure off-chain
+debit calls at ~1s latency each, balance exact, upstream-5xx refund exact.
+Buyers need NO special handling: `client.paid_request` detects the prepaid
+challenge, signs the per-call price for auth, and auto-signs the deposit only
+when the gateway answers insufficient_balance (spend guard applies to both).
 
 Subscription/metered specifics:
 - Account = payer wallet address; API key is **deterministic** per payer (re-topup returns the same key).
@@ -118,6 +261,12 @@ restarted (upstream has its own supervisor via previews — don't fight it).
 python3 skills/x402/client.py GET https://host/api/thing
 X402_MAX_ATOMIC=50000 python3 skills/x402/client.py POST https://host/x402/topup
 ```
+
+`paid_request` auto-detects BOTH 402 flavors: V2 header challenge
+(PAYMENT-REQUIRED → x402 SDK path) and the platform JSON-body challenge
+(`accepts.pricingModel` → manual EIP-3009 sign → retry with `X-PAYMENT`).
+For lifetime/monthly services, repeat calls within the paid period verify but
+do NOT settle — the result has `paid: true` with no new on-chain tx.
 
 **Buyer signer = session EOA by default** (`.x402/buyer.key`, auto-generated).
 ⚠️ Do NOT sign EIP-3009 with the Privy wallet on Base mainnet: the Privy
@@ -190,5 +339,16 @@ Facilitator verify failures seen in the wild (2nd 402's `error` field):
   wallet holds USDC on the target network).
 - **Ledger inspection**: `sqlite3 /data/workspace/.x402/<name>/state/ledger.db 'select * from payments'`.
 - **Gateway logs**: `/data/workspace/.x402/<name>/gateway.log`.
+- **Testing gateways locally — port hygiene (hard-won lesson)**: a uvicorn
+  gateway whose port is already held FAILS TO BIND but the old process keeps
+  answering, so your "new code" test actually exercises the OLD process (and
+  its 60s access cache) — false PASSes and false FAILs. Rules:
+  1. After starting a test gateway, ALWAYS check its log for
+     `address already in use` BEFORE trusting any response from that port.
+  2. Kill test processes by LISTENING-PORT PID
+     (`ss -tlnp | grep :PORT` → kill that pid), never by `ps | grep` name
+     matching — backgrounded shells and renamed configs escape name matches.
+  3. When in doubt, move to brand-new port numbers instead of reusing ones a
+     dead-looking process might still hold.
 - Python SDK is `x402` v2.10+ (V2 headers `PAYMENT-REQUIRED`/`PAYMENT-SIGNATURE`/
   `PAYMENT-RESPONSE`); install line lives in `setup.sh`.

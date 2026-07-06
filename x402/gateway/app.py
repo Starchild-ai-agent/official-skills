@@ -37,6 +37,8 @@ if _ca and not os.environ.get("X402_NO_PROXY"):
     os.environ.setdefault("HTTP_PROXY", _url)
     os.environ["NO_PROXY"] = os.environ.get("NO_PROXY", "") + ",127.0.0.1,localhost"
 
+import uuid
+
 import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -47,6 +49,8 @@ from x402.mechanisms.evm.exact.register import register_exact_evm_server
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ledger import Ledger  # noqa: E402
+from platform_modes import (AccessCheckError, PLATFORM_MODES, SUBSCRIPTION_MODES,  # noqa: E402
+                            PlatformBilling, decode_payment_header)
 
 # --------------------------------------------------------------------------
 CONFIG_PATH = os.environ.get("X402_CONFIG") or (sys.argv[1] if len(sys.argv) > 1 else "x402.config.json")
@@ -82,6 +86,25 @@ server = x402ResourceServer(fac)
 register_exact_evm_server(server)
 
 ledger = Ledger(os.path.join(STATE_DIR, "ledger.db")) if MODE in ("subscription", "metered", "timepass") else None
+platform_billing = PlatformBilling(CFG) if MODE in PLATFORM_MODES else None
+
+# ---- multi-plan (docs/pricing-models.md "多支付方式") --------------------
+# CFG["plans"] = {"weekly": {"price_usd": "3"}, "yearly": {"price_usd": "90"}, ...}
+# MODE is the DEFAULT plan; the buyer selects another plan per request with the
+# X-Pricing-Model header. pay_per_use cannot be combined with other modes
+# (per-call payment conflicts with any subscription/prepaid semantics).
+platform_plans: dict = {}
+if platform_billing is not None and CFG.get("plans"):
+    if MODE == "pay_per_use" or "pay_per_use" in CFG["plans"]:
+        raise ValueError("pay_per_use cannot be combined with other pricing plans")
+    platform_plans[MODE] = platform_billing
+    for plan_name, plan_cfg in CFG["plans"].items():
+        if plan_name == MODE:
+            continue
+        if plan_name not in PLATFORM_MODES:
+            raise ValueError(f"unknown plan '{plan_name}' (allowed: {PLATFORM_MODES})")
+        merged = {**CFG, **plan_cfg, "mode": plan_name}
+        platform_plans[plan_name] = PlatformBilling(merged)
 
 
 def _err(status: int, code: str, message: str, **extra) -> JSONResponse:
@@ -93,7 +116,9 @@ def _err(status: int, code: str, message: str, **extra) -> JSONResponse:
 # --------------------------------------------------------------------------
 x402_routes: dict = {}
 
-if MODE == "payperuse":
+if MODE in PLATFORM_MODES:
+    pass  # platform modes bypass the SDK middleware — handled in proxy()
+elif MODE == "payperuse":
     for pattern, rc in ROUTES.items():
         x402_routes[pattern] = {
             "accepts": {"scheme": "exact", "payTo": PAY_TO,
@@ -228,7 +253,10 @@ async def info():
     body = {"mode": MODE, "network": NETWORK, "pay_to": PAY_TO,
             "facilitator": FACILITATOR_URL or "https://x402.org/facilitator",
             "routes": ROUTES}
-    if MODE != "payperuse":
+    if platform_billing is not None:
+        body["pricingModel"] = MODE
+        body["price_usd"] = CFG.get("price_usd", "0.01")
+    elif MODE != "payperuse":
         body["topup"] = {"endpoint": "POST /x402/topup", **TOPUP}
     return body
 
@@ -320,6 +348,25 @@ async def proxy(path: str, request: Request):
 
     if full in ("/.well-known/x402", "/.well-known/x402/"):
         # discovery endpoint (Coinbase Bazaar / Cloudflare-style price discovery)
+        if platform_billing is not None:
+            # platform modes don't build x402_routes (no SDK middleware) —
+            # generate accepts from the billing contract so platform-mode
+            # services are discoverable too. Multi-plan services list every
+            # plan's accepts under "plans" (selected via X-Pricing-Model).
+            resources = [
+                {"resource": route, "units": (spec or {}).get("units", 1),
+                 "accepts": platform_billing.requirements(route),
+                 **({"plans": {m: p.requirements(route)
+                               for m, p in sorted(platform_plans.items())}}
+                    if platform_plans else {})}
+                for route, spec in CFG.get("routes", {}).items()
+            ]
+        else:
+            resources = [
+                {"resource": route, **{k: v for k, v in spec.items() if k != "accepts"},
+                 "accepts": spec.get("accepts")}
+                for route, spec in x402_routes.items()
+            ]
         return {
             "x402Version": 2,
             "kind": "http",
@@ -327,13 +374,124 @@ async def proxy(path: str, request: Request):
             "network": NETWORK,
             "payTo": PAY_TO,
             "facilitator": FACILITATOR_URL or "default",
-            "resources": [
-                {"resource": route, **{k: v for k, v in spec.items() if k != "accepts"},
-                 "accepts": spec.get("accepts")}
-                for route, spec in x402_routes.items()
-            ],
+            "resources": resources,
             "routes": CFG.get("routes", {}),
         }
+
+    # ---- platform pricing modes (community-gateway contract) -------------
+    prepaid_charge = None  # (pb, payer, request_id, units) — set when a prepaid debit applied
+    if platform_billing is not None and units > 0:
+        # plan selection (multi-plan): X-Pricing-Model header picks the plan;
+        # no header (or single-plan service) -> default plan (MODE).
+        plan_hdr = (request.headers.get("X-Pricing-Model") or "").strip().lower()
+        if platform_plans and plan_hdr:
+            pb = platform_plans.get(plan_hdr)
+            if pb is None:
+                return _err(400, "unknown_pricing_model",
+                            f"X-Pricing-Model '{plan_hdr}' not offered "
+                            f"(available: {', '.join(sorted(platform_plans))})")
+        else:
+            pb = platform_billing
+        selected_mode = pb.mode
+
+        # combination rule: before charging under ANY plan, honor access the
+        # buyer already holds under any OTHER subscription plan of this service
+        # (e.g. lifetime holder must never be re-charged via a weekly 402).
+        async def _any_subscription_access(payer_addr: str) -> bool:
+            for _pb in (platform_plans.values() if platform_plans else (pb,)):
+                if _pb.mode in SUBSCRIPTION_MODES and await _pb.already_paid(payer_addr):
+                    return True
+            return False
+
+        raw = request.headers.get("X-PAYMENT") or request.headers.get("PAYMENT-SIGNATURE") or ""
+        if not raw:
+            body402 = pb.challenge_body(full)
+            if platform_plans:
+                body402["plans"] = {m: p.requirements(full)
+                                    for m, p in sorted(platform_plans.items())}
+            return JSONResponse(body402, status_code=402)
+        payload, payer = decode_payment_header(raw)
+        if not payer:
+            return JSONResponse(pb.challenge_body(full, error="malformed X-PAYMENT header"),
+                                status_code=402)
+        try:
+            v = await (pb.verify_cached(payload, full) if selected_mode == "prepaid"
+                       else pb.verify(payload, full))
+        except Exception as e:
+            return _err(502, "facilitator_error", f"payment facilitator unreachable: {e}")
+        if not v.get("isValid"):
+            return JSONResponse(pb.challenge_body(
+                full, error=v.get("invalidReason", "payment verification failed")),
+                status_code=402)
+        payer = v.get("payer") or payer
+
+        if selected_mode == "prepaid":
+            # signature = authentication; money moves off-chain via debit.
+            # Deposit happens only when the balance can't cover this call AND
+            # the signed value is an actual top-up (>= depositAtomic).
+            # combination rule: a buyer holding a subscription plan of this
+            # service is never billed per-call via prepaid.
+            covered = False
+            if platform_plans:
+                try:
+                    covered = await _any_subscription_access(payer)
+                except AccessCheckError as e:
+                    return _err(502, "facilitator_error", f"access check failed: {e}")
+            if not covered:
+                price = int(pb.amount_atomic) * units
+                auth_value = int((payload.get("payload", {})
+                                  .get("authorization", {}) or {}).get("value", 0) or 0)
+                try:
+                    bal = await pb.balance(payer)
+                except Exception as e:
+                    return _err(502, "facilitator_error", f"balance check failed: {e}")
+                if bal < price and auth_value >= pb.deposit_atomic:
+                    try:
+                        dep = await pb.deposit(payload, full)
+                    except Exception as e:
+                        return _err(502, "facilitator_error", f"deposit failed: {e}")
+                    if not dep.get("success"):
+                        return JSONResponse(pb.challenge_body(
+                            full, error=dep.get("errorReason", "deposit settlement failed"),
+                            deposit=True), status_code=402)
+                    bal = int(dep.get("balance_atomic", 0))
+                if bal < price:
+                    return JSONResponse(pb.challenge_body(
+                        full, error=f"insufficient_balance: {bal} < {price} — "
+                                    "sign accepts.amount to top up your prepaid balance",
+                        deposit=True), status_code=402)
+                request_id = uuid.uuid4().hex
+                try:
+                    d = await pb.debit(payer, request_id, units=units, route=full)
+                except Exception as e:
+                    return _err(502, "facilitator_error", f"debit failed: {e}")
+                if not d.get("ok"):
+                    if d.get("error") == "insufficient_balance":
+                        return JSONResponse(pb.challenge_body(
+                            full, error="insufficient_balance — sign accepts.amount "
+                                        "to top up your prepaid balance", deposit=True),
+                            status_code=402)
+                    return _err(502, "facilitator_error", f"debit rejected: {d.get('error')}")
+                prepaid_charge = (pb, payer, request_id, units)
+        else:
+            try:
+                paid = (await _any_subscription_access(payer) if platform_plans
+                        else await pb.already_paid(payer))
+            except AccessCheckError as e:
+                # unknown != unpaid: settling on an auth/availability failure
+                # would re-charge an already-paid buyer on every request
+                return _err(502, "facilitator_error", f"access check failed: {e}")
+            if not paid:
+                try:
+                    s = await pb.settle(payload, full)
+                except Exception as e:
+                    return _err(502, "facilitator_error", f"settle failed: {e}")
+                if not s.get("success"):
+                    return JSONResponse(pb.challenge_body(
+                        full, error=s.get("errorReason", "payment settlement failed")),
+                        status_code=402)
+                if selected_mode != "pay_per_use":
+                    pb.grant_cache(payer)
 
     if MODE == "timepass" and units > 0:
         if not key:
@@ -374,10 +532,16 @@ async def proxy(path: str, request: Request):
     except Exception as e:
         if MODE in ("subscription", "metered") and units > 0:
             ledger.refund(key, units, route=full)  # don't charge for our failure
+        if prepaid_charge:
+            _pb, _payer, _rid, _u = prepaid_charge
+            await _pb.refund(_payer, _rid, units=_u, route=full)
         return _err(502, "upstream_error", f"upstream unreachable: {e}")
 
     if r.status_code >= 500 and MODE in ("subscription", "metered") and units > 0:
         ledger.refund(key, units, route=full)
+    if r.status_code >= 500 and prepaid_charge:
+        _pb, _payer, _rid, _u = prepaid_charge
+        await _pb.refund(_payer, _rid, units=_u, route=full)
 
     resp_headers = {k: v for k, v in r.headers.items()
                     if k.lower() not in ("content-length", "transfer-encoding", "content-encoding")}

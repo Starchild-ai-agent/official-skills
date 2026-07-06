@@ -565,13 +565,25 @@ def _detect_x402_billing(port: int) -> bool:
     answers 402. 2s timeout each; any failure returns False — detection
     must never break or slow down publishing.
     """
+    import json
     import urllib.request
     import urllib.error
     base = f"http://127.0.0.1:{port}"
     try:
         with urllib.request.urlopen(base + "/.well-known/x402", timeout=2) as r:
             if r.status == 200:
-                return True
+                # Static sites with SPA fallback answer 200 HTML for ANY
+                # path — only count a real x402 discovery document: JSON
+                # with x402 marker fields.
+                body = r.read(65536)
+                try:
+                    doc = json.loads(body)
+                except Exception:
+                    doc = None
+                if isinstance(doc, dict) and (
+                    "x402Version" in doc or "accepts" in doc or "resources" in doc
+                ):
+                    return True
     except urllib.error.HTTPError:
         pass
     except Exception:

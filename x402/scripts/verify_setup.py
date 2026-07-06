@@ -29,7 +29,9 @@ WS = os.path.abspath(os.path.join(SKILL, "..", ".."))
 sys.path.insert(0, SKILL)
 
 NETWORK = os.environ.get("X402_NETWORK", "eip155:84532")  # Base Sepolia default
-PAY_TO = os.environ.get("X402_PAY_TO", "0x1eF7DbC1a082043De850A2F035fD04aA8Adb7934")
+# Placeholder recipient for local self-checks only (no funds ever sent to it);
+# set X402_PAY_TO to your real wallet for a live check.
+PAY_TO = os.environ.get("X402_PAY_TO", "0x000000000000000000000000000000000000dEaD")
 UP_PORT, PPU_PORT, SUB_PORT = 18500, 18501, 18502
 
 results: list[tuple[str, bool, str]] = []

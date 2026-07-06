@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.2.2
+version: 2.2.3
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -90,8 +90,8 @@ one service price via `--price` — platform modes have no per-route pricing).
 lifetime/monthly need `--facilitator-admin-token` because
 `/facilitator/access-status` + `/facilitator/settlements` are admin-gated
 (platform ops holds the token; ask for a scoped one per deployment).
-E2E verified on Base mainnet 2026-07-05: lifetime first call settled, repeat
-calls passed the already-paid check with NO second charge.
+Lifetime semantics: first call settles on-chain; repeat calls pass the
+already-paid check with NO second charge.
 
 ## Legacy/extended modes (local-ledger billing — still supported)
 
@@ -191,8 +191,8 @@ this per plan before listing):
 - Combination rules (enforced by the gateway): `pay_per_use` cannot be
   combined with anything (startup error). Before charging under ANY plan the
   gateway checks access under ALL subscription plans of the service — a
-  lifetime holder requesting the weekly plan is never re-charged (verified:
-  access-status consulted per plan until hit, zero settles).
+  lifetime holder requesting the weekly plan is never re-charged
+  (access-status is consulted per plan until a hit, with zero settles).
 - Subscriptions + prepaid can be combined: a subscription holder is forwarded
   without debiting the prepaid balance.
 - weekly/quarterly/yearly access checks go to the facilitator as
@@ -206,13 +206,10 @@ platform — `templates/pay_per_use.json`, `templates/lifetime.json`,
 `templates/yearly.json`, `templates/prepaid.json`, `templates/multi_plan.json`;
 legacy/extended — `templates/payperuse.json`, `templates/subscription.json`,
 `templates/metered.json`, `templates/timepass.json`.
-All four modes verified with REAL Base-mainnet settlements (2026-07-03):
-subscription 0x3c4a9371…, metered 0xd1070f32…/0x81e668b7…, timepass pass_active
-until expiry, payperuse 0x671119cb…. Timepass CLI: `--mode timepass
---pass-days 30 --pass-price 4.99`; repeat purchases EXTEND expiry from
-max(now, current expiry). Prepaid E2E verified on Base mainnet 2026-07-06:
-deposit 0x45946e23… (100000 atomic, block 48257298), then 2 pure off-chain
-debit calls at ~1s latency each, balance exact, upstream-5xx refund exact.
+Timepass CLI: `--mode timepass --pass-days 30 --pass-price 4.99`; repeat
+purchases EXTEND expiry from max(now, current expiry). Prepaid behavior: one
+on-chain deposit, then pure off-chain per-call debits (sub-second), exact
+balance accounting, automatic refund on upstream 5xx.
 Buyers need NO special handling: `client.paid_request` detects the prepaid
 challenge, signs the per-call price for auth, and auto-signs the deposit only
 when the gateway answers insufficient_balance (spend guard applies to both).
@@ -239,8 +236,8 @@ env) ONLY pays gas — fund flow is fixed by the buyer's signature; it can never
 touch user funds. It needs a little Base ETH for gas (~$0.001/settlement).
 Safety: mandatory `eth_call` simulation before spending gas, per-payer rate
 limit (`X402_PAYER_RATE_LIMIT`, default 30/min), authorization-nonce idempotency,
-full settlement ledger at `/facilitator/stats`. Platform deployment package
-(Dockerfile + fly.toml + OPS.md): `output/x402-facilitator-deploy/`. Testnet USDC (Base Sepolia): `0x036CbD53842c5426634e7929541eC2318f3dCF7e`,
+full settlement ledger at `/facilitator/stats`.
+Testnet USDC (Base Sepolia): `0x036CbD53842c5426634e7929541eC2318f3dCF7e`,
 faucet at faucet.circle.com. Prices auto-convert: `$0.01` → `10000` atomic USDC units.
 
 ## Keepalive (register once per machine)
@@ -272,7 +269,7 @@ do NOT settle — the result has `paid: true` with no new on-chain tx.
 ⚠️ Do NOT sign EIP-3009 with the Privy wallet on Base mainnet: the Privy
 address carries EIP-7702 delegation code, so USDC verifies via EIP-1271 and
 rejects plain ECDSA on-chain (`FiatTokenV2: invalid signature`) — even though
-off-chain recovery passes. Verified 2026-07. Fund the session EOA with a small
+off-chain recovery passes. Fund the session EOA with a small
 USDC budget from the Privy wallet (ERC20 transfer); the budget IS the hard
 spend cap. **Spend guard**: additionally refuses to sign above
 `X402_MAX_ATOMIC` (default 1_000_000 = 1 USDC). ⚠️ Signing = spending real
@@ -284,45 +281,40 @@ or raising the cap. Result includes `settlement.transaction` (on-chain tx hash)
 
 Make any local service a PUBLIC paid API (charge any caller for any resource,
 no accounts / API keys needed — same capability set as Cloudflare's
-Monetization Gateway announced 2026-07-01, but works today and self-hosted):
+Monetization Gateway, self-hosted):
 
 1. `python3 skills/x402/scripts/make_public.py --name my-api --upstream-port <port> --mode payperuse --route 'GET /api/*=$0.01' --pay-to <wallet>` — scaffolds `output/my-api/start.py` + config
 2. `preview(action='serve', dir='output/my-api', command='python3 start.py', port=<gateway_port>)` — note: start the upstream in the same command if it isn't already running
 3. `community-publish` skill → `publish_preview(preview_id, slug='my-api')` → public URL
 4. Price discovery is built in: `GET <public-url>/.well-known/x402` returns machine-readable routes/prices/payTo/network (Bazaar-compatible shape).
 
-## Live demo service — self-contained smoke test
+## Consuming any x402 service from just a URL
 
-A public multi-plan demo gateway is kept running for testing this skill and
-platform connectivity end-to-end (Base mainnet, production facilitator,
-weekly $0.10 default plan + yearly $1.00):
+Given ONLY a service URL (no docs, no guidance), onboard and verify it with
+this sequence — everything needed is self-describing in the protocol:
 
-```
-BASE=https://community.iamstarchild.com/2004-x402-demo
-```
+1. **Discover** (free): `GET <url>` with no payment headers. A 402 response
+   IS the price sheet: `accepts.amount` (atomic USDC), `accepts.pricingModel`,
+   `accepts.network`, and — on multi-plan services — a `plans` map with every
+   option's accepts. Optionally `GET <base>/.well-known/x402` for a
+   machine-readable index of all routes/prices.
+2. **Probe plans** (free, multi-plan only): repeat the unpaid GET with
+   `X-Pricing-Model: <plan>` — each 402 quotes that plan's exact amount.
+   An unknown plan returns HTTP 400 listing the valid ones.
+3. **Pay & call**: `client.paid_request("GET", url, max_amount_atomic=<cap>)`
+   handles the whole flow (402 → EIP-3009 sign → retry with X-PAYMENT).
+   Select a plan with `pricing_model="<plan>"`. Requirements: session EOA
+   funded with USDC on the service's network (see Buyer side above); cap =
+   your spend guard. Confirm with the user before paying — this is real money.
+4. **Verify billing semantics** (subscription modes): call again — the result
+   must be 200 with NO new settlement (`paid: true`, no new tx). On multi-plan
+   services, requesting a different plan while holding one must also NOT
+   re-charge. `settlement.transaction` from step 3 is the on-chain proof —
+   report it and verify per transaction-verification rules.
 
-Run these in order — steps 1–3 are FREE and already verify most of the chain
-(skill → public gateway → x402 gateway → facilitator reachability):
-
-1. `GET $BASE/x402/health` → `{"gateway":"ok","upstream":"ok","mode":"weekly"}`
-2. `GET $BASE/free/info` → free route proxied, self-describing usage doc
-3. Protocol checks (no wallet needed):
-   - `GET $BASE/api/hello` → 402, `accepts.amount == "100000"`,
-     `pricingModel == "weekly"`, `plans` map lists weekly+yearly
-   - with `X-Pricing-Model: yearly` → 402, `amount == "1000000"`
-   - with `X-Pricing-Model: daily` → HTTP 400 (unknown plan)
-4. Real payment (~$0.10, requires the session EOA funded with Base USDC —
-   see Buyer side above):
-   `paid_request("GET", f"{BASE}/api/hello", max_amount_atomic=150_000)`
-   → 200, on-chain settle, weekly access granted for 7 days.
-5. Subscription + combination rules: repeat step 4 → 200 with NO new charge
-   (weekly access held); then `pricing_model="yearly"` → also 200 with no
-   charge (existing plan covers other plans — never double-billed).
-
-Verified live 2026-07-06 (weekly settle tx 0x118981a5…e18a, $0.10); earlier
-pay_per_use verification 2026-07-03 (tx 0x73669f5f…a6d6, $0.01). If the demo
-is down (container restart), any service built with monetize.py exposes the
-same surface — or ask agent 2004 to bring it back up.
+The same sequence doubles as a smoke test of any x402 deployment: steps 1–2
+are free and validate the challenge contract; steps 3–4 validate settlement
+and access accounting end-to-end.
 
 ## Security model (what protects whom)
 

@@ -225,7 +225,7 @@ def create_post(content: str, tags: Optional[List[str]] = None,
     """Publish a post. Returns the new post (with its real id) on success.
 
     attachments: list of {type, resource_id} cards. type in
-    skill|project|thread|worldcup_prediction|worldcup_match.
+    skill|project|service|thread|worldcup_prediction|worldcup_match.
     """
     gate = _owner_gate()
     if gate:

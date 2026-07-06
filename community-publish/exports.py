@@ -1,27 +1,48 @@
 """community-publish skill exports.
 
-Two independent kinds of sharing, optionally cross-linked via project.yaml's
-`publisher:` block:
+This skill handles TWO distinct concepts — keep them separate:
 
-  Open-source side (any code, GitHub-backed):
-    open_source, remove_open_source, list_open_source,
-    get_open_source, fork, validate_open_source
+  PUBLISH (发布) — make something accessible:
+    - publish_preview()      → public URL for a running service
+    - unpublish_preview()    → remove the public URL
+    - list_published_previews() → list your public URLs
+    - open_source()          → push code to community GitHub
+    - remove_open_source()   → delete code from GitHub
+    - list_open_source()     → browse open-sourced code
+    - get_open_source()      → fetch one project's metadata
+    - fork()                 → install someone's project locally
+    - validate_open_source() → pre-flight check
+    - link_to_listing()      → manual cross-link repair (rare)
 
-  Public URL side (any running HTTP service, in-memory route table):
-    publish_preview, unpublish_preview, list_published_previews
+  LIST (上架) — make something discoverable/purchasable on the marketplace:
+    Free listing (no review, no pricing):
+      - list_in_dashboard()      → show on /projects gallery
+      - unlist_from_dashboard()  → remove from gallery
+      - get_listing_status()     → check if listed
+    Paid listing (x402 charging + automated review + publish):
+      - create_paid_service()    → create a service record
+      - submit_for_review()      → trigger automated review
+      - get_review_status()      → poll review progress
+      - publish_service()        → go live (requires approved)
+      - unpublish_service()      → take down
+      - list_my_services()       → list your services
+      - get_service()            → fetch one service
+      - update_service()         → update service fields
+      - delete_service()         → delete a service
+
+Publishing and listing are independent. A project can be published (URL
+works) without being listed (not on the gallery), and vice versa. Paid
+listing requires a published URL first (the api_endpoint must be reachable).
 
 Cross-link binding lives in project.yaml under `publisher:`. Either side can
 register the binding first; the gateway holds a pending entry until the
 counterpart arrives. No manual link step needed in the typical flow.
 
-Manual escape hatch (for repair scenarios after rename):
-    link_to_listing(listing_slug, code_slug)
-
 Usage from a bash block:
     python3 - <<'EOF'
     import sys
     sys.path.insert(0, "/data/workspace/skills/community-publish")
-    from exports import open_source, publish_preview
+    from exports import open_source, publish_preview, list_in_dashboard
     print(open_source("output/projects/my-app"))
     EOF
 """
@@ -233,9 +254,13 @@ def validate_open_source(project_dir: str) -> dict[str, Any]:
 
 
 def open_source(project_dir: str, version_bump: str = "patch",
-                message: str = "",
-                make_discoverable: bool = True) -> dict[str, Any]:
+                message: str = "") -> dict[str, Any]:
     """Validate, bump version, and push project source to the community GitHub repo.
+
+    This is a PUBLISH action (发布代码) — it pushes code to GitHub so others
+    can fork it. It does NOT list anything on the marketplace. To make a
+    project discoverable, call list_in_dashboard() (free) or
+    create_paid_service() (paid) separately after publishing.
 
     Args:
         project_dir: path to the project (e.g. "output/projects/my-app")
@@ -245,16 +270,6 @@ def open_source(project_dir: str, version_bump: str = "patch",
                  code changes in the session — it becomes the body of the
                  GitHub commit and is what people read when browsing
                  history. If blank, gateway uses a generic template.
-        make_discoverable: if True (default), after pushing the code attempt
-                 to make the paired dashboard listing public. The pairing
-                 slug is `publisher.public_slug` if set in project.yaml,
-                 otherwise `publisher.code_slug`, otherwise `manifest.name`.
-                 If no preview/listing row exists for that slug yet
-                 (pure libraries, pure scripts), the auto-list is silently
-                 skipped — open_source itself still succeeds. Pass
-                 make_discoverable=False to push code without touching
-                 listing visibility (useful when the listing should stay
-                 private for now).
     """
     pd = _abspath(project_dir)
     if not os.path.isdir(pd):
@@ -313,55 +328,6 @@ def open_source(project_dir: str, version_bump: str = "patch",
     # wired (or what's pending).
     publisher = manifest.get("publisher") or {}
 
-    # Auto-list: "open source" matches the user-intuition default of
-    # "make this fully public". If a paired preview/listing row exists,
-    # flip it to public. If none exists (pure code with no preview),
-    # silently skip — the open_source push itself still succeeds.
-    auto_list_result: dict[str, Any] = {"attempted": False}
-    if make_discoverable:
-        short_slug = (
-            publisher.get("public_slug")
-            or publisher.get("code_slug")
-            or manifest["name"]
-        )
-        full_slug = (
-            short_slug if short_slug.startswith(f"{uid}-") else f"{uid}-{short_slug}"
-        )
-        desc = str(manifest.get("description") or "")[:500]
-        display_name = manifest.get("display_name") or manifest["name"]
-        raw_tags = manifest.get("tags") or []
-        tags = (
-            [str(t)[:20] for t in raw_tags[:5]]
-            if isinstance(raw_tags, list)
-            else None
-        )
-        try:
-            list_res = list_in_dashboard(
-                slug=full_slug,
-                name=display_name,
-                description=desc,
-                tags=tags,
-            )
-        except Exception as e:
-            list_res = {"ok": False, "error": f"auto-list call raised: {e}"}
-
-        auto_list_result["attempted"] = True
-        auto_list_result["slug"] = full_slug
-        if list_res.get("ok"):
-            auto_list_result["listed"] = True
-            auto_list_result["url"] = list_res.get("url")
-        else:
-            err = str(list_res.get("error") or "")
-            # 404 ("No preview found") is the expected "pure code / no
-            # preview" case — not an error, just a no-op.
-            if "No preview found" in err:
-                auto_list_result["listed"] = False
-                auto_list_result["reason"] = "no_preview_for_slug"
-            else:
-                auto_list_result["listed"] = False
-                auto_list_result["reason"] = "list_failed"
-                auto_list_result["error"] = err
-
     return {
         "ok": True,
         "user_id": uid,
@@ -375,7 +341,6 @@ def open_source(project_dir: str, version_bump: str = "patch",
             "code_slug": publisher.get("code_slug") or manifest["name"],
             "public_slug": publisher.get("public_slug"),
         },
-        "auto_list": auto_list_result,
         "hint": _publisher_hint_for_open_source(uid, manifest, publisher),
     }
 
@@ -834,7 +799,7 @@ def list_in_dashboard(
     cover_url: str | None = None,
     tags: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Show this preview on the public Project Dashboard.
+    """Show this preview on the public Service Marketplace.
 
     Requires publish_preview() to have run for `slug` first — gateway
     rejects with 404 if no listing row exists yet.
@@ -899,7 +864,7 @@ def list_in_dashboard(
 
 
 def unlist_from_dashboard(slug: str) -> dict[str, Any]:
-    """Remove this preview from the Project Dashboard.
+    """Remove this preview from the Service Marketplace.
 
     The preview URL keeps working — only the dashboard listing row
     is deleted, along with view/favorite counts. To temporarily hide
@@ -969,3 +934,803 @@ def get_listing_status(slug: str) -> dict[str, Any]:
         "is_public": True,
         "listing": project,
     }
+
+
+# ════════════════════════════════════════════════════════════════════════
+# PAID SERVICE LISTING — create paid services on the Service Marketplace.
+# These require x402 charging + automated review + publish approval.
+# Completely different from the free listing flow above.
+#
+# Lifecycle: draft → pending → approved → published
+# (paid services MUST pass review before publishing)
+# ════════════════════════════════════════════════════════════════════════
+
+def create_paid_service(
+    name: str,
+    description: str,
+    category: str,
+    service_type: str,
+    api_endpoint: str,
+    provider_wallet: str,
+    pricing_model: str,
+    price: float,
+    project_slug: str | None = None,
+    cover_url: str | None = None,
+    tags: list[str] | None = None,
+    free_trial_count: int | None = None,
+    api_documentation: str | None = None,
+    example_request: str | None = None,
+    example_response: str | None = None,
+    service_description: str | None = None,
+) -> dict[str, Any]:
+    """Create a paid service listing on the Service Marketplace.
+
+    This is a LIST action (上架) — it creates a service record that, after
+    review and publishing, will be discoverable and purchasable. It does
+    NOT publish a URL or push code — use publish_preview() and open_source()
+    first.
+
+    Prerequisites:
+        - The project must have a public URL (publish_preview() first).
+        - The api_endpoint must implement x402 charging (return 402 when
+          unpaid, 200 + data after payment). Use the x402 skill to set
+          this up.
+
+    Args:
+        name: Service display name (≤500 chars).
+        description: Service description (Markdown).
+        category: Service category (e.g. "数据服务", "工具服务").
+        service_type: "paid_project" or "paid_api".
+        api_endpoint: The x402 charge endpoint URL. For paid_project this
+            is the project's public URL; for paid_api it's the external
+            API URL.
+        provider_wallet: Base chain wallet address to receive payments.
+        pricing_model: "pay_per_use", "lifetime", or "monthly".
+        price: Price in USDC (>0).
+        project_slug: Required for paid_project (the published preview slug).
+        cover_url: Optional cover image URL.
+        tags: Optional list of ≤5 tags (≤20 chars each).
+        free_trial_count: Optional, only for pay_per_use (N free calls).
+        api_documentation: Required for paid_api (Markdown, with params +
+            response format + example).
+        example_request: Required for paid_api (curl/HTTP example).
+        example_response: Required for paid_api (JSON example response).
+        service_description: Required for paid_project (what subscribers get).
+
+    Returns:
+        {"ok": True, "service": {...}, "service_id": "..."} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    if service_type not in ("paid_project", "paid_api"):
+        return {"ok": False, "error": f"service_type must be 'paid_project' or 'paid_api', got: {service_type!r}"}
+    if pricing_model not in ("pay_per_use", "lifetime", "monthly"):
+        return {"ok": False, "error": f"pricing_model must be 'pay_per_use', 'lifetime', or 'monthly', got: {pricing_model!r}"}
+    if price <= 0:
+        return {"ok": False, "error": f"price must be positive, got: {price}"}
+
+    payload: dict[str, Any] = {
+        "name": name,
+        "description": description,
+        "category": category,
+        "service_type": service_type,
+        "api_endpoint": api_endpoint,
+        "provider_wallet": provider_wallet,
+        "pricing_model": pricing_model,
+        "price": price,
+    }
+    if project_slug:
+        payload["project_slug"] = project_slug
+    if cover_url:
+        payload["cover_url"] = cover_url
+    if tags:
+        payload["tags"] = [str(t)[:20] for t in tags[:5]]
+    if free_trial_count is not None:
+        payload["free_trial_count"] = free_trial_count
+    if api_documentation:
+        payload["api_documentation"] = api_documentation
+    if example_request:
+        payload["example_request"] = example_request
+    if example_response:
+        payload["example_response"] = example_response
+    if service_description:
+        payload["service_description"] = service_description
+
+    try:
+        status, body = gateway.service_create(uid, payload)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 201:
+        return {
+            "ok": False,
+            "error": body.get("error", f"Gateway returned HTTP {status}"),
+            "http_status": status,
+        }
+
+    service = body.get("service", {})
+    return {
+        "ok": True,
+        "service": service,
+        "service_id": service.get("id"),
+        "review_status": service.get("review_status", "draft"),
+        "next_step": (
+            "Service created in draft state. Call submit_for_review(service_id) "
+            "to trigger the automated review, then poll get_review_status() "
+            "until approved, then call publish_service() to go live."
+        ),
+    }
+
+
+def submit_for_review(service_id: str) -> dict[str, Any]:
+    """Submit a paid service for automated review.
+
+    The review checks 5 items: api_reachable, pricing_consistency,
+    x402_payment, response_match, doc_completeness. All must pass for
+    approval. The service moves from draft/rejected → pending.
+
+    Args:
+        service_id: The UUID returned by create_paid_service().
+
+    Returns:
+        {"ok": True, "service": {...}, "review_task_id": "..."} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_submit_review(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    service = body.get("service", {})
+    return {
+        "ok": True,
+        "service": service,
+        "review_task_id": body.get("review_task_id"),
+        "review_status": service.get("review_status", "pending"),
+        "next_step": "Review is running asynchronously. Poll get_review_status() until it's no longer 'pending'.",
+    }
+
+
+def get_review_status(service_id: str) -> dict[str, Any]:
+    """Poll the review status of a paid service.
+
+    Returns the current review_status (draft/pending/approved/rejected),
+    review_feedback (if rejected), and the latest review task with
+    per-check details.
+
+    Args:
+        service_id: The UUID returned by create_paid_service().
+
+    Returns:
+        {"ok": True, "review_status": "...", "review_feedback": ...,
+         "latest_task": {...}} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_review_status(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    review_status = body.get("review_status", "")
+    result: dict[str, Any] = {
+        "ok": True,
+        "review_status": review_status,
+        "review_feedback": body.get("review_feedback"),
+        "reviewed_at": body.get("reviewed_at"),
+        "latest_task": body.get("latest_task"),
+    }
+    if review_status == "approved":
+        result["next_step"] = "Review approved! Call publish_service(service_id) to go live."
+    elif review_status == "rejected":
+        result["next_step"] = (
+            "Review rejected. Read review_feedback and latest_task.checks to see "
+            "which checks failed. Fix the issues, call update_service() if needed, "
+            "then call submit_for_review() again."
+        )
+    elif review_status == "pending":
+        result["next_step"] = "Review still running. Poll again in a few seconds."
+    else:
+        result["next_step"] = f"Unexpected review_status: {review_status}"
+    return result
+
+
+def publish_service(service_id: str) -> dict[str, Any]:
+    """Publish an approved paid service — make it live on the marketplace.
+
+    Only works if the service is in 'approved' state (review passed).
+    For free services (not created via create_paid_service), this would
+    work from 'draft' directly — but free projects use list_in_dashboard()
+    instead, not this function.
+
+    Args:
+        service_id: The UUID returned by create_paid_service().
+
+    Returns:
+        {"ok": True, "service": {...}} on success
+        {"ok": False, "error": ...} on failure (e.g. not approved yet)
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_publish(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    service = body.get("service", {})
+    return {
+        "ok": True,
+        "service": service,
+        "review_status": service.get("review_status", "published"),
+        "message": "Service is now live on the marketplace!",
+    }
+
+
+def unpublish_service(service_id: str) -> dict[str, Any]:
+    """Take down a published paid service.
+
+    Moves the service from published/unavailable → draft. Already-purchased
+    users keep access. To make it live again, re-submit for review and
+    publish.
+
+    Args:
+        service_id: The UUID returned by create_paid_service().
+
+    Returns:
+        {"ok": True, "service": {...}} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_unpublish(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    service = body.get("service", {})
+    return {
+        "ok": True,
+        "service": service,
+        "message": "Service taken down. Already-purchased users still have access.",
+    }
+
+
+def list_my_services(cursor: str | None = None, limit: int = 20) -> dict[str, Any]:
+    """List the current user's paid services (paginated).
+
+    Args:
+        cursor: Pagination cursor (from previous response's next_cursor).
+        limit: Max items per page (default 20, max 50).
+
+    Returns:
+        {"ok": True, "services": [...], "next_cursor": ..., "has_more": bool}
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_list_mine(uid, cursor=cursor, limit=limit)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, **body}
+
+
+def get_service(service_id: str) -> dict[str, Any]:
+    """Fetch a single paid service by ID (owner only).
+
+    Args:
+        service_id: The UUID returned by create_paid_service().
+
+    Returns:
+        {"ok": True, "service": {...}} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_get(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "service": body.get("service", {})}
+
+
+def update_service(service_id: str, **fields) -> dict[str, Any]:
+    """Update a paid service's fields (owner only).
+
+    Common use: fix issues after a rejected review, then re-submit.
+
+    Args:
+        service_id: The UUID returned by create_paid_service().
+        **fields: Any of the create_paid_service() parameters to update
+            (name, description, category, api_endpoint, provider_wallet,
+            pricing_model, price, api_documentation, etc.).
+
+    Returns:
+        {"ok": True, "service": {...}} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    # Filter out None values so we don't accidentally null out fields
+    payload = {k: v for k, v in fields.items() if v is not None}
+    if not payload:
+        return {"ok": False, "error": "No fields to update — pass at least one keyword argument."}
+
+    try:
+        status, body = gateway.service_update(uid, service_id, payload)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "service": body.get("service", {})}
+
+
+def delete_service(service_id: str) -> dict[str, Any]:
+    """Permanently delete a paid service (owner only).
+
+    This removes the service record entirely. To temporarily take down
+    instead, use unpublish_service().
+
+    Args:
+        service_id: The UUID returned by create_paid_service().
+
+    Returns:
+        {"ok": True} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_delete(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True}
+
+
+# ════════════════════════════════════════════════════════════════════════
+# SERVICE MARKETPLACE — browse, review, favorite, earnings
+# ════════════════════════════════════════════════════════════════════════
+# These are consumer-facing functions for browsing the marketplace,
+# writing reviews, managing favorites, and checking earnings.
+# They use the same internal-key auth as the provider functions above.
+
+
+def explore_services(
+    search: str | None = None,
+    category: str | None = None,
+    service_type: str | None = None,
+    tags: list[str] | None = None,
+    sort: str = "latest",
+    cursor: str | None = None,
+    limit: int = 20,
+    purchased_only: bool = False,
+) -> dict[str, Any]:
+    """Browse the Service Marketplace with filtering, search, and pagination.
+
+    Args:
+        search: Full-text search query.
+        category: Filter by category (e.g. "数据服务").
+        service_type: Filter by type ("paid_project" or "paid_api").
+        tags: Filter by tags (list of strings).
+        sort: Sort order — "latest", "popular", "price_low", "price_high", "rating".
+        cursor: Pagination cursor from previous response.
+        limit: Page size (default 20, max 50).
+        purchased_only: If True, return only services the current user has
+            purchased or called.
+
+    Returns:
+        {"ok": True, "services": [...], "next_cursor": ..., "has_more": bool,
+         "total_count": int} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_explore(
+            owner_user_id=uid,
+            cursor=cursor,
+            limit=limit,
+            search=search,
+            category=category,
+            service_type=service_type,
+            tags=tags,
+            sort=sort,
+            filter_purchased=purchased_only,
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {
+        "ok": True,
+        "services": body.get("services", []),
+        "next_cursor": body.get("next_cursor"),
+        "has_more": body.get("has_more", False),
+        "total_count": body.get("total_count", 0),
+    }
+
+
+def get_service_categories() -> dict[str, Any]:
+    """List all service categories with counts.
+
+    Returns:
+        {"ok": True, "categories": [...]} on success
+        {"ok": False, "error": ...} on failure
+    """
+    try:
+        status, body = gateway.service_categories()
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "categories": body.get("categories", [])}
+
+
+def get_service_detail(service_id: str) -> dict[str, Any]:
+    """Get public details for a published service (market view).
+
+    Includes full documentation, pricing options, and provider info.
+    Increments view count. Use get_service() for provider management
+    (owner only, includes draft/rejected services).
+
+    Args:
+        service_id: The service UUID.
+
+    Returns:
+        {"ok": True, "service": {...}} on success
+        {"ok": False, "error": ...} on failure
+    """
+    try:
+        status, body = gateway.service_detail(service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "service": body.get("service", {})}
+
+
+def get_service_pricing(service_id: str) -> dict[str, Any]:
+    """Get verified pricing for a published service.
+
+    Performs real-time x402 402-response verification (cached 5 min) to
+    ensure the displayed price matches the actual x402-declared price.
+
+    Args:
+        service_id: The service UUID.
+
+    Returns:
+        {"ok": True, "pricing": {...}, "pricing_options": [...]} on success
+        {"ok": False, "error": ...} on failure
+    """
+    try:
+        status, body = gateway.service_pricing(service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, **body}
+
+
+def get_service_reviews(
+    service_id: str,
+    sort: str = "latest",
+    cursor: str | None = None,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """Get reviews for a service (public).
+
+    Args:
+        service_id: The service UUID.
+        sort: "latest" or "helpful".
+        cursor: Pagination cursor.
+        limit: Page size.
+
+    Returns:
+        {"ok": True, "reviews": [...], "next_cursor": ..., "has_more": bool,
+         "total_count": int} on success
+        {"ok": False, "error": ...} on failure
+    """
+    try:
+        status, body = gateway.service_reviews(service_id, cursor=cursor, limit=limit, sort=sort)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {
+        "ok": True,
+        "reviews": body.get("reviews", []),
+        "next_cursor": body.get("next_cursor"),
+        "has_more": body.get("has_more", False),
+        "total_count": body.get("total_count", 0),
+    }
+
+
+def write_service_review(
+    service_id: str,
+    rating: int,
+    comment: str | None = None,
+    is_anonymous: bool = False,
+) -> dict[str, Any]:
+    """Submit or update a review for a service (upsert — one review per user).
+
+    The user must have purchased or used the service before reviewing.
+    Only published services can be reviewed.
+
+    Args:
+        service_id: The service UUID.
+        rating: Integer 1-5.
+        comment: Optional review text.
+        is_anonymous: If True, hide the reviewer's identity.
+
+    Returns:
+        {"ok": True, "review": {...}} on success
+        {"ok": False, "error": ...} on failure
+    """
+    if not isinstance(rating, int) or rating < 1 or rating > 5:
+        return {"ok": False, "error": f"rating must be an integer 1-5, got: {rating}"}
+
+    uid = _user_id()
+    try:
+        status, body = gateway.service_review_create(uid, service_id, rating, comment, is_anonymous)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status not in (200, 201):
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "review": body.get("review", {})}
+
+
+def get_user_services(user_id: str, limit: int = 20) -> dict[str, Any]:
+    """Get published paid services owned by a specific user (public).
+
+    Used to display a user's published services on their profile.
+
+    Args:
+        user_id: The user ID to query.
+        limit: Max results.
+
+    Returns:
+        {"ok": True, "services": [...], "total_count": int} on success
+        {"ok": False, "error": ...} on failure
+    """
+    try:
+        status, body = gateway.service_user_published(user_id, limit=limit)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "services": body.get("services", []), "total_count": body.get("total_count", 0)}
+
+
+def favorite_service(service_id: str) -> dict[str, Any]:
+    """Add a service to the current user's favorites.
+
+    Args:
+        service_id: The service UUID.
+
+    Returns:
+        {"ok": True, "inserted": bool} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_favorite_add(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "inserted": body.get("inserted", False)}
+
+
+def unfavorite_service(service_id: str) -> dict[str, Any]:
+    """Remove a service from the current user's favorites.
+
+    Args:
+        service_id: The service UUID.
+
+    Returns:
+        {"ok": True, "deleted": bool} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_favorite_remove(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "deleted": body.get("deleted", False)}
+
+
+def get_favorite_services(
+    cursor: str | None = None,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """List the current user's favorite services (paginated).
+
+    Returns:
+        {"ok": True, "services": [...], "next_cursor": ..., "has_more": bool,
+         "total_count": int} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_favorites_list(uid, cursor=cursor, limit=limit)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {
+        "ok": True,
+        "services": body.get("services", []),
+        "next_cursor": body.get("next_cursor"),
+        "has_more": body.get("has_more", False),
+        "total_count": body.get("total_count", 0),
+    }
+
+
+def get_service_purchase_status(service_id: str) -> dict[str, Any]:
+    """Check if the current user has purchased or used a service.
+
+    Used to determine review eligibility and UI state (e.g. "Buy" vs "Call").
+
+    Args:
+        service_id: The service UUID.
+
+    Returns:
+        {"ok": True, "has_purchased": bool, "has_used": bool, ...} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_purchase_status(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, **body}
+
+
+def get_service_earnings(service_id: str) -> dict[str, Any]:
+    """Get earnings statistics for a single service (owner only).
+
+    Includes total revenue, call count, daily earnings trend, etc.
+
+    Args:
+        service_id: The service UUID.
+
+    Returns:
+        {"ok": True, "total_earnings": ..., "call_count": ..., ...} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_earnings(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, **body}
+
+
+def get_earnings_summary() -> dict[str, Any]:
+    """Get earnings summary across all services owned by the current user.
+
+    Returns:
+        {"ok": True, "total_earnings": ..., "service_count": ..., ...} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_earnings_summary(uid)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, **body}
+
+
+def get_service_onchain_records(
+    service_id: str,
+    cursor: str | None = None,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """Get on-chain transaction records for a service (owner only).
+
+    Used for payment reconciliation — shows USDC settlements on Base chain.
+
+    Args:
+        service_id: The service UUID.
+        cursor: Pagination cursor.
+        limit: Page size.
+
+    Returns:
+        {"ok": True, "records": [...], "next_cursor": ..., "has_more": bool}
+        on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_onchain_records(uid, service_id, cursor=cursor, limit=limit)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {
+        "ok": True,
+        "records": body.get("records", []),
+        "next_cursor": body.get("next_cursor"),
+        "has_more": body.get("has_more", False),
+    }
+
+
+def restore_service(service_id: str) -> dict[str, Any]:
+    """Restore an unavailable service back to published state.
+
+    Used when a service was automatically taken down (e.g. health check
+    failure) and the provider has fixed the issue.
+
+    Args:
+        service_id: The service UUID.
+
+    Returns:
+        {"ok": True, "service": {...}} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_restore(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "service": body.get("service", {})}

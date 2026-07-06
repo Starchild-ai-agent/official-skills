@@ -194,8 +194,12 @@ def _sign_platform_payment(accepts: dict, max_amount_atomic: int) -> str:
 
 def paid_request(method: str, url: str, json_body=None, headers=None,
                  max_amount_atomic: int = 1_000_000, timeout: float = 60.0,
-                 signer_mode: str = "auto"):
+                 signer_mode: str = "auto", pricing_model: str = ""):
     """One-shot request with automatic x402 payment. Returns dict summary.
+
+    pricing_model: for MULTI-PLAN services — sends X-Pricing-Model so the
+    gateway quotes that plan's price in its 402 (e.g. "weekly", "yearly").
+    Empty = the service's default plan.
 
     Handles BOTH 402 flavors:
       * V2 header challenge (PAYMENT-REQUIRED) — x402 SDK path
@@ -210,6 +214,9 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
     from x402.http.clients.httpx import x402HttpxClient
 
     async def run():
+        nonlocal headers
+        if pricing_model:
+            headers = {**(headers or {}), "X-Pricing-Model": pricing_model}
         # Probe with PLAIN httpx first: the SDK client raises on a 402 that
         # lacks the V2 PAYMENT-REQUIRED header, so flavor detection must
         # happen before the SDK ever sees the response.

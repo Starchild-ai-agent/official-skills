@@ -35,7 +35,16 @@ from datetime import datetime, timezone
 
 import httpx
 
-PLATFORM_MODES = ("pay_per_use", "lifetime", "monthly", "prepaid")
+PLATFORM_MODES = ("pay_per_use", "lifetime", "monthly", "weekly", "quarterly",
+                  "yearly", "prepaid")
+
+# time-limited subscriptions expressed as fixed-length passes. The facilitator
+# validates pricing_model in (lifetime, monthly) only; weekly/quarterly/yearly
+# are queried as pricing_model=monthly + period_days=N (facilitator contract,
+# docs/pricing-models.md — access expires N days after the newest qualifying
+# payment). monthly WITHOUT period_days keeps natural-month semantics.
+PERIOD_DAYS = {"weekly": 7, "quarterly": 90, "yearly": 365}
+SUBSCRIPTION_MODES = ("lifetime", "monthly", "weekly", "quarterly", "yearly")
 
 
 class AccessCheckError(Exception):
@@ -50,7 +59,7 @@ ASSETS = {
     "eip155:84532": ("0x036CbD53842c5426634e7929541eC2318f3dCF7e", {"name": "USDC", "version": "2"}),
 }
 
-_access_cache: dict = {}  # payer -> (expires_ts, has_access)
+_access_cache: dict = {}  # (payer, mode) -> (expires_ts, has_access)
 _CACHE_TTL = 60
 
 
@@ -70,7 +79,7 @@ class PlatformBilling:
         self.fac_token = cfg.get("facilitator_token") or ""
         # settlements/access-status are admin-gated on the platform facilitator
         self.fac_admin_token = cfg.get("facilitator_admin_token") or ""
-        if self.mode in ("lifetime", "monthly") and not self.fac_admin_token:
+        if self.mode in SUBSCRIPTION_MODES and not self.fac_admin_token:
             # fail-closed at STARTUP: without this token every already_paid()
             # lookup would 401 and, if treated as unpaid, the gateway would
             # re-settle on EVERY request — silently double-charging buyers and
@@ -229,7 +238,7 @@ class PlatformBilling:
             return False
         payer = payer.lower()
         now = time.time()
-        hit = _access_cache.get(payer)
+        hit = _access_cache.get((payer, self.mode))
         if hit and hit[0] > now:
             return hit[1]
 
@@ -241,14 +250,20 @@ class PlatformBilling:
                 # (e.g. old pay_per_use calls) can never unlock this service.
                 # For monthly the facilitator computes natural-month expiry
                 # server-side and returns expires_at.
+                params = {"payer": payer, "pay_to": self.pay_to,
+                          "min_amount": self.amount_atomic,
+                          "pricing_model": ("monthly" if self.mode in PERIOD_DAYS
+                                            else self.mode)}
+                if self.mode in PERIOD_DAYS:
+                    params["period_days"] = PERIOD_DAYS[self.mode]
                 r = await c.get(f"{self.facilitator}/facilitator/access-status",
-                                params={"payer": payer, "pay_to": self.pay_to,
-                                        "min_amount": self.amount_atomic,
-                                        "pricing_model": self.mode},
+                                params=params,
                                 headers=self._headers(admin=True))
                 if r.status_code == 200:
                     has = bool(r.json().get("has_access"))
                 elif r.status_code == 400 and self.mode == "monthly":
+                    # (weekly/quarterly/yearly deliberately have no fallback:
+                    # a facilitator too old for period_days can't answer them)
                     # fallback ONLY for facilitators that reject the
                     # pricing_model param (pre-support versions): pull this
                     # payer/pay_to pair's settlements and compute expiry.
@@ -279,14 +294,14 @@ class PlatformBilling:
 
         # only cache positives — negatives must re-check right after a settle
         if has:
-            _access_cache[payer] = (now + _CACHE_TTL, True)
+            _access_cache[(payer, self.mode)] = (now + _CACHE_TTL, True)
             if len(_access_cache) > 10000:
                 _access_cache.clear()
         return has
 
     def grant_cache(self, payer: str) -> None:
         """Called right after a successful settle so the next request skips the lookup."""
-        _access_cache[payer.lower()] = (time.time() + _CACHE_TTL, True)
+        _access_cache[(payer.lower(), self.mode)] = (time.time() + _CACHE_TTL, True)
 
 
 def decode_payment_header(raw: str) -> tuple[dict, str]:

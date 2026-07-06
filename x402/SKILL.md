@@ -2,7 +2,7 @@
 name: x402
 version: 2.1.1
 description: |
-  Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / monthly / prepaid), and pay other agents' x402 services.
+  Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
   Use when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint.
 author: starchild
@@ -61,6 +61,22 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode monthly --price 10.00 --network eip155:8453 --facilitator $FAC \
     --facilitator-admin-token $ADMIN_TOKEN
 
+# weekly / quarterly / yearly: fixed-length subscriptions (7/90/365 days after the
+# newest qualifying payment). Same admin-token requirement as lifetime/monthly.
+# Facilitator contract: queried as access-status pricing_model=monthly +
+# period_days=7/90/365 (monthly WITHOUT period_days = natural-month semantics).
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode weekly --price 3.00 --network eip155:8453 --facilitator $FAC \
+    --facilitator-admin-token $ADMIN_TOKEN
+
+# multi-plan (docs/pricing-models.md 多支付方式): --mode is the DEFAULT plan,
+# each --plan MODE=PRICE adds an option. Buyers pick a plan per request with the
+# X-Pricing-Model header; the 402 quotes THAT plan's amount (audit requirement).
+# pay_per_use cannot be combined with other plans.
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode monthly --price 10.00 --plan weekly=3 --plan yearly=90 \
+    --network eip155:8453 --facilitator $FAC --facilitator-admin-token $ADMIN_TOKEN
+
 # prepaid: one on-chain deposit, then every call is a millisecond off-chain debit.
 # For HIGH-FREQUENCY / metered APIs: no per-call settle (2-5s + gas + 30/min
 # rate limit), per-call price can be sub-cent. --deposit = suggested top-up size
@@ -115,6 +131,7 @@ Per-service config/log/state: `/data/workspace/.x402/<name>/`.
 | `pay_per_use` | **platform** | X-PAYMENT each request, settled every call | simple data endpoints, agent-to-agent one-shots |
 | `lifetime` | **platform** | pay once, permanent access (facilitator-verified) | one-time unlock, buyout pricing |
 | `monthly` | **platform** | pay once per natural month | SaaS-style subscriptions |
+| `weekly` / `quarterly` / `yearly` | **platform** | fixed-length pass: 7 / 90 / 365 days from newest payment | short trials, annual discounts |
 | `prepaid` | **platform** | one on-chain deposit → off-chain debit per call | high-frequency / sub-cent / usage-metered APIs |
 | `payperuse` | legacy | SDK V2 headers, pay per request | pre-2.0 deployments |
 | `subscription` | extended | x402 top-up → API key + N credits, 1 credit/call | prepaid credits, avoids per-call payment latency |
@@ -158,9 +175,35 @@ Contract details (all verified against the deployed platform facilitator):
   `--route 'POST /api/heavy=25'` charges 25x).
 - Deposit minimum: facilitator `X402_MIN_DEPOSIT_AMOUNT` (default $0.10).
 
+### Multi-plan services (v2.2, docs/pricing-models.md 多支付方式)
+
+One service can offer several pricing options simultaneously (e.g. weekly $3 /
+monthly $10 / yearly $90 / lifetime $150). Contract (community-gateway audits
+this per plan before listing):
+
+- Config: `"plans": {"weekly": {"price_usd": "3"}, ...}`; `"mode"` is the
+  DEFAULT plan. CLI: `--plan MODE=PRICE` (repeatable).
+- Buyer selects a plan per request with the `X-Pricing-Model` header
+  (`client.paid_request(..., pricing_model="yearly")`); the 402 then quotes
+  THAT plan's `accepts.amount` + `pricingModel`. Unknown plan -> HTTP 400
+  listing available plans. No header -> default plan; its 402 (and
+  `/.well-known/x402`) carries a `plans` map with every option's accepts.
+- Combination rules (enforced by the gateway): `pay_per_use` cannot be
+  combined with anything (startup error). Before charging under ANY plan the
+  gateway checks access under ALL subscription plans of the service — a
+  lifetime holder requesting the weekly plan is never re-charged (verified:
+  access-status consulted per plan until hit, zero settles).
+- Subscriptions + prepaid can be combined: a subscription holder is forwarded
+  without debiting the prepaid balance.
+- weekly/quarterly/yearly access checks go to the facilitator as
+  `pricing_model=monthly&period_days=7|90|365` (period_days contract) with
+  `min_amount` = that plan's price; the access cache is keyed per
+  (payer, plan).
+
 Ready-to-use config templates (fill `pay_to` + `upstream`):
 platform — `templates/pay_per_use.json`, `templates/lifetime.json`,
-`templates/monthly.json`, `templates/prepaid.json`;
+`templates/monthly.json`, `templates/weekly.json`, `templates/quarterly.json`,
+`templates/yearly.json`, `templates/prepaid.json`, `templates/multi_plan.json`;
 legacy/extended — `templates/payperuse.json`, `templates/subscription.json`,
 `templates/metered.json`, `templates/timepass.json`.
 All four modes verified with REAL Base-mainnet settlements (2026-07-03):

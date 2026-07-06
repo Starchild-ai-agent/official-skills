@@ -70,7 +70,8 @@ def main():
     ap.add_argument("--name", required=True)
     ap.add_argument("--upstream-port", type=int, required=True)
     ap.add_argument("--mode", default="payperuse",
-                    choices=["pay_per_use", "lifetime", "monthly", "prepaid",  # platform (Starchild community-gateway contract)
+                    choices=["pay_per_use", "lifetime", "monthly", "weekly",
+                             "quarterly", "yearly", "prepaid",  # platform (Starchild community-gateway contract)
                              "payperuse", "subscription", "metered", "timepass"])  # legacy/extended
     ap.add_argument("--price", default="0.01",
                     help="platform modes: service price in USD (pay_per_use/prepaid per call, lifetime one-time, monthly per month)")
@@ -78,6 +79,11 @@ def main():
                     help="platform modes lifetime/monthly: token for facilitator /access-status + /settlements")
     ap.add_argument("--deposit", default="",
                     help="prepaid: suggested deposit in USD (default: 100 calls worth, min $0.10)")
+    ap.add_argument("--plan", action="append", default=[],
+                    help='multi-plan: extra pricing option "MODE=PRICE_USD" '
+                         '(e.g. --plan weekly=3 --plan yearly=90). --mode is the '
+                         'default plan; buyers pick others via X-Pricing-Model. '
+                         'pay_per_use cannot be combined.')
     ap.add_argument("--pass-days", type=float, default=30, help="timepass: pass validity in days")
     ap.add_argument("--pass-price", default="5", help="timepass: pass price in USD, e.g. 5 or $4.99")
     ap.add_argument("--route", action="append", default=[],
@@ -99,7 +105,9 @@ def main():
         args.facilitator = os.environ.get(
             "X402_FACILITATOR_URL", "http://127.0.0.1:8410")
 
-    PLATFORM = ("pay_per_use", "lifetime", "monthly", "prepaid")
+    PLATFORM = ("pay_per_use", "lifetime", "monthly", "weekly",
+                "quarterly", "yearly", "prepaid")
+    SUBSCRIPTION = ("lifetime", "monthly", "weekly", "quarterly", "yearly")
     routes = {}
     for spec in args.route:
         pattern, _, val = spec.rpartition("=")
@@ -140,13 +148,31 @@ def main():
         cfg["price_usd"] = str(args.price).lstrip("$")
         if args.mode == "prepaid" and args.deposit:
             cfg["deposit_usd"] = str(args.deposit).lstrip("$")
+        if args.plan:
+            if args.mode == "pay_per_use":
+                sys.exit("pay_per_use cannot be combined with other plans (--plan)")
+            plans = {}
+            for spec in args.plan:
+                try:
+                    m, p = spec.split("=", 1)
+                except ValueError:
+                    sys.exit(f"--plan must be MODE=PRICE_USD, got: {spec}")
+                m = m.strip().lower()
+                if m == "pay_per_use":
+                    sys.exit("pay_per_use cannot be offered as an extra plan")
+                if m not in PLATFORM:
+                    sys.exit(f"unknown plan mode '{m}' (allowed: {PLATFORM})")
+                plans[m] = {"price_usd": str(p).lstrip("$")}
+            cfg["plans"] = plans
         if args.facilitator_admin_token:
             cfg["facilitator_admin_token"] = args.facilitator_admin_token
-        elif args.mode in ("lifetime", "monthly"):
+        elif args.mode in SUBSCRIPTION or any(
+                m in SUBSCRIPTION for m in cfg.get("plans", {})):
             # fail-closed: without this token the gateway can't ask the
             # facilitator "already paid?" and would re-settle every request,
             # silently double-charging buyers.
-            sys.exit(f"mode {args.mode} requires --facilitator-admin-token "
+            sys.exit("subscription modes (lifetime/monthly/weekly/quarterly/yearly) "
+                     "require --facilitator-admin-token "
                      "(facilitator /access-status and /settlements are admin-gated)")
         if not args.facilitator:
             sys.exit("platform modes require --facilitator (e.g. https://starchild-x402-facilitator.fly.dev)")

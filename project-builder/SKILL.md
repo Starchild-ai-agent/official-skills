@@ -224,6 +224,13 @@ Decide sensible defaults yourself and render real data on first load. Treat filt
   - **localhost /chat/stream**: full agent with tools. Use only when LLM needs tool access.
 - **Data template rule**: Script owns the numbers, LLM owns the words. Final output assembles data from script variables + analysis from LLM. Never let LLM output be the sole source of numbers the user sees.
 - API costs & rate limits → read platform reference `config/context/references/sc-proxy.md`
+- **Monetization (optional)**: any HTTP service you build can be turned into a
+  PAID service with the `x402` skill — a reverse-proxy gateway in front of the
+  untouched app charges USDC on Base per call / subscription (weekly–yearly) /
+  lifetime / prepaid balance, with multi-plan support. If the user mentions
+  charging for the project, selling API access, or agent-to-agent payments,
+  read `skills/x402/SKILL.md` after the build phase and wrap the service with
+  `scripts/monetize.py` (expose the GATEWAY port, not the upstream).
 
 ---
 

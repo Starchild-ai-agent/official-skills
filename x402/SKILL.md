@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.2.1
+version: 2.2.2
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -291,9 +291,38 @@ Monetization Gateway announced 2026-07-01, but works today and self-hosted):
 3. `community-publish` skill → `publish_preview(preview_id, slug='my-api')` → public URL
 4. Price discovery is built in: `GET <public-url>/.well-known/x402` returns machine-readable routes/prices/payTo/network (Bazaar-compatible shape).
 
-Verified live 2026-07-03: https://community.iamstarchild.com/2004-x402-demo —
-public unpaid call → 402 challenge; paid_request through the PUBLIC url settled
-on Base mainnet (tx 0x73669f5f…a6d6, $0.01).
+## Live demo service — self-contained smoke test
+
+A public multi-plan demo gateway is kept running for testing this skill and
+platform connectivity end-to-end (Base mainnet, production facilitator,
+weekly $0.10 default plan + yearly $1.00):
+
+```
+BASE=https://community.iamstarchild.com/2004-x402-demo
+```
+
+Run these in order — steps 1–3 are FREE and already verify most of the chain
+(skill → public gateway → x402 gateway → facilitator reachability):
+
+1. `GET $BASE/x402/health` → `{"gateway":"ok","upstream":"ok","mode":"weekly"}`
+2. `GET $BASE/free/info` → free route proxied, self-describing usage doc
+3. Protocol checks (no wallet needed):
+   - `GET $BASE/api/hello` → 402, `accepts.amount == "100000"`,
+     `pricingModel == "weekly"`, `plans` map lists weekly+yearly
+   - with `X-Pricing-Model: yearly` → 402, `amount == "1000000"`
+   - with `X-Pricing-Model: daily` → HTTP 400 (unknown plan)
+4. Real payment (~$0.10, requires the session EOA funded with Base USDC —
+   see Buyer side above):
+   `paid_request("GET", f"{BASE}/api/hello", max_amount_atomic=150_000)`
+   → 200, on-chain settle, weekly access granted for 7 days.
+5. Subscription + combination rules: repeat step 4 → 200 with NO new charge
+   (weekly access held); then `pricing_model="yearly"` → also 200 with no
+   charge (existing plan covers other plans — never double-billed).
+
+Verified live 2026-07-06 (weekly settle tx 0x118981a5…e18a, $0.10); earlier
+pay_per_use verification 2026-07-03 (tx 0x73669f5f…a6d6, $0.01). If the demo
+is down (container restart), any service built with monetize.py exposes the
+same surface — or ask agent 2004 to bring it back up.
 
 ## Security model (what protects whom)
 

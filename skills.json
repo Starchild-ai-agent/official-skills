@@ -388,7 +388,7 @@
     {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
-      "version": "1.5.8",
+      "version": "1.5.9",
       "description": "End-to-end project engineering: design, incremental build, verify, debug systematically.\n\nUse when building software, dashboards, scheduled jobs, or web apps the user has asked for (e.g. build a price monitor, daily summary task, ship an API)."
     },
     {
@@ -604,8 +604,8 @@
     {
       "name": "x402",
       "path": "x402/SKILL.md",
-      "version": "1.5.2",
-      "description": "Monetize any user project/service with the x402 payment protocol on Base, and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service (per-call, subscription top-up, or metered billing), accept USDC from other agents, or call a paid x402 endpoint."
+      "version": "2.2.1",
+      "description": "Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {
       "name": "xai-grok-onboarding",

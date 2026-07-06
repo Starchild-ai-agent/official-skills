@@ -53,7 +53,11 @@ from platform_modes import (AccessCheckError, PLATFORM_MODES, SUBSCRIPTION_MODES
                             PlatformBilling, decode_payment_header)
 
 # --------------------------------------------------------------------------
-CONFIG_PATH = os.environ.get("X402_CONFIG") or (sys.argv[1] if len(sys.argv) > 1 else "x402.config.json")
+_argv = sys.argv[1:]
+if "--config" in _argv and _argv.index("--config") + 1 < len(_argv):
+    CONFIG_PATH = _argv[_argv.index("--config") + 1]
+else:
+    CONFIG_PATH = os.environ.get("X402_CONFIG") or (_argv[0] if _argv else "x402.config.json")
 with open(CONFIG_PATH) as f:
     CFG = json.load(f)
 

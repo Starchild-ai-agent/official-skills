@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.3.0
+version: 2.3.1
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -345,6 +345,21 @@ Monetization Gateway, self-hosted):
 3. `community-publish` skill → `publish_preview(preview_id, slug='my-api')` → public URL
 4. Price discovery is built in: `GET <public-url>/.well-known/x402` returns machine-readable routes/prices/payTo/network (Bazaar-compatible shape).
 
+**A public URL is NOT a marketplace listing.** Steps 1–4 only make the
+service reachable — the Service Marketplace will show nothing (or "free")
+until you complete the LIST chain (community-publish skill):
+
+5. `create_paid_service(name=..., service_type=..., api_endpoint=<public paid
+   route>, pricing_model=..., price=..., pricing_options=[...] for
+   multi-plan)` → draft service record.
+6. `submit_for_review(service_id)` → poll `get_review_status()` until
+   `approved` (5 automated checks: 402 reachable, price consistency, x402
+   validity, response match, doc completeness) → `publish_service(service_id)`
+   → live paid listing.
+
+Skipping 5–6 is the #1 cause of "why does my paid service show as free /
+not appear in the marketplace".
+
 ## Consuming any x402 service from just a URL
 
 Given ONLY a service URL (no docs, no guidance), onboard and verify it with
@@ -417,15 +432,37 @@ Facilitator verify failures seen in the wild (2nd 402's `error` field):
   wallet holds USDC on the target network).
 - **Ledger inspection**: `sqlite3 /data/workspace/.x402/<name>/state/ledger.db 'select * from payments'`.
 - **Gateway logs**: `/data/workspace/.x402/<name>/gateway.log`.
+- **Gateway lifecycle — ONE owner per port (hard rule)**: `monetize.py`
+  STARTS a background gateway (registered in `.x402/services.json`, revived
+  by keepalive). Starting it AGAIN under `preview(serve)` collides: the new
+  process fails `address already in use` while the old one keeps answering.
+  Pick ONE owner:
+  - **preview-managed** (recommended for anything published): run
+    `monetize.py ... --no-start` — writes config only and prints the
+    `gateway_command`; wrap upstream + gateway in a start.py and
+    `preview(action='serve', command='python3 start.py', port=<gateway_port>)`.
+    Preview then owns restarts across reboots.
+  - **monetize-managed** (local/dev): default behavior. Manage with
+    `monetize.py --stop <name>` / `--restart <name>` — restart is REQUIRED
+    after editing `x402.config.json` (e.g. testnet→mainnet network switch).
+- **Preview "running" ≠ payments working**: preview health checks hit `/`,
+  which the gateway proxies to the upstream — 200 there says nothing about
+  billing. Verify the gateway itself: `GET /x402/info` returns 200 JSON and
+  an unpaid paid-route returns 402. If responses look stale, suspect an old
+  process still holding the port (see port hygiene below).
 - **Testing gateways locally — port hygiene (hard-won lesson)**: a uvicorn
   gateway whose port is already held FAILS TO BIND but the old process keeps
   answering, so your "new code" test actually exercises the OLD process (and
   its 60s access cache) — false PASSes and false FAILs. Rules:
   1. After starting a test gateway, ALWAYS check its log for
      `address already in use` BEFORE trusting any response from that port.
-  2. Kill test processes by LISTENING-PORT PID
-     (`ss -tlnp | grep :PORT` → kill that pid), never by `ps | grep` name
+  2. Kill test processes by LISTENING-PORT PID, never by `ps | grep` name
      matching — backgrounded shells and renamed configs escape name matches.
+     NOTE: `ss`/`netstat` are NOT installed in the container. Use:
+     `python3 -c "import socket; s=socket.socket(); print('busy' if s.connect_ex(('127.0.0.1',PORT))==0 else 'free')"`
+     to test a port, and find the holder by scanning cmdlines:
+     `for d in /proc/[0-9]*; do grep -q CONFIG_OR_PORT_HINT $d/cmdline 2>/dev/null && echo $d; done`
+     — or simply `monetize.py --stop <name>` which does this for you.
   3. When in doubt, move to brand-new port numbers instead of reusing ones a
      dead-looking process might still hold.
 - Python SDK is `x402` v2.10+ (V2 headers `PAYMENT-REQUIRED`/`PAYMENT-SIGNATURE`/

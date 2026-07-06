@@ -557,6 +557,51 @@ def _enumerate_project_files(user_id: str, slug: str, project_type: str) -> list
 # route table on the gateway.
 # ════════════════════════════════════════════════════════════════════════
 
+
+def _detect_x402_billing(port: int) -> bool:
+    """Best-effort probe: does the local service on `port` charge via x402?
+
+    Checks /.well-known/x402 (discovery index) and whether the root route
+    answers 402. 2s timeout each; any failure returns False — detection
+    must never break or slow down publishing.
+
+    Known limitation: a service that bills only on sub-routes AND has no
+    discovery document is not detected. Acceptable — the x402 quickstart
+    ships /.well-known/x402 on every gateway.
+    """
+    import json
+    import urllib.request
+    import urllib.error
+    base = f"http://127.0.0.1:{port}"
+    try:
+        with urllib.request.urlopen(base + "/.well-known/x402", timeout=2) as r:
+            if r.status == 200:
+                # Static sites with SPA fallback answer 200 HTML for ANY
+                # path — only count a real x402 discovery document: JSON
+                # with x402 marker fields.
+                body = r.read(65536)
+                try:
+                    doc = json.loads(body)
+                except Exception:
+                    doc = None
+                if isinstance(doc, dict) and (
+                    "x402Version" in doc or "accepts" in doc or "resources" in doc
+                ):
+                    return True
+    except urllib.error.HTTPError:
+        pass
+    except Exception:
+        pass
+    try:
+        urllib.request.urlopen(base + "/", timeout=2)
+    except urllib.error.HTTPError as e:
+        if e.code == 402:
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def publish_preview(preview_id: str, slug: str = "",
                     title: str = "",
                     publisher_code_slug: str = "") -> dict[str, Any]:
@@ -685,12 +730,20 @@ def publish_preview(preview_id: str, slug: str = "",
             ),
         }
 
+    x402_detected = _detect_x402_billing(port)
     return {
         "ok": True,
         "slug": final_slug,
         "url": public_url,
         "port": port,
         "verified_status": verify_status,
+        "x402_detected": x402_detected,
+        **({"next_step": (
+            "x402 billing detected on this service — a public URL is NOT a "
+            "paid listing. The marketplace will show nothing (or 'free') "
+            "until you complete: create_paid_service(...) -> "
+            "submit_for_review(service_id) -> publish_service(service_id)."
+        )} if x402_detected else {}),
         "publisher": {"code_slug": binding_code_slug},
         "hint": (
             f"Cross-link binding declared (publisher.code_slug='{binding_code_slug}'). "

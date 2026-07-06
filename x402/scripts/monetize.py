@@ -176,6 +176,18 @@ def main():
         args.facilitator = os.environ.get(
             "X402_FACILITATOR_URL", "http://127.0.0.1:8410")
 
+    # Hard guard: x402.org facilitator supports TESTNETS ONLY (verified via
+    # /supported — no eip155:8453). A mainnet service pointed at it looks
+    # healthy (discovery + 402 work) but EVERY buyer settlement fails with
+    # 402 unexpected_error. Seen live on a community machine.
+    if (args.network == "eip155:8453"
+            and "x402.org" in (args.facilitator or "")):
+        sys.exit("network eip155:8453 (Base mainnet) cannot use the x402.org "
+                 "facilitator (testnet-only). Use a mainnet-capable "
+                 "facilitator, e.g. --facilitator "
+                 "https://starchild-x402-facilitator.fly.dev "
+                 "or your self-hosted facilitator/server.py")
+
     PLATFORM = ("pay_per_use", "lifetime", "monthly", "weekly",
                 "quarterly", "yearly", "prepaid")
     SUBSCRIPTION = ("lifetime", "monthly", "weekly", "quarterly", "yearly")

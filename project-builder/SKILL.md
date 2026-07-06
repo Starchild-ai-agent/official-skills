@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.6.0
+version: 1.6.1
 description: |
   End-to-end project engineering: design, incremental build, verify, debug systematically.
 
@@ -231,6 +231,12 @@ Decide sensible defaults yourself and render real data on first load. Treat filt
   charging for the project, selling API access, or agent-to-agent payments,
   read `skills/x402/SKILL.md` after the build phase and wrap the service with
   `scripts/monetize.py` (expose the GATEWAY port, not the upstream).
+  Full paid-service chain after wrapping: `preview(serve)` the gateway →
+  `community-publish` → `publish_preview()` (public URL) →
+  `create_paid_service(..., pricing_options=[...])` → `submit_for_review()`
+  (multi-plan services: review probes each plan's 402 amount via the
+  `X-Pricing-Model` header) → `publish_service()` → live on the Service
+  Marketplace. Details: community-publish SKILL.md § Paid service listing.
 - **Always-on services (long-running / published / paid)**: agent machines
   auto-suspend when idle and auto-update restarts kill service processes. Any
   service that must stay reachable 24/7 needs: ① a keepalive watchdog

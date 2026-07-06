@@ -962,6 +962,7 @@ def create_paid_service(
     example_request: str | None = None,
     example_response: str | None = None,
     service_description: str | None = None,
+    pricing_options: list[dict] | None = None,
 ) -> dict[str, Any]:
     """Create a paid service listing on the Service Marketplace.
 
@@ -985,7 +986,9 @@ def create_paid_service(
             is the project's public URL; for paid_api it's the external
             API URL.
         provider_wallet: Base chain wallet address to receive payments.
-        pricing_model: "pay_per_use", "lifetime", or "monthly".
+        pricing_model: "pay_per_use", "lifetime", "monthly", "weekly",
+            "quarterly", "yearly", or "prepaid". With pricing_options this is
+            the default plan.
         price: Price in USDC (>0).
         project_slug: Required for paid_project (the published preview slug).
         cover_url: Optional cover image URL.
@@ -996,6 +999,8 @@ def create_paid_service(
         example_request: Required for paid_api (curl/HTTP example).
         example_response: Required for paid_api (JSON example response).
         service_description: Required for paid_project (what subscribers get).
+        pricing_options: Optional multi-plan list (see SKILL.md "multiple
+            pricing plans"): [{"pricing_model", "price", "is_default", "label"}].
 
     Returns:
         {"ok": True, "service": {...}, "service_id": "..."} on success
@@ -1004,8 +1009,9 @@ def create_paid_service(
     uid = _user_id()
     if service_type not in ("paid_project", "paid_api"):
         return {"ok": False, "error": f"service_type must be 'paid_project' or 'paid_api', got: {service_type!r}"}
-    if pricing_model not in ("pay_per_use", "lifetime", "monthly"):
-        return {"ok": False, "error": f"pricing_model must be 'pay_per_use', 'lifetime', or 'monthly', got: {pricing_model!r}"}
+    _MODES = ("pay_per_use", "lifetime", "monthly", "weekly", "quarterly", "yearly", "prepaid")
+    if pricing_model not in _MODES:
+        return {"ok": False, "error": f"pricing_model must be one of {_MODES}, got: {pricing_model!r}"}
     if price <= 0:
         return {"ok": False, "error": f"price must be positive, got: {price}"}
 
@@ -1035,6 +1041,11 @@ def create_paid_service(
         payload["example_response"] = example_response
     if service_description:
         payload["service_description"] = service_description
+    if pricing_options:
+        # multi-plan (docs: 多支付方式): [{"pricing_model": "weekly", "price": 3,
+        # "is_default": True, "label": "Weekly"}, ...] — gateway stores them in
+        # service_pricing_options; buyers pick a plan on the detail page.
+        payload["pricing_options"] = pricing_options
 
     try:
         status, body = gateway.service_create(uid, payload)

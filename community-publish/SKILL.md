@@ -482,7 +482,9 @@ write reviews, manage favorites, and check earnings — same as the web frontend
 ```bash
 python3 - <<'EOF'
 import sys
-# The directory name has a HYPHEN, so dotted imports
+# Prefer the registered skill tools (read this SKILL.md via read_file to
+# load them) over hand-written imports of exports.py. If you DO need a
+# direct import: the directory name has a HYPHEN, so dotted imports
 # (`from skills.community_publish import ...`) raise ModuleNotFoundError.
 # Use this sys.path pattern (or importlib.util.spec_from_file_location).
 sys.path.insert(0, "/data/workspace/skills/community-publish")

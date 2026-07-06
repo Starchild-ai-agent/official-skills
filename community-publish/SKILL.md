@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.16.0
+version: 0.16.1
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 

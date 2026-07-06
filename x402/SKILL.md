@@ -2,7 +2,7 @@
 name: x402
 version: 2.0.0
 description: |
-  Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / monthly), and pay other agents' x402 services.
+  Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / monthly / prepaid), and pay other agents' x402 services.
 
   Use when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint.
 author: starchild
@@ -57,6 +57,13 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode monthly --price 10.00 --network eip155:8453 --facilitator $FAC \
     --facilitator-admin-token $ADMIN_TOKEN
+
+# prepaid: one on-chain deposit, then every call is a millisecond off-chain debit.
+# For HIGH-FREQUENCY / metered APIs: no per-call settle (2-5s + gas + 30/min
+# rate limit), per-call price can be sub-cent. --deposit = suggested top-up size
+# (default 100 calls worth, min $0.10 = facilitator X402_MIN_DEPOSIT_AMOUNT).
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode prepaid --price 0.001 --deposit 1.00 --network eip155:8453 --facilitator $FAC
 ```
 
 Default protected routes: `/api/*` (override with `--route 'METHOD /path'`;
@@ -86,8 +93,10 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 ```
 
 These keep payment state in the gateway's local SQLite ledger (deterministic
-API keys, credit refunds on upstream 5xx). Use them for prepaid-credit or
-usage-weighted billing until the platform contract adds those models.
+API keys, credit refunds on upstream 5xx). **Deprecated for new deployments**
+since v2.1: prefer `--mode prepaid` (same prepaid-credit UX, balance held by
+the facilitator instead of a local SQLite file). Still fully supported for
+existing deployments; `timepass` has no platform equivalent yet.
 
 Output includes `gateway_port`. **Expose the GATEWAY port, not the upstream**
 (via `preview` or community-publish). `pay_to` defaults to the user's Privy
@@ -103,6 +112,7 @@ Per-service config/log/state: `/data/workspace/.x402/<name>/`.
 | `pay_per_use` | **platform** | X-PAYMENT each request, settled every call | simple data endpoints, agent-to-agent one-shots |
 | `lifetime` | **platform** | pay once, permanent access (facilitator-verified) | one-time unlock, buyout pricing |
 | `monthly` | **platform** | pay once per natural month | SaaS-style subscriptions |
+| `prepaid` | **platform** | one on-chain deposit → off-chain debit per call | high-frequency / sub-cent / usage-metered APIs |
 | `payperuse` | legacy | SDK V2 headers, pay per request | pre-2.0 deployments |
 | `subscription` | extended | x402 top-up → API key + N credits, 1 credit/call | prepaid credits, avoids per-call payment latency |
 | `metered` | extended | like subscription, route-weighted units | mixed cheap/expensive endpoints (LLM calls etc.) |
@@ -110,18 +120,56 @@ Per-service config/log/state: `/data/workspace/.x402/<name>/`.
 
 Prefer **platform** modes: they match the community-gateway audit checklist,
 get automatic purchase/call records via the settle callback, and keep zero
-payment state in the gateway. Extended modes are the local-ledger superset
-(prepaid/metered) the platform contract doesn't cover yet.
+payment state in the gateway. `prepaid` supersedes the local-ledger
+`subscription`/`metered` modes for new deployments: same prepaid-credit UX,
+but the balance lives in the FACILITATOR (survives gateway restarts/moves,
+auditable by platform ops) instead of a gateway-local SQLite file. The
+legacy/extended modes remain for pre-2.1 deployments and for the timepass
+model the platform contract doesn't cover.
+
+### How prepaid works (v2.1, facilitator balance primitives)
+
+```
+first call    buyer signs deposit ($1)  -> gateway -> /facilitator/deposit-settle
+                                            (ONE on-chain settle, credits balance)
+every call    buyer signs per-call price -> gateway verifies sig (auth only,
+                                            NEVER settled) -> /facilitator/debit
+                                            (off-chain, ~ms) -> forward upstream
+upstream 5xx  gateway auto-refunds the debit (negative debit, request_id:refund)
+balance empty gateway answers 402 insufficient_balance with accepts.amount =
+              deposit size -> client auto-signs the top-up and retries
+```
+
+Contract details (all verified against the deployed platform facilitator):
+- 402 challenge: `accepts.pricingModel = "prepaid"`, `accepts.amount` = per-call
+  price normally, deposit size when topping up; extra fields
+  `accepts.depositAtomic` + `accepts.pricePerCallAtomic` tell buyers both numbers.
+- The per-call X-PAYMENT signature is authentication only — the gateway calls
+  /verify (cached per signature until its validBefore) then /facilitator/debit;
+  the signed value is settled ONLY when it is an actual deposit (value >=
+  depositAtomic AND balance insufficient). Buyer exposure to a malicious
+  gateway is therefore one per-call price, same as pay_per_use.
+- Debit idempotency: gateway generates a fresh `request_id` (uuid) per call;
+  the facilitator binds request_id to (payer, amount) — cross-payer reuse is 409.
+- Route `units` multiply the per-call price (metered pricing, e.g.
+  `--route 'POST /api/heavy=25'` charges 25x).
+- Deposit minimum: facilitator `X402_MIN_DEPOSIT_AMOUNT` (default $0.10).
 
 Ready-to-use config templates (fill `pay_to` + `upstream`):
-platform — `templates/pay_per_use.json`, `templates/lifetime.json`, `templates/monthly.json`;
+platform — `templates/pay_per_use.json`, `templates/lifetime.json`,
+`templates/monthly.json`, `templates/prepaid.json`;
 legacy/extended — `templates/payperuse.json`, `templates/subscription.json`,
 `templates/metered.json`, `templates/timepass.json`.
 All four modes verified with REAL Base-mainnet settlements (2026-07-03):
 subscription 0x3c4a9371…, metered 0xd1070f32…/0x81e668b7…, timepass pass_active
 until expiry, payperuse 0x671119cb…. Timepass CLI: `--mode timepass
 --pass-days 30 --pass-price 4.99`; repeat purchases EXTEND expiry from
-max(now, current expiry).
+max(now, current expiry). Prepaid E2E verified on Base mainnet 2026-07-06:
+deposit 0x45946e23… (100000 atomic, block 48257298), then 2 pure off-chain
+debit calls at ~1s latency each, balance exact, upstream-5xx refund exact.
+Buyers need NO special handling: `client.paid_request` detects the prepaid
+challenge, signs the per-call price for auth, and auto-signs the deposit only
+when the gateway answers insufficient_balance (spend guard applies to both).
 
 Subscription/metered specifics:
 - Account = payer wallet address; API key is **deterministic** per payer (re-topup returns the same key).

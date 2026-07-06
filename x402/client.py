@@ -250,10 +250,33 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
             return {"status": 402, "error": "unrecognized 402 challenge",
                     "body": (r0.text[:2000] if r0.text else "")}
         signer = SessionEOASigner(max_amount_atomic)
-        xp = _sign_platform_payment(accepts, max_amount_atomic)
-        async with _httpx.AsyncClient(timeout=timeout, follow_redirects=True) as plain:
-            r2 = await plain.request(method.upper(), url, json=json_body,
-                                     headers={**(headers or {}), "X-PAYMENT": xp})
+        # Up to 2 payment attempts. prepaid needs both: attempt 1 signs the
+        # per-call price (authentication only — the gateway debits the prepaid
+        # balance instead of settling); if the gateway answers 402
+        # insufficient_balance, its new challenge carries accepts.amount =
+        # deposit size, so attempt 2 signs the deposit (settled on-chain via
+        # /facilitator/deposit-settle, then the call is debited and forwarded).
+        # Other modes are unchanged: attempt 1 settles, a second 402 just
+        # surfaces the gateway's error.
+        r2 = r0
+        for _ in range(2):
+            xp = _sign_platform_payment(accepts, max_amount_atomic)
+            async with _httpx.AsyncClient(timeout=timeout, follow_redirects=True) as plain:
+                r2 = await plain.request(method.upper(), url, json=json_body,
+                                         headers={**(headers or {}), "X-PAYMENT": xp})
+            if r2.status_code != 402:
+                break
+            try:
+                nxt = json.loads(r2.text or "{}").get("accepts")
+            except Exception:
+                break
+            if isinstance(nxt, list):
+                nxt = nxt[0] if nxt else None
+            if not (isinstance(nxt, dict) and nxt.get("scheme") == "exact"):
+                break
+            if nxt.get("amount") == accepts.get("amount"):
+                break  # same ask again -> not a deposit escalation, give up
+            accepts = nxt
         return {"status": r2.status_code, "payer": signer.address, "paid": True,
                 "pricing_model": accepts.get("pricingModel"),
                 "body": (r2.text[:2000] if r2.text else "")}

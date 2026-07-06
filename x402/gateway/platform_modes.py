@@ -8,6 +8,14 @@ x402-facilitator/docs/pricing-models.md:
                settlements (payer paid pay_to before = permanent access)
   monthly      like lifetime but access expires one natural month after
                payment (same day next month, clamped to month end)
+  prepaid      one on-chain deposit (/facilitator/deposit-settle) credits a
+               (payer, pay_to) balance held by the facilitator; every call is
+               then a millisecond off-chain /facilitator/debit — no per-call
+               settle, no per-payer settle rate limit, per-call price can be
+               metered via route units. The per-call X-PAYMENT signature is
+               used for AUTHENTICATION only (verify, never settled) unless the
+               balance is insufficient AND the signed value covers the deposit
+               minimum, in which case it IS the deposit.
 
 Contract points (must match the platform audit checklist, doc §12):
   * 402 JSON body: {x402Version:2, error, accepts:{...,"pricingModel":<mode>}}
@@ -27,7 +35,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-PLATFORM_MODES = ("pay_per_use", "lifetime", "monthly")
+PLATFORM_MODES = ("pay_per_use", "lifetime", "monthly", "prepaid")
 
 # network -> (usdc_asset, extra name/version) — mirror of facilitator KNOWN_ASSETS
 ASSETS = {
@@ -55,6 +63,14 @@ class PlatformBilling:
         self.fac_token = cfg.get("facilitator_token") or ""
         # settlements/access-status are admin-gated on the platform facilitator
         self.fac_admin_token = cfg.get("facilitator_admin_token") or ""
+        # prepaid: suggested deposit size. Default 100 calls worth, floored at
+        # the facilitator's default minimum deposit ($0.10 = 100000 atomic).
+        dep = cfg.get("deposit_usd")
+        if dep is not None:
+            self.deposit_atomic = int(round(float(str(dep).lstrip("$")) * 1_000_000))
+        else:
+            self.deposit_atomic = max(int(self.amount_atomic) * 100, 100_000)
+        self._verify_cache: dict = {}  # signature -> (valid_until_ts, payer)
 
     # -- requirements / 402 -------------------------------------------------
     def requirements(self, resource: str = "") -> dict:
@@ -70,10 +86,23 @@ class PlatformBilling:
         }
         if resource:
             req["resource"] = resource
+        if self.mode == "prepaid":
+            # what the buyer signs by default is the PER-CALL price (auth-only
+            # signature); depositAtomic tells them what to sign when the
+            # gateway answers insufficient_balance.
+            req["depositAtomic"] = str(self.deposit_atomic)
+            req["pricePerCallAtomic"] = self.amount_atomic
         return req
 
-    def challenge_body(self, resource: str = "", error: str = "X-PAYMENT header is required") -> dict:
-        return {"x402Version": 2, "error": error, "accepts": self.requirements(resource)}
+    def challenge_body(self, resource: str = "", error: str = "X-PAYMENT header is required",
+                       deposit: bool = False) -> dict:
+        """402 body. deposit=True (prepaid only) swaps accepts.amount to the
+        deposit size — the client signs accepts.amount, so this is how the
+        gateway asks for a top-up instead of an auth signature."""
+        acc = self.requirements(resource)
+        if deposit and self.mode == "prepaid":
+            acc["amount"] = str(self.deposit_atomic)
+        return {"x402Version": 2, "error": error, "accepts": acc}
 
     # -- facilitator calls ---------------------------------------------------
     def _headers(self, admin: bool = False) -> dict:
@@ -97,6 +126,78 @@ class PlatformBilling:
                              json={"x402Version": 2, "paymentPayload": payload,
                                    "paymentRequirements": self.requirements(resource)})
             return r.json()
+
+    # -- prepaid: balance / deposit / debit (facilitator holds the ledger) ---
+    async def verify_cached(self, payload: dict, resource: str) -> dict:
+        """Facilitator /verify with a signature cache: a buyer may reuse one
+        signed payload within its validity window, so identical signatures
+        skip the round-trip. Safe: the signature itself is the bearer secret
+        (only the key holder ever had it), and the cache expires at the
+        authorization's validBefore."""
+        sig = str(payload.get("payload", {}).get("signature", ""))
+        now = time.time()
+        hit = self._verify_cache.get(sig)
+        if hit and hit[0] > now:
+            return {"isValid": True, "payer": hit[1], "cached": True}
+        v = await self.verify(payload, resource)
+        if v.get("isValid"):
+            auth = payload.get("payload", {}).get("authorization", {}) or {}
+            try:
+                valid_until = min(float(auth.get("validBefore", 0)), now + 600)
+            except (TypeError, ValueError):
+                valid_until = now + 60
+            self._verify_cache[sig] = (valid_until - 5, str(v.get("payer", "")))
+            if len(self._verify_cache) > 10000:
+                self._verify_cache.clear()
+        return v
+
+    async def balance(self, payer: str) -> int:
+        async with httpx.AsyncClient(timeout=15) as c:
+            r = await c.get(f"{self.facilitator}/facilitator/balance",
+                            params={"payer": payer, "pay_to": self.pay_to},
+                            headers=self._headers())
+            r.raise_for_status()
+            return int(r.json().get("balance_atomic", 0))
+
+    async def deposit(self, payload: dict, resource: str) -> dict:
+        """Forward the signed payload to /facilitator/deposit-settle (on-chain
+        settle that credits the payer/pay_to prepaid balance)."""
+        auth = payload.get("payload", {}).get("authorization", {}) or {}
+        req = self.requirements(resource)
+        req["amount"] = str(auth.get("value", req["amount"]))
+        async with httpx.AsyncClient(timeout=60) as c:
+            r = await c.post(f"{self.facilitator}/facilitator/deposit-settle",
+                             headers=self._headers(),
+                             json={"x402Version": 2, "paymentPayload": payload,
+                                   "paymentRequirements": req})
+            return r.json()
+
+    async def debit(self, payer: str, request_id: str, units: int = 1,
+                    route: str = "") -> dict:
+        amount = int(self.amount_atomic) * max(int(units), 1)
+        async with httpx.AsyncClient(timeout=15) as c:
+            r = await c.post(f"{self.facilitator}/facilitator/debit",
+                             headers=self._headers(),
+                             json={"payer": payer, "pay_to": self.pay_to,
+                                   "amount_atomic": amount,
+                                   "request_id": request_id, "route": route})
+            return r.json()
+
+    async def refund(self, payer: str, request_id: str, units: int = 1,
+                     route: str = "") -> None:
+        """Credit back a debit after an upstream failure (negative debit with a
+        derived request_id, so it is idempotent and never collides)."""
+        amount = -int(self.amount_atomic) * max(int(units), 1)
+        try:
+            async with httpx.AsyncClient(timeout=15) as c:
+                await c.post(f"{self.facilitator}/facilitator/debit",
+                             headers=self._headers(),
+                             json={"payer": payer, "pay_to": self.pay_to,
+                                   "amount_atomic": amount,
+                                   "request_id": f"{request_id}:refund",
+                                   "route": route})
+        except Exception as e:
+            print(f"[x402-platform] prepaid refund failed: {e}", flush=True)
 
     # -- already-paid check (facilitator = source of truth) ------------------
     @staticmethod

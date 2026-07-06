@@ -37,6 +37,8 @@ if _ca and not os.environ.get("X402_NO_PROXY"):
     os.environ.setdefault("HTTP_PROXY", _url)
     os.environ["NO_PROXY"] = os.environ.get("NO_PROXY", "") + ",127.0.0.1,localhost"
 
+import uuid
+
 import httpx
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
@@ -343,6 +345,7 @@ async def proxy(path: str, request: Request):
         }
 
     # ---- platform pricing modes (community-gateway contract) -------------
+    prepaid_charge = None  # (payer, request_id, units) — set when a prepaid debit applied
     if platform_billing is not None and units > 0:
         pb = platform_billing
         raw = request.headers.get("X-PAYMENT") or request.headers.get("PAYMENT-SIGNATURE") or ""
@@ -353,7 +356,8 @@ async def proxy(path: str, request: Request):
             return JSONResponse(pb.challenge_body(full, error="malformed X-PAYMENT header"),
                                 status_code=402)
         try:
-            v = await pb.verify(payload, full)
+            v = await (pb.verify_cached(payload, full) if MODE == "prepaid"
+                       else pb.verify(payload, full))
         except Exception as e:
             return _err(502, "facilitator_error", f"payment facilitator unreachable: {e}")
         if not v.get("isValid"):
@@ -362,7 +366,46 @@ async def proxy(path: str, request: Request):
                 status_code=402)
         payer = v.get("payer") or payer
 
-        if not await pb.already_paid(payer):
+        if MODE == "prepaid":
+            # signature = authentication; money moves off-chain via debit.
+            # Deposit happens only when the balance can't cover this call AND
+            # the signed value is an actual top-up (>= depositAtomic).
+            price = int(pb.amount_atomic) * units
+            auth_value = int((payload.get("payload", {})
+                              .get("authorization", {}) or {}).get("value", 0) or 0)
+            try:
+                bal = await pb.balance(payer)
+            except Exception as e:
+                return _err(502, "facilitator_error", f"balance check failed: {e}")
+            if bal < price and auth_value >= pb.deposit_atomic:
+                try:
+                    dep = await pb.deposit(payload, full)
+                except Exception as e:
+                    return _err(502, "facilitator_error", f"deposit failed: {e}")
+                if not dep.get("success"):
+                    return JSONResponse(pb.challenge_body(
+                        full, error=dep.get("errorReason", "deposit settlement failed"),
+                        deposit=True), status_code=402)
+                bal = int(dep.get("balance_atomic", 0))
+            if bal < price:
+                return JSONResponse(pb.challenge_body(
+                    full, error=f"insufficient_balance: {bal} < {price} — "
+                                "sign accepts.amount to top up your prepaid balance",
+                    deposit=True), status_code=402)
+            request_id = uuid.uuid4().hex
+            try:
+                d = await pb.debit(payer, request_id, units=units, route=full)
+            except Exception as e:
+                return _err(502, "facilitator_error", f"debit failed: {e}")
+            if not d.get("ok"):
+                if d.get("error") == "insufficient_balance":
+                    return JSONResponse(pb.challenge_body(
+                        full, error="insufficient_balance — sign accepts.amount "
+                                    "to top up your prepaid balance", deposit=True),
+                        status_code=402)
+                return _err(502, "facilitator_error", f"debit rejected: {d.get('error')}")
+            prepaid_charge = (payer, request_id, units)
+        elif not await pb.already_paid(payer):
             try:
                 s = await pb.settle(payload, full)
             except Exception as e:
@@ -413,10 +456,16 @@ async def proxy(path: str, request: Request):
     except Exception as e:
         if MODE in ("subscription", "metered") and units > 0:
             ledger.refund(key, units, route=full)  # don't charge for our failure
+        if prepaid_charge:
+            await platform_billing.refund(prepaid_charge[0], prepaid_charge[1],
+                                          units=prepaid_charge[2], route=full)
         return _err(502, "upstream_error", f"upstream unreachable: {e}")
 
     if r.status_code >= 500 and MODE in ("subscription", "metered") and units > 0:
         ledger.refund(key, units, route=full)
+    if r.status_code >= 500 and prepaid_charge:
+        await platform_billing.refund(prepaid_charge[0], prepaid_charge[1],
+                                      units=prepaid_charge[2], route=full)
 
     resp_headers = {k: v for k, v in r.headers.items()
                     if k.lower() not in ("content-length", "transfer-encoding", "content-encoding")}

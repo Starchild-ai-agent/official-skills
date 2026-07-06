@@ -384,6 +384,12 @@ The automated reviewer runs these checks against the `api_endpoint`:
 | 4 | `response_match` | The actual response's key fields match your `example_response` |
 | 5 | `doc_completeness` | `api_documentation` includes parameter descriptions, response format, and at least one example |
 
+   Check #5 is keyword-matched: the doc must contain a "Response" (or "响应格式")
+   section with actual body text under the heading — an empty section fails review.
+   `service_description` (paid_project) and `api_documentation` / `example_request` /
+   `example_response` (paid_api) are enforced at call time by `create_paid_service()`,
+   which errors before creating an unreviewable record.
+
 **Common rejection causes:**
 - 402 response `amount` doesn't match declared `price` (off by decimals / wrong unit).
 - Endpoint doesn't return 402 at all (x402 not wired up, or returns 200 to unauthenticated requests).
@@ -476,6 +482,9 @@ write reviews, manage favorites, and check earnings — same as the web frontend
 ```bash
 python3 - <<'EOF'
 import sys
+# The directory name has a HYPHEN, so dotted imports
+# (`from skills.community_publish import ...`) raise ModuleNotFoundError.
+# Use this sys.path pattern (or importlib.util.spec_from_file_location).
 sys.path.insert(0, "/data/workspace/skills/community-publish")
 from exports import (
     # PUBLISH: public URL

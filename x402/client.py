@@ -23,6 +23,8 @@ import json
 import os
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 
 # outbound proxy (facilitator + remote service live outside the container)
 _ca = os.environ.get("STARCHILD_API_PROXY_CA_BASE64")
@@ -92,6 +94,10 @@ class SessionEOASigner:
     """
 
     KEY_PATH = "/data/workspace/.x402/buyer.key"
+    # Marker file written after a successful registration. Its presence means
+    # this EOA address is already mapped in ai-agent's session_wallets table,
+    # so we skip the registration API call on subsequent instantiations.
+    REGISTERED_PATH = "/data/workspace/.x402/buyer.key.registered"
 
     def __init__(self, max_amount_atomic: int = 1_000_000):
         from eth_account import Account
@@ -104,6 +110,141 @@ class SessionEOASigner:
                 f.write(self._acct.key.hex())
             os.chmod(self.KEY_PATH, 0o600)
         self.max_amount_atomic = max_amount_atomic
+        # Register the session EOA address to ai-agent so community-gateway can
+        # resolve x402 payer addresses back to users. Synchronous — the
+        # registration MUST succeed before the wallet can be used (otherwise
+        # payments would be unresolvable). If already registered (marker file
+        # exists), skip the API call. If JWT/API_URL is missing (local dev),
+        # skip silently.
+        try:
+            self._register_session_wallet()
+        except Exception:
+            # Registration failed — invalidate the account so the signer
+            # cannot be used even if the caller catches the exception.
+            self._acct = None
+            raise
+
+    # ── Session wallet registration ──────────────────────────────────────────
+
+    @classmethod
+    def _register_session_wallet(cls) -> None:
+        """Register this EOA address to ai-agent's session_wallets table.
+
+        Behavior:
+        - If the local marker file (REGISTERED_PATH) exists, registration was
+          already done in a previous run — skip the API call.
+        - If CONTAINER_JWT/USER_JWT or AI_AGENT_API_URL is missing (local dev
+          outside the platform), skip silently — no registration possible.
+        - Otherwise, call the registration API synchronously. On success,
+          write the marker file. On failure, raise RuntimeError to block
+          wallet usage — an unregistered EOA would produce unresolvable
+          payments.
+
+        Auth: CONTAINER_JWT / USER_JWT (Bearer) — the same identity token
+        used by other skills (e.g. agentx). The user_id is extracted
+        server-side from the JWT.
+        """
+        # Already registered in a previous run — skip.
+        if os.path.exists(cls.REGISTERED_PATH):
+            return
+
+        jwt = os.environ.get("CONTAINER_JWT", "") or os.environ.get("USER_JWT", "")
+        base = os.environ.get("AI_AGENT_API_URL", "").rstrip("/")
+        if not jwt or not base:
+            # Running outside the platform (local dev) — skip silently.
+            return
+
+        addr = cls._load_address()
+        if not addr:
+            raise RuntimeError(
+                "x402: cannot read EOA address from key file for registration")
+
+        container_id = (
+            os.environ.get("CONTAINER_ID")
+            or os.environ.get("FLY_MACHINE_ID")
+            or ""
+        )
+
+        url = base + "/v1/agent/profile/register-session-wallet"
+        payload = {
+            "wallet_address": addr,
+            "wallet_type": "x402_session_eoa",
+            "chain_type": "ethereum",
+        }
+        if container_id:
+            payload["container_id"] = container_id
+        body = json.dumps(payload).encode()
+        req = urllib.request.Request(url, data=body, method="POST")
+        req.add_header("Authorization", f"Bearer {jwt}")
+        req.add_header("Content-Type", "application/json")
+        req.add_header("Accept", "application/json")
+
+        registration_ok = False
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                resp_data = resp.read().decode()
+                # 200 with status created/updated = success
+                try:
+                    result = json.loads(resp_data) if resp_data else {}
+                except Exception:
+                    result = {}
+                if result.get("status") in ("created", "updated"):
+                    registration_ok = True
+                else:
+                    raise RuntimeError(
+                        f"x402: session wallet registration unexpected "
+                        f"response: {resp_data[:200]}")
+        except urllib.error.HTTPError as e:
+            detail = ""
+            try:
+                detail = e.read().decode()[:300]
+            except Exception:
+                pass
+            # The API is idempotent: if the address was already registered
+            # (e.g. local marker file lost but ai-agent DB has the record),
+            # a re-registration returns 200 with status=updated. However,
+            # if we get a 400 with address_conflict, the EOA address collides
+            # with a Privy wallet — that's a real error, block usage.
+            # Other 4xx/5xx errors also block usage.
+            raise RuntimeError(
+                f"x402: session wallet registration failed: "
+                f"HTTP {e.code}: {detail}") from e
+        except RuntimeError:
+            raise
+        except Exception as e:
+            raise RuntimeError(
+                f"x402: session wallet registration error: "
+                f"{type(e).__name__}: {e}") from e
+
+        if not registration_ok:
+            raise RuntimeError(
+                "x402: session wallet registration did not confirm success")
+
+        # Registration succeeded — write marker file so we skip next time.
+        try:
+            os.makedirs(os.path.dirname(cls.REGISTERED_PATH), exist_ok=True)
+            with open(cls.REGISTERED_PATH, "w") as f:
+                f.write(addr)
+            os.chmod(cls.REGISTERED_PATH, 0o600)
+        except Exception as e:
+            # Marker write failed — not fatal, but log it. Next run will
+            # re-register (idempotent API, so that's fine).
+            sys.stderr.write(
+                f"[x402] warning: could not write registration marker: {e}\n")
+
+    @staticmethod
+    def _load_address() -> str:
+        """Read the EOA address from the key file without instantiating
+        eth_account (avoids a circular import / heavy dep at module load)."""
+        try:
+            from eth_account import Account
+            if os.path.exists(SessionEOASigner.KEY_PATH):
+                acct = Account.from_key(
+                    open(SessionEOASigner.KEY_PATH).read().strip())
+                return acct.address
+        except Exception:
+            pass
+        return ""
 
     @property
     def address(self) -> str:

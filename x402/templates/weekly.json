@@ -1,0 +1,16 @@
+{
+  "mode": "weekly",
+  "price_usd": "3.00",
+  "upstream": "http://127.0.0.1:UPSTREAM_PORT",
+  "pay_to": "0xYOUR_PROVIDER_WALLET",
+  "network": "eip155:8453",
+  "facilitator": "https://starchild-x402-facilitator.fly.dev",
+  "facilitator_token": "SET_IF_FACILITATOR_ENFORCES_GATEWAY_TOKENS",
+  "facilitator_admin_token": "REQUIRED_FOR_ACCESS_STATUS_LOOKUP",
+  "routes": {
+    "* /api/*": {
+      "units": 1
+    }
+  },
+  "port": 8402
+}

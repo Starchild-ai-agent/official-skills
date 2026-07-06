@@ -1,0 +1,12 @@
+{
+  "mode": "prepaid",
+  "upstream": "http://127.0.0.1:UPSTREAM_PORT",
+  "pay_to": "0xYOUR_PROVIDER_WALLET",
+  "network": "eip155:8453",
+  "price_usd": "0.001",
+  "deposit_usd": "1.00",
+  "facilitator": "https://starchild-x402-facilitator.fly.dev",
+  "facilitator_token": "SET_IF_FACILITATOR_ENFORCES_GATEWAY_TOKENS",
+  "routes": {"* /api/*": {"units": 1}},
+  "port": 8402
+}

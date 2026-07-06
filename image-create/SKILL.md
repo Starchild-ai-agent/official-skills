@@ -1,6 +1,6 @@
 ---
 name: image-create
-version: 1.0.3
+version: 1.0.4
 description: |
   Pure text-to-image generation for all creative scenarios (no reference photo). Covers logo design, poster design, illustration, meme, game assets, social media content, 3D rendering, education, fashion, food, pet, wedding, holiday marketing, and artistic styles.
 
@@ -9,8 +9,6 @@ metadata:
   starchild:
     emoji: "🎨"
     skillKey: image-create
-    requires:
-      env: [FAL_KEY]
 user-invocable: true
 disable-model-invocation: false
 

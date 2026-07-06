@@ -1,6 +1,6 @@
 ---
 name: image-bg-remove
-version: 1.0.2
+version: 1.0.3
 description: |
   Background removal: transparent PNGs, cutouts, product photos, portraits, pets, group photos.
   Uses dedicated Bria RMBG 2.0 model — no prompt needed, fast (~3s), cheap ($0.01).
@@ -10,8 +10,6 @@ metadata:
   starchild:
     emoji: "✂️"
     skillKey: image-bg-remove
-    requires:
-      env: [FAL_KEY]
 user-invocable: true
 disable-model-invocation: false
 

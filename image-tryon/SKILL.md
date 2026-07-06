@@ -1,6 +1,6 @@
 ---
 name: image-tryon
-version: 1.0.2
+version: 1.0.3
 description: |
   Virtual try-on: clothing, accessories, hairstyles, makeup, glasses, hats, shoes, watches.
 
@@ -9,8 +9,6 @@ metadata:
   starchild:
     emoji: "👗"
     skillKey: image-tryon
-    requires:
-      env: [FAL_KEY]
 user-invocable: true
 disable-model-invocation: false
 

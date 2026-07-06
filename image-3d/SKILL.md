@@ -1,6 +1,6 @@
 ---
 name: image-3d
-version: 1.0.2
+version: 1.0.3
 description: |
   3D-style image generation: 3D characters, product renders, isometric dioramas, 3D icons, 3D text, interior design renders, architectural visualization, 3D scenes, game assets.
 
@@ -9,8 +9,6 @@ metadata:
   starchild:
     emoji: "🧊"
     skillKey: image-3d
-    requires:
-      env: [FAL_KEY]
 user-invocable: true
 disable-model-invocation: false
 

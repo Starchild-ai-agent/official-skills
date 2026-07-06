@@ -1,6 +1,6 @@
 ---
 name: video
-version: 3.3.3
+version: 3.3.4
 description: |
   AI video generation: text-to-video, image-to-video, video-to-video, model selection.
 
@@ -9,8 +9,6 @@ metadata:
   starchild:
     emoji: "🎬"
     skillKey: video
-    requires:
-      env: [FAL_KEY]
 user-invocable: true
 disable-model-invocation: false
 

@@ -432,15 +432,37 @@ Facilitator verify failures seen in the wild (2nd 402's `error` field):
   wallet holds USDC on the target network).
 - **Ledger inspection**: `sqlite3 /data/workspace/.x402/<name>/state/ledger.db 'select * from payments'`.
 - **Gateway logs**: `/data/workspace/.x402/<name>/gateway.log`.
+- **Gateway lifecycle — ONE owner per port (hard rule)**: `monetize.py`
+  STARTS a background gateway (registered in `.x402/services.json`, revived
+  by keepalive). Starting it AGAIN under `preview(serve)` collides: the new
+  process fails `address already in use` while the old one keeps answering.
+  Pick ONE owner:
+  - **preview-managed** (recommended for anything published): run
+    `monetize.py ... --no-start` — writes config only and prints the
+    `gateway_command`; wrap upstream + gateway in a start.py and
+    `preview(action='serve', command='python3 start.py', port=<gateway_port>)`.
+    Preview then owns restarts across reboots.
+  - **monetize-managed** (local/dev): default behavior. Manage with
+    `monetize.py --stop <name>` / `--restart <name>` — restart is REQUIRED
+    after editing `x402.config.json` (e.g. testnet→mainnet network switch).
+- **Preview "running" ≠ payments working**: preview health checks hit `/`,
+  which the gateway proxies to the upstream — 200 there says nothing about
+  billing. Verify the gateway itself: `GET /x402/info` returns 200 JSON and
+  an unpaid paid-route returns 402. If responses look stale, suspect an old
+  process still holding the port (see port hygiene below).
 - **Testing gateways locally — port hygiene (hard-won lesson)**: a uvicorn
   gateway whose port is already held FAILS TO BIND but the old process keeps
   answering, so your "new code" test actually exercises the OLD process (and
   its 60s access cache) — false PASSes and false FAILs. Rules:
   1. After starting a test gateway, ALWAYS check its log for
      `address already in use` BEFORE trusting any response from that port.
-  2. Kill test processes by LISTENING-PORT PID
-     (`ss -tlnp | grep :PORT` → kill that pid), never by `ps | grep` name
+  2. Kill test processes by LISTENING-PORT PID, never by `ps | grep` name
      matching — backgrounded shells and renamed configs escape name matches.
+     NOTE: `ss`/`netstat` are NOT installed in the container. Use:
+     `python3 -c "import socket; s=socket.socket(); print('busy' if s.connect_ex(('127.0.0.1',PORT))==0 else 'free')"`
+     to test a port, and find the holder by scanning cmdlines:
+     `for d in /proc/[0-9]*; do grep -q CONFIG_OR_PORT_HINT $d/cmdline 2>/dev/null && echo $d; done`
+     — or simply `monetize.py --stop <name>` which does this for you.
   3. When in doubt, move to brand-new port numbers instead of reusing ones a
      dead-looking process might still hold.
 - Python SDK is `x402` v2.10+ (V2 headers `PAYMENT-REQUIRED`/`PAYMENT-SIGNATURE`/

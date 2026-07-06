@@ -65,9 +65,80 @@ def start_gateway(cfg_path: str, log_path: str) -> int:
     return p.pid
 
 
+def _pids_for_config(cfg_path: str) -> list:
+    """Find gateway processes serving this config (by /proc cmdline)."""
+    pids = []
+    for d in os.listdir("/proc"):
+        if not d.isdigit() or int(d) == os.getpid():
+            continue
+        try:
+            with open(f"/proc/{d}/cmdline", "rb") as f:
+                cmd = f.read().decode(errors="replace").replace("\x00", " ")
+        except OSError:
+            continue
+        if cfg_path in cmd and "gateway/app.py" in cmd:
+            pids.append(int(d))
+    return pids
+
+
+def stop_service(name: str) -> dict:
+    reg = load_registry()
+    svc = reg["services"].get(name)
+    if not svc:
+        sys.exit(f"unknown service '{name}' — registered: {list(reg['services'])}")
+    killed = []
+    for pid in _pids_for_config(svc["config"]):
+        try:
+            os.kill(pid, 15)
+            killed.append(pid)
+        except ProcessLookupError:
+            pass
+    time.sleep(1.0)
+    port = svc.get("port")
+    with socket.socket() as s:
+        port_free = (s.connect_ex(("127.0.0.1", port)) != 0) if port else True
+    svc["pid"] = None
+    save_registry(reg)
+    return {"ok": port_free, "name": name, "killed_pids": killed,
+            "port": port, "port_free": port_free,
+            "note": "" if port_free else "port still held by a non-gateway "
+            "process — inspect /proc/*/cmdline or move to a fresh port"}
+
+
+def restart_service(name: str) -> dict:
+    r = stop_service(name)
+    reg = load_registry()
+    svc = reg["services"][name]
+    log_path = svc.get("log") or os.path.join(os.path.dirname(svc["config"]), "gateway.log")
+    pid = start_gateway(svc["config"], log_path)
+    svc["pid"] = pid
+    save_registry(reg)
+    import httpx
+    ok = False
+    for _ in range(20):
+        try:
+            ok = httpx.get(f"http://127.0.0.1:{svc['port']}/x402/health",
+                           timeout=2).status_code == 200
+            if ok:
+                break
+        except Exception:
+            time.sleep(0.5)
+    return {"ok": ok, "name": name, "pid": pid, "port": svc["port"],
+            "stopped": r["killed_pids"], "log": log_path}
+
+
 def main():
+    # lifecycle subcommands: --stop NAME / --restart NAME (no other args)
+    if len(sys.argv) >= 3 and sys.argv[1] in ("--stop", "--restart"):
+        fn = stop_service if sys.argv[1] == "--stop" else restart_service
+        print(json.dumps(fn(sys.argv[2]), indent=2))
+        return
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
+    ap.add_argument("--no-start", action="store_true",
+                    help="write config + register only; do NOT start the gateway "
+                         "(use when preview(serve) will own the process)")
     ap.add_argument("--upstream-port", type=int, required=True)
     ap.add_argument("--mode", default="payperuse",
                     choices=["pay_per_use", "lifetime", "monthly", "weekly",
@@ -187,7 +258,7 @@ def main():
         json.dump(cfg, f, indent=2)
 
     log_path = os.path.join(svc_dir, "gateway.log")
-    pid = start_gateway(cfg_path, log_path)
+    pid = None if args.no_start else start_gateway(cfg_path, log_path)
 
     reg = load_registry()
     reg["services"][args.name] = {
@@ -195,6 +266,20 @@ def main():
         "pid": pid, "log": log_path, "created": time.time(),
     }
     save_registry(reg)
+
+    if args.no_start:
+        print(json.dumps({
+            "ok": True, "name": args.name, "gateway_port": port, "started": False,
+            "mode": args.mode, "network": args.network, "pay_to": pay_to,
+            "config": cfg_path,
+            "gateway_command": f"python3 {os.path.join(SKILL, 'gateway', 'app.py')} {cfg_path}",
+            "next": "config written, gateway NOT started. Wrap your upstream + the "
+                    "gateway_command in a start.py and run it under "
+                    "preview(action='serve', port=<gateway_port>) so preview owns "
+                    "the process lifecycle (auto-restart after reboots). ONE owner "
+                    "per port — do not also start the gateway another way.",
+        }, indent=2))
+        return
 
     # health check
     import httpx
@@ -212,8 +297,14 @@ def main():
         "mode": args.mode, "network": args.network, "pay_to": pay_to,
         "info_endpoint": f"http://127.0.0.1:{port}/x402/info",
         "config": cfg_path, "log": log_path,
-        "next": "expose the GATEWAY port (not the upstream) via preview/community-publish; "
-                "run keepalive registration (see SKILL.md §keepalive)",
+        "manage": f"monetize.py --stop {args.name} | --restart {args.name} "
+                  "(restart after editing x402.config.json, e.g. network switch)",
+        "next": "this gateway runs as a monetize-managed background process "
+                "(keepalive revives it). To publish via preview/community-publish "
+                "do NOT start it again under preview(serve) — that collides on "
+                "the port. Either keep it monetize-managed (publish only needs "
+                "the port), or --stop it and re-run with --no-start so "
+                "preview(serve) owns the process (SKILL.md §Gateway lifecycle).",
     }, indent=2))
 
 

@@ -313,8 +313,14 @@ the user's funds sit on a different chain:
 1. Snapshot all chains: `wallet_get_all_balances()` (wallet skill).
 2. USDC on the wrong chain → move it to the service's network first
    (cross-chain: okx / bridge skills; same-chain swap: 1inch / openocean).
-3. Privy → session EOA on the target chain: `wallet_transfer(...)` (plain
-   ERC20 transfer; the EOA address is printed by client.py on first run).
+3. Privy → session EOA on the target chain via `wallet_transfer` — an ERC20
+   transfer is a CONTRACT call, not a native send: `to` = the token contract
+   (Base USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`), `amount` = 0,
+   `data` = transfer calldata `0xa9059cbb` + recipient (the session EOA,
+   zero-padded to 32 bytes) + atomic amount (32 bytes). Build it:
+   `"0xa9059cbb" + eoa[2:].lower().zfill(64) + hex(atomic)[2:].zfill(64)`.
+   Setting `to` = the EOA directly sends NATIVE currency instead — wrong tx.
+   (The EOA address is printed by client.py on first run.)
 4. Re-check the EOA balance, then `paid_request(...)`.
 5. No USDC anywhere → stop and tell the user to acquire some (on-ramp /
    exchange withdrawal). Never fabricate funds or skip the payment.

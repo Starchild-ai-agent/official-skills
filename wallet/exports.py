@@ -29,14 +29,21 @@ try:
     from tools.wallet import _get_wallet_addresses
 except ImportError:
     async def _get_wallet_addresses() -> dict:
-        """Fallback: fetch {chain_type: address} via the wallet service."""
-        resp = await _wallet_request("GET", "/wallets")
-        out = {}
-        for w in (resp or {}).get("wallets", []):
-            ct, addr = w.get("chain_type"), w.get("address")
-            if ct and addr:
-                out[ct] = addr
-        return out
+        """Fallback: same contract as the full module — returns
+        {"evm": "0x...", "sol": "..."} from GET /agent/wallet."""
+        data = await _wallet_request("GET", "/agent/wallet")
+        wallets = data if isinstance(data, list) else (data or {}).get("wallets", [])
+        result = {}
+        for w in wallets:
+            if not isinstance(w, dict):
+                continue
+            chain_type = w.get("chain_type", "")
+            addr = w.get("wallet_address", "") or w.get("address", "")
+            if chain_type == "ethereum" and addr and "evm" not in result:
+                result["evm"] = addr
+            elif chain_type == "solana" and addr and "sol" not in result:
+                result["sol"] = addr
+        return result
 
 try:
     from tools.wallet import DEBANK_CHAIN_MAP

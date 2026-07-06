@@ -482,6 +482,12 @@
       "description": "Thinking partner for trading theses: worldview, evidence, conviction, execution.\n\nUse when discussing market views, macro worries, or building a trade idea (e.g. \"I think dollar gets debased\", \"is DeFi undervalued\", asset allocation)."
     },
     {
+      "name": "treasures",
+      "path": "treasures/SKILL.md",
+      "version": "1.0.0",
+      "description": "Treasures Finance: tokenized stocks (xStocks / Ondo) trading, USDC bridging, and delegated wallet ops on Solana and Ethereum.\n\nUse when running Treasures-routed finance ops (e.g. discover tokenized stocks, quote/execute a trade, bridge USDC across chains, check a delegated wallet's portfolio).\n\nWallet: default to the `treasures-wallet` skill (non-custodial delegated signer, scoped strictly to RWA trades — the agent never signs). Only use raw B2B API signing (`treasures-b2b-api`) when the user explicitly asks for direct wallet-pair control."
+    },
+    {
       "name": "truenorth",
       "path": "truenorth/SKILL.md",
       "version": "1.0.2",

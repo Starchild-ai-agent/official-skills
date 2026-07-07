@@ -17,7 +17,8 @@ This skill handles TWO distinct concepts — keep them separate:
   LIST (上架) — make something discoverable/purchasable on the marketplace:
     Free listing (no review, no pricing):
       - list_in_dashboard()      → show on /projects gallery
-      - unlist_from_dashboard()  → remove from gallery
+      - unlist_from_dashboard()  → hide from gallery (soft, preserves stats)
+      - delete_listing()         → permanently delete listing row
       - get_listing_status()     → check if listed
     Paid listing (x402 charging + automated review + publish):
       - create_paid_service()    → create a service record
@@ -917,13 +918,13 @@ def list_in_dashboard(
 
 
 def unlist_from_dashboard(slug: str) -> dict[str, Any]:
-    """Remove this preview from the Service Marketplace.
+    """Hide this preview from the Service Marketplace (soft unlist).
 
-    The preview URL keeps working — only the dashboard listing row
-    is deleted, along with view/favorite counts. To temporarily hide
-    instead, use list_in_dashboard with a separate is_public toggle
-    (currently always publishes; use the lower-level
-    gateway.listing_publish(is_public=False) if needed).
+    The preview URL keeps working and the listing row is preserved
+    (view_count / favorite_count retained). Only is_public is set to
+    False so the project card disappears from Explore but still shows
+    in "My Projects". To permanently delete the listing row, use
+    delete_listing().
 
     Args:
         slug: Public slug to unlist.
@@ -933,16 +934,43 @@ def unlist_from_dashboard(slug: str) -> dict[str, Any]:
         {"ok": False, "error": ...} on failure (404 if not listed)
     """
     user_id = _user_id()
+
+    # Fetch current listing data so we can preserve name/description/etc.
     try:
-        status, body = gateway.listing_unlist(slug=slug, owner_user_id=user_id)
+        get_status, get_body = gateway.listing_get(slug=slug)
     except Exception as e:
         return {"ok": False, "error": f"Failed to reach gateway: {e}"}
 
-    if status == 404:
+    if get_status == 404:
         return {
             "ok": False,
             "error": f"Slug '{slug}' is not listed on the dashboard.",
         }
+    if get_status != 200:
+        return {
+            "ok": False,
+            "error": get_body.get("error", f"Gateway returned {get_status}"),
+        }
+
+    listing = get_body.get("listing") or get_body
+    name = listing.get("name", slug)
+    description = listing.get("description", "")
+    cover_url = listing.get("cover_url") or None
+    tags = listing.get("tags") or None
+
+    try:
+        status, body = gateway.listing_publish(
+            slug=slug,
+            owner_user_id=user_id,
+            name=name,
+            description=description,
+            cover_url=cover_url,
+            tags=tags,
+            is_public=False,
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
     if status != 200:
         return {
             "ok": False,
@@ -987,6 +1015,42 @@ def get_listing_status(slug: str) -> dict[str, Any]:
         "is_public": True,
         "listing": project,
     }
+
+
+def delete_listing(slug: str) -> dict[str, Any]:
+    """Permanently delete a free project listing (owner only).
+
+    This removes the listing row entirely from the database, including
+    view_count and favorite_count. The preview URL keeps working — only
+    the marketplace listing is removed.
+
+    To temporarily hide instead of permanently delete, use
+    unlist_from_dashboard() (sets is_public=False, preserves stats).
+
+    Args:
+        slug: Public slug to delete.
+
+    Returns:
+        {"ok": True} on success
+        {"ok": False, "error": ...} on failure (404 if not found)
+    """
+    user_id = _user_id()
+    try:
+        status, body = gateway.listing_delete(slug=slug, owner_user_id=user_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status == 404:
+        return {
+            "ok": False,
+            "error": f"Slug '{slug}' listing not found or not owned by you.",
+        }
+    if status != 200:
+        return {
+            "ok": False,
+            "error": body.get("error", f"Gateway returned {status}"),
+        }
+    return {"ok": True}
 
 
 # ════════════════════════════════════════════════════════════════════════

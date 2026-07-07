@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.17.1
+version: 0.18.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -22,7 +22,7 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 | Concept | What it means | Functions |
 |---|---|---|
 | **PUBLISH (发布)** | Make something **accessible** — a URL works, or code is on GitHub | `publish_preview`, `unpublish_preview`, `list_published_previews`, `open_source`, `remove_open_source`, `list_open_source`, `get_open_source`, `fork`, `validate_open_source` |
-| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Browse + consumer: `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary` |
+| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `delete_listing`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Browse + consumer: `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary` |
 
 **Publishing does NOT auto-list.** `publish_preview()` only allocates the URL. `open_source()` only pushes code. Neither makes the project discoverable on the marketplace — that requires a separate, deliberate LIST call.
 
@@ -89,7 +89,7 @@ The authoritative answer comes ONLY from a fresh `get_listing_status(slug)` (fre
 | "list on the dashboard" / "上架" / "show on community" / "make discoverable" / "发到广场" | `list_in_dashboard(slug)` | Free listing. Requires the preview to already exist. |
 | "上架付费服务" / "make this a paid service" / "上架到服务市场（付费）" | `create_paid_service(...)` → `submit_for_review()` → `publish_service()` | Paid listing. Needs x402 config first. |
 | "publish AND list" / "发布并上架" | `publish_preview()` THEN `list_in_dashboard()` | Two separate calls in order. |
-| "remove from dashboard" / "下架" / "unlist" / "hide from gallery" | `unlist_from_dashboard(slug)` | Free listing only. Preview URL stays alive. |
+| "remove from dashboard" / "下架" / "unlist" / "hide from gallery" | `unlist_from_dashboard(slug)` | Free listing only. Soft-unlist (sets `is_public=false`, preserves stats). Preview URL stays alive. |
 | "下架付费服务" / "unpublish service" | `unpublish_service(service_id)` | Paid listing only. |
 | "open source" / "open-source the code" / "开源代码" | `open_source(project_dir)` | Pushes code to GitHub. Does NOT list. |
 | "unpublish the URL" / "take down the link" | `unpublish_preview(slug)` | Listing row stays. |
@@ -99,6 +99,7 @@ The authoritative answer comes ONLY from a fresh `get_listing_status(slug)` (fre
 | "发布服务" / "publish my service" | `publish_service(service_id)` | Paid only, requires approved |
 | "更新服务" / "update service" | `update_service(service_id, ...)` | Paid only |
 | "删除服务" / "delete service" | `delete_service(service_id)` | Paid only |
+| "删除项目" / "delete listing" / "permanently remove from marketplace" | `delete_listing(slug)` | Free listing only. Permanently deletes the listing row. Use `unlist_from_dashboard()` to hide without deleting. |
 | Ambiguous after rereading | Ask one question | "你是要 (a) 发布公开 URL，(b) 免费上架到广场，(c) 付费上架到服务市场，还是 (d) 开源代码？" |
 
 ---
@@ -260,7 +261,8 @@ Returns `{"ok": True, "listing": {...}, "url": "...", "dashboard_url": "..."}`.
 - No review, no pricing — this is the free listing flow.
 
 **Companions:**
-- `unlist_from_dashboard(slug)` — remove from gallery, keep URL alive.
+- `unlist_from_dashboard(slug)` — soft-unlist from gallery (sets `is_public=false`, preserves view/favorite counts). URL stays alive. To re-list, call `list_in_dashboard()` again.
+- `delete_listing(slug)` — permanently delete the listing row (removes view/favorite counts). URL stays alive. Use `unlist_from_dashboard()` to hide without deleting.
 - `get_listing_status(slug)` — read-only check: returns `{ok, exists, is_public, listing}`.
 
 ---

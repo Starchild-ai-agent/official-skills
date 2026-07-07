@@ -194,12 +194,12 @@ def listing_publish(
     return _request("POST", "/api/projects-query/listing", body, timeout=15)
 
 
-def listing_unlist(slug: str, owner_user_id: str) -> tuple[int, dict]:
-    """Remove a listing from the public dashboard.
+def listing_delete(slug: str, owner_user_id: str) -> tuple[int, dict]:
+    """Permanently delete a listing row from the database.
 
-    Preview URL keeps working — only the dashboard row is deleted,
-    along with view/favorite counts. To temporarily hide instead of
-    permanently remove, use listing_publish(..., is_public=False).
+    Preview URL keeps working — only the dashboard listing row is
+    removed, along with view/favorite counts. To temporarily hide
+    instead, use listing_publish(..., is_public=False).
     """
     from urllib.parse import quote
     return _request(

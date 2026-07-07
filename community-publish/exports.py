@@ -1049,11 +1049,13 @@ def create_paid_service(
             the default plan.
         price: Price in USDC (>0).
         project_slug: Required for paid_project (the full published slug WITH
-            user prefix, e.g. "33-my-app"). Optional for paid_api — when set,
-            the service's paid API info is merged into the associated project's
-            card in the marketplace, showing both "View Project" and "Call API"
-            buttons on a single card (the "free webpage + paid API" pattern).
-            Must be the full slug with user prefix.
+            user prefix, e.g. "33-my-app"). OPTIONAL for paid_api — only set
+            this when the user explicitly wants to link a free Starchild
+            project page with this paid API (the "free webpage + paid API"
+            pattern, Flow D in SKILL.md). Do NOT pass project_slug for
+            standalone paid APIs with no associated project page. The backend
+            validates the slug against project_listings and silently clears
+            non-existent slugs. Must be the full slug with user prefix.
         cover_url: Optional cover image URL.
         tags: Optional list of ≤5 tags (≤20 chars each).
         free_trial_count: Optional, only for pay_per_use (N free calls).
@@ -1105,6 +1107,23 @@ def create_paid_service(
         "pricing_model": pricing_model,
         "price": price,
     }
+    # project_slug for paid_api is OPTIONAL and should only be set when the
+    # user explicitly wants to link a free project page with this paid API
+    # (the "free webpage + paid API" pattern, Flow D in SKILL.md). Agents
+    # commonly mistake the preview slug for project_slug, creating phantom
+    # associations. The backend validates and clears non-existent slugs,
+    # but we also warn here so the agent can self-correct.
+    project_slug_warning: str | None = None
+    if project_slug and service_type == "paid_api":
+        project_slug_warning = (
+            f"project_slug='{project_slug}' was passed for a paid_api service. "
+            "This is ONLY correct if you intend to link a free Starchild project "
+            "page with this paid API (the 'free webpage + paid API' pattern). "
+            "If this is a standalone API with no associated project page, "
+            "do NOT pass project_slug — the backend will clear non-existent "
+            "slugs automatically, but the service should not have been "
+            "associated in the first place."
+        )
     if project_slug:
         payload["project_slug"] = project_slug
     if cover_url:
@@ -1142,7 +1161,7 @@ def create_paid_service(
         }
 
     service = body.get("service", {})
-    return {
+    result: dict[str, Any] = {
         "ok": True,
         "service": service,
         "service_id": service.get("id"),
@@ -1153,6 +1172,14 @@ def create_paid_service(
             "until approved, then call publish_service() to go live."
         ),
     }
+    # Surface client-side warning (paid_api + project_slug passed)
+    if project_slug_warning:
+        result["project_slug_warning"] = project_slug_warning
+    # Surface server-side warning (backend cleared a non-existent project_slug)
+    backend_warning = body.get("warning")
+    if backend_warning:
+        result["project_slug_warning"] = backend_warning
+    return result
 
 
 def submit_for_review(service_id: str) -> dict[str, Any]:

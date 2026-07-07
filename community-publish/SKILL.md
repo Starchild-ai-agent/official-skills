@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.17.0
+version: 0.17.1
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -295,15 +295,17 @@ Before creating a paid service, identify your scenario:
 | Scenario | service_type | project_slug | api_endpoints | Flow | Example |
 |----------|-------------|--------------|---------------|------|---------|
 | **Paid subscription project** — entire project behind paywall (monthly/yearly/lifetime) | `paid_project` | required | — | B | SaaS dashboard, premium tool |
-| **Standalone paid API** — external API with no Starchild project page | `paid_api` | — | — | C | Third-party data API |
+| **Standalone paid API** — external API with no Starchild project page | `paid_api` | **omit** | — | C | Third-party data API |
 | **Free webpage + paid API** — project has a free landing page AND a paid API endpoint | `paid_api` | required | — | D | API with docs site |
-| **Multi-endpoint API** — one service with multiple API endpoints at different prices | `paid_api` | optional | required | E | Data API with basic/premium tiers |
+| **Multi-endpoint API** — one service with multiple API endpoints at different prices | `paid_api` | **omit** (unless also Flow D) | required | E | Data API with basic/premium tiers |
 
 **Key rules:**
-- If your API has a published Starchild project (landing page/dashboard), ALWAYS set `project_slug` — this merges the service into the project card in the marketplace.
-- `project_slug` must be the **full published slug WITH user prefix** (e.g. `33-my-app`).
+- **Do NOT pass `project_slug` for standalone paid APIs.** `project_slug` is ONLY for `paid_project` (required) or the "free webpage + paid API" pattern (Flow D, where a published Starchild project page exists). Passing a preview slug or a non-existent slug for a standalone `paid_api` creates a phantom association — the backend will silently clear it, but you should not have passed it in the first place.
+- If your API has a published Starchild project (landing page/dashboard) that users can browse for free, set `project_slug` — this merges the service into the project card in the marketplace. If there is NO free project page, do NOT set `project_slug`.
+- `project_slug` must be the **full published slug WITH user prefix** (e.g. `33-my-app`), and must correspond to an existing row in `project_listings` (i.e. `publish_preview()` + `list_in_dashboard()` must have been called first).
 - `api_endpoints` is for services with multiple endpoints at different prices; each endpoint has its own `path`, `price`, and optional `label`.
 - A project with `project_slug` set will NOT appear in the "Free" tab — it moves to "All" and "Paid" tabs.
+- **When the user asks for multiple APIs, create ONE service with `api_endpoints`** — do NOT create multiple separate services. See Flow E.
 
 ### Flow B — Paid Project listing
 
@@ -367,6 +369,13 @@ publish_service(service_id)
 
 A paid API is an external API service that already implements x402 charging.
 
+> **⚠️ Do NOT pass `project_slug` for standalone paid APIs.**
+> `project_slug` is ONLY for `paid_project` (required) or the "free webpage + paid API"
+> pattern (Flow D, where a published Starchild project page exists). For a standalone
+> `paid_api` with no associated free project page, omit `project_slug` entirely.
+> The backend validates `project_slug` against `project_listings` and silently clears
+> non-existent slugs, but you should not pass it in the first place.
+>
 > **⚠️ Choose `paid_project` if the API belongs to a published Starchild project.**
 > If your API has a landing page / dashboard published via `publish_preview()` (i.e. it
 > exists as a project on community.iamstarchild.com), use `service_type="paid_project"`
@@ -442,6 +451,14 @@ create_paid_service(
 
 Your service has multiple API endpoints at different prices (e.g. basic $0.01, premium $0.10).
 Each endpoint is listed separately in the marketplace detail view.
+
+> **⚠️ When the user asks for multiple APIs, create ONE service with `api_endpoints` — NOT multiple separate services.**
+> For example, if the user says "develop three paid APIs and list them", do NOT call
+> `create_paid_service()` three times. Instead, create a single service with an
+> `api_endpoints` array containing all three endpoints. This gives users a unified
+> marketplace card where they can see and purchase individual endpoints.
+> Only create multiple services if the APIs are truly unrelated (different domains,
+> different audiences, different pricing models).
 
 1. **Configure x402 charging** with per-route pricing:
    ```bash
@@ -659,6 +676,8 @@ EOF
 - **Slug rules**: lowercase alphanumeric + hyphens, 3-50 chars, no leading/trailing hyphen.
 - **Version rules** (`open_source`): strict semver. Re-publishing same version is rejected.
 - **URL ≠ code ≠ listing**: a public URL going down does NOT remove the open-source code or the marketplace listing, and vice versa. They're independent.
+- **Do NOT pass `project_slug` for standalone `paid_api` services.** `project_slug` is ONLY for `paid_project` (required) or the "free webpage + paid API" pattern (Flow D, where a free Starchild project page exists). Passing a preview slug or non-existent slug for a standalone API creates a phantom association. The backend silently clears non-existent slugs, but you should not pass `project_slug` unless the user explicitly wants to link a free project page with the paid API.
+- **When the user asks for multiple APIs, create ONE service with `api_endpoints`.** Do NOT call `create_paid_service()` multiple times for related APIs. Use the `api_endpoints` array to list all endpoints in a single service (Flow E). Only create multiple services if the APIs are truly unrelated (different domains, different audiences, different pricing models).
 
 ---
 
@@ -677,6 +696,8 @@ EOF
 | `publish_service`: `400 not in a publishable state` | Service isn't `approved` yet | Poll `get_review_status()` — if rejected, fix and re-submit |
 | Review rejected: `pricing_consistency` failed | 402 response `amount` doesn't match declared `price` | Ensure `amount` = `price * 1000000` (USDC 6 decimals) |
 | Review rejected: `api_reachable` failed | Endpoint doesn't return 402 | Wire up x402 charging on the endpoint first |
+| `create_paid_service` response has `project_slug_warning` | Passed `project_slug` for a `paid_api` but the slug doesn't exist in `project_listings` | Backend cleared it automatically. If this is a standalone API, don't pass `project_slug`. If you intended Flow D, `publish_preview()` + `list_in_dashboard()` the project first, then `update_service()` with the correct slug. |
+| Created multiple services when user asked for "multiple APIs" | Called `create_paid_service()` once per API instead of using `api_endpoints` | Use Flow E: one `create_paid_service()` call with `api_endpoints=[...]` array. Only split into multiple services if the APIs are truly unrelated. |
 
 ---
 

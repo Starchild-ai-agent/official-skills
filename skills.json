@@ -242,6 +242,12 @@
       "description": "Futu / moomoo (富途/moomoo) — HK/US/A-share/SG stocks via a LOCAL OpenD gateway. Account, positions, orders, quotes, history, order placement.\n\nUse when the user wants to check or trade a Futu / moomoo / 富途 account (e.g. \"Futu positions\", \"buy 100 HK.00700 on moomoo\", \"富途 账户资产\"). Requires a running OpenD gateway — NOT a cloud key."
     },
     {
+      "name": "higgsfield",
+      "path": "higgsfield/SKILL.md",
+      "version": "0.3.0",
+      "description": "AI agent skills for image and video generation via Higgsfield AI. Use this skill when asked to\ngenerate images or videos from a prompt, create branded ad video (UGC, unboxing, TV spot) with\nMarketing Studio, produce product photography or marketplace cards, train a reusable face identity\n(Soul Character), score a finished video's virality, or build/edit/deploy a full-stack website.\nImage/video generation spans 30+ models (Nano Banana 2, Soul V2, Veo 3.1, Kling 3.0, Seedance 2.0,\nFlux 2, GPT Image 2, …). Bundles five skills: higgsfield-generate, higgsfield-soul-id,\nhiggsfield-product-photoshoot, higgsfield-marketplace-cards, and higgsfield-websites\nMarkdown-based agents."
+    },
+    {
       "name": "hyperliquid",
       "path": "hyperliquid/SKILL.md",
       "version": "1.5.0",

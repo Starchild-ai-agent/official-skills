@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.5.0
+version: 2.6.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -194,10 +194,46 @@ from exports import scrape_markdown
 schema_md = scrape_markdown("https://apify.com/<user>/<actor>/input-schema")
 ```
 
-**Billing:** Apify uses pay-per-event billing (actor-start + per-result +
-add-ons), billed at **2× the real Apify cost** in credits. A typical small
-search (5–10 results) costs $0.02–0.05. The proxy auto-calculates the charge
-from the response — you don't need to estimate it yourself.
+**Billing & cost control — read this before every Apify call:**
+
+Apify uses **pay-per-event** billing: `(actor-start + result_count × per_result + add-ons) × 2` credits.
+The dominant factor is **result count × per-result price**, and **each actor
+prices differently** ($0.003–$0.007/result). Unknown actors default to the
+highest tier ($0.007). Full pricing table and estimation examples:
+`reference/apify-pricing.md`.
+
+**You MUST estimate cost before calling:**
+1. Look up the actor's per-result price (table in `reference/apify-pricing.md`;
+   unlisted = $0.007).
+2. Estimate result count from input params (`maxResults`, `maxProducts`, etc.).
+   If no limit is set, assume 100+.
+3. Calculate: `result_count × per_result × 2` = estimated credits.
+4. **If estimate > 5 credits, tell the user the cost before proceeding.**
+
+**Hard spending cap — proxy-enforced default + per-call override:**
+
+The proxy **automatically injects** `maxTotalChargeUsd=$2.5` (≈ 5 credits) on
+every actor run that doesn't already specify one. Apify terminates the run
+when the budget is hit and returns whatever results were collected so far —
+no overcharging, no runaway costs.
+
+`apify_run()` also passes `max_charge_usd` (same default $2.5), which takes
+precedence over the proxy default. This means:
+
+- **Default (no extra param):** capped at ≈ 5 credits per call. Safe for
+  routine searches, profile lookups, small-batch scraping.
+- **Need more data?** Raise the cap explicitly: `max_charge_usd=10` (≈ 20
+  credits). Use when the user explicitly wants a large dataset and you've
+  already told them the estimated cost.
+- **First-time test:** lower it: `max_charge_usd=0.5` (≈ 1 credit), limit
+  results to 5–10, verify output quality before scaling up.
+- **Disable cap entirely:** `max_charge_usd=None`. **Never do this** unless
+  the user explicitly asks for an uncapped run after being warned of the
+  potential cost.
+
+**Small-batch test first:**
+When using an actor for the first time, set `max_charge_usd=0.5` (≈ 1 credit)
+and limit results to 5–10. Verify output quality before scaling up.
 
 **Error handling:**
 - `400 run-failed` → bad input (wrong field name). Fetch the actor's input-schema page and fix.

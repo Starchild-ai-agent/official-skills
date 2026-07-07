@@ -199,7 +199,7 @@ def linkedin_profile(url, caller_id=None):
 APIFY_BASE = "https://api.apify.com"
 
 
-def apify_run(actor_id, run_input, caller_id=None, timeout=180):
+def apify_run(actor_id, run_input, caller_id=None, timeout=180, max_charge_usd=2.5):
     """Run an Apify actor synchronously and return the result list.
 
     Use this for China apps (抖音/小红书/微博/B站/京东/淘宝/1688/闲鱼/得物 etc.)
@@ -218,6 +218,13 @@ def apify_run(actor_id, run_input, caller_id=None, timeout=180):
                    required fields).
         caller_id: optional SC-CALLER-ID for billing traceability.
         timeout: seconds to wait for the run to finish (default 180).
+        max_charge_usd: hard spending cap passed to Apify as
+                        ``maxTotalChargeUsd``. Apify terminates the run when
+                        accumulated cost reaches this USD amount and returns
+                        partial results. Default $2.5 (≈ 5 credits with 2×
+                        markup). Set lower (e.g. 0.5) for first-time tests of
+                        unfamiliar actors. Set to None to disable the cap
+                        (not recommended).
 
     Returns:
         list of result dicts. Empty list if the actor ran but found nothing.
@@ -227,13 +234,22 @@ def apify_run(actor_id, run_input, caller_id=None, timeout=180):
         504 = timeout).
 
     Example:
+        # Normal call (default cap ≈ 5 credits)
         results = apify_run("zen-studio~douyin-search-scraper",
                             {"keywords": ["MacBook"], "maxResultsPerQuery": 5})
+
+        # First-time test of an unfamiliar actor (tight cap)
+        results = apify_run("unknown~new-scraper",
+                            {"query": "test"},
+                            max_charge_usd=0.5)
     """
     url = f"{APIFY_BASE}/v2/acts/{actor_id}/run-sync-get-dataset-items"
+    params = {"timeout": timeout}
+    if max_charge_usd is not None:
+        params["maxTotalChargeUsd"] = str(max_charge_usd)
     resp = proxied_post(
         url,
-        params={"timeout": timeout},
+        params=params,
         headers={
             "SC-CALLER-ID": caller_id or _DEFAULT_CALLER,
             "Authorization": "Bearer fake-apify-token-12345",  # proxy injects real

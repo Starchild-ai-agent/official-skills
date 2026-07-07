@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.16.3
+version: 0.16.4
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -301,7 +301,7 @@ create_paid_service(
     description="Real-time trading signals with on-chain confirmation.",
     category="数据服务",
     service_type="paid_project",
-    project_slug="premium-signals",
+    project_slug="33-premium-signals",  # FULL published slug WITH user prefix (the URL path segment)
     api_endpoint="https://community.iamstarchild.com/33-premium-signals",
     provider_wallet="0xAbC...yourBaseWallet",
     pricing_model="monthly",
@@ -313,6 +313,14 @@ create_paid_service(
    Required paid-project fields: `name`, `description`, `category`, `service_type`,
    `project_slug`, `api_endpoint`, `provider_wallet`, `pricing_model`, `price`,
    `service_description`.
+
+   ⚠️ `project_slug` must be the **full published slug including the user prefix**
+   (e.g. `33-premium-signals`, exactly the path segment in the project URL
+   `https://community.iamstarchild.com/<slug>/`). The gateway derives the API
+   endpoint as `publicUrl + "/" + project_slug` when `api_endpoint` is not set,
+   so an unprefixed or wrong slug breaks endpoint derivation and the
+   project↔service association. Fix an existing record with
+   `update_service(service_id, project_slug="<full-slug>")` — no re-listing needed.
 
 4. **Submit for review:**
 
@@ -341,6 +349,15 @@ publish_service(service_id)
 ### Flow C — Paid API listing
 
 A paid API is an external API service that already implements x402 charging.
+
+> **⚠️ Choose `paid_project` if the API belongs to a published Starchild project.**
+> If your API has a landing page / dashboard published via `publish_preview()` (i.e. it
+> exists as a project on community.iamstarchild.com), use `service_type="paid_project"`
+> + `project_slug=<full published slug WITH user prefix>` (Flow B) — NOT `paid_api`. The `project_slug` is what
+> links the service to the project card (pricing badge, cross-navigation). A `paid_api`
+> listing has no project association, so the project card will keep showing "Free".
+> Use `paid_api` only for truly external/standalone APIs with no Starchild project.
+> Forgot the link? `update` the service record with `project_slug` — no need to re-list.
 
 1. **Have an x402-enabled API** — the endpoint must return `402` when unpaid and `200` + data
    after a valid `X-PAYMENT` header. Use the **x402 skill** to implement this if needed.
@@ -523,7 +540,7 @@ res = create_paid_service(
     description="Premium features",
     category="工具服务",
     service_type="paid_project",
-    project_slug="my-app",
+    project_slug="33-my-app",  # full published slug WITH user prefix
     api_endpoint="https://community.iamstarchild.com/33-my-app",
     provider_wallet="0xAbC...",
     pricing_model="monthly",

@@ -1016,6 +1016,7 @@ def create_paid_service(
     example_response: str | None = None,
     service_description: str | None = None,
     pricing_options: list[dict] | None = None,
+    api_endpoints: list[dict] | None = None,
 ) -> dict[str, Any]:
     """Create a paid service listing on the Service Marketplace.
 
@@ -1047,7 +1048,12 @@ def create_paid_service(
             "quarterly", "yearly", or "prepaid". With pricing_options this is
             the default plan.
         price: Price in USDC (>0).
-        project_slug: Required for paid_project (the published preview slug).
+        project_slug: Required for paid_project (the full published slug WITH
+            user prefix, e.g. "33-my-app"). Optional for paid_api — when set,
+            the service's paid API info is merged into the associated project's
+            card in the marketplace, showing both "View Project" and "Call API"
+            buttons on a single card (the "free webpage + paid API" pattern).
+            Must be the full slug with user prefix.
         cover_url: Optional cover image URL.
         tags: Optional list of ≤5 tags (≤20 chars each).
         free_trial_count: Optional, only for pay_per_use (N free calls).
@@ -1115,6 +1121,8 @@ def create_paid_service(
         payload["example_response"] = example_response
     if service_description:
         payload["service_description"] = service_description
+    if api_endpoints:
+        payload["api_endpoints"] = api_endpoints
     if pricing_options:
         # multi-plan (docs: 多支付方式): [{"pricing_model": "weekly", "price": 3,
         # "is_default": True, "label": "Weekly"}, ...] — gateway stores them in

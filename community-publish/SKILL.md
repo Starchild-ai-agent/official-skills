@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.16.4
+version: 0.17.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -288,6 +288,23 @@ Paid services charge for access via x402 (on-chain USDC settlement on Base). The
 
 All paid services must pass review: `draft` → `pending` → `approved` → `published`.
 
+### ⚡ Scenario Selection Guide — Which flow to use?
+
+Before creating a paid service, identify your scenario:
+
+| Scenario | service_type | project_slug | api_endpoints | Flow | Example |
+|----------|-------------|--------------|---------------|------|---------|
+| **Paid subscription project** — entire project behind paywall (monthly/yearly/lifetime) | `paid_project` | required | — | B | SaaS dashboard, premium tool |
+| **Standalone paid API** — external API with no Starchild project page | `paid_api` | — | — | C | Third-party data API |
+| **Free webpage + paid API** — project has a free landing page AND a paid API endpoint | `paid_api` | required | — | D | API with docs site |
+| **Multi-endpoint API** — one service with multiple API endpoints at different prices | `paid_api` | optional | required | E | Data API with basic/premium tiers |
+
+**Key rules:**
+- If your API has a published Starchild project (landing page/dashboard), ALWAYS set `project_slug` — this merges the service into the project card in the marketplace.
+- `project_slug` must be the **full published slug WITH user prefix** (e.g. `33-my-app`).
+- `api_endpoints` is for services with multiple endpoints at different prices; each endpoint has its own `path`, `price`, and optional `label`.
+- A project with `project_slug` set will NOT appear in the "Free" tab — it moves to "All" and "Paid" tabs.
+
 ### Flow B — Paid Project listing
 
 1. **Have a running project** with a public URL (via `publish_preview()`).
@@ -388,6 +405,81 @@ create_paid_service(
 4. **Poll review status** → same as Flow B step 5.
 5. **If approved → publish** → same as Flow B step 6.
 6. **If rejected → fix & resubmit** → same as Flow B step 7.
+
+### Flow D — Free Webpage + Paid API (hybrid)
+
+Your project has a free landing page (published via `publish_preview()`) AND a paid API
+endpoint. Users can browse the project page for free, but API calls cost money.
+The marketplace shows a single merged card with both "Visit Project" and "Call API" buttons.
+
+1. **Publish the project** via `publish_preview()` — this creates the free landing page.
+2. **Configure x402 charging** on the API endpoint (e.g. `/api/random` returns 402).
+3. **Create the service record** with `service_type="paid_api"` + `project_slug`:
+
+```python
+create_paid_service(
+    name="Random9 API",
+    description="Random 9-digit number API. Free docs page + paid API calls.",
+    category="工具服务",
+    service_type="paid_api",
+    project_slug="33-random9-api",  # FULL slug WITH user prefix — links to the free project page
+    api_endpoint="https://community.iamstarchild.com/33-random9-api/api/random",
+    provider_wallet="0xAbC...yourBaseWallet",
+    pricing_model="pay_per_use",
+    price=0.01,
+    api_documentation="# Random9 API\n## GET /api/random\nReturns a random 9-digit number.",
+    example_request="curl https://community.iamstarchild.com/33-random9-api/api/random",
+    example_response='{"random":"482917365","digits":9}',
+)
+```
+
+   The `project_slug` merges this service into the project card. The project page (`/`)
+   stays free; only the API endpoint (`/api/random`) requires payment.
+
+4. **Submit → review → publish** — same as Flow B steps 4–7.
+
+### Flow E — Multi-Endpoint API
+
+Your service has multiple API endpoints at different prices (e.g. basic $0.01, premium $0.10).
+Each endpoint is listed separately in the marketplace detail view.
+
+1. **Configure x402 charging** with per-route pricing:
+   ```bash
+   python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+     --mode pay_per_use --price 0.01 \
+     --route "GET /api/basic=$0.01" --route "GET /api/premium=$0.10" \
+     --route "POST /api/batch=$0.50" \
+     --network eip155:8453 --facilitator $FAC
+   ```
+
+2. **Create the service record** with `api_endpoints`:
+
+```python
+create_paid_service(
+    name="Data API Service",
+    description="Multiple API endpoints at different prices.",
+    category="数据服务",
+    service_type="paid_api",
+    api_endpoint="https://example.com/api/basic",  # primary endpoint for review
+    api_endpoints=[
+        {"path": "GET /api/basic", "price": 0.01, "label": "Basic Query"},
+        {"path": "GET /api/premium", "price": 0.10, "label": "Premium Query"},
+        {"path": "POST /api/batch", "price": 0.50, "label": "Batch Process"},
+    ],
+    provider_wallet="0xAbC...yourBaseWallet",
+    pricing_model="pay_per_use",
+    price=0.01,  # price of the primary/default endpoint
+    api_documentation="# Data API\n## GET /api/basic\nBasic data.\n## GET /api/premium\nPremium analytics.",
+    example_request="curl https://example.com/api/basic",
+    example_response='{"data":"basic market info"}',
+)
+```
+
+   You can combine Flow D + Flow E: add `project_slug` to link a free project page
+   with multi-endpoint pricing. The marketplace shows a merged project card with
+   an endpoint list in the detail view.
+
+3. **Submit → review → publish** — same as Flow B steps 4–7.
 
 ### Review checks (5 items, all must pass for paid services)
 

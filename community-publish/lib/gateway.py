@@ -227,8 +227,9 @@ def listing_get(slug: str) -> tuple[int, dict]:
 # PAID SERVICE LISTING — /api/services/* (Service Marketplace)
 # ════════════════════════════════════════════════════════════════════════
 # These endpoints create and manage PAID service listings on the Service
-# Marketplace. They require x402 charging, automated review, and publish
-# approval — completely different from the free project listing flow above.
+# Marketplace. They require x402 charging; the automated self-check is
+# optional/advisory and publishing is owner-decided — completely different
+# from the free project listing flow above.
 #
 # Auth: these routes accept JWT OR X-Internal-Key (jwtOrInternalAuth
 # middleware on the gateway). We always use X-Internal-Key + owner_user_id
@@ -276,7 +277,7 @@ def service_list_mine(owner_user_id: str, cursor: str | None = None, limit: int 
 
 
 def service_submit_review(owner_user_id: str, service_id: str) -> tuple[int, dict]:
-    """POST /api/services/:id/submit-review — submit for automated review."""
+    """POST /api/services/:id/submit-review — run the optional advisory self-check."""
     body = {"owner_user_id": owner_user_id}
     return _request("POST", f"/api/services/{service_id}/submit-review", body, timeout=15)
 
@@ -291,7 +292,7 @@ def service_review_status(owner_user_id: str, service_id: str) -> tuple[int, dic
 
 
 def service_publish(owner_user_id: str, service_id: str) -> tuple[int, dict]:
-    """POST /api/services/:id/publish — publish an approved service."""
+    """POST /api/services/:id/publish — publish a paid service listing."""
     body = {"owner_user_id": owner_user_id}
     return _request("POST", f"/api/services/{service_id}/publish", body, timeout=15)
 

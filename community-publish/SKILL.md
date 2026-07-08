@@ -439,7 +439,7 @@ create_paid_service(
    The `project_slug` merges this service into the project card. The project page (`/`)
    stays free; only the API endpoint (`/api/random`) requires payment.
 
-4. **Submit → review → publish** — same as Flow B steps 4–7.
+4. **Publish + optional self-check** — same as Flow B steps 4–5.
 
 ### Flow E — Multi-Endpoint API
 
@@ -490,11 +490,11 @@ create_paid_service(
    with multi-endpoint pricing. The marketplace shows a merged project card with
    an endpoint list in the detail view.
 
-3. **Submit → review → publish** — same as Flow B steps 4–7.
+3. **Publish + optional self-check** — same as Flow B steps 4–5.
 
-### Review checks (5 items, all must pass for paid services)
+### Self-check items (5 automated checks — advisory report, not a gate)
 
-The automated reviewer runs these checks against the `api_endpoint`:
+`submit_for_review()` runs these checks against the `api_endpoint`; the report is for the owner — failures never block or take down a listing:
 
 | # | Check | What it verifies |
 |---|---|---|

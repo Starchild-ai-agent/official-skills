@@ -22,7 +22,7 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 | Concept | What it means | Functions |
 |---|---|---|
 | **PUBLISH (发布)** | Make something **accessible** — a URL works, or code is on GitHub | `publish_preview`, `unpublish_preview`, `list_published_previews`, `open_source`, `remove_open_source`, `list_open_source`, `get_open_source`, `fork`, `validate_open_source` |
-| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `delete_listing`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Browse + consumer: `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary` |
+| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `delete_listing`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Browse + consumer: `explore_marketplace`, `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary` |
 
 **Publishing does NOT auto-list.** `publish_preview()` only allocates the URL. `open_source()` only pushes code. Neither makes the project discoverable on the marketplace — that requires a separate, deliberate LIST call.
 
@@ -305,7 +305,7 @@ Before creating a paid service, identify your scenario:
 - `project_slug` must be the **full published slug WITH user prefix** (e.g. `33-my-app`), and must correspond to an existing row in `project_listings` (i.e. `publish_preview()` + `list_in_dashboard()` must have been called first).
 - `api_endpoints` is for services with multiple endpoints at different prices; each endpoint has its own `path`, `price`, and optional `label`.
 - A project with `project_slug` set will NOT appear in the "Free" tab — it moves to "All" and "Paid" tabs.
-- **Merged-into-project-card visibility:** when a listed service has `project_slug` pointing to a PUBLIC project, it is folded into that project's card in unified marketplace views. Consequence: the service will NOT appear as a standalone item in `explore_services()` or `list_my_services()` — this is by design, not a listing failure. It is still live and purchasable via the project card, `get_service(service_id)`, and `get_user_services(user_id)`. To verify a merged service is listed, check `get_service()` → `review_status == "listed"`, not explore results.
+- **Merged-into-project-card visibility:** when a listed service has `project_slug` pointing to a PUBLIC project, it is folded into that project's card in unified marketplace views. Consequence: the service will NOT appear as a standalone item in `explore_services()` or `list_my_services()` — this is by design, not a listing failure. It is still live and purchasable via the project card, `get_service(service_id)`, and `get_user_services(user_id)`, and it IS discoverable via `explore_marketplace()` (unified feed). To verify a merged service is listed, check `get_service()` → `review_status == "listed"`, not `explore_services()` results.
 - **When the user asks for multiple APIs, create ONE service with `api_endpoints`** — do NOT create multiple separate services. See Flow E.
 
 ### Flow B — Paid Project listing
@@ -580,7 +580,8 @@ write reviews, manage favorites, and check earnings — same as the web frontend
 
 | Function | Purpose |
 |---|---|
-| `explore_services(search, category, sort, ...)` | Browse the marketplace with filtering + pagination |
+| `explore_marketplace(search, paid_only, ...)` | ⭐ **UNIFIED browse — use this FIRST to find paid services/APIs.** Project cards + standalone services in one feed (same as web All/Paid tabs); the only search path that surfaces services merged into public project cards. Items have `type`: `service` (use `id`) or `project` (paid cards carry `service_id`) — feed into `get_service_detail()` |
+| `explore_services(search, category, sort, ...)` | Browse STANDALONE service items only (services API). ⚠️ Services merged into a public project card do NOT appear here — use `explore_marketplace()` for full coverage |
 | `get_service_categories()` | List all categories with counts |
 | `get_service_detail(service_id)` | Public detail for a published service (includes docs, increments views) |
 | `get_service_pricing(service_id)` | Verified pricing with real-time x402 check |
@@ -622,7 +623,7 @@ from exports import (
     list_my_services, get_service, update_service, delete_service,
     restore_service,
     # MARKETPLACE: browse + consumer actions
-    explore_services, get_service_categories, get_service_detail,
+    explore_marketplace, explore_services, get_service_categories, get_service_detail,
     get_service_pricing, get_service_reviews, write_service_review,
     get_user_services, favorite_service, unfavorite_service,
     get_favorite_services, get_service_purchase_status,

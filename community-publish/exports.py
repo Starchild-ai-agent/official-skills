@@ -1583,6 +1583,52 @@ def explore_services(
     }
 
 
+def explore_marketplace(
+    search: str | None = None,
+    paid_only: bool = False,
+    cursor: str | None = None,
+    limit: int = 20,
+) -> dict[str, Any]:
+    """UNIFIED marketplace browse — project cards + standalone services.
+
+    ⭐ Use THIS to find paid services/APIs for a buyer. It wraps
+    /api/projects/explore-all (the same feed the web All/Paid tabs use) and
+    is the ONLY search path that also surfaces services merged into public
+    project cards. `explore_services()` covers standalone service items
+    only — a listed service whose project_slug points to a public project
+    is folded into the project card and will NOT appear there.
+
+    Args:
+        search: Keyword (matches project/service name, description, tags).
+        paid_only: If True, only paid items (filter=paid).
+        cursor: Pagination cursor from previous response.
+        limit: Page size (default 20).
+
+    Returns:
+        {"ok": True, "items": [...], "next_cursor": ..., "has_more": bool}
+        Each item has `type`: "service" (standalone — use its `id` with
+        get_service_detail) or "project" (card — when `is_paid` is true it
+        carries `service_id`, `price`, `pricing_model`; pass `service_id`
+        to get_service_detail/get_service_pricing to enter the buy flow).
+    """
+    try:
+        status, body = gateway.marketplace_explore_all(
+            search=search, paid_only=paid_only, cursor=cursor, limit=limit)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {
+        "ok": True,
+        "items": body.get("projects", []),
+        "next_cursor": body.get("next_cursor"),
+        "has_more": body.get("has_more", False),
+        "total_count": body.get("total_count", 0),
+    }
+
+
 def get_service_categories() -> dict[str, Any]:
     """List all service categories with counts.
 

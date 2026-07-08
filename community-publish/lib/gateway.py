@@ -354,6 +354,30 @@ def service_explore(
     return _request("GET", f"/api/services/explore?{qs}", timeout=15)
 
 
+def marketplace_explore_all(
+    search: str | None = None,
+    paid_only: bool = False,
+    cursor: str | None = None,
+    limit: int = 20,
+) -> tuple[int, dict]:
+    """GET /api/projects/explore-all — UNIFIED marketplace browse.
+
+    Returns project cards AND standalone services in one feed (the same data
+    the web All/Paid tabs use). Crucially, this is the ONLY endpoint that
+    surfaces services merged into public project cards — those are filtered
+    out of /api/services/explore by design. No auth.
+    """
+    from urllib.parse import quote
+    params: list[str] = [f"limit={limit}"]
+    if search:
+        params.append(f"search={quote(search)}")
+    if paid_only:
+        params.append("filter=paid")
+    if cursor:
+        params.append(f"cursor={quote(cursor)}")
+    return _request("GET", f"/api/projects/explore-all?{'&'.join(params)}", timeout=15)
+
+
 def service_categories() -> tuple[int, dict]:
     """GET /api/services/categories — list all service categories."""
     return _request("GET", "/api/services/categories", timeout=15)

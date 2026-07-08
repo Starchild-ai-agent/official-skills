@@ -227,8 +227,9 @@ def listing_get(slug: str) -> tuple[int, dict]:
 # PAID SERVICE LISTING — /api/services/* (Service Marketplace)
 # ════════════════════════════════════════════════════════════════════════
 # These endpoints create and manage PAID service listings on the Service
-# Marketplace. They require x402 charging, automated review, and publish
-# approval — completely different from the free project listing flow above.
+# Marketplace. They require x402 charging; the automated self-check is
+# optional/advisory and publishing is owner-decided — completely different
+# from the free project listing flow above.
 #
 # Auth: these routes accept JWT OR X-Internal-Key (jwtOrInternalAuth
 # middleware on the gateway). We always use X-Internal-Key + owner_user_id
@@ -276,7 +277,7 @@ def service_list_mine(owner_user_id: str, cursor: str | None = None, limit: int 
 
 
 def service_submit_review(owner_user_id: str, service_id: str) -> tuple[int, dict]:
-    """POST /api/services/:id/submit-review — submit for automated review."""
+    """POST /api/services/:id/submit-review — run the optional advisory self-check."""
     body = {"owner_user_id": owner_user_id}
     return _request("POST", f"/api/services/{service_id}/submit-review", body, timeout=15)
 
@@ -291,7 +292,7 @@ def service_review_status(owner_user_id: str, service_id: str) -> tuple[int, dic
 
 
 def service_publish(owner_user_id: str, service_id: str) -> tuple[int, dict]:
-    """POST /api/services/:id/publish — publish an approved service."""
+    """POST /api/services/:id/publish — publish a paid service listing."""
     body = {"owner_user_id": owner_user_id}
     return _request("POST", f"/api/services/{service_id}/publish", body, timeout=15)
 
@@ -352,6 +353,30 @@ def service_explore(
             params.append(f"owner_user_id={quote(owner_user_id)}")
     qs = "&".join(params)
     return _request("GET", f"/api/services/explore?{qs}", timeout=15)
+
+
+def marketplace_explore_all(
+    search: str | None = None,
+    cursor: str | None = None,
+    limit: int = 20,
+) -> tuple[int, dict]:
+    """GET /api/projects/explore-all — UNIFIED marketplace browse.
+
+    Returns project cards AND standalone services in one feed (the same data
+    the web All/Paid tabs use). Crucially, this is the ONLY endpoint that
+    surfaces services merged into public project cards — those are filtered
+    out of /api/services/explore by design. No auth.
+
+    Supported params: search, cursor, limit (the endpoint has no server-side
+    paid filter — filter on `is_paid` client-side).
+    """
+    from urllib.parse import quote
+    params: list[str] = [f"limit={limit}"]
+    if search:
+        params.append(f"search={quote(search)}")
+    if cursor:
+        params.append(f"cursor={quote(cursor)}")
+    return _request("GET", f"/api/projects/explore-all?{'&'.join(params)}", timeout=15)
 
 
 def service_categories() -> tuple[int, dict]:

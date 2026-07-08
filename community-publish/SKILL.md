@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.21.1
+version: 0.22.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -22,7 +22,7 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 | Concept | What it means | Functions |
 |---|---|---|
 | **PUBLISH (发布)** | Make something **accessible** — a URL works, or code is on GitHub | `publish_preview`, `unpublish_preview`, `list_published_previews`, `open_source`, `remove_open_source`, `list_open_source`, `get_open_source`, `fork`, `validate_open_source` |
-| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `delete_listing`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Browse + consumer: `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary` |
+| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `delete_listing`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Browse + consumer: `explore_marketplace`, `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary` |
 
 **Publishing does NOT auto-list.** `publish_preview()` only allocates the URL. `open_source()` only pushes code. Neither makes the project discoverable on the marketplace — that requires a separate, deliberate LIST call.
 
@@ -296,15 +296,16 @@ Before creating a paid service, identify your scenario:
 |----------|-------------|--------------|---------------|------|---------|
 | **Paid subscription project** — entire project behind paywall (monthly/yearly/lifetime) | `paid_project` | required | — | B | SaaS dashboard, premium tool |
 | **Standalone paid API** — external API with no Starchild project page | `paid_api` | **omit** | — | C | Third-party data API |
-| **Free webpage + paid API** — project has a free landing page AND a paid API endpoint | `paid_api` | required | — | D | API with docs site |
-| **Multi-endpoint API** — one service with multiple API endpoints at different prices | `paid_api` | **omit** (unless also Flow D) | required | E | Data API with basic/premium tiers |
+| **Free webpage + paid API** — project has a free landing page AND a paid API endpoint | `paid_project` | required | — | D | API with docs site |
+| **Multi-endpoint API** — one service with multiple API endpoints at different prices | `paid_api` (`paid_project` if combined with Flow D) | **omit** (unless also Flow D) | required | E | Data API with basic/premium tiers |
 
 **Key rules:**
-- **Do NOT pass `project_slug` for standalone paid APIs.** `project_slug` is ONLY for `paid_project` (required) or the "free webpage + paid API" pattern (Flow D, where a published Starchild project page exists). Passing a preview slug or a non-existent slug for a standalone `paid_api` creates a phantom association — the backend will silently clear it, but you should not have passed it in the first place.
-- If your API has a published Starchild project (landing page/dashboard) that users can browse for free, set `project_slug` — this merges the service into the project card in the marketplace. If there is NO free project page, do NOT set `project_slug`.
+- **Do NOT pass `project_slug` for standalone paid APIs.** `project_slug` belongs to `paid_project` only — including the "free webpage + paid API" pattern (Flow D, which uses `paid_project`). Passing a preview slug or a non-existent slug for a standalone `paid_api` creates a phantom association — the backend will silently clear it, but you should not have passed it in the first place.
+- **Routing rule: service tied to a project page → `paid_project`; `paid_api` is ONLY for standalone APIs with no project page.** If your API has a published Starchild project (landing page/dashboard) that users can browse for free, use `service_type="paid_project"` + `project_slug` — this merges the service into the project card in the marketplace. If there is NO free project page, use `paid_api` and do NOT set `project_slug`. Passing `paid_api` + `project_slug` is auto-upgraded to `paid_project` by `create_paid_service()` (with a `project_slug_warning` in the response) — the final listing is always `paid_project`.
 - `project_slug` must be the **full published slug WITH user prefix** (e.g. `33-my-app`), and must correspond to an existing row in `project_listings` (i.e. `publish_preview()` + `list_in_dashboard()` must have been called first).
 - `api_endpoints` is for services with multiple endpoints at different prices; each endpoint has its own `path`, `price`, and optional `label`.
 - A project with `project_slug` set will NOT appear in the "Free" tab — it moves to "All" and "Paid" tabs.
+- **Merged-into-project-card visibility:** when a listed service has `project_slug` pointing to a PUBLIC project, it is folded into that project's card in unified marketplace views. Consequence: the service will NOT appear as a standalone item in `explore_services()` or `list_my_services()` — this is by design, not a listing failure. It is still live and purchasable via the project card, `get_service(service_id)`, and `get_user_services(user_id)`, and it IS discoverable via `explore_marketplace()` (unified feed). To verify a merged service is listed, check `get_service()` → `review_status == "listed"`, not `explore_services()` results.
 - **When the user asks for multiple APIs, create ONE service with `api_endpoints`** — do NOT create multiple separate services. See Flow E.
 
 ### Flow B — Paid Project listing
@@ -416,19 +417,20 @@ The marketplace shows a single merged card with both "Visit Project" and "Call A
 
 1. **Publish the project** via `publish_preview()` — this creates the free landing page.
 2. **Configure x402 charging** on the API endpoint (e.g. `/api/random` returns 402).
-3. **Create the service record** with `service_type="paid_api"` + `project_slug`:
+3. **Create the service record** with `service_type="paid_project"` + `project_slug`:
 
 ```python
 create_paid_service(
     name="Random9 API",
     description="Random 9-digit number API. Free docs page + paid API calls.",
     category="工具服务",
-    service_type="paid_api",
+    service_type="paid_project",
     project_slug="33-random9-api",  # FULL slug WITH user prefix — links to the free project page
     api_endpoint="https://community.iamstarchild.com/33-random9-api/api/random",
     provider_wallet="0xAbC...yourBaseWallet",
     pricing_model="pay_per_use",
     price=0.01,
+    service_description="Paid access to the Random9 API endpoint; the docs page stays free.",  # required for paid_project
     api_documentation="# Random9 API\n## GET /api/random\nReturns a random 9-digit number.",
     example_request="curl https://community.iamstarchild.com/33-random9-api/api/random",
     example_response='{"random":"482917365","digits":9}',
@@ -438,7 +440,12 @@ create_paid_service(
    The `project_slug` merges this service into the project card. The project page (`/`)
    stays free; only the API endpoint (`/api/random`) requires payment.
 
-4. **Submit → review → publish** — same as Flow B steps 4–7.
+   > Note: if `service_type="paid_api"` is passed together with `project_slug`,
+   > `create_paid_service()` auto-upgrades it to `paid_project` and returns a
+   > `project_slug_warning` — the stored listing is always `paid_project`. Passing
+   > `paid_project` directly (as above) is the canonical form.
+
+4. **Publish + optional self-check** — same as Flow B steps 4–5.
 
 ### Flow E — Multi-Endpoint API
 
@@ -485,15 +492,15 @@ create_paid_service(
 )
 ```
 
-   You can combine Flow D + Flow E: add `project_slug` to link a free project page
-   with multi-endpoint pricing. The marketplace shows a merged project card with
-   an endpoint list in the detail view.
+   You can combine Flow D + Flow E: use `service_type="paid_project"` + `project_slug`
+   together with `api_endpoints` to link a free project page with multi-endpoint pricing.
+   The marketplace shows a merged project card with an endpoint list in the detail view.
 
-3. **Submit → review → publish** — same as Flow B steps 4–7.
+3. **Publish + optional self-check** — same as Flow B steps 4–5.
 
-### Review checks (5 items, all must pass for paid services)
+### Self-check items (5 automated checks — advisory report, not a gate)
 
-The automated reviewer runs these checks against the `api_endpoint`:
+`submit_for_review()` runs these checks against the `api_endpoint`; the report is for the owner — failures never block or take down a listing:
 
 | # | Check | What it verifies |
 |---|---|---|
@@ -579,7 +586,8 @@ write reviews, manage favorites, and check earnings — same as the web frontend
 
 | Function | Purpose |
 |---|---|
-| `explore_services(search, category, sort, ...)` | Browse the marketplace with filtering + pagination |
+| `explore_marketplace(search, paid_only, ...)` | ⭐ **UNIFIED browse — use this FIRST to find paid services/APIs.** Project cards + standalone services in one feed (same as web All/Paid tabs); the only search path that surfaces services merged into public project cards. Items have `type`: `service` (use `id`) or `project` (paid cards carry `service_id`) — feed into `get_service_detail()` |
+| `explore_services(search, category, sort, ...)` | Browse STANDALONE service items only (services API). ⚠️ Services merged into a public project card do NOT appear here — use `explore_marketplace()` for full coverage |
 | `get_service_categories()` | List all categories with counts |
 | `get_service_detail(service_id)` | Public detail for a published service (includes docs, increments views) |
 | `get_service_pricing(service_id)` | Verified pricing with real-time x402 check |
@@ -621,7 +629,7 @@ from exports import (
     list_my_services, get_service, update_service, delete_service,
     restore_service,
     # MARKETPLACE: browse + consumer actions
-    explore_services, get_service_categories, get_service_detail,
+    explore_marketplace, explore_services, get_service_categories, get_service_detail,
     get_service_pricing, get_service_reviews, write_service_review,
     get_user_services, favorite_service, unfavorite_service,
     get_favorite_services, get_service_purchase_status,
@@ -669,7 +677,7 @@ EOF
 - **Slug rules**: lowercase alphanumeric + hyphens, 3-50 chars, no leading/trailing hyphen.
 - **Version rules** (`open_source`): strict semver. Re-publishing same version is rejected.
 - **URL ≠ code ≠ listing**: a public URL going down does NOT remove the open-source code or the marketplace listing, and vice versa. They're independent.
-- **Do NOT pass `project_slug` for standalone `paid_api` services.** `project_slug` is ONLY for `paid_project` (required) or the "free webpage + paid API" pattern (Flow D, where a free Starchild project page exists). Passing a preview slug or non-existent slug for a standalone API creates a phantom association. The backend silently clears non-existent slugs, but you should not pass `project_slug` unless the user explicitly wants to link a free project page with the paid API.
+- **Do NOT pass `project_slug` for standalone `paid_api` services.** `project_slug` belongs to `paid_project` only — including the "free webpage + paid API" pattern (Flow D, which uses `paid_project`; passing `paid_api` + `project_slug` gets auto-upgraded to `paid_project` with a `project_slug_warning`). Passing a preview slug or non-existent slug for a standalone API creates a phantom association. The backend silently clears non-existent slugs, but you should not pass `project_slug` unless the user explicitly wants to link a free project page with the paid API.
 - **When the user asks for multiple APIs, create ONE service with `api_endpoints`.** Do NOT call `create_paid_service()` multiple times for related APIs. Use the `api_endpoints` array to list all endpoints in a single service (Flow E). Only create multiple services if the APIs are truly unrelated (different domains, different audiences, different pricing models).
 
 ---

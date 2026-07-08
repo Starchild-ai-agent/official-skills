@@ -318,10 +318,13 @@ ERC-1271 verify support (the platform facilitator has it). Do NOT revoke
 the wallet's delegation: it is installed by the gas-sponsorship flow and
 revoking it breaks sponsored transactions. Exact wrapping details live in
 `client.py` (PrivySigner) comments.
-Fallback signer = session EOA (`.x402/buyer.key`), used ONLY when the wallet
-service is unavailable or forced via `signer_mode="eoa"` /
-env `X402_SIGNER=eoa`. Every result includes `signer_type`
-(`"privy"` | `"session_eoa"`); an auto-fallback also sets `signer_warning`.
+Fallback signer = session EOA (`.x402/buyer.key`). `auto` is FAIL-CLOSED:
+if the Privy signer cannot be initialized, `paid_request` raises instead of
+paying from a different identity. Allow the EOA fallback only explicitly —
+`allow_fallback_eoa=True`, env `X402_FALLBACK_EOA=1`, or pin
+`signer_mode="eoa"` / env `X402_SIGNER=eoa`. Every result includes
+`signer_type` (`"privy"` | `"session_eoa"`); an opted-in fallback also sets
+`signer_warning`.
 ⚠️ The two signers are DIFFERENT payer identities: subscriptions / prepaid
 balances bought under one do NOT carry over — pin `signer_mode` explicitly
 for subscription/prepaid services.
@@ -433,8 +436,9 @@ this sequence — everything needed is self-describing in the protocol:
    result reports `signer_type: "session_eoa"` (see Buyer side above). cap =
    your spend guard. Confirm with the user before paying — this is real money.
    Check `signer_type` in the result: it tells you WHICH identity actually
-   paid; a `signer_warning` field means the client fell back to the session
-   EOA (different payer address) — stop and report before continuing.
+   paid. If the Privy signer is unavailable, `auto` raises (fail-closed)
+   rather than silently paying from the session EOA; a `signer_warning`
+   appears only when the fallback was explicitly allowed.
 4. **Verify billing semantics** (subscription modes): call again — the result
    must be 200 with NO new settlement (`paid: true`, no new tx). On multi-plan
    services, requesting a different plan while holding one must also NOT

@@ -13,10 +13,10 @@ Usage:
 import argparse, json, os, sys
 
 WS = "/data/workspace"
-# Default: LOCAL self-hosted facilitator (skills/x402/facilitator/server.py).
-# The platform facilitator (starchild-x402-facilitator.fly.dev) is access-
-# controlled (payTo allowlist / gateway tokens) — pass it explicitly via
-# --facilitator plus --facilitator-token if you have been granted access.
+# Default: platform facilitator (starchild-x402-facilitator.fly.dev) —
+# settler maintained by the platform, no local gas needed. Self-hosted is
+# opt-in: pass --facilitator http://127.0.0.1:8410 and run
+# skills/x402/facilitator/server.py with a funded settler.
 FACILITATOR = os.environ.get("X402_FACILITATOR_URL", "https://starchild-x402-facilitator.fly.dev")
 
 ap = argparse.ArgumentParser()

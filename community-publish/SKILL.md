@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.20.0
+version: 0.21.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -31,7 +31,7 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 | Flow | When to use | Review? | Pricing? | Functions |
 |---|---|---|---|---|
 | **Free listing** | Free project, show on `/projects` gallery | No | No | `list_in_dashboard()` |
-| **Paid listing** | Charge for access via x402 | Yes (5 checks) | Yes (USDC on Base) | `create_paid_service()` → `submit_for_review()` → `publish_service()` |
+| **Paid listing** | Charge for access via x402 | Optional (5-check self-report) | Yes (USDC on Base) | `create_paid_service()` → `publish_service()` (optionally `submit_for_review()` for a self-check report) |
 
 > **`POST /api/services` no longer accepts `service_type: "free_project"`.** Free listing is done by `list_in_dashboard()` (the project gallery flow). Paid listing uses `create_paid_service()` + review + publish (the service API flow).
 
@@ -87,7 +87,7 @@ The authoritative answer comes ONLY from a fresh `get_listing_status(slug)` (fre
 |---|---|---|
 | "publish" / "share" / "make public" / "公开" / "发布" (no qualifier) | `publish_preview(preview_id)` | Allocates the URL only. Listing is NOT auto-flipped. |
 | "list on the dashboard" / "上架" / "show on community" / "make discoverable" / "发到广场" | `list_in_dashboard(slug)` | Free listing. Requires the preview to already exist. |
-| "上架付费服务" / "make this a paid service" / "上架到服务市场（付费）" | `create_paid_service(...)` → `submit_for_review()` → `publish_service()` | Paid listing. Needs x402 config first. |
+| "上架付费服务" / "make this a paid service" / "上架到服务市场（付费）" | `create_paid_service(...)` → `publish_service()` (self-check via `submit_for_review()` optional) | Paid listing. Needs x402 config first. |
 | "publish AND list" / "发布并上架" | `publish_preview()` THEN `list_in_dashboard()` | Two separate calls in order. |
 | "remove from dashboard" / "下架" / "unlist" / "hide from gallery" | `unlist_from_dashboard(slug)` | Free listing only. Soft-unlist (sets `is_public=false`, preserves stats). Preview URL stays alive. |
 | "下架付费服务" / "unpublish service" | `unpublish_service(service_id)` | Paid listing only. |
@@ -95,8 +95,8 @@ The authoritative answer comes ONLY from a fresh `get_listing_status(slug)` (fre
 | "unpublish the URL" / "take down the link" | `unpublish_preview(slug)` | Listing row stays. |
 | "remove the open source" / "delete from GitHub" | `remove_open_source(slug)` | |
 | "fork" / "install someone's project" | `fork(source)` | |
-| "提交审核" / "submit for review" | `submit_for_review(service_id)` | Paid only |
-| "发布服务" / "publish my service" | `publish_service(service_id)` | Paid only, requires approved |
+| "提交审核" / "submit for review" | `submit_for_review(service_id)` | Paid only. Advisory self-check — never required for publishing |
+| "发布服务" / "publish my service" | `publish_service(service_id)` | Paid only, works from any pre-listed state |
 | "更新服务" / "update service" | `update_service(service_id, ...)` | Paid only |
 | "删除服务" / "delete service" | `delete_service(service_id)` | Paid only |
 | "删除项目" / "delete listing" / "permanently remove from marketplace" | `delete_listing(slug)` | Free listing only. Permanently deletes the listing row. Use `unlist_from_dashboard()` to hide without deleting. |
@@ -185,7 +185,7 @@ is true (complete the paid-listing chain).
 **Constraints:**
 - **`publish_preview` does NOT create a paid listing.** If the endpoint
   charges via x402 (returns 402), the publish flow is INCOMPLETE until you
-  also run `create_paid_service` → `submit_for_review` → `publish_service`
+  also run `create_paid_service` → `publish_service` (self-check optional)
   — otherwise the marketplace shows nothing or "free". The return value
   flags this (`x402_detected: true` + `next_step`) when billing is detected.
 - Max 20 published previews per user (gateway returns 429 over).
@@ -269,26 +269,24 @@ Returns `{"ok": True, "listing": {...}, "url": "...", "dashboard_url": "..."}`.
 
 ## LIST (PAID): Paid service listing on the Service Marketplace
 
-Paid services charge for access via x402 (on-chain USDC settlement on Base). They require automated review before going live.
+Paid services charge for access via x402 (on-chain USDC settlement on Base). An automated 5-check self-report is available; the owner decides when to go live (review never blocks publishing).
 
-### Service lifecycle & review states
+### Service lifecycle & review states (review is ADVISORY)
 
 ```
-                ┌─────────────────────────────────────────────┐
-                │                                             │
-  create ──▶ published ──▶ pending ──▶ approved ──▶ listed ◀──┤
-                │            │           │          │         │
-                │            └──▶ rejected ────────┤         │
-                │                               (fix & resubmit)│
-                │                                             │
-                └──────────────────────────────────────────────┘
-                                              │
-                                              ▼
-                                     unavailable ──▶ restore ──▶ listed
-                                        (auto, health-check failures)
+  create ──▶ published ──▶ publish_service() ──▶ listed ◀─▶ unlisted (owner takedown / re-list)
+                │                                  │
+                │  (optional, any time)            ▼
+                └─▶ submit_for_review ─▶ pending ─▶ approved / rejected   unavailable ──▶ restore ──▶ listed
+                        (self-check report for the OWNER — never blocks publish)
 ```
 
-All paid services must pass review: `published` → `pending` → `approved` → `listed`.
+Review is a **self-check, not a gate**: `submit_for_review()` runs 5 automated
+checks (api_reachable, pricing_consistency, x402_payment, response_match,
+doc_completeness) and stores a report for the owner. `publish_service()` works
+from any pre-listed state — the owner reads the report and decides when to go
+live. A `rejected` report does NOT block listing; a check run against an
+already-`listed` service never delists it.
 
 ### ⚡ Scenario Selection Guide — Which flow to use?
 
@@ -343,29 +341,24 @@ create_paid_service(
    project↔service association. Fix an existing record with
    `update_service(service_id, project_slug="<full-slug>")` — no re-listing needed.
 
-4. **Submit for review:**
-
-```python
-submit_for_review(service_id)
-```
-
-   This kicks off the automated review asynchronously. The service moves to `pending`.
-
-5. **Poll review status** until it's no longer `pending`:
-
-```python
-get_review_status(service_id)
-```
-
-6. **If approved → publish:**
+4. **Publish** (review is advisory — you can go live immediately):
 
 ```python
 publish_service(service_id)
 ```
 
-7. **If rejected → read feedback, fix, resubmit:**
-   The `review_feedback` field and `latest_task.checks` explain which of the 5 checks failed.
-   Call `update_service(service_id, ...)` to fix, then `submit_for_review()` again.
+5. **Recommended: run the self-check** (before or after publishing — a check
+   on a listed service never delists it):
+
+```python
+submit_for_review(service_id)   # kicks off 5 automated checks asynchronously
+get_review_status(service_id)   # poll until no longer pending, then show the
+                                # report to the user — THEY decide what to fix
+```
+
+   A `rejected` report does not block or take down the listing. Read
+   `review_feedback` + `latest_task.checks`, fix with `update_service()` if
+   the owner wants, and re-run `submit_for_review()`.
 
 ### Flow C — Paid API listing
 
@@ -412,10 +405,8 @@ create_paid_service(
    `provider_wallet`, `pricing_model`, `price`, `api_documentation`, `example_request`,
    `example_response`. Optional: `free_trial_count` (only for `pay_per_use`).
 
-3. **Submit for review** → same as Flow B step 4.
-4. **Poll review status** → same as Flow B step 5.
-5. **If approved → publish** → same as Flow B step 6.
-6. **If rejected → fix & resubmit** → same as Flow B step 7.
+3. **Publish** → same as Flow B step 4.
+4. **Recommended self-check** → same as Flow B step 5.
 
 ### Flow D — Free Webpage + Paid API (hybrid)
 
@@ -571,9 +562,9 @@ create_paid_service(
 | Function | Purpose |
 |---|---|
 | `create_paid_service(...)` | Create a service record (published state) |
-| `submit_for_review(service_id)` | Submit for automated review |
+| `submit_for_review(service_id)` | Run the 5-check self-report (advisory) |
 | `get_review_status(service_id)` | Poll review progress + per-check details |
-| `publish_service(service_id)` | Go live (requires approved) |
+| `publish_service(service_id)` | Go live (any pre-listed state) |
 | `unpublish_service(service_id)` | Take down (listed → unlisted) |
 | `list_my_services(cursor, limit)` | List your services (paginated) |
 | `get_service(service_id)` | Fetch one service by ID |
@@ -659,7 +650,7 @@ res = create_paid_service(
     service_description="Subscribers get premium features.",
 )
 print(res)
-# Then: submit_for_review(res["service_id"]) → poll get_review_status() → publish_service()
+# Then: publish_service(res["service_id"]) — optionally submit_for_review() first for a self-check report
 EOF
 ```
 
@@ -670,7 +661,7 @@ EOF
 - **Show the diff before `open_source()`**. After `validate_open_source`, summarize what's about to be pushed and ask for confirmation. Exception: explicit "publish without confirmation" or re-publish of a known good project.
 - **Never auto-run setup.sh on fork**. Show the command, let the user confirm.
 - **Always collect env in one batch on fork**. Read project's `env_required`, diff against `workspace/.env`, call `request_env_input` ONCE with the missing keys.
-- **Never skip review for paid services.** All paid services must pass review. `publish_service()` will reject a service that isn't `approved`.
+- **Review is advisory.** `publish_service()` works without review; still OFFER the self-check (`submit_for_review()`) so the owner sees whether buyers can actually pay before/after going live. Show the report to the user — the decision is theirs.
 - **`api_endpoint` must be the x402 charge endpoint.** For paid projects this is the project's public URL. For paid APIs it's the external API URL. The reviewer hits this URL expecting a `402`.
 - **Price unit is USDC.** The 402 response's `accepts.amount` is in **base units** (6 decimals for USDC). A `$0.01` price → `amount: "10000"`. Mismatch here is the #1 review failure.
 - **Don't fabricate review results.** Always call `get_review_status()` to check — never assume the review passed because you submitted it.
@@ -693,9 +684,10 @@ EOF
 | `list_in_dashboard`: `404 No preview found` | `publish_preview()` hasn't run for this slug yet | Call `publish_preview()` first |
 | `open_source`: `400 Validation failed: env names not in .env.example` | Listed `MY_KEY` in `env_required` but forgot `.env.example` | Add the missing key to `.env.example` |
 | `open_source`: `400 Possible secret detected` | Secret scanner found a real-looking API key | Move to env var; `.env.example` value should be `your-key-here` |
-| Marketplace shows service as free / missing after publish | Only `publish_preview()` was run — URL publish ≠ paid listing | Complete the chain: `create_paid_service` → `submit_for_review` → `publish_service` |
+| Marketplace shows service as free / missing after publish | Only `publish_preview()` was run — URL publish ≠ paid listing | Complete the chain: `create_paid_service` → `publish_service` |
 | `create_paid_service`: `400 Free services should be published through the Project publish flow` | Tried `service_type: "free_project"` | Use `list_in_dashboard()` for free projects, not `create_paid_service()` |
-| `publish_service`: `400 not in a publishable state` | Service isn't `approved` yet | Poll `get_review_status()` — if rejected, fix and re-submit |
+| `publish_service`: `400 not in a publishable state` | Service is already listed, unavailable, or deleted | Check `get_service()` state; `unavailable` → `restore_service()` |
+| `submit_for_review`: `400 Free services do not require review` | The service record was created as a FREE type — the paid payload was built by hand (missing `service_type`/wallet/pricing) instead of via `create_paid_service()` | Delete it and recreate with `create_paid_service()` (all paid fields are required positional args, so this cannot happen through the function) |
 | Review rejected: `pricing_consistency` failed | 402 response `amount` doesn't match declared `price` | Ensure `amount` = `price * 1000000` (USDC 6 decimals) |
 | Review rejected: `api_reachable` failed | Endpoint doesn't return 402 | Wire up x402 charging on the endpoint first |
 | `create_paid_service` response has `project_slug_warning` | Passed `project_slug` for a `paid_api` but the slug doesn't exist in `project_listings` | Backend cleared it automatically. If this is a standalone API, don't pass `project_slug`. If you intended Flow D, `publish_preview()` + `list_in_dashboard()` the project first, then `update_service()` with the correct slug. |

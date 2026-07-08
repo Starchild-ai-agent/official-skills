@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.7.0
+version: 2.7.1
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -190,12 +190,19 @@ service reachable — the Service Marketplace will show nothing (or "free")
 until you complete the LIST chain (community-publish skill):
 
 5. `create_paid_service(name=..., service_type=..., api_endpoint=<public paid
-   route>, pricing_model=..., price=..., pricing_options=[...] for
-   multi-plan)` → draft service record.
-6. `submit_for_review(service_id)` → poll `get_review_status()` until
-   `approved` (5 automated checks: 402 reachable, price consistency, x402
-   validity, response match, doc completeness) → `publish_service(service_id)`
-   → live paid listing.
+   route>, provider_wallet=..., pricing_model=..., price=...,
+   pricing_options=[...] for multi-plan)` → service record.
+6. `publish_service(service_id)` → live paid listing. Review is ADVISORY:
+   optionally run `submit_for_review(service_id)` + `get_review_status()`
+   for a 5-check self-report (402 reachable, price consistency, x402
+   validity, response match, doc completeness) — show it to the owner; it
+   never blocks publishing.
+
+⚠️ The LIST chain MUST go through the community-publish skill functions —
+NEVER hand-build a gateway payload. `create_paid_service()` makes every paid
+field a required argument; a hand-built payload with missing fields is
+rejected by the gateway (and on older gateways silently created a FREE
+service that later fails review with a misleading 400).
 
 Skipping 5–6 is the #1 cause of "why does my paid service show as free /
 not appear in the marketplace".

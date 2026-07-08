@@ -1,6 +1,6 @@
 {
-  "_comment": "包月/时长通行证模板：一次 x402 支付购买 N 天无限访问。适合内容站、工具站的包月订阅",
-  "_comment_facilitator": "默认平台公共 facilitator（settler 由平台维护，无需本地 gas）。需自托管时改为 http://127.0.0.1:8410 并先启动 skills/x402/facilitator/server.py + 给 settler 充 Base ETH。若平台 facilitator 启用了 gateway token，再设置 facilitator_token",
+  "_comment": "Time-pass template: one payment grants access for a fixed number of days.",
+  "_comment_facilitator": "Default: platform facilitator (settler maintained by the platform, no local gas). Override via X402_FACILITATOR_URL for a custom facilitator.",
   "mode": "timepass",
   "upstream": "http://127.0.0.1:UPSTREAM_PORT",
   "pay_to": "YOUR_WALLET_ADDRESS",

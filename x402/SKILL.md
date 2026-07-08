@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.5.7
+version: 2.6.0
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -227,17 +227,11 @@ Subscription/metered specifics:
 |---------|----|-------------|-------|
 | Base Sepolia (default) | `eip155:84532` | `https://x402.org/facilitator` (default) | nothing |
 | Base mainnet | `eip155:8453` | **platform** (`https://starchild-x402-facilitator.fly.dev`, the default; override via `X402_FACILITATOR_URL` or `--facilitator`) | nothing — platform settler pays gas |
-| Base mainnet (self-hosted) | `eip155:8453` | `facilitator/server.py` at `http://127.0.0.1:8410` (opt-in via `X402_FACILITATOR_URL`) | settler key gas ETH on Base — **without gas every settle fails** (`insufficient funds for gas`), so fund it BEFORE listing |
 
-**Self-hosted facilitator** (`skills/x402/facilitator/`): our own /verify + /settle
-— no CDP account, no KYC, full transaction visibility. Start:
-`python3 skills/x402/facilitator/server.py` (port 8410). The settlement key
-(auto-generated at `.x402/facilitator/settler.key`, or `X402_SETTLER_PRIVATE_KEY`
-env) ONLY pays gas — fund flow is fixed by the buyer's signature; it can never
-touch user funds. It needs a little Base ETH for gas (~$0.001/settlement).
-Safety: mandatory `eth_call` simulation before spending gas, per-payer rate
-limit (`X402_PAYER_RATE_LIMIT`, default 30/min), authorization-nonce idempotency,
-full settlement ledger at `/facilitator/stats`.
+The platform facilitator handles /verify + /settle; its settler key only pays
+gas — fund flow is fixed by the buyer's signature and can never touch user
+funds. Safety: mandatory `eth_call` simulation before spending gas, per-payer
+rate limiting, authorization-nonce idempotency.
 Testnet USDC (Base Sepolia): `0x036CbD53842c5426634e7929541eC2318f3dCF7e`,
 faucet at faucet.circle.com. Prices auto-convert: `$0.01` → `10000` atomic USDC units.
 
@@ -318,10 +312,13 @@ ERC-1271 verify support (the platform facilitator has it). Do NOT revoke
 the wallet's delegation: it is installed by the gas-sponsorship flow and
 revoking it breaks sponsored transactions. Exact wrapping details live in
 `client.py` (PrivySigner) comments.
-Fallback signer = session EOA (`.x402/buyer.key`), used ONLY when the wallet
-service is unavailable or forced via `signer_mode="eoa"` /
-env `X402_SIGNER=eoa`. Every result includes `signer_type`
-(`"privy"` | `"session_eoa"`); an auto-fallback also sets `signer_warning`.
+Fallback signer = session EOA (`.x402/buyer.key`). `auto` is FAIL-CLOSED:
+if the Privy signer cannot be initialized, `paid_request` raises instead of
+paying from a different identity. Allow the EOA fallback only explicitly —
+`allow_fallback_eoa=True`, env `X402_FALLBACK_EOA=1`, or pin
+`signer_mode="eoa"` / env `X402_SIGNER=eoa`. Every result includes
+`signer_type` (`"privy"` | `"session_eoa"`); an opted-in fallback also sets
+`signer_warning`.
 ⚠️ The two signers are DIFFERENT payer identities: subscriptions / prepaid
 balances bought under one do NOT carry over — pin `signer_mode` explicitly
 for subscription/prepaid services.
@@ -348,12 +345,14 @@ the user's funds sit on a different chain:
 5. No USDC anywhere → stop and tell the user to acquire some (on-ramp /
    exchange withdrawal). Never fabricate funds or skip the payment.
 
-**Signer selection:** `auto` falls back to the session EOA on ANY
-PrivySigner init failure — most commonly `ImportError: core.skill_tools`
-when PYTHONPATH lacks `/app` (script run outside the agent runtime), or
-wallet-service signing errors (e.g. 401). The fallback logs a
-`[x402] auto: ...` warning to stderr — check it plus the payer address in
-the result to confirm which identity actually paid. Base mainnet USDC works
+**Signer selection:** `auto` FAILS CLOSED on any PrivySigner init failure —
+most commonly `ImportError: core.skill_tools` when PYTHONPATH lacks `/app`
+(script run outside the agent runtime), or wallet-service signing errors
+(e.g. 401) — raising before anything is signed. Fix the cause, or explicitly
+allow the session-EOA fallback via `allow_fallback_eoa=True` /
+env `X402_FALLBACK_EOA=1`; an opted-in fallback logs a `[x402] auto: ...`
+stderr warning and sets `signer_type`/`signer_warning` in the result —
+check them to confirm which identity actually paid. Base mainnet USDC works
 with both signers; verify other chain/token combos with a minimal purchase
 first. Paid response bodies are returned in FULL; unpaid/error bodies are
 capped at 2000 chars (override: env `X402_BODY_MAX`, 0 = unlimited). **Spend guard**: additionally refuses to sign above
@@ -390,7 +389,7 @@ match a ledger line. Ledger writes are best-effort and never block a payment.
 
 Make any local service a PUBLIC paid API (charge any caller for any resource,
 no accounts / API keys needed — same capability set as Cloudflare's
-Monetization Gateway, self-hosted):
+Monetization Gateway, running on your own machine):
 
 1. `python3 skills/x402/scripts/make_public.py --name my-api --upstream-port <port> --mode payperuse --route 'GET /api/*=$0.01' --pay-to <wallet>` — scaffolds `output/my-api/start.py` + config
 2. `preview(action='serve', dir='output/my-api', command='python3 start.py', port=<gateway_port>)` — note: start the upstream in the same command if it isn't already running
@@ -433,8 +432,9 @@ this sequence — everything needed is self-describing in the protocol:
    result reports `signer_type: "session_eoa"` (see Buyer side above). cap =
    your spend guard. Confirm with the user before paying — this is real money.
    Check `signer_type` in the result: it tells you WHICH identity actually
-   paid; a `signer_warning` field means the client fell back to the session
-   EOA (different payer address) — stop and report before continuing.
+   paid. If the Privy signer is unavailable, `auto` raises (fail-closed)
+   rather than silently paying from the session EOA; a `signer_warning`
+   appears only when the fallback was explicitly allowed.
 4. **Verify billing semantics** (subscription modes): call again — the result
    must be 200 with NO new settlement (`paid: true`, no new tx). On multi-plan
    services, requesting a different plan while holding one must also NOT

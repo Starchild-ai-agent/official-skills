@@ -3,11 +3,12 @@
 Default signer (signer_mode="auto"): the PRIVY wallet. PrivySigner detects
 EIP-7702 delegation on the payer address (Privy gas sponsorship installs
 ZeroDev Kernel) and transparently signs through Kernel's EIP-712 wrapper
-(0x00 sudo prefix + 65B ECDSA), which USDC accepts via ERC-1271. Falls
-back to the session EOA
-(`.x402/buyer.key`) if the wallet service is unreachable; force a mode with
-signer_mode="privy"/"eoa" or env X402_SIGNER. NOTE: the two signers are
-different payer identities — subscriptions/prepaid balances don't transfer.
+(0x00 sudo prefix + 65B ECDSA), which USDC accepts via ERC-1271. By default,
+auto FAILS CLOSED if the Privy signer is unavailable — no payment is signed.
+Use allow_fallback_eoa=True, env X402_FALLBACK_EOA=1, or signer_mode="eoa" /
+env X402_SIGNER=eoa to explicitly pay from the session EOA
+(`.x402/buyer.key`). NOTE: the two signers are different payer identities —
+subscriptions/prepaid balances don't transfer.
 
 Usage (bash):
     python3 skills/x402/client.py GET  https://host/api/thing
@@ -387,12 +388,15 @@ def _body(text: str, *, full: bool = False) -> str:
         cap = 2000
     return text if cap <= 0 else text[:cap]
 
-def _make_signer(signer_mode: str, max_amount_atomic: int):
+def _make_signer(signer_mode: str, max_amount_atomic: int,
+                 allow_fallback_eoa: bool = False):
     """signer_mode: 'privy' | 'eoa' | 'auto'.
 
-    'auto' -> Privy wallet first (PrivySigner transparently handles the
-    EIP-7702/Kernel ERC-1271 wrapping), falling
-    back to the session EOA when the wallet service is unavailable.
+    'auto' -> Privy wallet (PrivySigner transparently handles the smart-account
+    ERC-1271 wrapping). FAIL-CLOSED: if the Privy signer cannot be initialized,
+    auto raises instead of silently paying from a different identity. To allow
+    the session-EOA fallback, opt in explicitly with allow_fallback_eoa=True
+    or env X402_FALLBACK_EOA=1.
     Env override: X402_SIGNER=privy|eoa forces a mode in 'auto'.
 
     ⚠️ Payer identity: Privy wallet and session EOA are DIFFERENT payer
@@ -417,22 +421,30 @@ def _make_signer(signer_mode: str, max_amount_atomic: int):
     except Exception as e:
         # Most common cause: `from core.skill_tools import wallet` fails when
         # PYTHONPATH lacks /app (script run outside the agent runtime) — NOT a
-        # protocol incompatibility. Announce the identity switch on stderr AND
-        # in the result (signer_warning): the session EOA is a DIFFERENT payer
-        # address and is usually unfunded.
+        # protocol incompatibility.
+        if not (allow_fallback_eoa
+                or os.environ.get("X402_FALLBACK_EOA", "").strip() == "1"):
+            raise RuntimeError(
+                f"Privy signer unavailable ({type(e).__name__}: {e}). "
+                f"Refusing to pay from the session EOA (different payer "
+                f"identity). Fix the wallet-service access (ImportError → "
+                f"run with PYTHONPATH=/app), or opt in explicitly with "
+                f"allow_fallback_eoa=True / X402_FALLBACK_EOA=1 / "
+                f"X402_SIGNER=eoa.") from e
         warn = (f"Privy signer unavailable ({type(e).__name__}: {e}) — "
-                f"fell back to session EOA (DIFFERENT payer identity). "
-                f"If this is an ImportError, run with PYTHONPATH=/app.")
+                f"fell back to session EOA (DIFFERENT payer identity) "
+                f"per explicit opt-in.")
         print(f"[x402] auto: {warn}", file=sys.stderr)
         s = SessionEOASigner(max_amount_atomic=max_amount_atomic)
         s.signer_type, s.signer_warning = "session_eoa", warn
         return s
 
 
-def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto"):
+def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
+                  allow_fallback_eoa: bool = False):
     from x402 import x402Client
     from x402.mechanisms.evm.exact.register import register_exact_evm_client
-    signer = _make_signer(signer_mode, max_amount_atomic)
+    signer = _make_signer(signer_mode, max_amount_atomic, allow_fallback_eoa)
     client = x402Client()
     register_exact_evm_client(client, signer)
     return client, signer
@@ -515,8 +527,15 @@ def _ledger_append(entry: dict):
 
 def paid_request(method: str, url: str, json_body=None, headers=None,
                  max_amount_atomic: int = 1_000_000, timeout: float = 60.0,
-                 signer_mode: str = "auto", pricing_model: str = ""):
+                 signer_mode: str = "auto", pricing_model: str = "",
+                 allow_fallback_eoa: bool = False):
     """One-shot request with automatic x402 payment. Returns dict summary.
+
+    allow_fallback_eoa: 'auto' signer mode is FAIL-CLOSED — if the Privy
+    signer cannot be initialized it raises rather than paying from the
+    session EOA (a different payer identity). Pass True (or set env
+    X402_FALLBACK_EOA=1) to permit the fallback; the result then carries
+    signer_type="session_eoa" and a signer_warning.
 
     pricing_model: for MULTI-PLAN services — sends X-Pricing-Model so the
     gateway quotes that plan's price in its 402 (e.g. "weekly", "yearly").
@@ -545,13 +564,22 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
             r0 = await plain.request(method.upper(), url, json=json_body, headers=headers or {})
 
         if r0.status_code != 402:
-            signer = _make_signer(signer_mode, max_amount_atomic)
-            return {"status": r0.status_code, "payer": signer.address,
-                    "body": _body(r0.text), "paid": False}
+            # No payment happens on this path — report identity best-effort
+            # (fallback allowed here since nothing is signed).
+            out = {"status": r0.status_code, "body": _body(r0.text),
+                   "paid": False}
+            try:
+                signer = _make_signer(signer_mode, max_amount_atomic,
+                                      allow_fallback_eoa=True)
+                out.update({"payer": signer.address, **_signer_meta(signer)})
+            except Exception:
+                pass
+            return out
 
         if r0.headers.get("PAYMENT-REQUIRED") or r0.headers.get("X-PAYMENT-REQUIRED"):
             # V2 header challenge -> x402 SDK path
-            client, signer = _build_client(max_amount_atomic, signer_mode)
+            client, signer = _build_client(max_amount_atomic, signer_mode,
+                                           allow_fallback_eoa)
             _ledger_append({"event": "attempt", "url": url,
                             "method": method.upper(), "payer": signer.address,
                             "flavor": "v2-header", **_signer_meta(signer)})
@@ -586,7 +614,8 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         if not (isinstance(accepts, dict) and accepts.get("scheme") == "exact"):
             return {"status": 402, "error": "unrecognized 402 challenge",
                     "body": _body(r0.text)}
-        signer = _make_signer(signer_mode, max_amount_atomic)
+        signer = _make_signer(signer_mode, max_amount_atomic,
+                              allow_fallback_eoa)
         # Up to 2 payment attempts. prepaid needs both: attempt 1 signs the
         # per-call price (authentication only — the gateway debits the prepaid
         # balance instead of settling); if the gateway answers 402

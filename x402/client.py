@@ -43,6 +43,8 @@ if _ca and not os.environ.get("X402_NO_PROXY"):
 class PrivySigner:
     """ClientEvmSigner backed by the Starchild wallet skill (Privy)."""
 
+    REGISTERED_PATH = "/data/workspace/.x402/privy.registered"
+
     def __init__(self, max_amount_atomic: int = 1_000_000):
         """max_amount_atomic: refuse to sign payments above this (default 1 USDC)."""
         from core.skill_tools import wallet
@@ -51,6 +53,41 @@ class PrivySigner:
         info = wallet.wallet_info()
         self._address = next(w["wallet_address"] for w in info["wallets"]
                              if w["chain_type"] == "ethereum")
+        # Register the Privy payer address to ai-agent's session_wallets so
+        # community-gateway can attribute payments (by-wallet lookup only
+        # covers user_info login wallets + session_wallets — the Privy AGENT
+        # wallet lives in the wallet service's own DB and is NOT resolvable
+        # otherwise; without this, purchases record buyer_user_id=NULL).
+        # Best-effort: a failed registration must not block payments.
+        try:
+            self._register_privy_wallet()
+        except Exception:
+            pass
+
+    def _register_privy_wallet(self) -> None:
+        if os.path.exists(self.REGISTERED_PATH):
+            return
+        jwt = os.environ.get("CONTAINER_JWT", "") or os.environ.get("USER_JWT", "")
+        base = os.environ.get("AI_AGENT_API_URL", "").rstrip("/")
+        if not jwt or not base:
+            return  # outside the platform — nothing to register against
+        payload = {"wallet_address": self._address,
+                   "wallet_type": "x402_privy_wallet",
+                   "chain_type": "ethereum"}
+        cid = os.environ.get("CONTAINER_ID") or os.environ.get("FLY_MACHINE_ID") or ""
+        if cid:
+            payload["container_id"] = cid
+        req = urllib.request.Request(
+            base + "/v1/agent/profile/register-session-wallet",
+            data=json.dumps(payload).encode(), method="POST")
+        req.add_header("Authorization", f"Bearer {jwt}")
+        req.add_header("Content-Type", "application/json")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode() or "{}")
+        if result.get("status") in ("created", "updated"):
+            os.makedirs(os.path.dirname(self.REGISTERED_PATH), exist_ok=True)
+            with open(self.REGISTERED_PATH, "w") as f:
+                f.write(self._address)
 
     @property
     def address(self) -> str:

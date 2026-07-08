@@ -3,11 +3,12 @@
 Default signer (signer_mode="auto"): the PRIVY wallet. PrivySigner detects
 EIP-7702 delegation on the payer address (Privy gas sponsorship installs
 ZeroDev Kernel) and transparently signs through Kernel's EIP-712 wrapper
-(0x00 sudo prefix + 65B ECDSA), which USDC accepts via ERC-1271. Falls
-back to the session EOA
-(`.x402/buyer.key`) if the wallet service is unreachable; force a mode with
-signer_mode="privy"/"eoa" or env X402_SIGNER. NOTE: the two signers are
-different payer identities — subscriptions/prepaid balances don't transfer.
+(0x00 sudo prefix + 65B ECDSA), which USDC accepts via ERC-1271. By default,
+auto FAILS CLOSED if the Privy signer is unavailable — no payment is signed.
+Use allow_fallback_eoa=True, env X402_FALLBACK_EOA=1, or signer_mode="eoa" /
+env X402_SIGNER=eoa to explicitly pay from the session EOA
+(`.x402/buyer.key`). NOTE: the two signers are different payer identities —
+subscriptions/prepaid balances don't transfer.
 
 Usage (bash):
     python3 skills/x402/client.py GET  https://host/api/thing

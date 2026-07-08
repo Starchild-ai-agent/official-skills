@@ -430,6 +430,7 @@ create_paid_service(
     provider_wallet="0xAbC...yourBaseWallet",
     pricing_model="pay_per_use",
     price=0.01,
+    service_description="Paid access to the Random9 API endpoint; the docs page stays free.",  # required for paid_project
     api_documentation="# Random9 API\n## GET /api/random\nReturns a random 9-digit number.",
     example_request="curl https://community.iamstarchild.com/33-random9-api/api/random",
     example_response='{"random":"482917365","digits":9}',

@@ -1144,6 +1144,20 @@ def create_paid_service(
         return {"ok": False, "error": f"pricing_model must be one of {_MODES}, got: {pricing_model!r}"}
     if price <= 0:
         return {"ok": False, "error": f"price must be positive, got: {price}"}
+    # paid_api + project_slug is the "free webpage + paid API" pattern (Flow D
+    # in SKILL.md): the project page serves as the API's introduction page.
+    # Upgrade to paid_project BEFORE required-field validation so the upgraded
+    # type's requirements (service_description) are enforced, the frontend
+    # shows "View Project" correctly, and the marketplace merges the cards.
+    project_slug_warning: str | None = None
+    if project_slug and service_type == "paid_api":
+        service_type = "paid_project"
+        project_slug_warning = (
+            f"project_slug='{project_slug}' was passed — service_type has been "
+            "auto-upgraded from 'paid_api' to 'paid_project' (the 'free webpage "
+            "+ paid API' pattern, Flow D). The project page will serve as the "
+            "API's introduction page in the marketplace."
+        )
     _missing = []
     if service_type == "paid_project" and not service_description:
         _missing.append("service_description (what subscribers get)")
@@ -1172,25 +1186,9 @@ def create_paid_service(
         "pricing_model": pricing_model,
         "price": price,
     }
-    # project_slug handling:
-    # - paid_project: REQUIRED — the project page that subscribers access.
-    # - paid_api + project_slug: this is the "free webpage + paid API" pattern
-    #   (Flow D in SKILL.md). The project serves as the API's introduction page.
-    #   We auto-upgrade service_type to paid_project so the frontend shows
-    #   "View Project" correctly and the marketplace merges the cards.
-    project_slug_warning: str | None = None
-    if project_slug and service_type == "paid_api":
-        # Auto-upgrade to paid_project when a project_slug is provided.
-        # This prevents the mismatch where service_type=paid_api but
-        # project_slug is set (which caused duplicate cards in My Projects).
-        service_type = "paid_project"
-        payload["service_type"] = "paid_project"
-        project_slug_warning = (
-            f"project_slug='{project_slug}' was passed — service_type has been "
-            "auto-upgraded from 'paid_api' to 'paid_project' (the 'free webpage "
-            "+ paid API' pattern, Flow D). The project page will serve as the "
-            "API's introduction page in the marketplace."
-        )
+    # project_slug: REQUIRED for paid_project — the project page that
+    # subscribers access. (paid_api + project_slug was already upgraded to
+    # paid_project above, before validation.)
     if project_slug:
         payload["project_slug"] = project_slug
     if cover_url:

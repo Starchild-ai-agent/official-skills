@@ -95,8 +95,7 @@ class PrivySigner:
 
     # EIP-7702 delegation handling: when the Privy address carries delegated
     # code (Privy gas sponsorship installs ZeroDev Kernel), USDC verifies via
-    # ERC-1271, so the payment must be signed through Kernel's EIP-712 wrapper
-    #:
+    # ERC-1271, so the payment must be signed through Kernel's EIP-712 wrapper:
     #   inner = EIP-3009 digest -> sign Kernel(bytes32 hash) under Kernel's
     #   domain -> final sig = 0x00 (root/sudo validator prefix) + 65B ECDSA.
     _RPC = {8453: "https://mainnet.base.org", 84532: "https://sepolia.base.org"}

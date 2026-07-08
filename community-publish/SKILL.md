@@ -296,12 +296,12 @@ Before creating a paid service, identify your scenario:
 |----------|-------------|--------------|---------------|------|---------|
 | **Paid subscription project** — entire project behind paywall (monthly/yearly/lifetime) | `paid_project` | required | — | B | SaaS dashboard, premium tool |
 | **Standalone paid API** — external API with no Starchild project page | `paid_api` | **omit** | — | C | Third-party data API |
-| **Free webpage + paid API** — project has a free landing page AND a paid API endpoint | `paid_api` | required | — | D | API with docs site |
+| **Free webpage + paid API** — project has a free landing page AND a paid API endpoint | `paid_project` | required | — | D | API with docs site |
 | **Multi-endpoint API** — one service with multiple API endpoints at different prices | `paid_api` | **omit** (unless also Flow D) | required | E | Data API with basic/premium tiers |
 
 **Key rules:**
 - **Do NOT pass `project_slug` for standalone paid APIs.** `project_slug` is ONLY for `paid_project` (required) or the "free webpage + paid API" pattern (Flow D, where a published Starchild project page exists). Passing a preview slug or a non-existent slug for a standalone `paid_api` creates a phantom association — the backend will silently clear it, but you should not have passed it in the first place.
-- If your API has a published Starchild project (landing page/dashboard) that users can browse for free, set `project_slug` — this merges the service into the project card in the marketplace. If there is NO free project page, do NOT set `project_slug`.
+- **Routing rule: service tied to a project page → `paid_project`; `paid_api` is ONLY for standalone APIs with no project page.** If your API has a published Starchild project (landing page/dashboard) that users can browse for free, use `service_type="paid_project"` + `project_slug` — this merges the service into the project card in the marketplace. If there is NO free project page, use `paid_api` and do NOT set `project_slug`. Passing `paid_api` + `project_slug` is auto-upgraded to `paid_project` by `create_paid_service()` (with a `project_slug_warning` in the response) — the final listing is always `paid_project`.
 - `project_slug` must be the **full published slug WITH user prefix** (e.g. `33-my-app`), and must correspond to an existing row in `project_listings` (i.e. `publish_preview()` + `list_in_dashboard()` must have been called first).
 - `api_endpoints` is for services with multiple endpoints at different prices; each endpoint has its own `path`, `price`, and optional `label`.
 - A project with `project_slug` set will NOT appear in the "Free" tab — it moves to "All" and "Paid" tabs.
@@ -417,14 +417,14 @@ The marketplace shows a single merged card with both "Visit Project" and "Call A
 
 1. **Publish the project** via `publish_preview()` — this creates the free landing page.
 2. **Configure x402 charging** on the API endpoint (e.g. `/api/random` returns 402).
-3. **Create the service record** with `service_type="paid_api"` + `project_slug`:
+3. **Create the service record** with `service_type="paid_project"` + `project_slug`:
 
 ```python
 create_paid_service(
     name="Random9 API",
     description="Random 9-digit number API. Free docs page + paid API calls.",
     category="工具服务",
-    service_type="paid_api",
+    service_type="paid_project",
     project_slug="33-random9-api",  # FULL slug WITH user prefix — links to the free project page
     api_endpoint="https://community.iamstarchild.com/33-random9-api/api/random",
     provider_wallet="0xAbC...yourBaseWallet",
@@ -438,6 +438,11 @@ create_paid_service(
 
    The `project_slug` merges this service into the project card. The project page (`/`)
    stays free; only the API endpoint (`/api/random`) requires payment.
+
+   > Note: if `service_type="paid_api"` is passed together with `project_slug`,
+   > `create_paid_service()` auto-upgrades it to `paid_project` and returns a
+   > `project_slug_warning` — the stored listing is always `paid_project`. Passing
+   > `paid_project` directly (as above) is the canonical form.
 
 4. **Publish + optional self-check** — same as Flow B steps 4–5.
 
@@ -486,9 +491,9 @@ create_paid_service(
 )
 ```
 
-   You can combine Flow D + Flow E: add `project_slug` to link a free project page
-   with multi-endpoint pricing. The marketplace shows a merged project card with
-   an endpoint list in the detail view.
+   You can combine Flow D + Flow E: use `service_type="paid_project"` + `project_slug`
+   together with `api_endpoints` to link a free project page with multi-endpoint pricing.
+   The marketplace shows a merged project card with an endpoint list in the detail view.
 
 3. **Publish + optional self-check** — same as Flow B steps 4–5.
 

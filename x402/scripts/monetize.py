@@ -176,7 +176,7 @@ def main():
     if args.network == "eip155:8453" and not args.facilitator:
         # default to the self-hosted facilitator (local Phase-1, platform URL later)
         args.facilitator = os.environ.get(
-            "X402_FACILITATOR_URL", "http://127.0.0.1:8410")
+            "X402_FACILITATOR_URL", "https://starchild-x402-facilitator.fly.dev")
 
     # Hard guard: x402.org facilitator supports TESTNETS ONLY (verified via
     # /supported — no eip155:8453). A mainnet service pointed at it looks

@@ -14,8 +14,9 @@ STATE="/data/workspace/.x402/.keepalive_state"
 FAC_STATE="/data/workspace/.x402/facilitator"
 mkdir -p "$(dirname "$STATE")"; touch "$STATE"
 
-# --- facilitator watchdog (only if it has been initialized on this machine) ---
-if [ -d "$FAC_STATE" ]; then
+# --- facilitator watchdog (only if some gateway on this machine actually
+# uses the LOCAL facilitator — platform default is the fly app, no local needed) ---
+if [ -d "$FAC_STATE" ] && grep -l '127\.0\.0\.1:8410' /data/workspace/.x402/*/x402.config.json >/dev/null 2>&1; then
   if ! curl -sf -m 5 "http://127.0.0.1:8410/facilitator/health" >/dev/null 2>&1; then
     FLOG="$FAC_STATE/facilitator.log"
     echo "[keepalive $(date '+%F %T')] facilitator down, restarting" >> "$FLOG"

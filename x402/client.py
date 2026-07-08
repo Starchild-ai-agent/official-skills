@@ -1,11 +1,13 @@
 """x402 buyer client — lets THIS agent pay other agents' x402 services.
 
-Signs EIP-3009 payment authorizations with a SESSION EOA by default
-(`.x402/buyer.key`, auto-generated; fund it with USDC on the target chain).
-Privy signing (signer_mode="privy") exists but FAILS on Base mainnet USDC:
-the Privy address carries EIP-7702 delegation code, so USDC verifies via
-EIP-1271 and rejects plain ECDSA. Other chain/token combos are untested —
-prefer the session EOA everywhere.
+Default signer (signer_mode="auto"): the PRIVY wallet. PrivySigner detects
+EIP-7702 delegation on the payer address (Privy gas sponsorship installs
+ZeroDev Kernel) and transparently signs through Kernel's EIP-712 wrapper
+(0x00 sudo prefix + 65B ECDSA), which USDC accepts via ERC-1271 — verified
+end-to-end on Base mainnet 2026-07-08. Falls back to the session EOA
+(`.x402/buyer.key`) if the wallet service is unreachable; force a mode with
+signer_mode="privy"/"eoa" or env X402_SIGNER. NOTE: the two signers are
+different payer identities — subscriptions/prepaid balances don't transfer.
 
 Usage (bash):
     python3 skills/x402/client.py GET  https://host/api/thing
@@ -41,6 +43,8 @@ if _ca and not os.environ.get("X402_NO_PROXY"):
 class PrivySigner:
     """ClientEvmSigner backed by the Starchild wallet skill (Privy)."""
 
+    REGISTERED_PATH = "/data/workspace/.x402/privy.registered"
+
     def __init__(self, max_amount_atomic: int = 1_000_000):
         """max_amount_atomic: refuse to sign payments above this (default 1 USDC)."""
         from core.skill_tools import wallet
@@ -49,10 +53,88 @@ class PrivySigner:
         info = wallet.wallet_info()
         self._address = next(w["wallet_address"] for w in info["wallets"]
                              if w["chain_type"] == "ethereum")
+        # Register the Privy payer address to ai-agent's session_wallets so
+        # community-gateway can attribute payments (by-wallet lookup only
+        # covers user_info login wallets + session_wallets — the Privy AGENT
+        # wallet lives in the wallet service's own DB and is NOT resolvable
+        # otherwise; without this, purchases record buyer_user_id=NULL).
+        # Best-effort: a failed registration must not block payments.
+        try:
+            self._register_privy_wallet()
+        except Exception:
+            pass
+
+    def _register_privy_wallet(self) -> None:
+        if os.path.exists(self.REGISTERED_PATH):
+            return
+        jwt = os.environ.get("CONTAINER_JWT", "") or os.environ.get("USER_JWT", "")
+        base = os.environ.get("AI_AGENT_API_URL", "").rstrip("/")
+        if not jwt or not base:
+            return  # outside the platform — nothing to register against
+        payload = {"wallet_address": self._address,
+                   "wallet_type": "x402_privy_wallet",
+                   "chain_type": "ethereum"}
+        cid = os.environ.get("CONTAINER_ID") or os.environ.get("FLY_MACHINE_ID") or ""
+        if cid:
+            payload["container_id"] = cid
+        req = urllib.request.Request(
+            base + "/v1/agent/profile/register-session-wallet",
+            data=json.dumps(payload).encode(), method="POST")
+        req.add_header("Authorization", f"Bearer {jwt}")
+        req.add_header("Content-Type", "application/json")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode() or "{}")
+        if result.get("status") in ("created", "updated"):
+            os.makedirs(os.path.dirname(self.REGISTERED_PATH), exist_ok=True)
+            with open(self.REGISTERED_PATH, "w") as f:
+                f.write(self._address)
 
     @property
     def address(self) -> str:
         return self._address
+
+    # EIP-7702 delegation handling: when the Privy address carries delegated
+    # code (Privy gas sponsorship installs ZeroDev Kernel), USDC verifies via
+    # ERC-1271, so the payment must be signed through Kernel's EIP-712 wrapper
+    # (probe-verified on Base mainnet 2026-07-08):
+    #   inner = EIP-3009 digest -> sign Kernel(bytes32 hash) under Kernel's
+    #   domain -> final sig = 0x00 (root/sudo validator prefix) + 65B ECDSA.
+    _RPC = {8453: "https://mainnet.base.org", 84532: "https://sepolia.base.org"}
+
+    def _delegation(self, chain_id: int):
+        """Returns (name, version) of the delegate's EIP-712 domain, or None."""
+        if not hasattr(self, "_deleg_cache"):
+            self._deleg_cache = {}
+        if chain_id in self._deleg_cache:
+            return self._deleg_cache[chain_id]
+        result = None
+        rpc = self._RPC.get(chain_id)
+        if rpc:
+            try:
+                from web3 import Web3
+                w3 = Web3(Web3.HTTPProvider(rpc))
+                addr = Web3.to_checksum_address(self._address)
+                if w3.eth.get_code(addr):
+                    dom = w3.eth.contract(address=addr, abi=[{
+                        "name": "eip712Domain", "type": "function",
+                        "stateMutability": "view", "inputs": [],
+                        "outputs": [{"type": "bytes1"}, {"type": "string"},
+                                    {"type": "string"}, {"type": "uint256"},
+                                    {"type": "address"}, {"type": "bytes32"},
+                                    {"type": "uint256[]"}]}]).functions.eip712Domain().call()
+                    result = (dom[1], dom[2])  # e.g. ("Kernel", "0.3.3")
+            except Exception:
+                result = None  # RPC hiccup -> fall through to raw signing
+        self._deleg_cache[chain_id] = result
+        return result
+
+    def _sign_raw(self, d, t, primary_type, msg) -> bytes:
+        res = self._wallet.wallet_sign_typed_data(
+            domain=d, types=t, primaryType=primary_type, message=msg)
+        sig = res.get("signature") if isinstance(res, dict) else None
+        if not sig:
+            raise RuntimeError(f"wallet signing failed: {res}")
+        return bytes.fromhex(sig[2:] if sig.startswith("0x") else sig)
 
     def sign_typed_data(self, domain, types, primary_type, message) -> bytes:
         # spending guard — hard cap per single signature
@@ -74,12 +156,29 @@ class PrivySigner:
                 msg[k] = str(v)
             else:
                 msg[k] = v
-        res = self._wallet.wallet_sign_typed_data(
-            domain=d, types=t, primaryType=primary_type, message=msg)
-        sig = res.get("signature") if isinstance(res, dict) else None
-        if not sig:
-            raise RuntimeError(f"wallet signing failed: {res}")
-        return bytes.fromhex(sig[2:] if sig.startswith("0x") else sig)
+
+        deleg = self._delegation(int(domain.chain_id))
+        if deleg is None:
+            return self._sign_raw(d, t, primary_type, msg)
+
+        # Delegated (smart) account: sign the wrapper over the inner digest.
+        from eth_account.messages import encode_typed_data, _hash_eip191_message
+        inner = _hash_eip191_message(encode_typed_data(full_message={
+            "domain": {**d, "chainId": int(domain.chain_id)},
+            "types": {**{tn: fields for tn, fields in t.items()},
+                      "EIP712Domain": [
+                          {"name": "name", "type": "string"},
+                          {"name": "version", "type": "string"},
+                          {"name": "chainId", "type": "uint256"},
+                          {"name": "verifyingContract", "type": "address"}]},
+            "primaryType": primary_type,
+            "message": message}))
+        wrap_sig = self._sign_raw(
+            {"name": deleg[0], "version": deleg[1],
+             "chainId": int(domain.chain_id), "verifyingContract": self._address},
+            {"Kernel": [{"name": "hash", "type": "bytes32"}]},
+            "Kernel", {"hash": "0x" + inner.hex()})
+        return b"\x00" + wrap_sig  # 0x00 = Kernel root (sudo) validator prefix
 
 
 class SessionEOASigner:
@@ -274,32 +373,48 @@ class SessionEOASigner:
         return signed.signature
 
 
-def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto"):
-    """signer_mode: 'eoa' (session EOA, default for mainnet), 'privy', 'auto'.
+def _make_signer(signer_mode: str, max_amount_atomic: int):
+    """signer_mode: 'privy' | 'eoa' | 'auto'.
 
-    'auto' -> session EOA (works everywhere); Privy direct signing only works
-    on chains/tokens that don't hit the EIP-7702/1271 path.
+    'auto' -> Privy wallet first (PrivySigner transparently handles the
+    EIP-7702/Kernel ERC-1271 wrapping, verified on Base mainnet), falling
+    back to the session EOA when the wallet service is unavailable.
+    Env override: X402_SIGNER=privy|eoa forces a mode in 'auto'.
+
+    ⚠️ Payer identity: Privy wallet and session EOA are DIFFERENT payer
+    addresses. Subscriptions / prepaid balances bought under one do NOT
+    carry over to the other — pin signer_mode explicitly for such services.
     """
+    if signer_mode == "privy":
+        return PrivySigner(max_amount_atomic=max_amount_atomic)
+    if signer_mode == "eoa":
+        return SessionEOASigner(max_amount_atomic=max_amount_atomic)
+    env = os.environ.get("X402_SIGNER", "").strip().lower()
+    if env in ("privy", "eoa"):
+        return _make_signer(env, max_amount_atomic)
+    try:
+        return PrivySigner(max_amount_atomic=max_amount_atomic)
+    except Exception:
+        return SessionEOASigner(max_amount_atomic=max_amount_atomic)
+
+
+def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto"):
     from x402 import x402Client
     from x402.mechanisms.evm.exact.register import register_exact_evm_client
-    if signer_mode == "privy":
-        signer = PrivySigner(max_amount_atomic=max_amount_atomic)
-    else:
-        signer = SessionEOASigner(max_amount_atomic=max_amount_atomic)
+    signer = _make_signer(signer_mode, max_amount_atomic)
     client = x402Client()
     register_exact_evm_client(client, signer)
     return client, signer
 
 
-def _sign_platform_payment(accepts: dict, max_amount_atomic: int) -> str:
+def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -> str:
     """Sign an EIP-3009 authorization for a platform-shape 402 (JSON-body
     `accepts` dict with pricingModel — Starchild community-gateway contract).
-    Returns the base64 X-PAYMENT header value. Session EOA only."""
+    Returns the base64 X-PAYMENT header value. Works with any signer that
+    implements sign_typed_data (SessionEOASigner or PrivySigner)."""
     import time as _t
 
-    from eth_account.messages import encode_typed_data
-
-    signer = SessionEOASigner(max_amount_atomic=max_amount_atomic)
+    signer = signer or SessionEOASigner(max_amount_atomic=max_amount_atomic)
     amount = int(accepts["amount"])
     if amount > max_amount_atomic:
         raise ValueError(f"x402 spend guard: {amount} atomic units exceeds cap {max_amount_atomic}.")
@@ -315,23 +430,18 @@ def _sign_platform_payment(accepts: dict, max_amount_atomic: int) -> str:
         "validBefore": str(now + int(accepts.get("maxTimeoutSeconds", 300))),
         "nonce": "0x" + os.urandom(32).hex(),
     }
-    typed = {
-        "domain": {"name": extra.get("name", "USD Coin"), "version": extra.get("version", "2"),
-                   "chainId": chain_id, "verifyingContract": accepts["asset"]},
-        "types": {"EIP712Domain": [
-            {"name": "name", "type": "string"}, {"name": "version", "type": "string"},
-            {"name": "chainId", "type": "uint256"},
-            {"name": "verifyingContract", "type": "address"}],
-            "TransferWithAuthorization": [
-                {"name": "from", "type": "address"}, {"name": "to", "type": "address"},
-                {"name": "value", "type": "uint256"}, {"name": "validAfter", "type": "uint256"},
-                {"name": "validBefore", "type": "uint256"}, {"name": "nonce", "type": "bytes32"}]},
-        "primaryType": "TransferWithAuthorization",
-        "message": {"from": auth["from"], "to": auth["to"], "value": amount,
-                    "validAfter": 0, "validBefore": int(auth["validBefore"]),
-                    "nonce": auth["nonce"]},
-    }
-    sig = signer._acct.sign_message(encode_typed_data(full_message=typed)).signature
+    class _NS:
+        def __init__(self, **kw): self.__dict__.update(kw)
+    domain = _NS(name=extra.get("name", "USD Coin"), version=extra.get("version", "2"),
+                 chain_id=chain_id, verifying_contract=accepts["asset"])
+    fields = [_NS(name=n, type=t) for n, t in [
+        ("from", "address"), ("to", "address"), ("value", "uint256"),
+        ("validAfter", "uint256"), ("validBefore", "uint256"), ("nonce", "bytes32")]]
+    sig = signer.sign_typed_data(
+        domain, {"TransferWithAuthorization": fields}, "TransferWithAuthorization",
+        {"from": auth["from"], "to": auth["to"], "value": amount,
+         "validAfter": 0, "validBefore": int(auth["validBefore"]),
+         "nonce": auth["nonce"]})
     payload = {"x402Version": 2, "scheme": "exact", "network": network,
                "payload": {"authorization": auth, "signature": "0x" + sig.hex()}}
     return base64.b64encode(json.dumps(payload).encode()).decode()
@@ -369,8 +479,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
             r0 = await plain.request(method.upper(), url, json=json_body, headers=headers or {})
 
         if r0.status_code != 402:
-            signer = SessionEOASigner(max_amount_atomic) if signer_mode != "privy" \
-                else PrivySigner(max_amount_atomic)
+            signer = _make_signer(signer_mode, max_amount_atomic)
             return {"status": r0.status_code, "payer": signer.address,
                     "body": (r0.text[:2000] if r0.text else ""), "paid": False}
 
@@ -401,7 +510,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         if not (isinstance(accepts, dict) and accepts.get("scheme") == "exact"):
             return {"status": 402, "error": "unrecognized 402 challenge",
                     "body": (r0.text[:2000] if r0.text else "")}
-        signer = SessionEOASigner(max_amount_atomic)
+        signer = _make_signer(signer_mode, max_amount_atomic)
         # Up to 2 payment attempts. prepaid needs both: attempt 1 signs the
         # per-call price (authentication only — the gateway debits the prepaid
         # balance instead of settling); if the gateway answers 402
@@ -412,7 +521,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         # surfaces the gateway's error.
         r2 = r0
         for _ in range(2):
-            xp = _sign_platform_payment(accepts, max_amount_atomic)
+            xp = _sign_platform_payment(accepts, max_amount_atomic, signer=signer)
             async with _httpx.AsyncClient(timeout=timeout, follow_redirects=True) as plain:
                 r2 = await plain.request(method.upper(), url, json=json_body,
                                          headers={**(headers or {}), "X-PAYMENT": xp})

@@ -17,7 +17,7 @@ WS = "/data/workspace"
 # The platform facilitator (starchild-x402-facilitator.fly.dev) is access-
 # controlled (payTo allowlist / gateway tokens) — pass it explicitly via
 # --facilitator plus --facilitator-token if you have been granted access.
-FACILITATOR = os.environ.get("X402_FACILITATOR_URL", "http://127.0.0.1:8410")
+FACILITATOR = os.environ.get("X402_FACILITATOR_URL", "https://starchild-x402-facilitator.fly.dev")
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--name", required=True)

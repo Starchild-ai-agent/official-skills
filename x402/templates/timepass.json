@@ -1,11 +1,11 @@
 {
   "_comment": "包月/时长通行证模板：一次 x402 支付购买 N 天无限访问。适合内容站、工具站的包月订阅",
-  "_comment_facilitator": "默认本地自托管 facilitator（先启动 skills/x402/facilitator/server.py）。平台公开 facilitator (https://starchild-x402-facilitator.fly.dev) 受访问控制（payTo allowlist / gateway token）——获授权后改 facilitator 并加 facilitator_token",
+  "_comment_facilitator": "默认平台公共 facilitator（settler 由平台维护，无需本地 gas）。需自托管时改为 http://127.0.0.1:8410 并先启动 skills/x402/facilitator/server.py + 给 settler 充 Base ETH。若平台 facilitator 启用了 gateway token，再设置 facilitator_token",
   "mode": "timepass",
   "upstream": "http://127.0.0.1:UPSTREAM_PORT",
   "pay_to": "YOUR_WALLET_ADDRESS",
   "network": "eip155:8453",
-  "facilitator": "http://127.0.0.1:8410",
+  "facilitator": "https://starchild-x402-facilitator.fly.dev",
   "port": 8405,
   "topup": {
     "price_usd": "4.99",

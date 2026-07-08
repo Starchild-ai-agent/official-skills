@@ -226,7 +226,8 @@ Subscription/metered specifics:
 | Network | ID | Facilitator | Needs |
 |---------|----|-------------|-------|
 | Base Sepolia (default) | `eip155:84532` | `https://x402.org/facilitator` (default) | nothing |
-| Base mainnet | `eip155:8453` | **self-hosted** (`facilitator/server.py`, default `http://127.0.0.1:8410`, override via `X402_FACILITATOR_URL` or `--facilitator`) | settler key gas ETH on Base |
+| Base mainnet | `eip155:8453` | **platform** (`https://starchild-x402-facilitator.fly.dev`, the default; override via `X402_FACILITATOR_URL` or `--facilitator`) | nothing — platform settler pays gas |
+| Base mainnet (self-hosted) | `eip155:8453` | `facilitator/server.py` at `http://127.0.0.1:8410` (opt-in via `X402_FACILITATOR_URL`) | settler key gas ETH on Base — **without gas every settle fails** (`insufficient funds for gas`), so fund it BEFORE listing |
 
 **Self-hosted facilitator** (`skills/x402/facilitator/`): our own /verify + /settle
 — no CDP account, no KYC, full transaction visibility. Start:
@@ -247,7 +248,11 @@ prints only on state change → silent scheduled task when healthy):
 
 1. Boot: append to `/data/workspace/setup.sh`:
    `bash /data/workspace/skills/x402/scripts/keepalive.sh || true`
-2. Watchdog: `scheduled_task(action="schedule", schedule="every 10 minutes", command="bash /data/workspace/skills/x402/scripts/keepalive.sh", deliver="origin")` — empty output = silent.
+2. Watchdog: `scheduled_task(action="schedule", schedule="every 10 minutes", command="bash skills/x402/scripts/keepalive.sh", deliver="origin")` — empty output = silent.
+   ⚠️ Use the RELATIVE path (`skills/x402/...`), never `/data/workspace/skills/...` — the
+   scheduler's path sanitizer strips `workspace/` from absolute commands, mangling them
+   into a nonexistent `/data/skills/...` and the task fails every run. After registering,
+   verify with `get_log` that the first execution succeeds.
 
 Gateway down → restarted from its config. Upstream down → reported but NOT
 restarted (upstream has its own supervisor via previews — don't fight it).
@@ -276,13 +281,21 @@ setup — these env vars are preset in every machine):
       "$AI_AGENT_API_URL/api/cloud/internal/machines/$FLY_MACHINE_ID/update-mode"
     # → {"update_mode": "auto" | "manual"}
 
-Setting the mode is user-owned: the toggle lives in the web dashboard
-(machine settings → update preference; container tokens cannot write it).
+Agents can also SET the mode for their own machine (container JWT, scoped —
+writing another machine's id returns 403):
+
+    curl -s -X PUT -H "Authorization: Bearer $CONTAINER_JWT" \
+      -H "Content-Type: application/json" -d '{"update_mode":"manual"}' \
+      "$AI_AGENT_API_URL/api/cloud/internal/machines/$FLY_MACHINE_ID/update-mode"
+    # → {"update_mode": "manual"}   (or "auto" to re-enable)
+
 Publish flow requirement: after listing a paid service, read the mode — if
-it is "auto", tell the user to flip the web toggle to manual, or their
-service will go down on the next platform update. In manual mode the web UI
-shows a banner when an update is pending, so they can apply it at a chosen
-time (keepalive then restores the service after the restart).
+"auto", recommend switching to manual and, WITH the user's confirmation,
+flip it via the PUT above (never switch silently). The web dashboard toggle
+(`PUT /containers/{id}/update-preference`, user JWT) remains available. In
+manual mode the web UI shows a banner when an update is pending; mandatory
+updates still force-apply after the grace period (keepalive then restores
+the service after the restart).
 
 ## Buyer side — pay other agents' x402 services
 
@@ -395,7 +408,7 @@ and access accounting end-to-end.
 | Payment forgery | EIP-3009 signature verified off-chain + on-chain `eth_call` simulation before any gas is spent | facilitator |
 | Double-credit / replay | settlement `tx_hash` UNIQUE in gateway ledger; facilitator idempotency on `(payer, nonce, asset, network)` — EIP-3009 nonces are per-payer, NOT global; confirmed replays echo success only when pay_to/amount/resource all match (`nonce_reuse_mismatch` otherwise) | ledger + facilitator |
 | Gas-drain via open facilitator | `X402_PAYTO_ALLOWLIST` (recipient allowlist) and/or `X402_GATEWAY_TOKENS` (bearer auth) — set at least one on any public deployment; plus per-payer settle rate limit | facilitator |
-| Gateway ↔ token-auth facilitator wiring | gateway config `facilitator_token` (env fallback `X402_FACILITATOR_TOKEN`) sends `Authorization: Bearer …` on verify/settle/supported; `monetize.py` / `make_public.py` accept `--facilitator-token`. Templates default to the LOCAL facilitator (`http://127.0.0.1:8410`) — the platform public facilitator is access-controlled and needs explicit facilitator + token | gateway config |
+| Gateway ↔ token-auth facilitator wiring | gateway config `facilitator_token` (env fallback `X402_FACILITATOR_TOKEN`) sends `Authorization: Bearer …` on verify/settle/supported; `monetize.py` / `make_public.py` accept `--facilitator-token`. Templates and scripts default to the PLATFORM facilitator (`https://starchild-x402-facilitator.fly.dev`); its access control (`X402_GATEWAY_TOKENS` / `X402_PAYTO_ALLOWLIST`) is opt-in env config on the deployment — currently open, so no token needed; if the platform later enables tokens, set `facilitator_token` | gateway config |
 | API key theft | keys are per-payer deterministic HMAC (salt on disk, 0600); no key material in logs | gateway ledger |
 | Request flooding | sliding-window rate limit per caller (X-API-Key else IP), `rate_limit_per_min` (default 120) → 429 | gateway |
 | Key brute-force | ≥`ban_after_invalid_keys` (default 20) 401s/min from one IP → `ban_seconds` (default 300) temp ban | gateway |

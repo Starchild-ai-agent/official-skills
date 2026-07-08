@@ -31,7 +31,7 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 | Flow | When to use | Review? | Pricing? | Functions |
 |---|---|---|---|---|
 | **Free listing** | Free project, show on `/projects` gallery | No | No | `list_in_dashboard()` |
-| **Paid listing** | Charge for access via x402 | Optional (5-check self-report) | Yes (USDC on Base) | `create_paid_service()` → `publish_service()` (optionally `submit_for_review()` for a self-check report) |
+| **Paid listing** | Charge for access via x402 | Optional (5-check self-report) | Yes (USDC on Base) | `create_paid_service()` → `submit_for_review()` (recommended pre-listing self-check) → `publish_service()` |
 
 > **`POST /api/services` no longer accepts `service_type: "free_project"`.** Free listing is done by `list_in_dashboard()` (the project gallery flow). Paid listing uses `create_paid_service()` + review + publish (the service API flow).
 
@@ -87,7 +87,7 @@ The authoritative answer comes ONLY from a fresh `get_listing_status(slug)` (fre
 |---|---|---|
 | "publish" / "share" / "make public" / "公开" / "发布" (no qualifier) | `publish_preview(preview_id)` | Allocates the URL only. Listing is NOT auto-flipped. |
 | "list on the dashboard" / "上架" / "show on community" / "make discoverable" / "发到广场" | `list_in_dashboard(slug)` | Free listing. Requires the preview to already exist. |
-| "上架付费服务" / "make this a paid service" / "上架到服务市场（付费）" | `create_paid_service(...)` → `publish_service()` (self-check via `submit_for_review()` optional) | Paid listing. Needs x402 config first. |
+| "上架付费服务" / "make this a paid service" / "上架到服务市场（付费）" | `create_paid_service(...)` → `submit_for_review()` (recommended) → `publish_service()` | Paid listing. Needs x402 config first. |
 | "publish AND list" / "发布并上架" | `publish_preview()` THEN `list_in_dashboard()` | Two separate calls in order. |
 | "remove from dashboard" / "下架" / "unlist" / "hide from gallery" | `unlist_from_dashboard(slug)` | Free listing only. Soft-unlist (sets `is_public=false`, preserves stats). Preview URL stays alive. |
 | "下架付费服务" / "unpublish service" | `unpublish_service(service_id)` | Paid listing only. |
@@ -185,7 +185,7 @@ is true (complete the paid-listing chain).
 **Constraints:**
 - **`publish_preview` does NOT create a paid listing.** If the endpoint
   charges via x402 (returns 402), the publish flow is INCOMPLETE until you
-  also run `create_paid_service` → `publish_service` (self-check optional)
+  also run `create_paid_service` → `submit_for_review` (recommended) → `publish_service`
   — otherwise the marketplace shows nothing or "free". The return value
   flags this (`x402_detected: true` + `next_step`) when billing is detected.
 - Max 20 published previews per user (gateway returns 429 over).
@@ -274,18 +274,22 @@ Paid services charge for access via x402 (on-chain USDC settlement on Base). An 
 ### Service lifecycle & review states (review is ADVISORY)
 
 ```
-  create ──▶ published ──▶ publish_service() ──▶ listed ◀─▶ unlisted (owner takedown / re-list)
-                │                                  │
-                │  (optional, any time)            ▼
-                └─▶ submit_for_review ─▶ pending ─▶ approved / rejected   unavailable ──▶ restore ──▶ listed
-                        (self-check report for the OWNER — never blocks publish)
+  create ──▶ published ──▶ submit_for_review ─▶ pending ─▶ approved / rejected
+                │            (recommended BEFORE listing — advisory, never blocks)
+                │                                    │ fix via update_service(), re-check
+                ▼                                    ▼
+           publish_service() ─────────────────▶ listed ◀─▶ unlisted (owner takedown / re-list)
+                                                     │
+                                                     ▼
+                                          unavailable ──▶ restore ──▶ listed
 ```
 
 Review is a **self-check, not a gate**: `submit_for_review()` runs 5 automated
 checks (api_reachable, pricing_consistency, x402_payment, response_match,
 doc_completeness) and stores a report for the owner. `publish_service()` works
 from any pre-listed state — the owner reads the report and decides when to go
-live. A `rejected` report does NOT block listing; a check run against an
+live. **Recommended order: run the self-check BEFORE `publish_service()`** so a
+broken endpoint is caught before buyers can pay for it. A `rejected` report does NOT block listing; a check run against an
 already-`listed` service never delists it.
 
 ### ⚡ Scenario Selection Guide — Which flow to use?
@@ -342,14 +346,8 @@ create_paid_service(
    project↔service association. Fix an existing record with
    `update_service(service_id, project_slug="<full-slug>")` — no re-listing needed.
 
-4. **Publish** (review is advisory — you can go live immediately):
-
-```python
-publish_service(service_id)
-```
-
-5. **Recommended: run the self-check** (before or after publishing — a check
-   on a listed service never delists it):
+4. **Recommended: run the self-check BEFORE listing** — a broken endpoint
+   listed on the marketplace can take buyers' money before you notice:
 
 ```python
 submit_for_review(service_id)   # kicks off 5 automated checks asynchronously
@@ -357,9 +355,19 @@ get_review_status(service_id)   # poll until no longer pending, then show the
                                 # report to the user — THEY decide what to fix
 ```
 
-   A `rejected` report does not block or take down the listing. Read
-   `review_feedback` + `latest_task.checks`, fix with `update_service()` if
-   the owner wants, and re-run `submit_for_review()`.
+   A `rejected` report does not block listing. Read `review_feedback` +
+   `latest_task.checks`, fix with `update_service()` if the owner wants, and
+   re-run `submit_for_review()`.
+
+5. **Publish** once the report is clean (or the owner accepts the findings —
+   review is advisory and never gates this step):
+
+```python
+publish_service(service_id)
+```
+
+   The check can also be run again later against a listed service — it never
+   delists it.
 
 ### Flow C — Paid API listing
 

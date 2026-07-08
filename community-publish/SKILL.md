@@ -699,6 +699,7 @@ EOF
 | Review rejected: `pricing_consistency` failed | 402 response `amount` doesn't match declared `price` | Ensure `amount` = `price * 1000000` (USDC 6 decimals) |
 | Review rejected: `api_reachable` failed | Endpoint doesn't return 402 | Wire up x402 charging on the endpoint first |
 | `create_paid_service` response has `project_slug_warning` | Passed `project_slug` for a `paid_api` but the slug doesn't exist in `project_listings` | Backend cleared it automatically. If this is a standalone API, don't pass `project_slug`. If you intended Flow D, `publish_preview()` + `list_in_dashboard()` the project first, then `update_service()` with the correct slug. |
+| `create_paid_service`: `500 Failed to create service` after delete→create cycles with the SAME name | Deleted services keep their slug (soft delete), and slug generation only tries a limited number of suffixes — repeated delete/recreate with one name exhausts them | Do NOT wait and retry — the failure is permanent for that name. Use a different service name, or `restore_service(service_id)` + `update_service()` instead of delete+recreate |
 | Created multiple services when user asked for "multiple APIs" | Called `create_paid_service()` once per API instead of using `api_endpoints` | Use Flow E: one `create_paid_service()` call with `api_endpoints=[...]` array. Only split into multiple services if the APIs are truly unrelated. |
 
 ---

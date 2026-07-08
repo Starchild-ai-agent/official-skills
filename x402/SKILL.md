@@ -365,6 +365,30 @@ money once settled — confirm with the user before paying unfamiliar services
 or raising the cap. Result includes `settlement.transaction` (on-chain tx hash)
 — report it and verify per transaction-verification rules.
 
+### Payment ledger (every payment is recorded locally)
+
+`client.py` appends every payment it signs to
+`$WORKSPACE/.x402/payments.jsonl` (override path: env `X402_LEDGER`). Each
+line is one JSON event: `signed` (authorization submitted — url, amount,
+payTo, payer, caller) and `result` (HTTP status, paid, settlement tx). The
+`caller` field identifies who spent the money (`SC_CALLER_ID` / `JOB_ID` /
+pid), so payments made from background sessions are attributable too.
+
+To answer "where did this USDC go": read the ledger first, then reconcile
+against the wallet's on-chain USDC transfers — every outgoing transfer must
+match a ledger line. Ledger writes are best-effort and never block a payment.
+
+### Spending rules for automated sessions
+
+- A background / scheduled / spawned session MUST NOT make x402 payments
+  unless its task explicitly grants a budget; set `X402_MAX_ATOMIC` to that
+  budget for the session.
+- Every payment an automated session makes MUST appear in its final output
+  (amount, url, settlement tx) — a payment only in the ledger is auditable
+  but still counts as unreported work.
+- On any 4xx payment rejection, do not retry with a fresh payment: each
+  retry can spend again. Diagnose first.
+
 ## Public paid URL (Cloudflare Monetization Gateway parity)
 
 Make any local service a PUBLIC paid API (charge any caller for any resource,

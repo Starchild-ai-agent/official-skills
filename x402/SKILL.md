@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.5.4
+version: 2.5.5
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -418,6 +418,27 @@ this sequence — everything needed is self-describing in the protocol:
 The same sequence doubles as a smoke test of any x402 deployment: steps 1–2
 are free and validate the challenge contract; steps 3–4 validate settlement
 and access accounting end-to-end.
+
+### Non-standard "tx-hash" services (NOT x402 V2 — client.py cannot pay them)
+
+Some third-party marketplaces skip the signed `X-PAYMENT` flow entirely: their
+402 body instructs the buyer to first send a raw on-chain USDC transfer to a
+platform wallet, then resubmit with the tx hash in a header (e.g.
+`X-Payment-TxHash`). Recognize them at step 1 — the 402 mentions a transfer +
+tx-hash header instead of an `accepts` payment challenge. `client.py` is
+incompatible by design (EIP-3009 signing never produces a tx hash), and the
+scheme itself is unsafe to pay:
+
+- A tx hash on a public chain is a bearer token: anyone watching the shared
+  recipient wallet can submit YOUR hash first, and the service's global
+  anti-replay then rejects the rightful buyer (`TX_ALREADY_USED` / 409) with
+  no refund.
+- Sponsored smart-wallet transfers add another mismatch: the on-chain `from`
+  is a bundler, not the payer, so `tx.from`-based checks fail.
+
+If a service demands this flow: use the vendor's own SDK if it submits the
+payment atomically, or skip the service. Do NOT burn USDC retrying a 409 —
+each retry needs a fresh transfer and loses the same race.
 
 ## Security model (what protects whom)
 

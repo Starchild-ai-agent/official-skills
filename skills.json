@@ -610,7 +610,7 @@
     {
       "name": "x402",
       "path": "x402/SKILL.md",
-      "version": "2.5.6",
+      "version": "2.5.7",
       "description": "Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {

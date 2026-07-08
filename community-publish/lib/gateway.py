@@ -234,9 +234,9 @@ def listing_get(slug: str) -> tuple[int, dict]:
 # middleware on the gateway). We always use X-Internal-Key + owner_user_id
 # in the body/query, since clawd containers don't carry user JWTs.
 #
-# Lifecycle: published → pending → approved → listed (paid services MUST
-# pass review before listing). Free projects skip this entirely — they
-# use listing_publish() above, no service record, no review.
+# Lifecycle: published → listed (publish any time — review is ADVISORY:
+# an optional self-check report for the owner, never a gate). Free projects
+# skip this entirely — they use listing_publish() above, no service record.
 
 def service_create(owner_user_id: str, payload: dict) -> tuple[int, dict]:
     """POST /api/services — create a paid service listing.

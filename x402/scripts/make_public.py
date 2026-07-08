@@ -14,9 +14,8 @@ import argparse, json, os, sys
 
 WS = "/data/workspace"
 # Default: platform facilitator (starchild-x402-facilitator.fly.dev) —
-# settler maintained by the platform, no local gas needed. Self-hosted is
-# opt-in: pass --facilitator http://127.0.0.1:8410 and run
-# skills/x402/facilitator/server.py with a funded settler.
+# settler maintained by the platform, no local gas needed. Override via
+# --facilitator / X402_FACILITATOR_URL for a custom facilitator.
 FACILITATOR = os.environ.get("X402_FACILITATOR_URL", "https://starchild-x402-facilitator.fly.dev")
 
 ap = argparse.ArgumentParser()

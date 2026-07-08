@@ -1,6 +1,6 @@
 {
   "_comment": "Pay-per-use template: each call is paid individually, no account. Suited to low-frequency / high-value calls (AI inference, report generation, data queries).",
-  "_comment_facilitator": "Default: platform facilitator (settler maintained by the platform, no local gas). Self-hosted is opt-in: set http://127.0.0.1:8410 and run skills/x402/facilitator/server.py with a funded settler.",
+  "_comment_facilitator": "Default: platform facilitator (settler maintained by the platform, no local gas). Override via X402_FACILITATOR_URL for a custom facilitator.",
   "mode": "payperuse",
   "upstream": "http://127.0.0.1:UPSTREAM_PORT",
   "pay_to": "YOUR_WALLET_ADDRESS",

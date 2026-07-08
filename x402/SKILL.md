@@ -227,17 +227,11 @@ Subscription/metered specifics:
 |---------|----|-------------|-------|
 | Base Sepolia (default) | `eip155:84532` | `https://x402.org/facilitator` (default) | nothing |
 | Base mainnet | `eip155:8453` | **platform** (`https://starchild-x402-facilitator.fly.dev`, the default; override via `X402_FACILITATOR_URL` or `--facilitator`) | nothing — platform settler pays gas |
-| Base mainnet (self-hosted) | `eip155:8453` | `facilitator/server.py` at `http://127.0.0.1:8410` (opt-in via `X402_FACILITATOR_URL`) | settler key gas ETH on Base — **without gas every settle fails** (`insufficient funds for gas`), so fund it BEFORE listing |
 
-**Self-hosted facilitator** (`skills/x402/facilitator/`): our own /verify + /settle
-— no CDP account, no KYC, full transaction visibility. Start:
-`python3 skills/x402/facilitator/server.py` (port 8410). The settlement key
-(auto-generated at `.x402/facilitator/settler.key`, or `X402_SETTLER_PRIVATE_KEY`
-env) ONLY pays gas — fund flow is fixed by the buyer's signature; it can never
-touch user funds. It needs a little Base ETH for gas (~$0.001/settlement).
-Safety: mandatory `eth_call` simulation before spending gas, per-payer rate
-limit (`X402_PAYER_RATE_LIMIT`, default 30/min), authorization-nonce idempotency,
-full settlement ledger at `/facilitator/stats`.
+The platform facilitator handles /verify + /settle; its settler key only pays
+gas — fund flow is fixed by the buyer's signature and can never touch user
+funds. Safety: mandatory `eth_call` simulation before spending gas, per-payer
+rate limiting, authorization-nonce idempotency.
 Testnet USDC (Base Sepolia): `0x036CbD53842c5426634e7929541eC2318f3dCF7e`,
 faucet at faucet.circle.com. Prices auto-convert: `$0.01` → `10000` atomic USDC units.
 
@@ -393,7 +387,7 @@ match a ledger line. Ledger writes are best-effort and never block a payment.
 
 Make any local service a PUBLIC paid API (charge any caller for any resource,
 no accounts / API keys needed — same capability set as Cloudflare's
-Monetization Gateway, self-hosted):
+Monetization Gateway, running on your own machine):
 
 1. `python3 skills/x402/scripts/make_public.py --name my-api --upstream-port <port> --mode payperuse --route 'GET /api/*=$0.01' --pay-to <wallet>` — scaffolds `output/my-api/start.py` + config
 2. `preview(action='serve', dir='output/my-api', command='python3 start.py', port=<gateway_port>)` — note: start the upstream in the same command if it isn't already running

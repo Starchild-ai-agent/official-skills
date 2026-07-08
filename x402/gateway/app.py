@@ -67,7 +67,7 @@ PAY_TO = CFG["pay_to"]
 NETWORK = CFG.get("network", "eip155:8453")
 FACILITATOR_URL = CFG.get("facilitator") or None
 # bearer token for facilitators that enforce caller auth (X402_GATEWAY_TOKENS
-# on the self-hosted facilitator). Config key `facilitator_token`, env fallback.
+# on the facilitator). Config key `facilitator_token`, env fallback.
 FACILITATOR_TOKEN = CFG.get("facilitator_token") or os.environ.get("X402_FACILITATOR_TOKEN", "")
 ROUTES = CFG.get("routes", {})          # pattern -> {price | units}
 TOPUP = CFG.get("topup", {})            # {price_per_credit_usd, min_credits}

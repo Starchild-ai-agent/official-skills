@@ -20,7 +20,7 @@ This skill handles TWO distinct concepts — keep them separate:
       - unlist_from_dashboard()  → hide from gallery (soft, preserves stats)
       - delete_listing()         → permanently delete listing row
       - get_listing_status()     → check if listed
-    Paid listing (x402 charging + automated review + publish):
+    Paid listing (x402 charging; review is an optional advisory self-check):
       - create_paid_service()    → create a service record
       - submit_for_review()      → run the 5-check self-report (advisory)
       - get_review_status()      → poll review progress
@@ -1056,11 +1056,11 @@ def delete_listing(slug: str) -> dict[str, Any]:
 
 # ════════════════════════════════════════════════════════════════════════
 # PAID SERVICE LISTING — create paid services on the Service Marketplace.
-# These require x402 charging + automated review + publish approval.
+# These require x402 charging. Review is ADVISORY: an optional 5-check
+# self-report for the owner — it never gates publishing.
 # Completely different from the free listing flow above.
 #
 # Lifecycle: published → listed (publish any time; optional advisory self-check: pending → approved/rejected)
-# (paid services MUST pass review before listing)
 # ════════════════════════════════════════════════════════════════════════
 
 def create_paid_service(
@@ -1159,7 +1159,7 @@ def create_paid_service(
     if _missing:
         return {"ok": False, "error":
                 f"{service_type} requires: {', '.join(_missing)} — the "
-                "automated reviewer rejects submissions without them, so "
+                "gateway and the self-check both treat them as required, so "
                 "they are enforced at call time."}
 
     payload: dict[str, Any] = {
@@ -1310,6 +1310,8 @@ def get_review_status(service_id: str) -> dict[str, Any]:
         return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
 
     review_status = body.get("review_status", "")
+    latest_task = body.get("latest_task") or {}
+    task_status = latest_task.get("status", "")
     result: dict[str, Any] = {
         "ok": True,
         "review_status": review_status,
@@ -1317,6 +1319,19 @@ def get_review_status(service_id: str) -> dict[str, Any]:
         "reviewed_at": body.get("reviewed_at"),
         "latest_task": body.get("latest_task"),
     }
+    # The self-check result lives in latest_task. A listed service keeps
+    # review_status='listed' while a check runs, so latest_task.status is
+    # the authoritative progress signal — check it FIRST.
+    if task_status == "pending":
+        result["next_step"] = "Self-check still running. Poll again in a few seconds."
+        return result
+    if review_status == "listed" and task_status in ("approved", "rejected"):
+        result["next_step"] = (
+            f"Service is live; latest self-check finished: {task_status}. "
+            "Show latest_task.checks + feedback to the user (ADVISORY — a "
+            "rejected report never delists the service)."
+        )
+        return result
     if review_status == "approved":
         result["next_step"] = (
             "Self-check passed all 5 checks. Call publish_service(service_id) "
@@ -1329,8 +1344,6 @@ def get_review_status(service_id: str) -> dict[str, Any]:
             "to the user; they decide whether to fix (update_service() + "
             "submit_for_review() again) or publish as-is."
         )
-    elif review_status == "pending":
-        result["next_step"] = "Self-check still running. Poll again in a few seconds."
     elif review_status == "listed":
         result["next_step"] = (
             "Service is live. See latest_task for the most recent self-check "

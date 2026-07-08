@@ -22,9 +22,9 @@ This skill handles TWO distinct concepts — keep them separate:
       - get_listing_status()     → check if listed
     Paid listing (x402 charging + automated review + publish):
       - create_paid_service()    → create a service record
-      - submit_for_review()      → trigger automated review
+      - submit_for_review()      → run the 5-check self-report (advisory)
       - get_review_status()      → poll review progress
-      - publish_service()        → go live (requires approved)
+      - publish_service()        → go live (any pre-listed state; review never gates)
       - unpublish_service()      → take down
       - list_my_services()       → list your services
       - get_service()            → fetch one service
@@ -743,7 +743,8 @@ def publish_preview(preview_id: str, slug: str = "",
             "x402 billing detected on this service — a public URL is NOT a "
             "paid listing. The marketplace will show nothing (or 'free') "
             "until you complete: create_paid_service(...) -> "
-            "submit_for_review(service_id) -> publish_service(service_id)."
+            "publish_service(service_id). Optionally run submit_for_review() "
+            "for an advisory 5-check self-report."
         )} if x402_detected else {}),
         "publisher": {"code_slug": binding_code_slug},
         "hint": (
@@ -1058,7 +1059,7 @@ def delete_listing(slug: str) -> dict[str, Any]:
 # These require x402 charging + automated review + publish approval.
 # Completely different from the free listing flow above.
 #
-# Lifecycle: published → pending → approved → listed
+# Lifecycle: published → listed (publish any time; optional advisory self-check: pending → approved/rejected)
 # (paid services MUST pass review before listing)
 # ════════════════════════════════════════════════════════════════════════
 
@@ -1234,9 +1235,10 @@ def create_paid_service(
         "review_status": service.get("review_status", "published"),
         "next_step": (
             "Service created in published state (URL accessible but not listed). "
-            "Call submit_for_review(service_id) to trigger the automated review, "
-            "then poll get_review_status() until approved, then call publish_service() "
-            "to list it on the marketplace."
+            "Call publish_service(service_id) to list it on the marketplace — "
+            "review is advisory and never blocks publishing. Recommended: also run "
+            "submit_for_review(service_id) and show the 5-check report to the user "
+            "so they can confirm buyers can actually pay."
         ),
     }
     # Surface client-side warning (paid_api + project_slug passed)
@@ -1250,11 +1252,12 @@ def create_paid_service(
 
 
 def submit_for_review(service_id: str) -> dict[str, Any]:
-    """Submit a paid service for automated review.
+    """Run the automated 5-check self-report for a paid service (ADVISORY).
 
-    The review checks 5 items: api_reachable, pricing_consistency,
-    x402_payment, response_match, doc_completeness. All must pass for
-    approval. The service moves from published/rejected → pending.
+    Checks: api_reachable, pricing_consistency, x402_payment, response_match,
+    doc_completeness. The result is a report for the OWNER — it never gates
+    publish_service(), and a check run against a listed service never
+    delists it. Pre-listed services show 'pending' while the check runs.
 
     Args:
         service_id: The UUID returned by create_paid_service().
@@ -1315,34 +1318,42 @@ def get_review_status(service_id: str) -> dict[str, Any]:
         "latest_task": body.get("latest_task"),
     }
     if review_status == "approved":
-        result["next_step"] = "Review approved! Call publish_service(service_id) to go live."
+        result["next_step"] = (
+            "Self-check passed all 5 checks. Call publish_service(service_id) "
+            "to go live (if not already listed)."
+        )
     elif review_status == "rejected":
         result["next_step"] = (
-            "Review rejected. Read review_feedback and latest_task.checks to see "
-            "which checks failed. Fix the issues, call update_service() if needed, "
-            "then call submit_for_review() again."
+            "Self-check found issues (ADVISORY — this does not block publishing "
+            "or delist the service). Show review_feedback and latest_task.checks "
+            "to the user; they decide whether to fix (update_service() + "
+            "submit_for_review() again) or publish as-is."
         )
     elif review_status == "pending":
-        result["next_step"] = "Review still running. Poll again in a few seconds."
+        result["next_step"] = "Self-check still running. Poll again in a few seconds."
+    elif review_status == "listed":
+        result["next_step"] = (
+            "Service is live. See latest_task for the most recent self-check "
+            "report (checks + feedback)."
+        )
     else:
-        result["next_step"] = f"Unexpected review_status: {review_status}"
+        result["next_step"] = f"Review status: {review_status} — see latest_task for the most recent self-check report."
     return result
 
 
 def publish_service(service_id: str) -> dict[str, Any]:
-    """Publish an approved paid service — make it live on the marketplace.
+    """Publish a paid service — make it live on the marketplace.
 
-    Only works if the service is in 'approved' state (review passed).
-    For free services (not created via create_paid_service), this would
-    work from 'published' directly — but free projects use list_in_dashboard()
-    instead, not this function.
+    Works from any pre-listed active state (published/approved/rejected/
+    pending/unlisted) — review is advisory and never blocks publishing.
+    Free projects use list_in_dashboard() instead, not this function.
 
     Args:
         service_id: The UUID returned by create_paid_service().
 
     Returns:
         {"ok": True, "service": {...}} on success
-        {"ok": False, "error": ...} on failure (e.g. not approved yet)
+        {"ok": False, "error": ...} on failure (e.g. already listed, unavailable, or deleted)
     """
     uid = _user_id()
     try:

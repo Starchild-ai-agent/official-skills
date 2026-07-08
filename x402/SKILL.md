@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.5.2
+version: 2.5.3
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -358,9 +358,14 @@ the user's funds sit on a different chain:
 **Privy signer compatibility:** Base mainnet USDC is verified end-to-end
 (2026-07-08, via the Kernel v3.3 ERC-1271 path above). Other chain/token
 combos are untested — verify with a minimal purchase first; `signer_mode="eoa"`
-remains the safe fallback. Note `auto` falls back to the session EOA SILENTLY
-when wallet-service signing fails (e.g. 401) — check the payer address in the
-result to confirm which identity actually paid. **Spend guard**: additionally refuses to sign above
+remains the safe fallback. Note `auto` falls back to the session EOA on ANY
+PrivySigner init failure — most commonly `ImportError: core.skill_tools`
+when PYTHONPATH lacks `/app` (script run outside the agent runtime), NOT a
+protocol incompatibility; also wallet-service signing errors (e.g. 401).
+The fallback logs a `[x402] auto: ...` warning to stderr — check it plus the
+payer address in the result to confirm which identity actually paid. Paid
+response bodies are returned in FULL; unpaid/error bodies are capped at
+2000 chars (override: env `X402_BODY_MAX`, 0 = unlimited). **Spend guard**: additionally refuses to sign above
 `X402_MAX_ATOMIC` (default 1_000_000 = 1 USDC). ⚠️ Signing = spending real
 money once settled — confirm with the user before paying unfamiliar services
 or raising the cap. Result includes `settlement.transaction` (on-chain tx hash)

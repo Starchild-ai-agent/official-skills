@@ -373,6 +373,21 @@ class SessionEOASigner:
         return signed.signature
 
 
+
+# Body cap for returned response bodies. Paid responses (line ~492) are the
+# product the buyer just paid for — return them in full. Unpaid/error bodies
+# stay capped to keep summaries small. Override: X402_BODY_MAX (0 = unlimited).
+def _body(text: str, *, full: bool = False) -> str:
+    if not text:
+        return ""
+    if full:
+        return text
+    try:
+        cap = int(os.environ.get("X402_BODY_MAX", "2000"))
+    except ValueError:
+        cap = 2000
+    return text if cap <= 0 else text[:cap]
+
 def _make_signer(signer_mode: str, max_amount_atomic: int):
     """signer_mode: 'privy' | 'eoa' | 'auto'.
 
@@ -394,7 +409,15 @@ def _make_signer(signer_mode: str, max_amount_atomic: int):
         return _make_signer(env, max_amount_atomic)
     try:
         return PrivySigner(max_amount_atomic=max_amount_atomic)
-    except Exception:
+    except Exception as e:
+        # Most common cause: `from core.skill_tools import wallet` fails when
+        # PYTHONPATH lacks /app (script run outside the agent runtime) — NOT a
+        # protocol incompatibility. Loudly announce the identity switch: the
+        # session EOA is a DIFFERENT payer address and is usually unfunded.
+        print(f"[x402] auto: Privy signer unavailable ({type(e).__name__}: {e}) "
+              f"— falling back to session EOA (different payer identity). "
+              f"If this is an ImportError, run with PYTHONPATH=/app.",
+              file=sys.stderr)
         return SessionEOASigner(max_amount_atomic=max_amount_atomic)
 
 
@@ -481,7 +504,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         if r0.status_code != 402:
             signer = _make_signer(signer_mode, max_amount_atomic)
             return {"status": r0.status_code, "payer": signer.address,
-                    "body": (r0.text[:2000] if r0.text else ""), "paid": False}
+                    "body": _body(r0.text), "paid": False}
 
         if r0.headers.get("PAYMENT-REQUIRED") or r0.headers.get("X-PAYMENT-REQUIRED"):
             # V2 header challenge -> x402 SDK path
@@ -489,7 +512,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
             async with x402HttpxClient(client, timeout=timeout) as c:
                 r = await c.request(method.upper(), url, json=json_body, headers=headers or {})
                 out = {"status": r.status_code, "payer": signer.address,
-                       "body": (r.text[:2000] if r.text else "")}
+                       "body": _body(r.text, full=True)}
                 pr = r.headers.get("PAYMENT-RESPONSE") or r.headers.get("X-PAYMENT-RESPONSE")
                 if pr:
                     try:
@@ -509,7 +532,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
             accepts = accepts[0] if accepts else None
         if not (isinstance(accepts, dict) and accepts.get("scheme") == "exact"):
             return {"status": 402, "error": "unrecognized 402 challenge",
-                    "body": (r0.text[:2000] if r0.text else "")}
+                    "body": _body(r0.text)}
         signer = _make_signer(signer_mode, max_amount_atomic)
         # Up to 2 payment attempts. prepaid needs both: attempt 1 signs the
         # per-call price (authentication only — the gateway debits the prepaid
@@ -540,7 +563,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
             accepts = nxt
         return {"status": r2.status_code, "payer": signer.address, "paid": True,
                 "pricing_model": accepts.get("pricingModel"),
-                "body": (r2.text[:2000] if r2.text else "")}
+                "body": _body(r2.text, full=True)}
 
     return asyncio.run(run())
 

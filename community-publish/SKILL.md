@@ -305,6 +305,7 @@ Before creating a paid service, identify your scenario:
 - `project_slug` must be the **full published slug WITH user prefix** (e.g. `33-my-app`), and must correspond to an existing row in `project_listings` (i.e. `publish_preview()` + `list_in_dashboard()` must have been called first).
 - `api_endpoints` is for services with multiple endpoints at different prices; each endpoint has its own `path`, `price`, and optional `label`.
 - A project with `project_slug` set will NOT appear in the "Free" tab — it moves to "All" and "Paid" tabs.
+- **Merged-into-project-card visibility:** when a listed service has `project_slug` pointing to a PUBLIC project, it is folded into that project's card in unified marketplace views. Consequence: the service will NOT appear as a standalone item in `explore_services()` or `list_my_services()` — this is by design, not a listing failure. It is still live and purchasable via the project card, `get_service(service_id)`, and `get_user_services(user_id)`. To verify a merged service is listed, check `get_service()` → `review_status == "listed"`, not explore results.
 - **When the user asks for multiple APIs, create ONE service with `api_endpoints`** — do NOT create multiple separate services. See Flow E.
 
 ### Flow B — Paid Project listing

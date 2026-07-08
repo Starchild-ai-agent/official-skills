@@ -310,11 +310,28 @@ X402_MAX_ATOMIC=50000 python3 skills/x402/client.py POST https://host/x402/topup
 For lifetime/monthly services, repeat calls within the paid period verify but
 do NOT settle — the result has `paid: true` with no new on-chain tx.
 
-**Buyer signer = session EOA by default** (`.x402/buyer.key`, auto-generated).
-⚠️ Do NOT sign EIP-3009 with the Privy wallet on Base mainnet: the Privy
-address carries EIP-7702 delegation code, so USDC verifies via EIP-1271 and
-rejects plain ECDSA on-chain (`FiatTokenV2: invalid signature`) — even though
-off-chain recovery passes. Fund the session EOA with a small
+**Buyer signer = PRIVY WALLET by default** (`signer_mode="auto"`; end-to-end
+verified on Base mainnet 2026-07-08 — two real purchases settled on-chain).
+The Privy address carries EIP-7702 delegation to ZeroDev Kernel v3.3
+(`0xd6CE..5b28`) — installed automatically by Privy's gas-sponsorship flow
+(wallet service sends `sponsor=true` first on every tx), NOT by our code.
+USDC sees code at the address → verifies via ERC-1271, so PrivySigner
+transparently signs through Kernel's wrapper (Kernel v3.3 is NOT 7739-nested):
+`inner = EIP-3009 digest (USDC domain)` → Privy `sign_typed_data` with
+domain `{name:"Kernel",version:"0.3.3",chainId:8453,verifyingContract:<wallet>}`,
+types `{Kernel:[{name:"hash",type:"bytes32"}]}`, message `{hash:inner}` →
+final sig = `0x00` (sudo prefix) + 65-byte signature (66 bytes total).
+Requires a facilitator with ERC-1271 /verify + bytes-overload /settle
+(platform fly facilitator has both since 2026-07-08). Do NOT revoke the
+delegation: the next sponsored tx re-installs it, and revoking kills gas
+sponsorship. Fallback signer = session EOA (`.x402/buyer.key`), used when
+the wallet service is unreachable or forced via `signer_mode="eoa"` /
+env `X402_SIGNER=eoa`. ⚠️ The two signers are DIFFERENT payer identities:
+subscriptions / prepaid balances bought under one do NOT carry over —
+pin `signer_mode` explicitly for subscription/prepaid services. (On-chain error:
+`FiatTokenV2: invalid signature` — even though off-chain ECDSA recovery
+passes, which is why facilitator /verify succeeds but settle fails.)
+Fund the session EOA with a small
 USDC budget from the Privy wallet (ERC20 transfer); the budget IS the hard
 spend cap.
 

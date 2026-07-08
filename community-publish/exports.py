@@ -1622,7 +1622,7 @@ def explore_marketplace(
 
     return {
         "ok": True,
-        "items": body.get("projects", []),
+        "items": body.get("items") or body.get("projects") or [],
         "next_cursor": body.get("next_cursor"),
         "has_more": body.get("has_more", False),
         "total_count": body.get("total_count", 0),

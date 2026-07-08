@@ -311,23 +311,20 @@ For lifetime/monthly services, repeat calls within the paid period verify but
 do NOT settle — the result has `paid: true` with no new on-chain tx.
 
 **Buyer signer = Privy wallet by default** (`signer_mode="auto"`).
-The Privy address carries EIP-7702 delegation to ZeroDev Kernel v3.3
-(`0xd6CE..5b28`), installed automatically by the wallet service's
-gas-sponsorship flow (`sponsor=true` on every tx). USDC sees code at the
-address → verifies via ERC-1271, so PrivySigner signs through Kernel's
-wrapper (Kernel v3.3 is NOT 7739-nested): `inner = EIP-3009 digest (USDC
-domain)` → Privy `sign_typed_data` with domain
-`{name:"Kernel",version:"0.3.3",chainId:8453,verifyingContract:<wallet>}`,
-types `{Kernel:[{name:"hash",type:"bytes32"}]}`, message `{hash:inner}` →
-final sig = `0x00` (sudo prefix) + 65-byte signature (66 bytes total).
-Requires a facilitator with ERC-1271 /verify + bytes-overload /settle
-(the platform facilitator supports both). Do NOT revoke the delegation:
-the next sponsored tx re-installs it, and revoking kills gas sponsorship.
-Fallback signer = session EOA (`.x402/buyer.key`), used when the wallet
+The Privy wallet may be a smart account (delegated code at the address):
+the client detects this and signs through an ERC-1271-compatible path
+automatically — no configuration needed. It requires a facilitator with
+ERC-1271 verify support (the platform facilitator has it). Do NOT revoke
+the wallet's delegation: it is installed by the gas-sponsorship flow and
+revoking it breaks sponsored transactions. Exact wrapping details live in
+`client.py` (PrivySigner) comments.
+Fallback signer = session EOA (`.x402/buyer.key`), used ONLY when the wallet
 service is unavailable or forced via `signer_mode="eoa"` /
-env `X402_SIGNER=eoa`. ⚠️ The two signers are DIFFERENT payer identities:
-subscriptions / prepaid balances bought under one do NOT carry over —
-pin `signer_mode` explicitly for subscription/prepaid services.
+env `X402_SIGNER=eoa`. Every result includes `signer_type`
+(`"privy"` | `"session_eoa"`); an auto-fallback also sets `signer_warning`.
+⚠️ The two signers are DIFFERENT payer identities: subscriptions / prepaid
+balances bought under one do NOT carry over — pin `signer_mode` explicitly
+for subscription/prepaid services.
 If using the session EOA, fund it with a small USDC budget from the Privy
 wallet (ERC20 transfer); the budget IS the hard spend cap.
 
@@ -430,9 +427,14 @@ this sequence — everything needed is self-describing in the protocol:
    An unknown plan returns HTTP 400 listing the valid ones.
 3. **Pay & call**: `client.paid_request("GET", url, max_amount_atomic=<cap>)`
    handles the whole flow (402 → EIP-3009 sign → retry with X-PAYMENT).
-   Select a plan with `pricing_model="<plan>"`. Requirements: session EOA
-   funded with USDC on the service's network (see Buyer side above); cap =
+   Select a plan with `pricing_model="<plan>"`. Payer = the Privy wallet by
+   default (`signer_mode="auto"`); it must hold USDC on the service's network.
+   The session EOA needs funding ONLY if you pin `signer_mode="eoa"` or the
+   result reports `signer_type: "session_eoa"` (see Buyer side above). cap =
    your spend guard. Confirm with the user before paying — this is real money.
+   Check `signer_type` in the result: it tells you WHICH identity actually
+   paid; a `signer_warning` field means the client fell back to the session
+   EOA (different payer address) — stop and report before continuing.
 4. **Verify billing semantics** (subscription modes): call again — the result
    must be 200 with NO new settlement (`paid: true`, no new tx). On multi-plan
    services, requesting a different plan while holding one must also NOT
@@ -493,7 +495,7 @@ but unauthenticated by design (discovery must be public).
 | 502 | `upstream_error` | upstream dead; units auto-refunded; keepalive will report |
 | 502 | `facilitator_error` | facilitator unreachable — check outbound proxy env, retry later |
 
-Facilitator verify failures seen in the wild (2nd 402's `error` field):
+Common facilitator verify errors (2nd 402's `error` field):
 - `invalid_exact_evm_insufficient_balance` — buyer wallet lacks USDC (sig was VALID)
 - `invalid_signature` — wrong domain (name/version/chainId) or corrupted sig
 - expired `validBefore` — client clock skew; SDK uses `maxTimeoutSeconds` (default 300s)
@@ -526,10 +528,10 @@ Facilitator verify failures seen in the wild (2nd 402's `error` field):
   billing. Verify the gateway itself: `GET /x402/info` returns 200 JSON and
   an unpaid paid-route returns 402. If responses look stale, suspect an old
   process still holding the port (see port hygiene below).
-- **Testing gateways locally — port hygiene (hard-won lesson)**: a uvicorn
-  gateway whose port is already held FAILS TO BIND but the old process keeps
-  answering, so your "new code" test actually exercises the OLD process (and
-  its 60s access cache) — false PASSes and false FAILs. Rules:
+- **Testing gateways locally — port ownership checks**: a uvicorn gateway
+  whose port is already held FAILS TO BIND while the old process keeps
+  answering, so a test against that port exercises the OLD process (and its
+  60s access cache), not the new code. Rules:
   1. After starting a test gateway, ALWAYS check its log for
      `address already in use` BEFORE trusting any response from that port.
   2. Kill test processes by LISTENING-PORT PID, never by `ps | grep` name

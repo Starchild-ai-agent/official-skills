@@ -345,12 +345,14 @@ the user's funds sit on a different chain:
 5. No USDC anywhere → stop and tell the user to acquire some (on-ramp /
    exchange withdrawal). Never fabricate funds or skip the payment.
 
-**Signer selection:** `auto` falls back to the session EOA on ANY
-PrivySigner init failure — most commonly `ImportError: core.skill_tools`
-when PYTHONPATH lacks `/app` (script run outside the agent runtime), or
-wallet-service signing errors (e.g. 401). The fallback logs a
-`[x402] auto: ...` warning to stderr — check it plus the payer address in
-the result to confirm which identity actually paid. Base mainnet USDC works
+**Signer selection:** `auto` FAILS CLOSED on any PrivySigner init failure —
+most commonly `ImportError: core.skill_tools` when PYTHONPATH lacks `/app`
+(script run outside the agent runtime), or wallet-service signing errors
+(e.g. 401) — raising before anything is signed. Fix the cause, or explicitly
+allow the session-EOA fallback via `allow_fallback_eoa=True` /
+env `X402_FALLBACK_EOA=1`; an opted-in fallback logs a `[x402] auto: ...`
+stderr warning and sets `signer_type`/`signer_warning` in the result —
+check them to confirm which identity actually paid. Base mainnet USDC works
 with both signers; verify other chain/token combos with a minimal purchase
 first. Paid response bodies are returned in FULL; unpaid/error bodies are
 capped at 2000 chars (override: env `X402_BODY_MAX`, 0 = unlimited). **Spend guard**: additionally refuses to sign above

@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.5.4
+version: 2.5.7
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -311,23 +311,20 @@ For lifetime/monthly services, repeat calls within the paid period verify but
 do NOT settle — the result has `paid: true` with no new on-chain tx.
 
 **Buyer signer = Privy wallet by default** (`signer_mode="auto"`).
-The Privy address carries EIP-7702 delegation to ZeroDev Kernel v3.3
-(`0xd6CE..5b28`), installed automatically by the wallet service's
-gas-sponsorship flow (`sponsor=true` on every tx). USDC sees code at the
-address → verifies via ERC-1271, so PrivySigner signs through Kernel's
-wrapper (Kernel v3.3 is NOT 7739-nested): `inner = EIP-3009 digest (USDC
-domain)` → Privy `sign_typed_data` with domain
-`{name:"Kernel",version:"0.3.3",chainId:8453,verifyingContract:<wallet>}`,
-types `{Kernel:[{name:"hash",type:"bytes32"}]}`, message `{hash:inner}` →
-final sig = `0x00` (sudo prefix) + 65-byte signature (66 bytes total).
-Requires a facilitator with ERC-1271 /verify + bytes-overload /settle
-(the platform facilitator supports both). Do NOT revoke the delegation:
-the next sponsored tx re-installs it, and revoking kills gas sponsorship.
-Fallback signer = session EOA (`.x402/buyer.key`), used when the wallet
+The Privy wallet may be a smart account (delegated code at the address):
+the client detects this and signs through an ERC-1271-compatible path
+automatically — no configuration needed. It requires a facilitator with
+ERC-1271 verify support (the platform facilitator has it). Do NOT revoke
+the wallet's delegation: it is installed by the gas-sponsorship flow and
+revoking it breaks sponsored transactions. Exact wrapping details live in
+`client.py` (PrivySigner) comments.
+Fallback signer = session EOA (`.x402/buyer.key`), used ONLY when the wallet
 service is unavailable or forced via `signer_mode="eoa"` /
-env `X402_SIGNER=eoa`. ⚠️ The two signers are DIFFERENT payer identities:
-subscriptions / prepaid balances bought under one do NOT carry over —
-pin `signer_mode` explicitly for subscription/prepaid services.
+env `X402_SIGNER=eoa`. Every result includes `signer_type`
+(`"privy"` | `"session_eoa"`); an auto-fallback also sets `signer_warning`.
+⚠️ The two signers are DIFFERENT payer identities: subscriptions / prepaid
+balances bought under one do NOT carry over — pin `signer_mode` explicitly
+for subscription/prepaid services.
 If using the session EOA, fund it with a small USDC budget from the Privy
 wallet (ERC20 transfer); the budget IS the hard spend cap.
 
@@ -364,6 +361,30 @@ capped at 2000 chars (override: env `X402_BODY_MAX`, 0 = unlimited). **Spend gua
 money once settled — confirm with the user before paying unfamiliar services
 or raising the cap. Result includes `settlement.transaction` (on-chain tx hash)
 — report it and verify per transaction-verification rules.
+
+### Payment ledger (every payment is recorded locally)
+
+`client.py` appends every payment it signs to
+`$WORKSPACE/.x402/payments.jsonl` (override path: env `X402_LEDGER`). Each
+line is one JSON event: `signed` (authorization submitted — url, amount,
+payTo, payer, caller) and `result` (HTTP status, paid, settlement tx). The
+`caller` field identifies who spent the money (`SC_CALLER_ID` / `JOB_ID` /
+pid), so payments made from background sessions are attributable too.
+
+To answer "where did this USDC go": read the ledger first, then reconcile
+against the wallet's on-chain USDC transfers — every outgoing transfer must
+match a ledger line. Ledger writes are best-effort and never block a payment.
+
+### Spending rules for automated sessions
+
+- A background / scheduled / spawned session MUST NOT make x402 payments
+  unless its task explicitly grants a budget; set `X402_MAX_ATOMIC` to that
+  budget for the session.
+- Every payment an automated session makes MUST appear in its final output
+  (amount, url, settlement tx) — a payment only in the ledger is auditable
+  but still counts as unreported work.
+- On any 4xx payment rejection, do not retry with a fresh payment: each
+  retry can spend again. Diagnose first.
 
 ## Public paid URL (Cloudflare Monetization Gateway parity)
 
@@ -406,9 +427,14 @@ this sequence — everything needed is self-describing in the protocol:
    An unknown plan returns HTTP 400 listing the valid ones.
 3. **Pay & call**: `client.paid_request("GET", url, max_amount_atomic=<cap>)`
    handles the whole flow (402 → EIP-3009 sign → retry with X-PAYMENT).
-   Select a plan with `pricing_model="<plan>"`. Requirements: session EOA
-   funded with USDC on the service's network (see Buyer side above); cap =
+   Select a plan with `pricing_model="<plan>"`. Payer = the Privy wallet by
+   default (`signer_mode="auto"`); it must hold USDC on the service's network.
+   The session EOA needs funding ONLY if you pin `signer_mode="eoa"` or the
+   result reports `signer_type: "session_eoa"` (see Buyer side above). cap =
    your spend guard. Confirm with the user before paying — this is real money.
+   Check `signer_type` in the result: it tells you WHICH identity actually
+   paid; a `signer_warning` field means the client fell back to the session
+   EOA (different payer address) — stop and report before continuing.
 4. **Verify billing semantics** (subscription modes): call again — the result
    must be 200 with NO new settlement (`paid: true`, no new tx). On multi-plan
    services, requesting a different plan while holding one must also NOT
@@ -418,6 +444,27 @@ this sequence — everything needed is self-describing in the protocol:
 The same sequence doubles as a smoke test of any x402 deployment: steps 1–2
 are free and validate the challenge contract; steps 3–4 validate settlement
 and access accounting end-to-end.
+
+### Non-standard "tx-hash" services (NOT x402 V2 — client.py cannot pay them)
+
+Some third-party marketplaces skip the signed `X-PAYMENT` flow entirely: their
+402 body instructs the buyer to first send a raw on-chain USDC transfer to a
+platform wallet, then resubmit with the tx hash in a header (e.g.
+`X-Payment-TxHash`). Recognize them at step 1 — the 402 mentions a transfer +
+tx-hash header instead of an `accepts` payment challenge. `client.py` is
+incompatible by design (EIP-3009 signing never produces a tx hash), and the
+scheme itself is unsafe to pay:
+
+- A tx hash on a public chain is a bearer token: anyone watching the shared
+  recipient wallet can submit YOUR hash first, and the service's global
+  anti-replay then rejects the rightful buyer (`TX_ALREADY_USED` / 409) with
+  no refund.
+- Sponsored smart-wallet transfers add another mismatch: the on-chain `from`
+  is a bundler, not the payer, so `tx.from`-based checks fail.
+
+If a service demands this flow: use the vendor's own SDK if it submits the
+payment atomically, or skip the service. Do NOT burn USDC retrying a 409 —
+each retry needs a fresh transfer and loses the same race.
 
 ## Security model (what protects whom)
 
@@ -448,7 +495,7 @@ but unauthenticated by design (discovery must be public).
 | 502 | `upstream_error` | upstream dead; units auto-refunded; keepalive will report |
 | 502 | `facilitator_error` | facilitator unreachable — check outbound proxy env, retry later |
 
-Facilitator verify failures seen in the wild (2nd 402's `error` field):
+Common facilitator verify errors (2nd 402's `error` field):
 - `invalid_exact_evm_insufficient_balance` — buyer wallet lacks USDC (sig was VALID)
 - `invalid_signature` — wrong domain (name/version/chainId) or corrupted sig
 - expired `validBefore` — client clock skew; SDK uses `maxTimeoutSeconds` (default 300s)
@@ -481,10 +528,10 @@ Facilitator verify failures seen in the wild (2nd 402's `error` field):
   billing. Verify the gateway itself: `GET /x402/info` returns 200 JSON and
   an unpaid paid-route returns 402. If responses look stale, suspect an old
   process still holding the port (see port hygiene below).
-- **Testing gateways locally — port hygiene (hard-won lesson)**: a uvicorn
-  gateway whose port is already held FAILS TO BIND but the old process keeps
-  answering, so your "new code" test actually exercises the OLD process (and
-  its 60s access cache) — false PASSes and false FAILs. Rules:
+- **Testing gateways locally — port ownership checks**: a uvicorn gateway
+  whose port is already held FAILS TO BIND while the old process keeps
+  answering, so a test against that port exercises the OLD process (and its
+  60s access cache), not the new code. Rules:
   1. After starting a test gateway, ALWAYS check its log for
      `address already in use` BEFORE trusting any response from that port.
   2. Kill test processes by LISTENING-PORT PID, never by `ps | grep` name

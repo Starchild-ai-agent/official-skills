@@ -400,24 +400,33 @@ def _make_signer(signer_mode: str, max_amount_atomic: int):
     carry over to the other — pin signer_mode explicitly for such services.
     """
     if signer_mode == "privy":
-        return PrivySigner(max_amount_atomic=max_amount_atomic)
+        s = PrivySigner(max_amount_atomic=max_amount_atomic)
+        s.signer_type, s.signer_warning = "privy", None
+        return s
     if signer_mode == "eoa":
-        return SessionEOASigner(max_amount_atomic=max_amount_atomic)
+        s = SessionEOASigner(max_amount_atomic=max_amount_atomic)
+        s.signer_type, s.signer_warning = "session_eoa", None
+        return s
     env = os.environ.get("X402_SIGNER", "").strip().lower()
     if env in ("privy", "eoa"):
         return _make_signer(env, max_amount_atomic)
     try:
-        return PrivySigner(max_amount_atomic=max_amount_atomic)
+        s = PrivySigner(max_amount_atomic=max_amount_atomic)
+        s.signer_type, s.signer_warning = "privy", None
+        return s
     except Exception as e:
         # Most common cause: `from core.skill_tools import wallet` fails when
         # PYTHONPATH lacks /app (script run outside the agent runtime) — NOT a
-        # protocol incompatibility. Loudly announce the identity switch: the
-        # session EOA is a DIFFERENT payer address and is usually unfunded.
-        print(f"[x402] auto: Privy signer unavailable ({type(e).__name__}: {e}) "
-              f"— falling back to session EOA (different payer identity). "
-              f"If this is an ImportError, run with PYTHONPATH=/app.",
-              file=sys.stderr)
-        return SessionEOASigner(max_amount_atomic=max_amount_atomic)
+        # protocol incompatibility. Announce the identity switch on stderr AND
+        # in the result (signer_warning): the session EOA is a DIFFERENT payer
+        # address and is usually unfunded.
+        warn = (f"Privy signer unavailable ({type(e).__name__}: {e}) — "
+                f"fell back to session EOA (DIFFERENT payer identity). "
+                f"If this is an ImportError, run with PYTHONPATH=/app.")
+        print(f"[x402] auto: {warn}", file=sys.stderr)
+        s = SessionEOASigner(max_amount_atomic=max_amount_atomic)
+        s.signer_type, s.signer_warning = "session_eoa", warn
+        return s
 
 
 def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto"):
@@ -469,6 +478,41 @@ def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -
     return base64.b64encode(json.dumps(payload).encode()).decode()
 
 
+def _signer_meta(signer) -> dict:
+    """signer_type / signer_warning for result dicts and ledger lines."""
+    meta = {"signer_type": getattr(signer, "signer_type", "unknown")}
+    warn = getattr(signer, "signer_warning", None)
+    if warn:
+        meta["signer_warning"] = warn
+    return meta
+
+
+def _ledger_append(entry: dict):
+    """Append one payment record to the local ledger (best-effort, never raises).
+
+    Every payment client.py signs is recorded in
+    ``$WORKSPACE/.x402/payments.jsonl`` (override path with X402_LEDGER), so
+    "where did the USDC go" is always answerable locally — including payments
+    made from background sessions. Each line: ts, caller, event, url, method,
+    amount_atomic, payer, status, paid, settlement tx when available.
+    """
+    try:
+        path = os.environ.get("X402_LEDGER") or os.path.join(
+            os.environ.get("WORKSPACE", "/data/workspace"),
+            ".x402", "payments.jsonl")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        import time as _time
+        entry.setdefault("ts",
+                         _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime()))
+        entry.setdefault("caller", os.environ.get("SC_CALLER_ID")
+                         or os.environ.get("JOB_ID") or f"pid:{os.getpid()}")
+        with open(path, "a") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception as e:  # ledger must never break a payment
+        print(f"[x402] WARNING: payment ledger write failed: {e}",
+              file=sys.stderr)
+
+
 def paid_request(method: str, url: str, json_body=None, headers=None,
                  max_amount_atomic: int = 1_000_000, timeout: float = 60.0,
                  signer_mode: str = "auto", pricing_model: str = ""):
@@ -508,9 +552,13 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         if r0.headers.get("PAYMENT-REQUIRED") or r0.headers.get("X-PAYMENT-REQUIRED"):
             # V2 header challenge -> x402 SDK path
             client, signer = _build_client(max_amount_atomic, signer_mode)
+            _ledger_append({"event": "attempt", "url": url,
+                            "method": method.upper(), "payer": signer.address,
+                            "flavor": "v2-header", **_signer_meta(signer)})
             async with x402HttpxClient(client, timeout=timeout) as c:
                 r = await c.request(method.upper(), url, json=json_body, headers=headers or {})
                 out = {"status": r.status_code, "payer": signer.address,
+                       **_signer_meta(signer),
                        "body": _body(r.text, full=True)}
                 pr = r.headers.get("PAYMENT-RESPONSE") or r.headers.get("X-PAYMENT-RESPONSE")
                 if pr:
@@ -518,6 +566,12 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                         out["settlement"] = json.loads(base64.b64decode(pr))
                     except Exception:
                         out["settlement_raw"] = pr[:200]
+                _ledger_append({
+                    "event": "result", "url": url, "method": method.upper(),
+                    "payer": signer.address, "status": r.status_code,
+                    "paid": r.status_code == 200,
+                    "settlement_tx": (out.get("settlement") or {}).get("transaction"),
+                    "flavor": "v2-header", **_signer_meta(signer)})
                 return out
 
         # platform-shape challenge (Starchild community-gateway contract):
@@ -544,9 +598,22 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         r2 = r0
         for _ in range(2):
             xp = _sign_platform_payment(accepts, max_amount_atomic, signer=signer)
+            _ledger_append({"event": "signed", "url": url,
+                            "method": method.upper(), "payer": signer.address,
+                            "amount_atomic": accepts.get("amount"),
+                            "pricing_model": accepts.get("pricingModel"),
+                            "network": accepts.get("network"),
+                            "pay_to": accepts.get("payTo"),
+                            "flavor": "platform", **_signer_meta(signer)})
             async with _httpx.AsyncClient(timeout=timeout, follow_redirects=True) as plain:
                 r2 = await plain.request(method.upper(), url, json=json_body,
                                          headers={**(headers or {}), "X-PAYMENT": xp})
+            _ledger_append({"event": "result", "url": url,
+                            "method": method.upper(), "payer": signer.address,
+                            "amount_atomic": accepts.get("amount"),
+                            "status": r2.status_code,
+                            "paid": r2.status_code == 200,
+                            "flavor": "platform", **_signer_meta(signer)})
             if r2.status_code != 402:
                 break
             try:
@@ -561,6 +628,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 break  # same ask again -> not a deposit escalation, give up
             accepts = nxt
         return {"status": r2.status_code, "payer": signer.address, "paid": True,
+                **_signer_meta(signer),
                 "pricing_model": accepts.get("pricingModel"),
                 "body": _body(r2.text, full=True)}
 

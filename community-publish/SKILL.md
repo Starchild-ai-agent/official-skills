@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.18.0
+version: 0.19.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -276,7 +276,7 @@ Paid services charge for access via x402 (on-chain USDC settlement on Base). The
 ```
                 ┌─────────────────────────────────────────────┐
                 │                                             │
-  create ──▶ draft ──▶ pending ──▶ approved ──▶ published ◀──┤
+  create ──▶ published ──▶ pending ──▶ approved ──▶ listed ◀──┤
                 │            │           │          │         │
                 │            └──▶ rejected ────────┤         │
                 │                               (fix & resubmit)│
@@ -284,11 +284,11 @@ Paid services charge for access via x402 (on-chain USDC settlement on Base). The
                 └──────────────────────────────────────────────┘
                                               │
                                               ▼
-                                     unavailable ──▶ restore ──▶ published
+                                     unavailable ──▶ restore ──▶ listed
                                         (auto, health-check failures)
 ```
 
-All paid services must pass review: `draft` → `pending` → `approved` → `published`.
+All paid services must pass review: `published` → `pending` → `approved` → `listed`.
 
 ### ⚡ Scenario Selection Guide — Which flow to use?
 
@@ -570,16 +570,16 @@ create_paid_service(
 
 | Function | Purpose |
 |---|---|
-| `create_paid_service(...)` | Create a service record (draft state) |
+| `create_paid_service(...)` | Create a service record (published state) |
 | `submit_for_review(service_id)` | Submit for automated review |
 | `get_review_status(service_id)` | Poll review progress + per-check details |
 | `publish_service(service_id)` | Go live (requires approved) |
-| `unpublish_service(service_id)` | Take down (published → draft) |
+| `unpublish_service(service_id)` | Take down (listed → unlisted) |
 | `list_my_services(cursor, limit)` | List your services (paginated) |
 | `get_service(service_id)` | Fetch one service by ID |
 | `update_service(service_id, **fields)` | Update service fields (e.g. fix after rejection) |
 | `delete_service(service_id)` | Permanently delete a service |
-| `restore_service(service_id)` | Restore an unavailable service back to published |
+| `restore_service(service_id)` | Restore an unavailable service back to listed |
 
 ### Marketplace browse & consumer functions
 

@@ -1058,8 +1058,8 @@ def delete_listing(slug: str) -> dict[str, Any]:
 # These require x402 charging + automated review + publish approval.
 # Completely different from the free listing flow above.
 #
-# Lifecycle: draft → pending → approved → published
-# (paid services MUST pass review before publishing)
+# Lifecycle: published → pending → approved → listed
+# (paid services MUST pass review before listing)
 # ════════════════════════════════════════════════════════════════════════
 
 def create_paid_service(
@@ -1229,11 +1229,12 @@ def create_paid_service(
         "ok": True,
         "service": service,
         "service_id": service.get("id"),
-        "review_status": service.get("review_status", "draft"),
+        "review_status": service.get("review_status", "published"),
         "next_step": (
-            "Service created in draft state. Call submit_for_review(service_id) "
-            "to trigger the automated review, then poll get_review_status() "
-            "until approved, then call publish_service() to go live."
+            "Service created in published state (URL accessible but not listed). "
+            "Call submit_for_review(service_id) to trigger the automated review, "
+            "then poll get_review_status() until approved, then call publish_service() "
+            "to list it on the marketplace."
         ),
     }
     # Surface client-side warning (paid_api + project_slug passed)
@@ -1251,7 +1252,7 @@ def submit_for_review(service_id: str) -> dict[str, Any]:
 
     The review checks 5 items: api_reachable, pricing_consistency,
     x402_payment, response_match, doc_completeness. All must pass for
-    approval. The service moves from draft/rejected → pending.
+    approval. The service moves from published/rejected → pending.
 
     Args:
         service_id: The UUID returned by create_paid_service().
@@ -1282,7 +1283,7 @@ def submit_for_review(service_id: str) -> dict[str, Any]:
 def get_review_status(service_id: str) -> dict[str, Any]:
     """Poll the review status of a paid service.
 
-    Returns the current review_status (draft/pending/approved/rejected),
+    Returns the current review_status (published/pending/approved/rejected),
     review_feedback (if rejected), and the latest review task with
     per-check details.
 
@@ -1331,7 +1332,7 @@ def publish_service(service_id: str) -> dict[str, Any]:
 
     Only works if the service is in 'approved' state (review passed).
     For free services (not created via create_paid_service), this would
-    work from 'draft' directly — but free projects use list_in_dashboard()
+    work from 'published' directly — but free projects use list_in_dashboard()
     instead, not this function.
 
     Args:
@@ -1354,7 +1355,7 @@ def publish_service(service_id: str) -> dict[str, Any]:
     return {
         "ok": True,
         "service": service,
-        "review_status": service.get("review_status", "published"),
+        "review_status": service.get("review_status", "listed"),
         "message": "Service is now live on the marketplace!",
     }
 
@@ -1362,7 +1363,7 @@ def publish_service(service_id: str) -> dict[str, Any]:
 def unpublish_service(service_id: str) -> dict[str, Any]:
     """Take down a published paid service.
 
-    Moves the service from published/unavailable → draft. Already-purchased
+    Moves the service from listed/unavailable → unlisted. Already-purchased
     users keep access. To make it live again, re-submit for review and
     publish.
 
@@ -1579,7 +1580,7 @@ def get_service_detail(service_id: str) -> dict[str, Any]:
 
     Includes full documentation, pricing options, and provider info.
     Increments view count. Use get_service() for provider management
-    (owner only, includes draft/rejected services).
+    (owner only, includes published/rejected services).
 
     Args:
         service_id: The service UUID.

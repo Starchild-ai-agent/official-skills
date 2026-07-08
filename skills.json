@@ -178,7 +178,7 @@
     {
       "name": "community-publish",
       "path": "community-publish/SKILL.md",
-      "version": "0.18.0",
+      "version": "0.19.0",
       "description": "Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.\n\nUse when the user wants to share, publish, list, open-source, or monetize what they built (e.g. make this dashboard public, share my project, push to GitHub, 上架到服务市场, 上架付费服务, 提交审核)."
     },
     {

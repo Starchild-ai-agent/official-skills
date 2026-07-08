@@ -1600,7 +1600,10 @@ def explore_marketplace(
 
     Args:
         search: Keyword (matches project/service name, description, tags).
-        paid_only: If True, only paid items (filter=paid).
+        paid_only: If True, keep only paid items. Applied client-side to the
+            fetched page (the endpoint has no server-side paid filter), so a
+            page may return fewer than `limit` items — follow `next_cursor`
+            for more.
         cursor: Pagination cursor from previous response.
         limit: Page size (default 20).
 
@@ -1613,16 +1616,20 @@ def explore_marketplace(
     """
     try:
         status, body = gateway.marketplace_explore_all(
-            search=search, paid_only=paid_only, cursor=cursor, limit=limit)
+            search=search, cursor=cursor, limit=limit)
     except Exception as e:
         return {"ok": False, "error": f"Failed to reach gateway: {e}"}
 
     if status != 200:
         return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
 
+    items = body.get("items") or body.get("projects") or []
+    if paid_only:
+        items = [i for i in items if i.get("is_paid")]
+
     return {
         "ok": True,
-        "items": body.get("items") or body.get("projects") or [],
+        "items": items,
         "next_cursor": body.get("next_cursor"),
         "has_more": body.get("has_more", False),
         "total_count": body.get("total_count", 0),

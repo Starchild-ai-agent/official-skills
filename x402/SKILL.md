@@ -355,10 +355,12 @@ the user's funds sit on a different chain:
 5. No USDC anywhere → stop and tell the user to acquire some (on-ramp /
    exchange withdrawal). Never fabricate funds or skip the payment.
 
-**Privy signer compatibility:** `signer_mode="privy"` is rejected on-chain
-for Base mainnet USDC (EIP-7702 delegation → EIP-1271 → no plain ECDSA);
-other chain/token combos are untested. Treat the session EOA as the only
-supported signer unless a specific combo has been verified. **Spend guard**: additionally refuses to sign above
+**Privy signer compatibility:** Base mainnet USDC is verified end-to-end
+(2026-07-08, via the Kernel v3.3 ERC-1271 path above). Other chain/token
+combos are untested — verify with a minimal purchase first; `signer_mode="eoa"`
+remains the safe fallback. Note `auto` falls back to the session EOA SILENTLY
+when wallet-service signing fails (e.g. 401) — check the payer address in the
+result to confirm which identity actually paid. **Spend guard**: additionally refuses to sign above
 `X402_MAX_ATOMIC` (default 1_000_000 = 1 USDC). ⚠️ Signing = spending real
 money once settled — confirm with the user before paying unfamiliar services
 or raising the cap. Result includes `settlement.transaction` (on-chain tx hash)

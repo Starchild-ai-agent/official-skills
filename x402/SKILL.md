@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.5.3
+version: 2.5.4
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -112,10 +112,10 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 ```
 
 These keep payment state in the gateway's local SQLite ledger (deterministic
-API keys, credit refunds on upstream 5xx). **Deprecated for new deployments**
-since v2.1: prefer `--mode prepaid` (same prepaid-credit UX, balance held by
-the facilitator instead of a local SQLite file). Still fully supported for
-existing deployments; `timepass` has no platform equivalent yet.
+API keys, credit refunds on upstream 5xx). For new deployments prefer
+`--mode prepaid` (same prepaid-credit UX, balance held by the facilitator
+instead of a local SQLite file); use these modes only when you need
+`timepass` (no platform equivalent) or to keep an existing deployment running.
 
 Output includes `gateway_port`. **Expose the GATEWAY port, not the upstream**
 (via `preview` or community-publish). `pay_to` defaults to the user's Privy
@@ -160,7 +160,7 @@ balance empty gateway answers 402 insufficient_balance with accepts.amount =
               deposit size -> client auto-signs the top-up and retries
 ```
 
-Contract details (all verified against the deployed platform facilitator):
+Contract details:
 - 402 challenge: `accepts.pricingModel = "prepaid"`, `accepts.amount` = per-call
   price normally, deposit size when topping up; extra fields
   `accepts.depositAtomic` + `accepts.pricePerCallAtomic` tell buyers both numbers.
@@ -310,30 +310,26 @@ X402_MAX_ATOMIC=50000 python3 skills/x402/client.py POST https://host/x402/topup
 For lifetime/monthly services, repeat calls within the paid period verify but
 do NOT settle — the result has `paid: true` with no new on-chain tx.
 
-**Buyer signer = PRIVY WALLET by default** (`signer_mode="auto"`; end-to-end
-verified on Base mainnet 2026-07-08 — two real purchases settled on-chain).
+**Buyer signer = Privy wallet by default** (`signer_mode="auto"`).
 The Privy address carries EIP-7702 delegation to ZeroDev Kernel v3.3
-(`0xd6CE..5b28`) — installed automatically by Privy's gas-sponsorship flow
-(wallet service sends `sponsor=true` first on every tx), NOT by our code.
-USDC sees code at the address → verifies via ERC-1271, so PrivySigner
-transparently signs through Kernel's wrapper (Kernel v3.3 is NOT 7739-nested):
-`inner = EIP-3009 digest (USDC domain)` → Privy `sign_typed_data` with
-domain `{name:"Kernel",version:"0.3.3",chainId:8453,verifyingContract:<wallet>}`,
+(`0xd6CE..5b28`), installed automatically by the wallet service's
+gas-sponsorship flow (`sponsor=true` on every tx). USDC sees code at the
+address → verifies via ERC-1271, so PrivySigner signs through Kernel's
+wrapper (Kernel v3.3 is NOT 7739-nested): `inner = EIP-3009 digest (USDC
+domain)` → Privy `sign_typed_data` with domain
+`{name:"Kernel",version:"0.3.3",chainId:8453,verifyingContract:<wallet>}`,
 types `{Kernel:[{name:"hash",type:"bytes32"}]}`, message `{hash:inner}` →
 final sig = `0x00` (sudo prefix) + 65-byte signature (66 bytes total).
 Requires a facilitator with ERC-1271 /verify + bytes-overload /settle
-(platform fly facilitator has both since 2026-07-08). Do NOT revoke the
-delegation: the next sponsored tx re-installs it, and revoking kills gas
-sponsorship. Fallback signer = session EOA (`.x402/buyer.key`), used when
-the wallet service is unreachable or forced via `signer_mode="eoa"` /
+(the platform facilitator supports both). Do NOT revoke the delegation:
+the next sponsored tx re-installs it, and revoking kills gas sponsorship.
+Fallback signer = session EOA (`.x402/buyer.key`), used when the wallet
+service is unavailable or forced via `signer_mode="eoa"` /
 env `X402_SIGNER=eoa`. ⚠️ The two signers are DIFFERENT payer identities:
 subscriptions / prepaid balances bought under one do NOT carry over —
-pin `signer_mode` explicitly for subscription/prepaid services. (On-chain error:
-`FiatTokenV2: invalid signature` — even though off-chain ECDSA recovery
-passes, which is why facilitator /verify succeeds but settle fails.)
-Fund the session EOA with a small
-USDC budget from the Privy wallet (ERC20 transfer); the budget IS the hard
-spend cap.
+pin `signer_mode` explicitly for subscription/prepaid services.
+If using the session EOA, fund it with a small USDC budget from the Privy
+wallet (ERC20 transfer); the budget IS the hard spend cap.
 
 **Funding the session EOA (when target-chain balance is 0):** signature
 verification passes with an empty wallet — settlement then fails with
@@ -355,17 +351,15 @@ the user's funds sit on a different chain:
 5. No USDC anywhere → stop and tell the user to acquire some (on-ramp /
    exchange withdrawal). Never fabricate funds or skip the payment.
 
-**Privy signer compatibility:** Base mainnet USDC is verified end-to-end
-(2026-07-08, via the Kernel v3.3 ERC-1271 path above). Other chain/token
-combos are untested — verify with a minimal purchase first; `signer_mode="eoa"`
-remains the safe fallback. Note `auto` falls back to the session EOA on ANY
+**Signer selection:** `auto` falls back to the session EOA on ANY
 PrivySigner init failure — most commonly `ImportError: core.skill_tools`
-when PYTHONPATH lacks `/app` (script run outside the agent runtime), NOT a
-protocol incompatibility; also wallet-service signing errors (e.g. 401).
-The fallback logs a `[x402] auto: ...` warning to stderr — check it plus the
-payer address in the result to confirm which identity actually paid. Paid
-response bodies are returned in FULL; unpaid/error bodies are capped at
-2000 chars (override: env `X402_BODY_MAX`, 0 = unlimited). **Spend guard**: additionally refuses to sign above
+when PYTHONPATH lacks `/app` (script run outside the agent runtime), or
+wallet-service signing errors (e.g. 401). The fallback logs a
+`[x402] auto: ...` warning to stderr — check it plus the payer address in
+the result to confirm which identity actually paid. Base mainnet USDC works
+with both signers; verify other chain/token combos with a minimal purchase
+first. Paid response bodies are returned in FULL; unpaid/error bodies are
+capped at 2000 chars (override: env `X402_BODY_MAX`, 0 = unlimited). **Spend guard**: additionally refuses to sign above
 `X402_MAX_ATOMIC` (default 1_000_000 = 1 USDC). ⚠️ Signing = spending real
 money once settled — confirm with the user before paying unfamiliar services
 or raising the cap. Result includes `settlement.transaction` (on-chain tx hash)

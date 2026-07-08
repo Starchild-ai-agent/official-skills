@@ -3,8 +3,8 @@
 Default signer (signer_mode="auto"): the PRIVY wallet. PrivySigner detects
 EIP-7702 delegation on the payer address (Privy gas sponsorship installs
 ZeroDev Kernel) and transparently signs through Kernel's EIP-712 wrapper
-(0x00 sudo prefix + 65B ECDSA), which USDC accepts via ERC-1271 — verified
-end-to-end on Base mainnet 2026-07-08. Falls back to the session EOA
+(0x00 sudo prefix + 65B ECDSA), which USDC accepts via ERC-1271. Falls
+back to the session EOA
 (`.x402/buyer.key`) if the wallet service is unreachable; force a mode with
 signer_mode="privy"/"eoa" or env X402_SIGNER. NOTE: the two signers are
 different payer identities — subscriptions/prepaid balances don't transfer.
@@ -96,7 +96,7 @@ class PrivySigner:
     # EIP-7702 delegation handling: when the Privy address carries delegated
     # code (Privy gas sponsorship installs ZeroDev Kernel), USDC verifies via
     # ERC-1271, so the payment must be signed through Kernel's EIP-712 wrapper
-    # (probe-verified on Base mainnet 2026-07-08):
+    #:
     #   inner = EIP-3009 digest -> sign Kernel(bytes32 hash) under Kernel's
     #   domain -> final sig = 0x00 (root/sudo validator prefix) + 65B ECDSA.
     _RPC = {8453: "https://mainnet.base.org", 84532: "https://sepolia.base.org"}
@@ -392,7 +392,7 @@ def _make_signer(signer_mode: str, max_amount_atomic: int):
     """signer_mode: 'privy' | 'eoa' | 'auto'.
 
     'auto' -> Privy wallet first (PrivySigner transparently handles the
-    EIP-7702/Kernel ERC-1271 wrapping, verified on Base mainnet), falling
+    EIP-7702/Kernel ERC-1271 wrapping), falling
     back to the session EOA when the wallet service is unavailable.
     Env override: X402_SIGNER=privy|eoa forces a mode in 'auto'.
 

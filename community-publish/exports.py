@@ -1171,22 +1171,24 @@ def create_paid_service(
         "pricing_model": pricing_model,
         "price": price,
     }
-    # project_slug for paid_api is OPTIONAL and should only be set when the
-    # user explicitly wants to link a free project page with this paid API
-    # (the "free webpage + paid API" pattern, Flow D in SKILL.md). Agents
-    # commonly mistake the preview slug for project_slug, creating phantom
-    # associations. The backend validates and clears non-existent slugs,
-    # but we also warn here so the agent can self-correct.
+    # project_slug handling:
+    # - paid_project: REQUIRED — the project page that subscribers access.
+    # - paid_api + project_slug: this is the "free webpage + paid API" pattern
+    #   (Flow D in SKILL.md). The project serves as the API's introduction page.
+    #   We auto-upgrade service_type to paid_project so the frontend shows
+    #   "View Project" correctly and the marketplace merges the cards.
     project_slug_warning: str | None = None
     if project_slug and service_type == "paid_api":
+        # Auto-upgrade to paid_project when a project_slug is provided.
+        # This prevents the mismatch where service_type=paid_api but
+        # project_slug is set (which caused duplicate cards in My Projects).
+        service_type = "paid_project"
+        payload["service_type"] = "paid_project"
         project_slug_warning = (
-            f"project_slug='{project_slug}' was passed for a paid_api service. "
-            "This is ONLY correct if you intend to link a free Starchild project "
-            "page with this paid API (the 'free webpage + paid API' pattern). "
-            "If this is a standalone API with no associated project page, "
-            "do NOT pass project_slug — the backend will clear non-existent "
-            "slugs automatically, but the service should not have been "
-            "associated in the first place."
+            f"project_slug='{project_slug}' was passed — service_type has been "
+            "auto-upgraded from 'paid_api' to 'paid_project' (the 'free webpage "
+            "+ paid API' pattern, Flow D). The project page will serve as the "
+            "API's introduction page in the marketplace."
         )
     if project_slug:
         payload["project_slug"] = project_slug

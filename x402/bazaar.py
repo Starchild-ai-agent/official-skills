@@ -26,6 +26,7 @@ Safety gates before money moves:
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import urllib.parse
@@ -466,17 +467,15 @@ def probe_402(url: str, method: str = "GET", json_body=None, headers=None,
 
 def bazaar_pay(url: str, method: str = "GET", json_body=None,
                max_usd: float = 0.05, timeout: int = 60,
-               prefer_marketplace: bool = True,
-               allow_direct: bool = False) -> dict:
+               prefer_marketplace: bool = True) -> dict:
     """Probe-then-pay. Unified community-proxy route.
 
     Product rule:
       - Community URLs (internal /{user}-{slug}/ or /proxy/{id}/) pay as-is.
       - External URLs are resolved to their marketplace proxy URL
         (transparent passthrough; community books on HTTP 200).
-      - Unlisted external URLs are REFUSED by default (no community
-        bookkeeping). Pass allow_direct=True only when the user explicitly
-        accepts a direct payment with local-ledger-only records.
+      - Unlisted external URLs are REFUSED (no community bookkeeping).
+        The fix is to list the service on the marketplace, not to bypass.
 
     Payment runs through client.paid_request (Privy signer, fail-closed).
     """
@@ -492,14 +491,17 @@ def bazaar_pay(url: str, method: str = "GET", json_body=None,
             resolution = {"via": "direct", "pay_url": url, "matched": False,
                           "original_url": url, "resolve_error": str(e)}
 
-    if resolution.get("via") == "direct" and not allow_direct:
+    # Unlisted external URLs: community proxy is the only supported pay
+    # route. Escape hatch is an env gate for platform debugging only —
+    # never surface it to agents or docs.
+    _direct_ok = os.environ.get("X402_INTERNAL_DIRECT_PAY") == "1"
+    if resolution.get("via") == "direct" and not _direct_ok:
         return {"ok": False, "paid": False, "resolution": resolution,
                 "error": ("refused: URL is not listed on the Starchild "
                           "marketplace, so payment cannot go through the "
                           "community proxy (no purchase bookkeeping). "
-                          "Pass allow_direct=True to pay the origin "
-                          "directly (local ledger only), or list the "
-                          "service first.")}
+                          "List the service on the marketplace first, "
+                          "then pay its proxy URL.")}
 
     probe = probe_402(pay_url, method=method, json_body=json_body)
     # If proxy path failed to 402 but original might work, try original only

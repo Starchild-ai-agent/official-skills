@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.10.0
+version: 2.10.1
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -326,7 +326,7 @@ third-party x402 directories.
 |---|---|
 | **1. Find** | Prefer `discover_services(query)` or `community-publish.explore_marketplace`. CDP (`bazaar_search`) is fallback when marketplace has no hit. |
 | **2. Resolve pay URL** | Listed services → `community.iamstarchild.com/proxy/{service_id}` (+ path) or internal `/{user}-{slug}/...`. Never pay the raw list external URL when a proxy exists. |
-| **3. Pay** | `bazaar_pay(url)` re-resolves to marketplace proxy, then `probe_402` → `paid_request`. Community **transparent-proxies** and **books on HTTP 200**. Unlisted external URLs are **refused by default** — direct pay needs explicit `allow_direct=True` (local ledger only, no community record). |
+| **3. Pay** | `bazaar_pay(url)` re-resolves to marketplace proxy, then `probe_402` → `paid_request`. Community **transparent-proxies** and **books on HTTP 200**. Unlisted external URLs are **refused** — list the service on the marketplace first, then pay its proxy URL. |
 
 ```python
 import sys; sys.path.insert(0, "/data/workspace/skills/x402")

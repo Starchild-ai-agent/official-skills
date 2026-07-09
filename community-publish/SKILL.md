@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.22.0
+version: 0.23.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -292,16 +292,36 @@ live. **Recommended order: run the self-check BEFORE `publish_service()`** so a
 broken endpoint is caught before buyers can pay for it. A `rejected` report does NOT block listing; a check run against an
 already-`listed` service never delists it.
 
-### ⚡ Scenario Selection Guide — Which flow to use?
+### ⚡ Scenario Selection Decision Tree — MUST follow before creating any paid service
 
-Before creating a paid service, identify your scenario:
+**Step 1: Does the service have a Starchild project page (published via `publish_preview()`)?**
+- **YES, and the page is free to browse** → Flow D. Use `service_type="paid_project"` + `project_slug`. The free page is published via `publish_preview()`, and the paid API sits behind x402 on `/api/*` routes. The upstream app serves the free intro page at `/` and the paid API at `/api/*`.
+- **YES, but the entire page requires payment** → Flow B (Form 1). Use `service_type="paid_project"` + `project_slug`. The user implements their own access control (paywall + credential validation). See the x402 skill's "Paid Project: two forms" section.
+- **NO (standalone API, no project page)** → Flow C or E. Use `service_type="paid_api"` WITHOUT `project_slug`. Do NOT create an index.html or publish a preview — there is no free page. The public URL root will show the x402 402 challenge or gateway info.
 
-| Scenario | service_type | project_slug | api_endpoints | Flow | Example |
-|----------|-------------|--------------|---------------|------|---------|
-| **Paid subscription project** — entire project behind paywall (monthly/yearly/lifetime) | `paid_project` | required | — | B | SaaS dashboard, premium tool |
-| **Standalone paid API** — external API with no Starchild project page | `paid_api` | **omit** | — | C | Third-party data API |
-| **Free webpage + paid API** — project has a free landing page AND a paid API endpoint | `paid_project` | required | — | D | API with docs site |
-| **Multi-endpoint API** — one service with multiple API endpoints at different prices | `paid_api` (`paid_project` if combined with Flow D) | **omit** (unless also Flow D) | required | E | Data API with basic/premium tiers |
+**Step 2: Does the user want multiple API endpoints at different prices?**
+- **YES** → Use `api_endpoints` array in ONE `create_paid_service()` call (Flow E). Do NOT create multiple separate services.
+- **NO** → Single endpoint, use `api_endpoint` only.
+
+**Step 3: Combine the answers:**
+
+| User wants | Free page? | Multi-endpoint? | Flow | service_type | project_slug | api_endpoints |
+|------------|-----------|-----------------|------|-------------|--------------|---------------|
+| Paid subscription project (entire site behind paywall) | YES | NO | B | `paid_project` | required | — |
+| Standalone paid API (no webpage) | NO | NO | C | `paid_api` | **omit** | — |
+| Free intro page + paid API | YES | NO | D | `paid_project` | required | — |
+| Free intro page + multiple paid APIs | YES | YES | D+E | `paid_project` | required | required |
+| Multiple paid APIs (no webpage) | NO | YES | E | `paid_api` | **omit** | required |
+
+### ⚠️ Common Flow confusion mistakes (from real incidents)
+
+| Mistake | What goes wrong | Correct action |
+|---------|----------------|----------------|
+| User says "write an intro page AND a paid API" but agent uses `paid_api` + creates a separate project preview | Service and project are disconnected — marketplace shows two items, one free (blank) and one paid | Use `paid_project` + `project_slug` (Flow D). The intro page and API are ONE service. |
+| User says "pure paid API" but agent creates an index.html and publishes a preview | Unnecessary free project page clutters the marketplace; the intro page may show blank/JSON | Do NOT create index.html or publish_preview. Use `paid_api` (Flow C). The x402 gateway's 402 response IS the API's self-description. |
+| User says "multiple API endpoints" but agent creates N separate services | N marketplace cards instead of 1; port conflicts; upstream confusion | Create ONE service with `api_endpoints` array (Flow E). |
+| Agent reuses an upstream port already taken by another service | Gateway proxies to the WRONG upstream — responses are from a different service | Each service MUST have a unique upstream port. Check `.x402/services.json` for conflicts. |
+| Agent creates start.py with `/docs` route that conflicts with upstream's `/docs` | Flask `AssertionError: View function mapping is overwriting an existing endpoint` | Do NOT define `/`, `/docs`, or `/index.html` routes in both start.py and the upstream app — define them in only one place. |
 
 **Key rules:**
 - **Do NOT pass `project_slug` for standalone paid APIs.** `project_slug` belongs to `paid_project` only — including the "free webpage + paid API" pattern (Flow D, which uses `paid_project`). Passing a preview slug or a non-existent slug for a standalone `paid_api` creates a phantom association — the backend will silently clear it, but you should not have passed it in the first place.
@@ -313,6 +333,23 @@ Before creating a paid service, identify your scenario:
 - **When the user asks for multiple APIs, create ONE service with `api_endpoints`** — do NOT create multiple separate services. See Flow E.
 
 ### Flow B — Paid Project listing
+
+A paid project charges for access. There are two forms — both use
+`service_type="paid_project"` + `project_slug`:
+
+**Form 1: Entire page behind paywall** — the page itself requires payment.
+The user implements their own access control (a login-like component with
+credential validation). The platform provides the x402 payment protocol;
+the user implements the paywall UI and credential logic. See the x402
+skill's "Paid Project: two forms" section for implementation details and
+the "How to pay with Agent" documentation template.
+
+**Form 2: Free page + paid API** — the page is free to browse, API calls
+cost money. This is Flow D (below). The upstream app serves the free intro
+page at `/` and the paid API at `/api/*`.
+
+Both forms are the same pattern — the only difference is what the user
+implements (paywall interceptor for Form 1, nothing extra for Form 2).
 
 1. **Have a running project** with a public URL (via `publish_preview()`).
 2. **Configure x402 charging** on the project's access endpoint using the **x402 skill**.

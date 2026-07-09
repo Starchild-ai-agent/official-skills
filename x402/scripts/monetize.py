@@ -37,6 +37,12 @@ def free_port(start: int = 8402) -> int:
     raise RuntimeError("no free port")
 
 
+def _port_in_use(port: int) -> bool:
+    """Check if a port is already in use (listening)."""
+    with socket.socket() as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
 def load_registry() -> dict:
     if os.path.exists(REG):
         with open(REG) as f:
@@ -213,6 +219,19 @@ def main():
 
     pay_to = args.pay_to or default_pay_to()
     port = args.port or free_port()
+
+    # Upstream port conflict check: warn (not fail) if the upstream port is
+    # already in use by a DIFFERENT registered service — the gateway will proxy
+    # to the wrong upstream (root cause of blank pages in multi-service setups).
+    if _port_in_use(args.upstream_port):
+        reg_check = load_registry()
+        conflict = [n for n, s in reg_check.get("services", {}).items()
+                    if s.get("upstream_port") == args.upstream_port and n != args.name]
+        if conflict:
+            print(f"⚠️  WARNING: upstream port {args.upstream_port} is already in use "
+                  f"by service(s): {conflict}. The gateway will proxy to the WRONG "
+                  f"upstream. Either stop the conflicting service(s) or use a "
+                  f"different --upstream-port.", file=sys.stderr)
 
     svc_dir = os.path.join(REG_DIR, args.name)
     os.makedirs(svc_dir, exist_ok=True)

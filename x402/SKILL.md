@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.7.1
+version: 2.8.0
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -206,6 +206,82 @@ service that later fails review with a misleading 400).
 
 Skipping 5–6 is the #1 cause of "why does my paid service show as free /
 not appear in the marketplace".
+
+## Paid Project: two forms
+
+A **paid project** is a Starchild project that charges for access. There
+are two forms — the platform supports both, and they share the same
+`service_type="paid_project"` + `project_slug` listing structure:
+
+### Form 1: Entire page behind paywall (user implements access control)
+
+The page itself requires payment to access. The user (service provider)
+implements their own access control — a login-like component that checks a
+payment credential before serving content.
+
+**Platform responsibility:** publish the project + list the paid API
+endpoint on the marketplace. The x402 gateway handles the payment protocol
+(402 challenge → settle → credential).
+
+**User responsibility:** implement the access control interceptor in their
+own app:
+- A paywall/login component on the frontend (credential input → localStorage)
+- A backend endpoint that validates the credential and returns content
+- The credential is issued by the user's own API after a successful x402
+  payment — the user's API returns the credential to the buyer
+
+**Flow:**
+```
+1. Visitor opens the page → sees a paywall (user's frontend code)
+2. Visitor pays via x402 (Agent or direct) → user's API returns a credential
+3. Visitor enters the credential → user's backend validates it → serves content
+4. Credential cached in localStorage → subsequent visits skip the paywall
+```
+
+**What the platform provides:**
+- x402 gateway: handles the 402 payment challenge + on-chain settlement
+- `/x402/topup` endpoint: buyer pays, gets an API key (timepass/subscription
+  modes) or the x402 signature IS the credential (platform modes)
+- `/x402/balance` endpoint: the user's app CAN use this to check if an API
+  key is valid (optional — the user can also implement their own validation)
+
+**What the user implements (their own code, their own logic):**
+- Frontend: paywall UI, credential input, localStorage caching
+- Backend: credential validation (can call gateway `/x402/balance`, or
+  implement their own validation logic, or use the x402 signature directly)
+- The "how to pay" documentation on the paywall page
+
+#### "How to pay with Agent" documentation
+
+The user's paywall page should include a "How to pay" section explaining
+how buyers can obtain an access credential via x402 payment. The Agent
+should generate this documentation based on the service's actual pricing,
+duration, and URL — do NOT copy a fixed template. The documentation should
+cover:
+- The price and payment network (e.g. "$2.99 USDC on Base")
+- How to pay via Agent (x402 client call to `/x402/topup`)
+- How to pay directly (any x402-compatible client with `X-PAYMENT` header)
+- What the buyer receives after payment (an `api_key` credential)
+
+### Form 2: Free page + paid API (Flow D)
+
+The page is free to browse (intro/docs/landing page), but API calls cost
+money. This is Flow D — see the community-publish skill for details. The
+upstream app serves the free intro page at `/` and the paid API at `/api/*`.
+
+### Summary: paid project = free project + paid API (same pattern)
+
+Both forms use `service_type="paid_project"` + `project_slug`. The
+difference is only in what the user implements:
+
+| Form | Page access | API access | User implements |
+|---|---|---|---|
+| Entire page paid | Paywall (user's access control) | Paid via x402 | Paywall UI + credential validation |
+| Free page + paid API | Free (intro/docs page) | Paid via x402 | Nothing extra (gateway handles it) |
+
+The platform (x402 gateway + community-gateway) handles the payment
+protocol and marketplace listing in both cases. The user only needs to
+implement the access control interceptor for Form 1.
 
 ## Consuming any x402 service from just a URL
 

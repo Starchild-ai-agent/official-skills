@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.8.0
+version: 2.9.0
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -316,6 +316,31 @@ this sequence — everything needed is self-describing in the protocol:
 The same sequence doubles as a smoke test of any x402 deployment: steps 1–2
 are free and validate the challenge contract; steps 3–4 validate settlement
 and access accounting end-to-end.
+
+## Discover services — Coinbase CDP Bazaar (`bazaar.py`)
+
+The CDP Bazaar is a public catalog of 24k+ x402-payable endpoints. Discovery
+needs NO key/registration; payment stays on our own Privy signer path (CDP is
+never in the payment loop). `bazaar.py` enforces probe-before-pay:
+
+```python
+import sys; sys.path.insert(0, "/data/workspace/skills/x402")
+from bazaar import bazaar_search, bazaar_list, probe_402, bazaar_pay
+
+bazaar_search("weather", limit=5)      # free hybrid search, filters to Base USDC exact
+probe_402(url)                         # free: classifies 402 shape (see below)
+bazaar_pay(url, max_usd=0.01)          # probe → refuse non-standard → paid_request
+```
+
+`probe_402` classifications: `standard-v2` (payable) · `wrong-rail` (x402 but
+not Base USDC exact) · `tx-hash` (pseudo-x402, ALWAYS refuse — see next
+section) · `non-standard` · `no-payment`. `bazaar_pay` refuses anything not
+`standard-v2` and anything priced above `max_usd` — both gates fire before a
+single signature is produced.
+
+Catalog composition (sampled): ~97% x402 v2, ~97% `exact` scheme, ~63% Base —
+the majority is payable as-is. Solana/Polygon entries are filtered out by
+default (`only_payable=True`).
 
 ### Non-standard "tx-hash" services (NOT x402 V2 — client.py cannot pay them)
 

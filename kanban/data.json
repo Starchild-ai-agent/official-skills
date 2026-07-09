@@ -1,0 +1,53 @@
+{
+  "boards": [
+    {
+      "id": "board-001",
+      "front_id": "board-001",
+      "workspace_id": "ws-001",
+      "title": "My Board",
+      "emoji": ":clipboard:",
+      "view_mode": "grid",
+      "active_tasks": 0,
+      "connectors": []
+    }
+  ],
+  "lists": [
+    {
+      "id": "list-backlog",
+      "front_id": "list-backlog",
+      "board_id": "board-001",
+      "title": "Backlog",
+      "color": "#BDBDBD",
+      "order": "b",
+      "auto_participants": []
+    },
+    {
+      "id": "list-progress",
+      "front_id": "list-progress",
+      "board_id": "board-001",
+      "title": "In Progress",
+      "color": "#004dff",
+      "order": "d",
+      "auto_participants": []
+    },
+    {
+      "id": "list-review",
+      "front_id": "list-review",
+      "board_id": "board-001",
+      "title": "In Review",
+      "color": "#ff8607",
+      "order": "f",
+      "auto_participants": []
+    },
+    {
+      "id": "list-done",
+      "front_id": "list-done",
+      "board_id": "board-001",
+      "title": "Done",
+      "color": "#04aa11",
+      "order": "h",
+      "auto_participants": []
+    }
+  ],
+  "tasks": []
+}

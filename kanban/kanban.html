@@ -1,0 +1,2520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Starchild Work</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Google+Sans+Text:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script>
+// Avatar tooltip portal
+function showAvatarTip(e, name, role) {
+  var tip = document.getElementById('avatar-tooltip-portal');
+  document.getElementById('atp-name').textContent = name;
+  document.getElementById('atp-role').textContent = role;
+  tip.classList.add('visible');
+  positionAvatarTip(e, tip);
+}
+function positionAvatarTip(e, tip) {
+  var rect = e.currentTarget.getBoundingClientRect();
+  tip.style.left = '0px'; tip.style.top = '0px'; // reset to measure
+  var tw = tip.offsetWidth;
+  var left = rect.left + rect.width / 2 - tw / 2;
+  var top = rect.top - tip.offsetHeight - 8;
+  // clamp to viewport
+  left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+function hideAvatarTip() {
+  document.getElementById('avatar-tooltip-portal').classList.remove('visible');
+}
+
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary: #f84600;
+  --primary-hover: #d63d00;
+  --primary-bg: rgba(248,70,0,0.10);
+  --primary-ring: rgba(248,70,0,0.35);
+  --success: #3ecf5a;
+  --error: #ff5154;
+  --warning: #e8a020;
+  --text: #ffffff;
+  --text-secondary: #888888;
+  --text-muted: #4a4a4a;
+  --grey-dark: #6a6a6a;
+  --grey-light: rgba(255,255,255,0.07);
+  --grey-bg: #111111;
+  --surface: #161616;
+  --surface-2: #1d1d1d;
+  --surface-3: #242424;
+  --surface-4: #2c2c2c;
+  --sidebar-bg: #0d0d0d;
+  --sidebar-text: rgba(255,255,255,0.48);
+  --sidebar-text-active: #ffffff;
+  --white: #1a1a1a;
+  --font: 'Google Sans', 'Google Sans Text', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+  --shadow-card: 0 4px 16px rgba(0,0,0,0.55);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.35);
+  --shadow-lg: 0 20px 56px rgba(0,0,0,0.70);
+  --border: rgba(255,255,255,0.07);
+  --border-active: rgba(255,255,255,0.13);
+  --transition: 0.15s ease;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: var(--font);
+  background: #000000;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root { height: 100%; display: flex; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2e2e2e; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #3e3e3e; }
+
+/* ====================== Sidebar ====================== */
+.sidebar {
+  width: 220px;
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+.sidebar-brand {
+  height: 57px;
+  min-height: 57px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
+}
+.sidebar-logo {
+  width: 28px; height: 28px;
+  background: var(--primary);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 900; color: white;
+}
+.sidebar-brand-logo {
+  width: 28px; height: 28px; min-width: 28px; min-height: 28px;
+  border-radius: 8px; display: block; object-fit: contain; padding: 2px;
+}
+.sidebar-brand-text {
+  font-size: 15px; font-weight: 700;
+  color: var(--sidebar-text-active); letter-spacing: -0.3px;
+}
+.sidebar-section { padding: 16px 12px 8px; }
+.sidebar-section-label {
+  font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,0.26); text-transform: uppercase;
+  letter-spacing: 1px; padding: 0 6px; margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sidebar-add-btn {
+  font-size: 16px; cursor: pointer; color: rgba(255,255,255,0.32); line-height: 1;
+  width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+  border-radius: 5px; transition: all 0.15s;
+}
+.sidebar-add-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+.sidebar-delete-btn {
+  font-size: 13px; color: rgba(255,255,255,0.22); cursor: pointer; opacity: 0;
+  line-height: 1; transition: all 0.15s;
+}
+.sidebar-item:hover .sidebar-delete-btn { opacity: 1; }
+.sidebar-delete-btn:hover { color: var(--error); }
+.sidebar-create-input input {
+  width: 100%; padding: 7px 10px; background: var(--surface-2);
+  border: 1px solid var(--border-active); border-radius: var(--radius-sm);
+  color: white; font-size: 13px; outline: none; font-family: var(--font);
+  transition: border-color var(--transition);
+}
+.sidebar-create-input input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-ring); }
+.sidebar-create-input input::placeholder { color: rgba(255,255,255,0.28); }
+.sidebar-rename-input {
+  flex: 1; padding: 3px 8px; background: var(--surface-2);
+  border: 1px solid var(--primary); border-radius: var(--radius-sm);
+  color: white; font-size: 13px; outline: none; font-family: var(--font);
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; border-radius: var(--radius-sm);
+  color: var(--sidebar-text); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all var(--transition); margin-bottom: 1px; user-select: none;
+}
+.sidebar-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.78); }
+.sidebar-item.active { background: var(--primary-bg); color: var(--primary); }
+.sidebar-item svg { width: 16px; height: 16px; opacity: 0.55; flex-shrink: 0; }
+.sidebar-item.active svg { opacity: 1; color: var(--primary); }
+.sidebar-item-count {
+  margin-left: auto; font-size: 10px;
+  background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.38);
+  padding: 1px 7px; border-radius: var(--radius-pill); font-weight: 600;
+}
+.sidebar-item.active .sidebar-item-count { background: rgba(248,70,0,0.15); color: var(--primary); }
+.sidebar-board-emoji { font-size: 17px; flex-shrink: 0; line-height: 1; }
+.sidebar-spacer { flex: 1; }
+
+/* Cross-board drag drop */
+.sidebar-item.cross-drop-hover { background: rgba(248,70,0,0.08); border: 1px dashed var(--primary); }
+.cross-col-drop {
+  display: flex; align-items: center; gap: 7px;
+  padding: 5px 10px; border-radius: var(--radius-sm);
+  font-size: 12px; color: var(--sidebar-text);
+  border: 1px dashed transparent;
+  cursor: default; transition: all 0.12s;
+  margin-bottom: 2px;
+}
+.cross-col-drop:hover, .cross-col-drop.active {
+  background: rgba(248,70,0,0.12);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.sidebar-footer {
+  padding: 14px 18px; border-top: 1px solid var(--border);
+  font-size: 11px; color: rgba(255,255,255,0.18);
+}
+
+/* ====================== Main Content ====================== */
+.main-content {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-width: 0; background: #0a0a0a;
+}
+
+/* ====================== Top Bar ====================== */
+.topbar { background: #0a0a0a; border-bottom: 1px solid var(--border); flex-shrink: 0; box-sizing: border-box; height: 57px; }
+.topbar-inner {
+  display: flex; align-items: center; height: 100%; padding: 0 24px; gap: 16px; box-sizing: border-box;
+}
+.topbar-title {
+  font-size: 16px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; gap: 10px; letter-spacing: -0.2px;
+}
+.topbar-title .emoji { font-size: 20px; }
+.topbar-task-count {
+  font-size: 11px; font-weight: 600; color: var(--text-secondary);
+  background: var(--surface-2); padding: 2px 10px;
+  border-radius: var(--radius-pill); border: 1px solid var(--border);
+}
+
+/* ====================== View Tabs ====================== */
+.view-tabs {
+  display: flex; gap: 0; padding: 0 24px;
+  background: #0a0a0a; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.view-tab {
+  padding: 10px 14px; font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all var(--transition); user-select: none;
+  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.view-tab:hover { color: rgba(255,255,255,0.72); }
+.view-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.view-tab svg { width: 14px; height: 14px; }
+
+/* ====================== Filter Bar ====================== */
+.filter-bar {
+  display: flex; align-items: center; gap: 8px; padding: 8px 24px;
+  background: #0a0a0a; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.filter-search { flex: 0 0 240px; position: relative; }
+.filter-search input {
+  width: 100%; padding: 6px 12px 6px 32px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13px; outline: none; background: var(--surface-2);
+  color: var(--text); font-family: var(--font); height: 32px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.filter-search input::placeholder { color: var(--text-muted); }
+.filter-search input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-ring); }
+.filter-search svg {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  width: 13px; height: 13px; color: var(--text-muted); pointer-events: none;
+}
+.filter-select {
+  padding: 0 28px 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13px; background: var(--surface-2); color: var(--text-secondary);
+  outline: none; cursor: pointer; font-family: var(--font); height: 32px;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23606060'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 9px center;
+  background-color: var(--surface-2); transition: border-color var(--transition);
+}
+.filter-select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-ring); color: var(--text); }
+.filter-label {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.filter-divider { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
+
+/* ====================== Board View ====================== */
+.board-container {
+  flex: 1; overflow-x: auto; overflow-y: hidden;
+  padding: 18px 20px 18px 24px; display: flex; gap: 12px;
+  align-items: flex-start; background: #0a0a0a;
+}
+
+.column {
+  flex: 0 0 284px; background: var(--surface);
+  border-radius: var(--radius); border: 1px solid var(--border);
+  display: flex; flex-direction: column; max-height: 100%;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.column.col-drag-over { outline: 2px dashed var(--primary); outline-offset: -2px; background: rgba(248,70,0,0.06); }
+.column.col-dragging { opacity: 0.4; }
+.column.drag-over {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary), 0 4px 24px rgba(248,70,0,0.12);
+}
+
+.column-header {
+  padding: 13px 14px 11px; display: flex; align-items: center; gap: 10px;
+  user-select: none; position: relative; border-bottom: 1px solid var(--border);
+}
+.column-color-bar { width: 3px; height: 16px; border-radius: 3px; flex-shrink: 0; }
+.column-title {
+  font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.70);
+  flex: 1; letter-spacing: 0.5px; text-transform: uppercase;
+}
+.column-count {
+  font-size: 10px; font-weight: 600; color: var(--text-secondary);
+  background: var(--surface-3); padding: 1px 8px;
+  border-radius: var(--radius-pill); min-width: 22px; text-align: center;
+  border: 1px solid var(--border);
+}
+.column-menu-btn {
+  width: 24px; height: 24px; border: none; background: transparent;
+  border-radius: var(--radius-sm); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); transition: all var(--transition); opacity: 0;
+}
+.column-header:hover .column-menu-btn { opacity: 1; }
+.column-menu-btn:hover { background: var(--surface-3); color: var(--text); }
+.column-dropdown {
+  position: absolute; right: 0; top: 100%; margin-top: 4px; z-index: 100;
+  background: var(--surface-3); border: 1px solid var(--border-active);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-lg);
+  min-width: 144px; padding: 4px;
+}
+.dropdown-item {
+  padding: 8px 12px; font-size: 13px; border-radius: 6px;
+  cursor: pointer; color: var(--text); transition: background 0.1s;
+}
+.dropdown-item:hover { background: var(--surface-4); }
+.dropdown-item.danger { color: var(--error); }
+.dropdown-item.danger:hover { background: rgba(255,81,84,0.10); }
+.column-rename-input {
+  flex: 1; font-size: 13px; font-weight: 600; padding: 3px 8px;
+  border: 1px solid var(--primary); border-radius: var(--radius-sm);
+  outline: none; background: var(--surface-2); color: white;
+}
+
+.column-cards { padding: 6px 8px 2px; overflow-y: auto; flex: 1; min-height: 20px; }
+
+/* ====================== Card ====================== */
+.card {
+  background: var(--surface-2); border-radius: var(--radius-sm);
+  padding: 11px 12px; margin-bottom: 6px; cursor: pointer;
+  border: 1px solid var(--border); transition: all var(--transition); position: relative;
+}
+.card:hover {
+  background: var(--surface-3); border-color: var(--border-active);
+  transform: translateY(-1px); box-shadow: var(--shadow-card);
+}
+/* Done card treatment */
+.card-done {
+  opacity: 0.90;
+  border-color: rgba(248, 70, 0, 0.18);
+  border-top: 1px solid rgba(248, 70, 0, 0.30);
+  box-shadow: inset 0 0 0 0 transparent;
+}
+.card-done::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    118deg,
+    rgba(248, 70, 0, 0.000) 38%,
+    rgba(248, 70, 0, 0.045) 55%,
+    rgba(248, 70, 0, 0.000) 68%
+  );
+  pointer-events: none;
+}
+.card-done:hover {
+  box-shadow: 0 0 0 1px rgba(248, 70, 0, 0.22), 0 4px 14px rgba(248, 70, 0, 0.08);
+  border-color: rgba(248, 70, 0, 0.30);
+  opacity: 1;
+}
+.done-badge {
+  position: absolute; top: 8px; left: 8px;
+  width: 17px; height: 17px; border-radius: 50%;
+  background: rgba(248, 70, 0, 0.14);
+  border: 1px solid rgba(248, 70, 0, 0.35);
+  color: #f84600;
+  font-size: 9px; font-weight: 700; line-height: 17px;
+  text-align: center; display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  pointer-events: none;
+}
+.card-done:hover .done-badge {
+  background: rgba(248, 70, 0, 0.26);
+  border-color: rgba(248, 70, 0, 0.55);
+}
+
+.card.dragging {
+  opacity: 0.22; transform: rotate(2deg) scale(0.97); box-shadow: var(--shadow-lg);
+}
+.card-title {
+  font-size: 13px; font-weight: 500; color: var(--text);
+  line-height: 1.45; margin-bottom: 7px; word-wrap: break-word;
+}
+.card-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 7px; }
+.badge {
+  font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: var(--radius-pill); height: 18px;
+  display: inline-flex; align-items: center; letter-spacing: 0.2px;
+  text-transform: capitalize;
+}
+.badge-high { background: rgba(248,70,0,0.14); color: #ff6b3d; border: 1px solid rgba(248,70,0,0.22); }
+.badge-medium { background: rgba(232,160,32,0.14); color: #e8a020; border: 1px solid rgba(232,160,32,0.22); }
+.badge-low { background: rgba(62,207,90,0.11); color: #3ecf5a; border: 1px solid rgba(62,207,90,0.20); }
+.badge-tag {
+  background: var(--surface-4); color: var(--text-secondary);
+  border: 1px solid var(--border); text-transform: none; font-weight: 500;
+}
+.badge-status {
+  background: var(--surface-3); color: var(--text-secondary);
+  border: 1px solid var(--border); text-transform: none; font-weight: 500;
+}
+
+/* ---- Priority dot (top-right corner of card) ---- */
+.priority-dot {
+  position: absolute; top: 10px; right: 10px;
+  width: 8px; height: 8px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.priority-dot[data-p="high"]   { background: #f84600; box-shadow: 0 0 0 2px rgba(248,70,0,0.18); }
+.priority-dot[data-p="medium"] { background: #e8a020; box-shadow: 0 0 0 2px rgba(232,160,32,0.18); }
+.priority-dot[data-p="low"]    { background: #3ecf5a; box-shadow: 0 0 0 2px rgba(62,207,90,0.18); }
+
+/* Tooltip */
+.priority-dot::after {
+  content: attr(data-label);
+  position: absolute; top: 50%; right: calc(100% + 8px);
+  transform: translateY(-50%);
+  background: var(--surface-4); color: var(--text);
+  font-size: 10px; font-weight: 600; font-family: var(--font);
+  text-transform: capitalize; letter-spacing: 0.3px;
+  padding: 3px 8px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border-active);
+  white-space: nowrap; pointer-events: none;
+  opacity: 0; transition: opacity 0.12s ease;
+}
+.priority-dot:hover::after { opacity: 1; }
+
+.card-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card-due { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 3px; }
+.card-due svg { width: 11px; height: 11px; }
+.card-due.overdue { color: var(--primary); font-weight: 600; }
+.card-checklist { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+.checklist-bar { width: 36px; height: 3px; background: var(--surface-4); border-radius: 2px; overflow: hidden; }
+.checklist-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s ease; }
+.card-avatars { display: flex; margin-left: auto; }
+.avatar-wrap { position: relative; display: inline-flex; }
+#avatar-tooltip-portal {
+  position: fixed; z-index: 9999; pointer-events: none;
+  background: #1e1e1e; border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px; padding: 8px 12px; white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  opacity: 0; transition: opacity 0.12s ease;
+}
+#avatar-tooltip-portal.visible { opacity: 1; }
+#avatar-tooltip-portal .avatar-tooltip-name { font-size: 12px; font-weight: 600; color: #fff; display: block; }
+#avatar-tooltip-portal .avatar-tooltip-role { display: none; }
+.avatar {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--primary); color: white;
+  font-size: 8px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--surface-2);
+  cursor: default;
+}
+
+/* ====================== Add Card ====================== */
+.add-card-area { padding: 4px 8px 8px; }
+.add-card-btn {
+  width: 100%; padding: 7px 10px; border: none;
+  background: transparent; color: var(--text-muted); font-size: 13px;
+  cursor: pointer; border-radius: var(--radius-sm); text-align: left;
+  display: flex; align-items: center; gap: 6px;
+  transition: all var(--transition); font-family: var(--font);
+}
+.add-card-btn:hover { background: var(--surface-2); color: var(--text-secondary); }
+.add-card-btn svg { width: 13px; height: 13px; }
+.add-card-input {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--primary);
+  border-radius: var(--radius-sm); font-size: 13px; outline: none;
+  font-family: var(--font); background: var(--surface-2); color: var(--text);
+  box-shadow: 0 0 0 2px var(--primary-ring);
+}
+.add-card-input::placeholder { color: var(--text-muted); }
+
+/* ====================== Add Column ====================== */
+.add-column { flex: 0 0 284px; }
+.add-column-btn {
+  width: 100%; padding: 14px; border: 1px dashed rgba(255,255,255,0.11);
+  background: transparent; color: var(--text-muted); font-size: 13px; font-weight: 500;
+  cursor: pointer; border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all var(--transition); font-family: var(--font);
+}
+.add-column-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
+.add-column-btn svg { width: 13px; height: 13px; }
+.add-column-input {
+  width: 100%; padding: 14px;
+  border: 1px solid var(--primary); border-radius: var(--radius);
+  font-size: 13px; outline: none; font-family: var(--font);
+  background: var(--surface-2); color: var(--text);
+  box-shadow: 0 0 0 2px var(--primary-ring);
+}
+
+/* ====================== Modal ====================== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(3px);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 48px; z-index: 1000; animation: fadeIn 0.12s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal {
+  background: var(--surface); border: 1px solid var(--border-active);
+  border-radius: var(--radius-lg); width: 680px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 80px);
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: var(--shadow-lg); animation: slideUp 0.18s ease;
+}
+@keyframes slideUp { from { transform: translateY(14px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modal-header { padding: 24px 24px 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.modal-close {
+  width: 30px; height: 30px; border: 1px solid var(--border);
+  background: var(--surface-3); cursor: pointer; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary); font-size: 16px;
+  transition: all var(--transition); flex-shrink: 0; font-family: var(--font);
+}
+.modal-close:hover { background: var(--surface-4); color: var(--text); }
+
+.modal-body { padding: 16px 24px 28px; overflow-y: auto; flex: 1; }
+.modal-title-input {
+  width: 100%; font-size: 19px; font-weight: 700; border: none; outline: none;
+  padding: 4px 0; color: var(--text); font-family: var(--font); background: transparent;
+  white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere;
+}
+.modal-title-input::placeholder { color: var(--text-muted); }
+
+.modal-section { margin-top: 20px; }
+.modal-section-title {
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+}
+
+.modal-desc {
+  width: 100%; min-height: 80px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 12px; font-size: 13px;
+  font-family: var(--font); resize: vertical; outline: none;
+  background: var(--surface-2); color: var(--text); line-height: 1.6;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.modal-desc:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-ring); }
+
+.modal-row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.modal-field { display: flex; flex-direction: column; gap: 5px; }
+.modal-field.field-sm { flex: 0 0 130px; min-width: 110px; }
+.modal-field.field-sm select,
+.modal-field.field-sm input { width: 100%; box-sizing: border-box; }
+.modal-field.field-grow { flex: 1 1 180px; min-width: 140px; }
+.modal-field label {
+  font-size: 10px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.8px;
+}
+.modal-field input,
+.modal-field select {
+  padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13px; outline: none; font-family: var(--font);
+  background: var(--surface-2); color: var(--text); height: 32px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.modal-field select {
+  -webkit-appearance: none; appearance: none; padding-right: 26px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23606060'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+  cursor: pointer; background-color: var(--surface-2);
+}
+.modal-field input:focus,
+.modal-field select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-ring); }
+
+.modal-tags { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.modal-tag {
+  display: flex; align-items: center; gap: 4px; padding: 0 10px;
+  background: var(--surface-3); color: var(--text-secondary);
+  border-radius: var(--radius-pill); border: 1px solid var(--border);
+  font-size: 11px; font-weight: 500; height: 22px;
+}
+.modal-tag-remove {
+  cursor: pointer; font-weight: 700; font-size: 13px; opacity: 0.5;
+  transition: opacity var(--transition); line-height: 1;
+}
+.modal-tag-remove:hover { opacity: 1; color: var(--error); }
+.modal-tag-input {
+  border: none; outline: none; font-size: 12px; padding: 4px 0;
+  background: transparent; width: 80px; font-family: var(--font); color: var(--text);
+}
+.modal-tag-input::placeholder { color: var(--text-muted); }
+
+.checklist-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.checklist-item:last-child { border-bottom: none; }
+.checklist-item input[type="checkbox"] {
+  width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0;
+}
+.checklist-item input[type="text"] {
+  flex: 1; border: none; outline: none; font-size: 13px; padding: 2px 6px;
+  font-family: var(--font); background: transparent; color: var(--text); border-radius: var(--radius-sm);
+}
+.checklist-item input[type="text"]:focus { background: var(--surface-3); }
+.checklist-item .remove-btn {
+  width: 20px; height: 20px; border: none; background: transparent;
+  cursor: pointer; color: var(--text-muted); font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); transition: all var(--transition); opacity: 0;
+}
+.checklist-item:hover .remove-btn { opacity: 1; }
+.checklist-item .remove-btn:hover { background: rgba(255,81,84,0.12); color: var(--error); }
+
+.add-checklist-btn {
+  margin-top: 6px; padding: 5px 10px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text-secondary); font-size: 12px;
+  cursor: pointer; border-radius: var(--radius-sm);
+  transition: all var(--transition); font-family: var(--font);
+}
+.add-checklist-btn:hover { background: var(--primary-bg); color: var(--primary); border-color: rgba(248,70,0,0.28); }
+
+.multi-owner-field {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 0 8px; min-height: 32px;
+  box-sizing: border-box; width: 100%;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.multi-owner-field:focus-within { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-ring); }
+.multi-owner-field input {
+  border: none; background: transparent; color: var(--text);
+  font-size: 13px; outline: none; flex: 1; min-width: 100px;
+}
+.owner-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--surface-4); border: 1px solid var(--border-active);
+  border-radius: var(--radius-pill); padding: 2px 8px;
+  font-size: 12px; color: var(--text); white-space: nowrap;
+}
+.owner-chip button {
+  background: none; border: none; color: var(--text-secondary);
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 0;
+}
+.owner-chip button:hover { color: var(--error); }
+
+.modal-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+  margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.btn {
+  padding: 0 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+  cursor: pointer; border: none; transition: all var(--transition); font-family: var(--font);
+  height: 32px; display: inline-flex; align-items: center;
+}
+.btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-danger { background: rgba(255,81,84,0.12); color: var(--error); border: 1px solid rgba(255,81,84,0.25); }
+.btn-danger:hover { background: rgba(255,81,84,0.22); }
+.btn-secondary { background: var(--surface-3); color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--surface-4); color: var(--text); }
+
+/* ====================== List View ====================== */
+.list-view { flex: 1; overflow-y: auto; padding: 20px 24px; background: #0a0a0a; }
+.list-group { margin-bottom: 20px; }
+.list-group-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 2px;
+}
+.list-group-color { width: 8px; height: 8px; border-radius: 3px; flex-shrink: 0; }
+.list-group-title { font-size: 11px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+.list-group-count { font-size: 11px; color: var(--text-secondary); }
+
+.list-table {
+  width: 100%; border-collapse: collapse; background: var(--surface);
+  border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border);
+}
+.list-table th {
+  text-align: left; padding: 8px 14px; font-size: 10px; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px;
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.list-table td {
+  padding: 9px 14px; font-size: 13px; vertical-align: middle;
+  border-bottom: 1px solid var(--border); color: var(--text-secondary);
+  white-space: nowrap;
+}
+.list-table td:first-child { white-space: normal; }
+.list-table tr { cursor: pointer; transition: background var(--transition); }
+.list-table tbody tr:hover { background: var(--surface-2); }
+.list-table .task-title-cell { font-weight: 500; color: var(--text); }
+.list-table .cell-flex { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+/* ====================== Calendar View ====================== */
+.calendar-view { flex: 1; overflow-y: auto; padding: 20px 24px; background: #0a0a0a; }
+.calendar-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.calendar-controls h3 { font-size: 15px; font-weight: 600; min-width: 180px; color: var(--text); }
+.calendar-nav {
+  width: 32px; height: 32px; border: 1px solid var(--border); background: var(--surface);
+  border-radius: var(--radius-sm); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; color: var(--text-secondary); transition: all var(--transition);
+}
+.calendar-nav:hover { background: var(--surface-3); color: var(--text); border-color: var(--border-active); }
+.calendar-today-btn {
+  padding: 0 14px; border: 1px solid var(--border); background: var(--surface);
+  border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500;
+  color: var(--text-secondary); transition: all var(--transition);
+  font-family: var(--font); height: 32px;
+}
+.calendar-today-btn:hover { background: var(--primary-bg); color: var(--primary); border-color: rgba(248,70,0,0.28); }
+
+.calendar-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  border-radius: var(--radius-sm); overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border);
+}
+.calendar-day-header {
+  padding: 10px 4px; text-align: center; font-size: 10px; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase;
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
+}
+.calendar-cell {
+  min-height: 100px; padding: 4px; border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border); background: var(--surface); transition: background var(--transition);
+}
+.calendar-cell:nth-child(7n) { border-right: none; }
+.calendar-cell:hover { background: var(--surface-2); }
+.calendar-cell.other-month { background: rgba(0,0,0,0.28); }
+.calendar-cell.today { background: var(--primary-bg); }
+.calendar-cell.cal-drop-over { background: rgba(248,70,0,0.13); outline: 2px dashed var(--primary); outline-offset: -2px; }
+.calendar-date { font-size: 11px; font-weight: 500; color: var(--text-secondary); padding: 2px 4px; margin-bottom: 2px; }
+.calendar-cell.other-month .calendar-date { color: var(--text-muted); }
+.calendar-cell.today .calendar-date {
+  background: var(--primary); color: white; width: 22px; height: 22px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700;
+}
+.calendar-task {
+  padding: 2px 6px; margin-bottom: 2px; border-radius: 4px; font-size: 10px; font-weight: 500;
+  cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: all var(--transition); color: white; opacity: 0.85;
+}
+.calendar-task:hover { opacity: 1; filter: brightness(1.15); }
+.calendar-task { cursor: grab; }
+.calendar-task.cal-task-dragging { opacity: 0.4; }
+
+/* ====================== Timeline View ====================== */
+.timeline-view { flex: 1; overflow: auto; padding: 20px 24px; background: #0a0a0a; }
+.timeline-header {
+  display: flex; align-items: center; border-bottom: 1px solid var(--border);
+  background: var(--surface); position: sticky; top: 0; z-index: 5;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0; border: 1px solid var(--border);
+}
+.timeline-label-col {
+  width: 200px; flex-shrink: 0; padding: 8px 14px; font-size: 10px; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px;
+  border-right: 1px solid var(--border);
+}
+.timeline-days { display: flex; flex: 1; }
+.timeline-day-header {
+  min-width: 36px; padding: 6px 2px; text-align: center;
+  font-size: 9px; color: var(--text-muted); border-right: 1px solid var(--border);
+}
+.timeline-day-header.today { background: var(--primary-bg); color: var(--primary); }
+.timeline-day-header .day-num { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+.timeline-day-header.today .day-num { color: var(--primary); font-weight: 700; }
+.timeline-row {
+  display: flex; align-items: center; border-bottom: 1px solid var(--border);
+  min-height: 38px; background: var(--surface);
+}
+.timeline-row:hover { background: var(--surface-2); }
+.timeline-task-label {
+  width: 200px; flex-shrink: 0; padding: 6px 14px; font-size: 13px; font-weight: 500;
+  color: var(--text); border-right: 1px solid var(--border);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;
+}
+.timeline-task-label:hover { color: var(--primary); }
+.timeline-bar-area { flex: 1; position: relative; height: 38px; display: flex; }
+.timeline-bar-cell {
+  min-width: 36px; height: 100%; border-right: 1px solid var(--border); position: relative;
+}
+.timeline-bar-cell.today { background: var(--primary-bg); }
+.timeline-bar {
+  position: absolute; height: 20px; top: 9px; border-radius: var(--radius-pill);
+  cursor: pointer; transition: filter var(--transition); z-index: 2; min-width: 8px;
+}
+.timeline-bar:hover { filter: brightness(1.2); }
+
+/* ====================== Dashboard View ====================== */
+.dashboard-view { flex: 1; overflow-y: auto; padding: 24px; background: #0a0a0a; }
+.dashboard-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);
+  padding: 20px; transition: border-color var(--transition), transform var(--transition);
+}
+.stat-card:hover { border-color: var(--border-active); transform: translateY(-2px); }
+.stat-label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.stat-value {
+  font-size: 30px; font-weight: 900; color: var(--text);
+  margin-top: 6px; line-height: 1.1; letter-spacing: -1px;
+}
+.stat-card.overdue .stat-value { color: var(--primary); }
+
+.dashboard-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 900px) { .dashboard-charts { grid-template-columns: 1fr; } }
+.chart-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; }
+.chart-title {
+  font-size: 11px; font-weight: 700; color: var(--text); margin-bottom: 16px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* ====================== Overview View ====================== */
+.overview-view { flex: 1; overflow-y: auto; padding: 24px; max-width: 780px; background: #0a0a0a; }
+.overview-health {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding: 24px;
+  background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);
+}
+.health-dot { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; animation: pulse 2s infinite; }
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.78; }
+}
+.health-text h3 { font-size: 15px; font-weight: 700; color: var(--text); }
+.health-text p { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+.overview-section { margin-bottom: 20px; }
+.overview-section h4 {
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
+  margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px;
+}
+
+.milestone {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border);
+  margin-bottom: 6px; transition: border-color var(--transition);
+}
+.milestone:hover { border-color: var(--border-active); }
+.milestone-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.milestone-text { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); }
+.milestone-date { font-size: 12px; color: var(--text-secondary); }
+
+.overview-progress { background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 18px; }
+.progress-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.progress-row:last-child { margin-bottom: 0; }
+.progress-label {
+  font-size: 13px; font-weight: 500; color: var(--text-secondary);
+  width: 110px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.progress-bar-bg { flex: 1; height: 4px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
+.progress-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.progress-pct { font-size: 12px; font-weight: 700; color: var(--text-secondary); width: 36px; text-align: right; }
+
+/* Loading */
+.loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; width: 100%; gap: 12px; color: var(--text-secondary); font-size: 14px;
+}
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--surface-3); border-top-color: var(--primary);
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ====================== Empty state ====================== */
+.empty-state { padding: 60px 24px; text-align: center; color: var(--text-secondary); font-size: 14px; }
+.empty-state svg { width: 44px; height: 44px; color: var(--surface-4); margin-bottom: 12px; }
+
+/* ====================== Global focus ring ====================== */
+*:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div id="avatar-tooltip-portal">
+  <span class="avatar-tooltip-name" id="atp-name"></span>
+  <span class="avatar-tooltip-role" id="atp-role"></span>
+</div>
+
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useCallback, useRef, useMemo } = React;
+
+// Works locally (localhost:5555/) and behind any path-prefix proxy (/{USER_ID}-kanban-board/)
+const _p = window.location.pathname.replace(/\/$/, '');
+const _base = _p.endsWith('.html') ? _p.substring(0, _p.lastIndexOf('/')) : _p;
+const API_BASE = window.location.origin + _base;
+
+// ============================================================
+// API helpers
+// ============================================================
+async function api(path, body = {}) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+function genId() {
+  return 'f-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+function formatDate(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[d.getMonth()]} ${d.getDate()}`;
+}
+
+function isOverdue(ts) {
+  if (!ts) return false;
+  return ts * 1000 < Date.now();
+}
+
+function tsToDateInput(ts) {
+  if (!ts) return '';
+  const d = new Date(ts * 1000);
+  return d.toISOString().split('T')[0];
+}
+
+function dateInputToTs(val) {
+  if (!val) return 0;
+  return Math.floor(new Date(val + 'T12:00:00').getTime() / 1000);
+}
+
+function resolveEmoji(e) {
+  if (!e) return '';
+  const map = { ':rocket:': '\uD83D\uDE80', ':star:': '\u2B50', ':fire:': '\uD83D\uDD25', ':check:': '\u2705', ':bulb:': '\uD83D\uDCA1', ':dart:': '\uD83C\uDFAF', ':gem:': '\uD83D\uDC8E', ':zap:': '\u26A1' };
+  return map[e] || e;
+}
+
+const PRIORITY_COLORS = { high: 'badge-high', medium: 'badge-medium', low: 'badge-low' };
+const COLUMN_COLORS = ['#f84600', '#ff5154', '#04aa11', '#ff8607', '#9b59b6', '#aaa', '#e67e22', '#1abc9c'];
+
+// ============================================================
+// Icons
+// ============================================================
+const Icons = {
+  Board: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
+  List: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>,
+  Calendar: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  Timeline: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="16" y2="12"/><line x1="4" y1="18" x2="12" y2="18"/><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/></svg>,
+  Dashboard: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,
+  Overview: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>,
+  Search: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  Plus: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Clock: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  ChevronLeft: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>,
+  ChevronRight: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>,
+  Home: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  Settings: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  MoreHorizontal: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>,
+};
+
+// ============================================================
+// Card Component
+// ============================================================
+function Card({ task, onClick, onDragStart, onDragEnd, isDone }) {
+  const cf = task._custom_fields || {};
+  const hasBadges = cf.priority || cf.status || (task.tags && task.tags.length > 0);
+  const hasMeta = task.before || (task.checklist && task.checklist.length > 0) || (task.participants && task.participants.length > 0);
+  const checkDone = (task.checklist || []).filter(c => c.value).length;
+  const checkTotal = (task.checklist || []).length;
+  const pct = checkTotal ? Math.round((checkDone / checkTotal) * 100) : 0;
+
+  return (
+    <div
+      className={`card${isDone ? ' card-done' : ''}`}
+      draggable
+      onDragStart={(e) => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.setData('task-board', task.board_id || ''); e.dataTransfer.effectAllowed = 'move'; e.target.classList.add('dragging'); onDragStart && onDragStart(task); }}
+      onDragEnd={(e) => { e.target.classList.remove('dragging'); onDragEnd && onDragEnd(); }}
+      onClick={() => onClick(task)}
+    >
+      {isDone && <span className="done-badge">✓</span>}
+      {cf.priority && (
+        <div className="priority-dot" data-p={cf.priority} data-label={cf.priority} title={cf.priority} />
+      )}
+      <div className="card-title" style={{ paddingRight: cf.priority ? 20 : 0, paddingLeft: isDone ? 20 : 0 }}>{task.title}</div>
+      {(task.tags && task.tags.length > 0) && (
+        <div className="card-badges">
+          {(task.tags || []).slice(0, 2).map(t => <span key={t} className="badge badge-tag">{t}</span>)}
+        </div>
+      )}
+      {hasMeta && (
+        <div className="card-meta">
+          {task.before > 0 && (
+            <span className={`card-due ${isOverdue(task.before) ? 'overdue' : ''}`}>
+              <Icons.Clock />
+              {formatDate(task.before)}
+            </span>
+          )}
+          {checkTotal > 0 && (
+            <span className="card-checklist">
+              <div className="checklist-bar">
+                <div className="checklist-bar-fill" style={{ width: `${pct}%`, background: pct === 100 ? 'var(--success)' : 'var(--primary)' }} />
+              </div>
+              {checkDone}/{checkTotal}
+            </span>
+          )}
+          {task.participants && task.participants.length > 0 && (
+            <div className="card-avatars">
+              {task.participants.slice(0, 3).map((p, i) => (
+                <div className="avatar-wrap" key={i} style={{ marginLeft: i > 0 ? '-6px' : 0, zIndex: 3 - i }}
+                  onMouseEnter={(e) => showAvatarTip(e, p.user_id_or_mail, 'Assigned')}
+                  onMouseLeave={hideAvatarTip}>
+                  <div className="avatar">{(p.user_id_or_mail || '?')[0].toUpperCase()}</div>
+                </div>
+              ))}
+              {task.participants.length > 3 && (
+                <div className="avatar-wrap" style={{ marginLeft: '-6px', zIndex: 0 }}
+                  onMouseEnter={(e) => showAvatarTip(e, task.participants.slice(3).map(p => p.user_id_or_mail).join(', '), 'Also assigned')}
+                  onMouseLeave={hideAvatarTip}>
+                  <div className="avatar" style={{ background: 'var(--surface-4)', color: 'var(--text-muted)', fontSize: 7 }}>
+                    +{task.participants.length - 3}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Task Detail Modal
+// ============================================================
+function TaskModal({ task, lists, onClose, onSave, onDelete }) {
+  const [form, setForm] = useState({ ...task });
+  const [tagInput, setTagInput] = useState('');
+  const titleRef = useRef(null);
+
+  useEffect(() => {
+    setForm({ ...task });
+    if (titleRef.current) titleRef.current.focus();
+  }, [task]);
+
+  const update = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const updateCF = (key, val) => setForm(f => ({ ...f, _custom_fields: { ...(f._custom_fields || {}), [key]: val } }));
+
+  const addTag = () => {
+    const t = tagInput.trim();
+    if (t && !(form.tags || []).includes(t)) {
+      update('tags', [...(form.tags || []), t]);
+    }
+    setTagInput('');
+  };
+  const removeTag = (t) => update('tags', (form.tags || []).filter(x => x !== t));
+
+  const toggleChecklist = (idx) => {
+    const cl = [...(form.checklist || [])];
+    cl[idx] = { ...cl[idx], value: !cl[idx].value };
+    update('checklist', cl);
+  };
+  const updateChecklistText = (idx, text) => {
+    const cl = [...(form.checklist || [])];
+    cl[idx] = { ...cl[idx], text };
+    update('checklist', cl);
+  };
+  const removeChecklistItem = (idx) => {
+    const cl = [...(form.checklist || [])];
+    cl.splice(idx, 1);
+    update('checklist', cl);
+  };
+  const addChecklistItem = () => {
+    update('checklist', [...(form.checklist || []), { text: '', value: false }]);
+  };
+
+  const handleSave = () => {
+    onSave(form);
+    onClose();
+  };
+
+  const cf = form._custom_fields || {};
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <input
+            ref={titleRef}
+            className="modal-title-input"
+            value={form.title || ''}
+            onChange={(e) => update('title', e.target.value)}
+            placeholder="Task title"
+          />
+          <button className="modal-close" onClick={onClose}>&times;</button>
+        </div>
+        <div className="modal-body">
+          {/* Row: Column, Owner, Priority, Status */}
+          <div className="modal-row" style={{ marginBottom: 14 }}>
+            <div className="modal-field field-sm">
+              <label>Column</label>
+              <select value={form.list_id || ''} onChange={(e) => update('list_id', e.target.value)}>
+                {lists.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
+              </select>
+            </div>
+            <div className="modal-field field-grow">
+              <label>Owners</label>
+              <div className="multi-owner-field">
+                {(form.participants || []).map((p, i) => (
+                  <span key={i} className="owner-chip">
+                    {p.user_id_or_mail}
+                    <button onClick={() => update('participants', form.participants.filter((_, j) => j !== i))}>×</button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  placeholder="Add owner & press Enter"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault();
+                      const val = e.target.value.trim();
+                      if (val && !(form.participants || []).some(p => p.user_id_or_mail === val)) {
+                        update('participants', [...(form.participants || []), { user_id_or_mail: val }]);
+                      }
+                      e.target.value = '';
+                    }
+                  }}
+                />
+              </div>
+            </div>
+            <div className="modal-field field-sm">
+              <label>Priority</label>
+              <select value={cf.priority || ''} onChange={(e) => updateCF('priority', e.target.value)}>
+                <option value="">None</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+
+          </div>
+
+          {/* Dates */}
+          <div className="modal-row" style={{ marginBottom: 14 }}>
+            <div className="modal-field">
+              <label>Start Date</label>
+              <input type="date" value={tsToDateInput(form.start)} onChange={(e) => update('start', dateInputToTs(e.target.value))} />
+            </div>
+            <div className="modal-field">
+              <label>Due Date</label>
+              <input type="date" value={tsToDateInput(form.before)} onChange={(e) => update('before', dateInputToTs(e.target.value))} />
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="modal-section">
+            <div className="modal-section-title">Description</div>
+            <textarea
+              className="modal-desc"
+              value={(form.description && form.description.original_str) || ''}
+              onChange={(e) => update('description', { original_str: e.target.value })}
+              placeholder="Add a description..."
+            />
+          </div>
+
+          {/* Links */}
+          <div className="modal-section">
+            <div className="modal-section-title">Links</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 4,
+                maxHeight: 200, overflowY: 'auto',
+                paddingRight: ((form._custom_fields || {}).links || []).length > 4 ? 4 : 0
+              }}>
+              {((form._custom_fields || {}).links || []).map((link, i) => {
+                let display = link;
+                try { const u = new URL(link); display = u.hostname + (u.pathname !== '/' ? u.pathname : ''); } catch(e) {}
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: 'var(--surface-2)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)', padding: '7px 10px'
+                  }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--primary)', flexShrink: 0 }}>
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                    </svg>
+                    <a href={link} target="_blank" rel="noopener noreferrer"
+                      style={{ flex: 1, fontSize: 13, color: 'var(--text)', textDecoration: 'none',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      onMouseEnter={e => e.target.style.color = 'var(--primary)'}
+                      onMouseLeave={e => e.target.style.color = 'var(--text)'}
+                      title={link}
+                    >{display}</a>
+                    <span style={{ fontSize: 16, cursor: 'pointer', color: 'var(--text-muted)', lineHeight: 1, flexShrink: 0 }}
+                      onClick={() => {
+                        const links = ((form._custom_fields || {}).links || []).filter((_, idx) => idx !== i);
+                        updateCF('links', links);
+                      }}>&times;</span>
+                  </div>
+                );
+              })}
+              </div>
+              <input
+                style={{
+                  padding: '7px 10px', background: 'var(--surface-2)',
+                  border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                  fontSize: 13, color: 'var(--text)', outline: 'none',
+                  fontFamily: 'var(--font)', width: '100%',
+                  transition: 'border-color 0.15s'
+                }}
+                placeholder="Paste a URL and press Enter…"
+                onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.07)'}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = e.target.value.trim();
+                    if (val) {
+                      const links = [...((form._custom_fields || {}).links || []), val];
+                      updateCF('links', links);
+                      e.target.value = '';
+                    }
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="modal-section">
+            <div className="modal-section-title">Tags</div>
+            <div className="modal-tags">
+              {(form.tags || []).map(t => (
+                <span key={t} className="modal-tag">
+                  {t}
+                  <span className="modal-tag-remove" onClick={() => removeTag(t)}>&times;</span>
+                </span>
+              ))}
+              <input
+                className="modal-tag-input"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                placeholder="Add tag..."
+              />
+            </div>
+          </div>
+
+          {/* Checklist */}
+          <div className="modal-section">
+            <div className="modal-section-title">Checklist</div>
+            {(form.checklist || []).map((item, idx) => (
+              <div key={idx} className="checklist-item">
+                <input type="checkbox" checked={item.value} onChange={() => toggleChecklist(idx)} />
+                <input
+                  type="text"
+                  value={item.text}
+                  onChange={(e) => updateChecklistText(idx, e.target.value)}
+                  placeholder="Checklist item..."
+                  style={{ textDecoration: item.value ? 'line-through' : 'none', color: item.value ? '#ccc' : 'var(--text)' }}
+                />
+                <button className="remove-btn" onClick={() => removeChecklistItem(idx)}>&times;</button>
+              </div>
+            ))}
+            <button className="add-checklist-btn" onClick={addChecklistItem}>+ Add item</button>
+          </div>
+
+          {/* Actions */}
+          <div className="modal-actions">
+            <button className="btn btn-danger" onClick={() => { onDelete(form); onClose(); }}>Delete</button>
+            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Board View
+// ============================================================
+function BoardView({ lists, tasks, onCardClick, onAddTask, onAddColumn, onSaveTask, onDeleteColumn, onRenameColumn, onReorderColumn, onDragStart, onDragEnd }) {
+  const [addingCardTo, setAddingCardTo] = useState(null);
+  const [newCardTitle, setNewCardTitle] = useState('');
+  const [addingColumn, setAddingColumn] = useState(false);
+  const [newColTitle, setNewColTitle] = useState('');
+  const [dragOverCol, setDragOverCol] = useState(null);
+  const [draggingCol, setDraggingCol] = useState(null);
+  const [colDragOver, setColDragOver] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(null);
+  const [renamingCol, setRenamingCol] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const inputRef = useRef(null);
+  const colInputRef = useRef(null);
+  const renameRef = useRef(null);
+
+  useEffect(() => {
+    if (addingCardTo && inputRef.current) inputRef.current.focus();
+  }, [addingCardTo]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = () => setMenuOpen(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (addingColumn && colInputRef.current) colInputRef.current.focus();
+  }, [addingColumn]);
+
+  const sortedLists = useMemo(() => [...lists].sort((a, b) => (a.order || '').localeCompare(b.order || '')), [lists]);
+
+  const handleDrop = (e, listId) => {
+    e.preventDefault();
+    setDragOverCol(null);
+    // If dragging a column, reorder it
+    const colId = e.dataTransfer.getData('col-drag');
+    if (colId && colId !== listId) {
+      setColDragOver(null);
+      setDraggingCol(null);
+      onReorderColumn && onReorderColumn(colId, listId);
+      return;
+    }
+    const taskId = e.dataTransfer.getData('text/plain');
+    const task = tasks.find(t => t.id === taskId);
+    if (task && task.list_id !== listId) {
+      onSaveTask({ ...task, list_id: listId });
+    }
+  };
+
+  const handleAddCard = (listId) => {
+    if (!newCardTitle.trim()) return;
+    onAddTask(listId, newCardTitle.trim());
+    setNewCardTitle('');
+    setAddingCardTo(null);
+  };
+
+  const handleAddColumn = () => {
+    if (!newColTitle.trim()) return;
+    onAddColumn(newColTitle.trim());
+    setNewColTitle('');
+    setAddingColumn(false);
+  };
+
+  return (
+    <div className="board-container">
+      {sortedLists.map(list => {
+        const colTasks = tasks.filter(t => t.list_id === list.id && !t.archived);
+        return (
+          <div
+            key={list.id}
+            className={`column ${dragOverCol === list.id ? 'drag-over' : ''} ${colDragOver === list.id && draggingCol !== list.id ? 'col-drag-over' : ''} ${draggingCol === list.id ? 'col-dragging' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (e.dataTransfer.types.includes('col-drag')) { setColDragOver(list.id); } else { setDragOverCol(list.id); } }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { setDragOverCol(null); setColDragOver(null); } }}
+            onDrop={(e) => handleDrop(e, list.id)}
+          >
+            <div
+              className="column-header"
+              draggable
+              onDragStart={(e) => { e.dataTransfer.setData('col-drag', list.id); e.dataTransfer.effectAllowed = 'move'; setDraggingCol(list.id); }}
+              onDragEnd={() => { setDraggingCol(null); setColDragOver(null); }}
+              style={{ cursor: 'grab' }}
+            >
+              <div className="column-color-bar" style={{ background: list.color || '#aaa' }} />
+              {renamingCol === list.id ? (
+                <input
+                  ref={renameRef}
+                  className="column-rename-input"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { onRenameColumn(list.id, renameValue); setRenamingCol(null); }
+                    if (e.key === 'Escape') setRenamingCol(null);
+                  }}
+                  onBlur={() => { if (renameValue.trim()) onRenameColumn(list.id, renameValue); setRenamingCol(null); }}
+                  autoFocus
+                />
+              ) : (
+                <span className="column-title">{list.title}</span>
+              )}
+              <span className="column-count">{colTasks.length}</span>
+              <div style={{ position: 'relative' }}>
+                <button className="column-menu-btn" onClick={(e) => { e.stopPropagation(); setMenuOpen(menuOpen === list.id ? null : list.id); }}>
+                  <Icons.MoreHorizontal />
+                </button>
+                {menuOpen === list.id && (
+                  <div className="column-dropdown" onClick={(e) => e.stopPropagation()}>
+                    <div className="dropdown-item" onClick={() => { setRenamingCol(list.id); setRenameValue(list.title); setMenuOpen(null); }}>Rename</div>
+                    <div className="dropdown-item danger" onClick={() => { onDeleteColumn(list.id); setMenuOpen(null); }}>Delete column</div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="column-cards">
+              {colTasks.sort((a, b) => (a.order || '').localeCompare(b.order || '')).map(task => (
+                <Card key={task.id} task={task} onClick={onCardClick} isDone={list.title.trim().toLowerCase() === 'done'}
+                  onDragStart={onDragStart} onDragEnd={onDragEnd} />
+              ))}
+            </div>
+            <div className="add-card-area">
+              {addingCardTo === list.id ? (
+                <input
+                  ref={inputRef}
+                  className="add-card-input"
+                  value={newCardTitle}
+                  onChange={(e) => setNewCardTitle(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddCard(list.id); if (e.key === 'Escape') { setAddingCardTo(null); setNewCardTitle(''); } }}
+                  onBlur={() => { if (!newCardTitle.trim()) { setAddingCardTo(null); setNewCardTitle(''); } }}
+                  placeholder="Enter a title..."
+                />
+              ) : (
+                <button className="add-card-btn" onClick={() => setAddingCardTo(list.id)}>
+                  <Icons.Plus /> Add task
+                </button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      <div className="add-column">
+        {addingColumn ? (
+          <input
+            ref={colInputRef}
+            className="add-column-input"
+            value={newColTitle}
+            onChange={(e) => setNewColTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleAddColumn(); if (e.key === 'Escape') { setAddingColumn(false); setNewColTitle(''); } }}
+            onBlur={() => { if (!newColTitle.trim()) { setAddingColumn(false); setNewColTitle(''); } }}
+            placeholder="Column title..."
+          />
+        ) : (
+          <button className="add-column-btn" onClick={() => setAddingColumn(true)}>
+            <Icons.Plus /> Add Column
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// List View
+// ============================================================
+function ListView({ lists, tasks, onCardClick, onDragStart, onDragEnd }) {
+  const sortedLists = useMemo(() => [...lists].sort((a, b) => (a.order || '').localeCompare(b.order || '')), [lists]);
+
+  return (
+    <div className="list-view">
+      {sortedLists.map(list => {
+        const colTasks = tasks.filter(t => t.list_id === list.id && !t.archived);
+        if (colTasks.length === 0) return null;
+        return (
+          <div key={list.id} className="list-group">
+            <div className="list-group-header">
+              <div className="list-group-color" style={{ background: list.color || '#aaa' }} />
+              <span className="list-group-title">{list.title}</span>
+              <span className="list-group-count">{colTasks.length} tasks</span>
+            </div>
+            <table className="list-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '40%' }}>Title</th>
+                  <th style={{ width: '15%' }}>Owners</th>
+                  <th style={{ width: '15%' }}>Priority</th>
+                  <th style={{ width: '15%' }}>Due Date</th>
+                  <th style={{ width: '15%' }}>Tags</th>
+                </tr>
+              </thead>
+              <tbody>
+                {colTasks.sort((a, b) => (a.order || '').localeCompare(b.order || '')).map(task => {
+                  const cf = task._custom_fields || {};
+                  return (
+                    <tr
+                      key={task.id}
+                      draggable
+                      onClick={() => onCardClick(task)}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', task.id);
+                        e.dataTransfer.setData('task-board', task.board_id || '');
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.currentTarget.style.opacity = '0.45';
+                        onDragStart && onDragStart(task);
+                      }}
+                      onDragEnd={(e) => {
+                        e.currentTarget.style.opacity = '';
+                        onDragEnd && onDragEnd();
+                      }}
+                      style={{ cursor: 'grab' }}
+                    >
+                      <td className="task-title-cell">{task.title}</td>
+                      <td>
+                        <div className="cell-flex">
+                          {(task.participants || []).slice(0, 4).map((p, i) => (
+                            <span key={i} className="owner-chip" style={{ fontSize: 11 }}>{p.user_id_or_mail}</span>
+                          ))}
+                          {task.participants && task.participants.length > 4 && (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>+{task.participants.length - 4}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        {cf.priority
+                          ? <span className={`badge ${PRIORITY_COLORS[cf.priority] || ''}`}>{cf.priority}</span>
+                          : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
+                      </td>
+                      <td>
+                        {task.before > 0
+                          ? <span className={`card-due ${isOverdue(task.before) ? 'overdue' : ''}`}>{formatDate(task.before)}</span>
+                          : <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>—</span>}
+                      </td>
+                      <td>
+                        <div className="cell-flex">
+                          {(task.tags || []).slice(0, 3).map(t => <span key={t} className="badge badge-tag">{t}</span>)}
+                          {task.tags && task.tags.length > 3 && (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>+{task.tags.length - 3}</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+      {sortedLists.every(l => tasks.filter(t => t.list_id === l.id && !t.archived).length === 0) && (
+        <div className="empty-state">No tasks to display.</div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Calendar View
+// ============================================================
+function CalendarView({ tasks, lists, onCardClick, onSaveTask }) {
+  const [viewDate, setViewDate] = useState(new Date());
+  const [dragOverCell, setDragOverCell] = useState(null); // ISO date string "YYYY-MM-DD"
+  const [draggingId, setDraggingId] = useState(null);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startOffset = firstDay.getDay();
+  const totalDays = lastDay.getDate();
+
+  const cells = [];
+  const prevMonth = new Date(year, month, 0);
+  for (let i = startOffset - 1; i >= 0; i--) {
+    cells.push({ day: prevMonth.getDate() - i, otherMonth: true, date: new Date(year, month - 1, prevMonth.getDate() - i) });
+  }
+  for (let d = 1; d <= totalDays; d++) {
+    cells.push({ day: d, otherMonth: false, date: new Date(year, month, d) });
+  }
+  const remaining = 42 - cells.length;
+  for (let d = 1; d <= remaining; d++) {
+    cells.push({ day: d, otherMonth: true, date: new Date(year, month + 1, d) });
+  }
+
+  const today = new Date();
+  const isToday = (date) => date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+
+  const cellKey = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+
+  const getTasksForDate = (date) => {
+    const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() / 1000;
+    const dayEnd = dayStart + 86400;
+    return tasks.filter(t => t.before && t.before >= dayStart && t.before < dayEnd && !t.archived);
+  };
+
+  const getListColor = (listId) => {
+    const list = lists.find(l => l.id === listId);
+    return list ? list.color : '#f84600';
+  };
+
+  const handleDrop = (date) => {
+    const task = tasks.find(t => t.id === draggingId);
+    if (!task) return;
+    // noon on the target date to avoid timezone edge cases
+    const newTs = Math.floor(new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0).getTime() / 1000);
+    onSaveTask({ ...task, before: newTs });
+    setDraggingId(null);
+    setDragOverCell(null);
+  };
+
+  return (
+    <div className="calendar-view">
+      <div className="calendar-controls">
+        <button className="calendar-nav" onClick={() => setViewDate(new Date(year, month - 1, 1))}><Icons.ChevronLeft /></button>
+        <button className="calendar-nav" onClick={() => setViewDate(new Date(year, month + 1, 1))}><Icons.ChevronRight /></button>
+        <h3>{monthNames[month]} {year}</h3>
+        <button className="calendar-today-btn" onClick={() => setViewDate(new Date())}>Today</button>
+      </div>
+      <div className="calendar-grid">
+        {dayNames.map(d => <div key={d} className="calendar-day-header">{d}</div>)}
+        {cells.map((cell, idx) => {
+          const key = cellKey(cell.date);
+          const isOver = dragOverCell === key;
+          return (
+            <div
+              key={idx}
+              className={`calendar-cell ${cell.otherMonth ? 'other-month' : ''} ${isToday(cell.date) ? 'today' : ''} ${isOver ? 'cal-drop-over' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOverCell(key); }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverCell(null); }}
+              onDrop={(e) => { e.preventDefault(); handleDrop(cell.date); }}
+            >
+              <div className="calendar-date">{cell.day}</div>
+              {getTasksForDate(cell.date).map(task => (
+                <div
+                  key={task.id}
+                  className={`calendar-task ${draggingId === task.id ? 'cal-task-dragging' : ''}`}
+                  style={{ background: getListColor(task.list_id) }}
+                  draggable
+                  onDragStart={(e) => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move'; setDraggingId(task.id); }}
+                  onDragEnd={() => { setDraggingId(null); setDragOverCell(null); }}
+                  onClick={() => onCardClick(task)}
+                  title={task.title}
+                >
+                  {task.title}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Timeline View
+// ============================================================
+function TimelineView({ tasks, lists, onCardClick }) {
+  const activeTasks = tasks.filter(t => !t.archived && (t.start || t.before));
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - 7);
+  const totalDays = 35;
+  const days = [];
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  for (let i = 0; i < totalDays; i++) {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
+
+  const dayWidth = 36;
+
+  const getListColor = (listId) => {
+    const list = lists.find(l => l.id === listId);
+    return list ? list.color : '#f84600';
+  };
+
+  const getBarStyle = (task) => {
+    const startTs = task.start || task.before;
+    const endTs = task.before || task.start;
+    const barStart = new Date(startTs * 1000);
+    barStart.setHours(0, 0, 0, 0);
+    const barEnd = new Date(endTs * 1000);
+    barEnd.setHours(0, 0, 0, 0);
+
+    const sOffset = Math.round((barStart - startDate) / (86400 * 1000));
+    const eOffset = Math.round((barEnd - startDate) / (86400 * 1000));
+    const left = Math.max(0, sOffset) * dayWidth;
+    const width = Math.max(1, eOffset - Math.max(0, sOffset) + 1) * dayWidth - 4;
+
+    return { left: `${left + 2}px`, width: `${width}px`, background: getListColor(task.list_id) };
+  };
+
+  const isSameDay = (d1, d2) => d1.getDate() === d2.getDate() && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
+
+  return (
+    <div className="timeline-view">
+      <div style={{ background: 'var(--white)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+        <div className="timeline-header">
+          <div className="timeline-label-col">Task</div>
+          <div className="timeline-days">
+            {days.map((d, i) => (
+              <div key={i} className={`timeline-day-header ${isSameDay(d, new Date()) ? 'today' : ''}`} style={{ minWidth: dayWidth }}>
+                <div>{dayNames[d.getDay()]}</div>
+                <div className="day-num">{d.getDate()}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {activeTasks.map(task => (
+          <div key={task.id} className="timeline-row">
+            <div className="timeline-task-label" onClick={() => onCardClick(task)}>{task.title}</div>
+            <div className="timeline-bar-area">
+              {days.map((d, i) => (
+                <div key={i} className={`timeline-bar-cell ${isSameDay(d, new Date()) ? 'today' : ''}`} style={{ minWidth: dayWidth }} />
+              ))}
+              <div className="timeline-bar" style={getBarStyle(task)} onClick={() => onCardClick(task)} title={task.title} />
+            </div>
+          </div>
+        ))}
+        {activeTasks.length === 0 && (
+          <div className="empty-state">
+            No tasks with dates to display. Add start or due dates to see tasks on the timeline.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Dashboard View
+// ============================================================
+function DashboardView({ tasks, lists }) {
+  const active = tasks.filter(t => !t.archived);
+  const overdue = active.filter(t => t.before && isOverdue(t.before));
+  const withDue = active.filter(t => t.before > 0);
+  const completed = active.filter(t => (t._custom_fields || {}).status === 'done');
+
+  const sortedLists = [...lists].sort((a, b) => (a.order || '').localeCompare(b.order || ''));
+
+  const colData = sortedLists.map(l => ({
+    label: l.title,
+    count: active.filter(t => t.list_id === l.id).length,
+    color: l.color || '#aaa',
+  }));
+  const maxColCount = Math.max(...colData.map(d => d.count), 1);
+
+  const priorities = ['high', 'medium', 'low'];
+  const priorityColors = { high: '#ff5154', medium: '#ff8607', low: '#04aa11' };
+  const priData = priorities.map(p => ({
+    label: p.charAt(0).toUpperCase() + p.slice(1),
+    count: active.filter(t => (t._custom_fields || {}).priority === p).length,
+    color: priorityColors[p],
+  }));
+  const maxPriCount = Math.max(...priData.map(d => d.count), 1);
+
+  const barChartHeight = 160;
+  const barWidth = 36;
+  const barGap = 18;
+
+  const renderBarChart = (data, maxVal, title) => {
+    const chartWidth = data.length * (barWidth + barGap) + barGap;
+    return (
+      <div className="chart-card">
+        <div className="chart-title">{title}</div>
+        <svg width="100%" height={barChartHeight + 36} viewBox={`0 0 ${Math.max(chartWidth, 180)} ${barChartHeight + 36}`}>
+          {[0, 0.25, 0.5, 0.75, 1].map(frac => (
+            <line key={frac} x1="0" y1={barChartHeight - frac * barChartHeight} x2={chartWidth} y2={barChartHeight - frac * barChartHeight} stroke="var(--grey-light)" strokeWidth="1" />
+          ))}
+          {data.map((d, i) => {
+            const height = maxVal > 0 ? (d.count / maxVal) * (barChartHeight - 20) : 0;
+            const x = barGap + i * (barWidth + barGap);
+            const y = barChartHeight - height;
+            return (
+              <g key={i}>
+                <rect x={x} y={y} width={barWidth} height={height} rx="4" fill={d.color} opacity="0.9">
+                  <animate attributeName="height" from="0" to={height} dur="0.4s" fill="freeze" />
+                  <animate attributeName="y" from={barChartHeight} to={y} dur="0.4s" fill="freeze" />
+                </rect>
+                <text x={x + barWidth / 2} y={y - 6} textAnchor="middle" fontSize="11" fontWeight="700" fill="var(--text)">{d.count}</text>
+                <text x={x + barWidth / 2} y={barChartHeight + 14} textAnchor="middle" fontSize="9" fill="var(--grey-dark)" fontWeight="500">{d.label.length > 8 ? d.label.slice(0,8) + '..' : d.label}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    );
+  };
+
+  return (
+    <div className="dashboard-view">
+      <div className="dashboard-stats">
+        <div className="stat-card">
+          <div className="stat-label">Total Tasks</div>
+          <div className="stat-value">{active.length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Completed</div>
+          <div className="stat-value" style={{ color: 'var(--success)' }}>{completed.length}</div>
+        </div>
+        <div className={`stat-card ${overdue.length > 0 ? 'overdue' : ''}`}>
+          <div className="stat-label">Overdue</div>
+          <div className="stat-value">{overdue.length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">With Due Date</div>
+          <div className="stat-value">{withDue.length}</div>
+        </div>
+      </div>
+      <div className="dashboard-charts">
+        {renderBarChart(colData, maxColCount, 'Tasks by Column')}
+        {renderBarChart(priData, maxPriCount, 'Tasks by Priority')}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Overview View
+// ============================================================
+function OverviewView({ tasks, lists, board }) {
+  const active = tasks.filter(t => !t.archived);
+  const overdue = active.filter(t => t.before && isOverdue(t.before));
+  const completed = active.filter(t => (t._custom_fields || {}).status === 'done');
+  const total = active.length;
+  const pctDone = total > 0 ? Math.round((completed.length / total) * 100) : 0;
+
+  let health = 'green';
+  let healthLabel = 'On Track';
+  let healthDesc = 'Project is progressing well with no blockers.';
+  if (overdue.length > 0 && overdue.length <= 2) {
+    health = 'yellow';
+    healthLabel = 'At Risk';
+    healthDesc = `${overdue.length} task(s) overdue. Review priorities and deadlines.`;
+  }
+  if (overdue.length > 2) {
+    health = 'red';
+    healthLabel = 'Off Track';
+    healthDesc = `${overdue.length} tasks overdue. Immediate attention required.`;
+  }
+
+  const healthColors = { green: 'var(--success)', yellow: 'var(--warning)', red: 'var(--error)' };
+
+  const sortedLists = [...lists].sort((a, b) => (a.order || '').localeCompare(b.order || ''));
+
+  const milestones = active
+    .filter(t => t.before > 0)
+    .sort((a, b) => a.before - b.before)
+    .slice(0, 8);
+
+  return (
+    <div className="overview-view">
+      <div className="overview-health">
+        <div className="health-dot" style={{ background: healthColors[health] }} />
+        <div className="health-text">
+          <h3>{healthLabel}</h3>
+          <p>{healthDesc}</p>
+        </div>
+      </div>
+
+      <div className="overview-section">
+        <h4>Progress by Column</h4>
+        <div className="overview-progress">
+          {sortedLists.map(list => {
+            const count = active.filter(t => t.list_id === list.id).length;
+            const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+            return (
+              <div key={list.id} className="progress-row">
+                <span className="progress-label">{list.title}</span>
+                <div className="progress-bar-bg">
+                  <div className="progress-bar-fill" style={{ width: `${pct}%`, background: list.color || '#aaa' }} />
+                </div>
+                <span className="progress-pct">{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="overview-section">
+        <h4>Overall Completion</h4>
+        <div className="overview-progress">
+          <div className="progress-row">
+            <span className="progress-label">Completed</span>
+            <div className="progress-bar-bg">
+              <div className="progress-bar-fill" style={{ width: `${pctDone}%`, background: 'var(--success)' }} />
+            </div>
+            <span className="progress-pct">{pctDone}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="overview-section">
+        <h4>Milestones</h4>
+        {milestones.length === 0 && (
+          <div className="empty-state" style={{ padding: 16 }}>No milestones with due dates.</div>
+        )}
+        {milestones.map(task => {
+          const isOD = isOverdue(task.before);
+          const isDone = (task._custom_fields || {}).status === 'done';
+          return (
+            <div key={task.id} className="milestone">
+              <div className="milestone-dot" style={{ background: isOD ? 'var(--error)' : isDone ? 'var(--success)' : 'var(--primary)' }} />
+              <span className="milestone-text" style={{ textDecoration: isDone ? 'line-through' : 'none', color: isDone ? '#aaa' : 'var(--text)' }}>{task.title}</span>
+              <span className="milestone-date" style={{ color: isOD ? 'var(--error)' : 'var(--grey-dark)', fontWeight: isOD ? 600 : 400 }}>
+                {formatDate(task.before)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Sidebar Component
+// ============================================================
+function Sidebar({ boards, activeBoard, taskCount, activeView, onViewChange, onBoardSelect, onCreateBoard, onDeleteBoard, onRenameBoard, allLists, draggingTask, onCrossBoardDrop }) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [dropOverBoard, setDropOverBoard] = useState(null);
+  const [dropOverCol, setDropOverCol] = useState(null);
+  const createRef = useRef(null);
+  const renameRef = useRef(null);
+
+  useEffect(() => { if (creating && createRef.current) createRef.current.focus(); }, [creating]);
+  useEffect(() => { if (renamingId && renameRef.current) renameRef.current.focus(); }, [renamingId]);
+
+  const handleCreate = () => {
+    if (!newName.trim()) return;
+    onCreateBoard(newName.trim());
+    setNewName('');
+    setCreating(false);
+  };
+
+  const navItems = [
+    { id: 'board', label: 'Board', icon: Icons.Board },
+    { id: 'list', label: 'List', icon: Icons.List },
+    { id: 'calendar', label: 'Calendar', icon: Icons.Calendar },
+    { id: 'timeline', label: 'Timeline', icon: Icons.Timeline },
+    { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
+    { id: 'overview', label: 'Overview', icon: Icons.Overview },
+  ];
+
+  const isCrossBoard = (b) => draggingTask && activeBoard && b.id !== activeBoard.id;
+
+  return (
+    <div className="sidebar">
+      <div className="sidebar-brand">
+        <img src={`${API_BASE}/favicon.png`} alt="" className="sidebar-brand-logo" />
+        <span className="sidebar-brand-text">Starchild Work</span>
+      </div>
+
+      <div className="sidebar-section">
+        <div className="sidebar-section-label">
+          Projects
+          <span className="sidebar-add-btn" onClick={() => setCreating(true)} title="New project">+</span>
+        </div>
+        {(boards || []).map(b => {
+          const isActive = activeBoard && activeBoard.id === b.id;
+          const count = isActive ? taskCount : '';
+          const cross = isCrossBoard(b);
+          const boardCols = (allLists[b.id] || []).sort((a, z) => (a.order || '').localeCompare(z.order || ''));
+          const expanded = cross && dropOverBoard === b.id;
+
+          return (
+            <div
+              key={b.id}
+              onDragOver={(e) => { if (cross) { e.preventDefault(); setDropOverBoard(b.id); } }}
+              onDragLeave={(e) => { if (cross && !e.currentTarget.contains(e.relatedTarget)) { setDropOverBoard(null); setDropOverCol(null); } }}
+              onDrop={(e) => {
+                if (!cross) return;
+                e.preventDefault();
+                e.stopPropagation();
+                // dropped on board row itself (not a specific column) — do nothing
+                setDropOverBoard(null);
+                setDropOverCol(null);
+              }}
+            >
+              <div
+                className={`sidebar-item ${isActive ? 'active' : ''} ${cross && dropOverBoard === b.id ? 'cross-drop-hover' : ''}`}
+                onClick={() => !draggingTask && onBoardSelect(b)}
+                style={{ gap: 8 }}
+                onDoubleClick={(e) => { e.stopPropagation(); setRenamingId(b.id); setRenameValue(b.title); }}
+              >
+                {renamingId === b.id ? (
+                  <input
+                    ref={renameRef}
+                    className="sidebar-rename-input"
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { onRenameBoard(b.id, renameValue); setRenamingId(null); }
+                      if (e.key === 'Escape') setRenamingId(null);
+                    }}
+                    onBlur={() => { if (renameValue.trim()) onRenameBoard(b.id, renameValue); setRenamingId(null); }}
+                  />
+                ) : (
+                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}</span>
+                )}
+                {cross && <span style={{ fontSize: 9, color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.5px', marginLeft: 'auto', flexShrink: 0 }}>DROP →</span>}
+                {count && !renamingId && !cross && <span className="sidebar-item-count">{count}</span>}
+                {boards.length > 1 && !renamingId && !draggingTask && (
+                  <span className="sidebar-delete-btn" onClick={(e) => { e.stopPropagation(); onDeleteBoard(b.id); }} title="Delete project">&times;</span>
+                )}
+              </div>
+
+              {/* Cross-board column drop targets — always visible for cross-board when hovering */}
+              {cross && boardCols.length > 0 && (
+                <div style={{ marginLeft: 12, marginBottom: 4, display: dropOverBoard === b.id ? 'block' : 'none' }}>
+                  {boardCols.map(col => (
+                    <div
+                      key={col.id}
+                      className={`cross-col-drop ${dropOverCol === col.id ? 'active' : ''}`}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropOverCol(col.id); }}
+                      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOverCol(null); }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const taskId = e.dataTransfer.getData('text/plain');
+                        if (taskId && draggingTask && draggingTask.id === taskId) {
+                          onCrossBoardDrop(draggingTask, b.id, col.id);
+                        }
+                        setDropOverBoard(null);
+                        setDropOverCol(null);
+                      }}
+                    >
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: col.color || '#aaa', flexShrink: 0 }} />
+                      {col.title}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        {creating && (
+          <div className="sidebar-create-input">
+            <input
+              ref={createRef}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { setCreating(false); setNewName(''); } }}
+              onBlur={() => { if (!newName.trim()) { setCreating(false); setNewName(''); } }}
+              placeholder="Project name..."
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="sidebar-section">
+        <div className="sidebar-section-label">Views</div>
+        {navItems.map(item => (
+          <div
+            key={item.id}
+            className={`sidebar-item ${activeView === item.id ? 'active' : ''}`}
+            onClick={() => onViewChange(item.id)}
+          >
+            <item.icon />
+            {item.label}
+          </div>
+        ))}
+      </div>
+
+      <div className="sidebar-spacer" />
+      <div className="sidebar-footer">Starchild Work</div>
+    </div>
+  );
+}
+
+// ============================================================
+// Main App
+// ============================================================
+function App() {
+  const [loading, setLoading] = useState(true);
+  const [boards, setBoards] = useState([]);
+  const [lists, setLists] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [activeBoard, setActiveBoard] = useState(null);
+  const [activeView, setActiveView] = useState('board');
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [allLists, setAllLists] = useState({}); // board_id -> lists[]
+  const [draggingTask, setDraggingTask] = useState(null); // task being dragged
+
+  const [searchText, setSearchText] = useState('');
+  const [dueDateFilter, setDueDateFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [ownerFilter, setOwnerFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('default');
+
+  const loadBoards = useCallback(async () => {
+    const boardsRes = await api('/ajax/tasks/board/get');
+    const boardList = boardsRes.data || [];
+    setBoards(boardList);
+    return boardList;
+  }, []);
+
+  const switchBoard = useCallback(async (board) => {
+    setActiveBoard(board);
+    setActiveView('board');
+    const [listsRes, tasksRes] = await Promise.all([
+      api('/ajax/tasks/list/get', { options: { board_id: board.id } }),
+      api('/ajax/tasks/task/get', { options: { board_id: board.id } }),
+    ]);
+    setLists(listsRes.data || []);
+    setTasks(tasksRes.data || []);
+  }, []);
+
+  const loadData = useCallback(async () => {
+    try {
+      const boardList = await loadBoards();
+      if (boardList.length > 0) {
+        await switchBoard(boardList[0]);
+        // Pre-fetch columns for all boards so cross-board drop targets are ready
+        const entries = await Promise.all(
+          boardList.map(b => api('/ajax/tasks/list/get', { options: { board_id: b.id } })
+            .then(r => [b.id, r.data || []]))
+        );
+        setAllLists(Object.fromEntries(entries));
+      }
+    } catch (err) {
+      console.error('Failed to load data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [loadBoards, switchBoard]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const createBoard = async (title) => {
+    const frontId = genId();
+    const board = {
+      front_id: frontId,
+      workspace_id: 'ws-001',
+      title,
+      emoji: '',
+      view_mode: 'grid',
+      active_tasks: 0,
+      connectors: [],
+    };
+    const res = await api('/ajax/tasks/board/save', { object: board });
+    const saved = res.data?.object;
+    if (saved) {
+      // Create default columns for the new board
+      const colors = ['#BDBDBD', '#f84600', '#ff8607', '#04aa11'];
+      const names = ['To Do', 'In Progress', 'In Review', 'Done'];
+      const orders = ['b', 'd', 'f', 'h'];
+      for (let i = 0; i < names.length; i++) {
+        await api('/ajax/tasks/list/save', { object: {
+          front_id: genId(), board_id: saved.id, title: names[i], color: colors[i], order: orders[i],
+        }});
+      }
+      setBoards(prev => [...prev, saved]);
+      await switchBoard(saved);
+    }
+  };
+
+  const renameBoard = async (boardId, newTitle) => {
+    if (!newTitle.trim()) return;
+    const board = boards.find(b => b.id === boardId);
+    if (!board) return;
+    const updated = { ...board, title: newTitle.trim() };
+    setBoards(prev => prev.map(b => b.id === boardId ? updated : b));
+    if (activeBoard && activeBoard.id === boardId) setActiveBoard(updated);
+    await api('/ajax/tasks/board/save', { object: updated });
+  };
+
+  const deleteBoardById = async (boardId) => {
+    await api('/ajax/tasks/board/remove', { object: { id: boardId } });
+    setBoards(prev => {
+      const remaining = prev.filter(b => b.id !== boardId);
+      if (activeBoard && activeBoard.id === boardId && remaining.length > 0) {
+        switchBoard(remaining[0]);
+      }
+      return remaining;
+    });
+  };
+
+  // Collect unique owner names across all tasks for the owner dropdown
+  const allOwners = useMemo(() => {
+    const names = new Set();
+    tasks.forEach(t => (t.participants || []).forEach(p => {
+      if (p.user_id_or_mail) names.add(p.user_id_or_mail);
+    }));
+    return [...names].sort();
+  }, [tasks]);
+
+  const filteredTasks = useMemo(() => {
+    let result = [...tasks];
+
+    // Search: title, tags, description, owners
+    if (searchText.trim()) {
+      const q = searchText.toLowerCase();
+      result = result.filter(t =>
+        t.title.toLowerCase().includes(q) ||
+        (t.tags || []).some(tag => tag.toLowerCase().includes(q)) ||
+        ((t.description || {}).original_str || '').toLowerCase().includes(q) ||
+        (t.participants || []).some(p => (p.user_id_or_mail || '').toLowerCase().includes(q))
+      );
+    }
+
+    // Due date filter
+    const now = Math.floor(Date.now() / 1000);
+    if (dueDateFilter === 'overdue') {
+      result = result.filter(t => t.before && t.before < now);
+    } else if (dueDateFilter === 'this_week') {
+      const weekEnd = now + 7 * 86400;
+      result = result.filter(t => t.before && t.before >= now && t.before <= weekEnd);
+    } else if (dueDateFilter === 'no_date') {
+      result = result.filter(t => !t.before);
+    }
+
+    // Priority filter
+    if (priorityFilter !== 'all') {
+      result = result.filter(t => ((t._custom_fields || {}).priority || '') === priorityFilter);
+    }
+
+    // Owner filter
+    if (ownerFilter !== 'all') {
+      result = result.filter(t =>
+        (t.participants || []).some(p => p.user_id_or_mail === ownerFilter)
+      );
+    }
+
+    // Sort
+    if (sortBy === 'title') {
+      result.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    } else if (sortBy === 'due_date') {
+      result.sort((a, b) => {
+        if (!a.before && !b.before) return 0;
+        if (!a.before) return 1;
+        if (!b.before) return -1;
+        return a.before - b.before;
+      });
+    } else if (sortBy === 'priority') {
+      const ORDER = { high: 0, medium: 1, low: 2, '': 3 };
+      result.sort((a, b) => {
+        const pa = ORDER[(a._custom_fields || {}).priority || ''] ?? 3;
+        const pb = ORDER[(b._custom_fields || {}).priority || ''] ?? 3;
+        return pa - pb;
+      });
+    }
+
+    return result;
+  }, [tasks, searchText, dueDateFilter, priorityFilter, ownerFilter, sortBy]);
+
+  const saveTask = async (task) => {
+    const res = await api('/ajax/tasks/task/save', { object: task });
+    const saved = res.data?.object;
+    if (saved) {
+      setTasks(prev => {
+        const idx = prev.findIndex(t => t.id === saved.id || t.front_id === saved.front_id);
+        if (idx >= 0) {
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], ...saved };
+          return updated;
+        }
+        return [...prev, saved];
+      });
+    }
+  };
+
+  // Move a task to a column on a DIFFERENT board
+  const moveTaskCrossBoard = async (task, targetBoardId, targetListId) => {
+    if (!task) return;
+    const updated = { ...task, board_id: targetBoardId, list_id: targetListId };
+    await api('/ajax/tasks/task/save', { object: updated });
+    // Remove from current board's local state
+    setTasks(prev => prev.filter(t => t.id !== task.id));
+  };
+
+  const deleteTask = async (task) => {
+    await api('/ajax/tasks/task/remove', { object: { id: task.id, front_id: task.front_id } });
+    setTasks(prev => prev.filter(t => t.id !== task.id));
+  };
+
+  const addTask = async (listId, title) => {
+    if (!activeBoard) return;
+    const frontId = genId();
+    const existingTasks = tasks.filter(t => t.list_id === listId);
+    const maxOrder = existingTasks.reduce((max, t) => {
+      const o = t.order || '';
+      return o > max ? o : max;
+    }, '');
+    const newOrder = maxOrder ? maxOrder + 'b' : 'b';
+
+    const task = {
+      front_id: frontId,
+      board_id: activeBoard.id,
+      list_id: listId,
+      title,
+      description: { original_str: '' },
+      order: newOrder,
+      archived: false,
+      tags: [],
+      participants: [],
+      checklist: [],
+      before: 0,
+      start: Math.floor(Date.now() / 1000),
+      _custom_fields: {},
+    };
+    setTasks(prev => [...prev, { ...task, id: frontId }]);
+    const res = await api('/ajax/tasks/task/save', { object: task });
+    const saved = res.data?.object;
+    if (saved) {
+      setTasks(prev => prev.map(t => (t.front_id === frontId ? { ...t, ...saved } : t)));
+    }
+  };
+
+  const addColumn = async (title) => {
+    if (!activeBoard) return;
+    const frontId = genId();
+    const maxOrder = lists.reduce((max, l) => {
+      const o = l.order || '';
+      return o > max ? o : max;
+    }, '');
+    const newOrder = maxOrder ? maxOrder + 'b' : 'b';
+    const colorIdx = lists.length % COLUMN_COLORS.length;
+
+    const list = {
+      front_id: frontId,
+      board_id: activeBoard.id,
+      title,
+      color: COLUMN_COLORS[colorIdx],
+      order: newOrder,
+    };
+    setLists(prev => [...prev, { ...list, id: frontId }]);
+    const res = await api('/ajax/tasks/list/save', { object: list });
+    const saved = res.data?.object;
+    if (saved) {
+      setLists(prev => prev.map(l => (l.front_id === frontId ? { ...l, ...saved } : l)));
+      setAllLists(prev => ({
+        ...prev,
+        [activeBoard.id]: [...(prev[activeBoard.id] || []), saved],
+      }));
+    }
+  };
+
+  const deleteColumn = async (listId) => {
+    await api('/ajax/tasks/list/remove', { object: { id: listId } });
+    setLists(prev => prev.filter(l => l.id !== listId));
+    setTasks(prev => prev.filter(t => t.list_id !== listId));
+  };
+
+  const renameColumn = async (listId, newTitle) => {
+    const list = lists.find(l => l.id === listId);
+    if (!list || !newTitle.trim()) return;
+    const updated = { ...list, title: newTitle.trim() };
+    setLists(prev => prev.map(l => l.id === listId ? updated : l));
+    await api('/ajax/tasks/list/save', { object: updated });
+  };
+
+  const reorderColumn = async (draggedId, targetId) => {
+    const sorted = [...lists].sort((a, b) => (a.order || '').localeCompare(b.order || ''));
+    const fromIdx = sorted.findIndex(l => l.id === draggedId);
+    const toIdx   = sorted.findIndex(l => l.id === targetId);
+    if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+    const reordered = [...sorted];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    // Assign new simple order strings a < b < c ...
+    const letters = 'bcdefghijklmnopqrstuvwxyz';
+    const updated = reordered.map((l, i) => ({ ...l, order: letters[i] || String.fromCharCode(98 + i) }));
+    setLists(updated);
+    await Promise.all(updated.map(l => api('/ajax/tasks/list/save', { object: l })));
+  };
+
+  const onCardClick = (task) => {
+    const latest = tasks.find(t => t.id === task.id) || task;
+    setSelectedTask(latest);
+  };
+
+  const views = [
+    { id: 'board', label: 'Board', icon: Icons.Board },
+    { id: 'list', label: 'List', icon: Icons.List },
+    { id: 'calendar', label: 'Calendar', icon: Icons.Calendar },
+    { id: 'timeline', label: 'Timeline', icon: Icons.Timeline },
+    { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard },
+    { id: 'overview', label: 'Overview', icon: Icons.Overview },
+  ];
+
+  const totalActiveTasks = tasks.filter(t => !t.archived).length;
+
+  if (loading) {
+    return <div className="loading"><div className="spinner" /><span>Loading board...</span></div>;
+  }
+
+  return (
+    <>
+      {/* Sidebar */}
+      <Sidebar
+        boards={boards}
+        activeBoard={activeBoard}
+        taskCount={totalActiveTasks}
+        activeView={activeView}
+        onViewChange={setActiveView}
+        onBoardSelect={switchBoard}
+        onCreateBoard={createBoard}
+        onDeleteBoard={deleteBoardById}
+        onRenameBoard={renameBoard}
+        allLists={allLists}
+        draggingTask={draggingTask}
+        onCrossBoardDrop={moveTaskCrossBoard}
+      />
+
+      {/* Main Content */}
+      <div className="main-content">
+        {/* Top Bar */}
+        <div className="topbar">
+          <div className="topbar-inner">
+            <div className="topbar-title">
+              {activeBoard?.title || 'Project Board'}
+            </div>
+            <span className="topbar-task-count">{totalActiveTasks} tasks</span>
+          </div>
+        </div>
+
+        {/* View Tabs */}
+        <div className="view-tabs">
+          {views.map(v => (
+            <div key={v.id} className={`view-tab ${activeView === v.id ? 'active' : ''}`} onClick={() => setActiveView(v.id)}>
+              <v.icon /> {v.label}
+            </div>
+          ))}
+        </div>
+
+        {/* Filter Bar */}
+        <div className="filter-bar">
+          <div className="filter-search">
+            <Icons.Search />
+            <input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search tasks..."
+            />
+          </div>
+          <div className="filter-divider" />
+          <span className="filter-label">Due</span>
+          <select className="filter-select" value={dueDateFilter} onChange={(e) => setDueDateFilter(e.target.value)}>
+            <option value="all">All dates</option>
+            <option value="overdue">Overdue</option>
+            <option value="this_week">This week</option>
+            <option value="no_date">No date</option>
+          </select>
+          <div className="filter-divider" />
+          <span className="filter-label">Priority</span>
+          <select className="filter-select" value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+            <option value="all">All</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <div className="filter-divider" />
+          <span className="filter-label">Owner</span>
+          <select className="filter-select" value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value)}>
+            <option value="all">Anyone</option>
+            {allOwners.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+          <div className="filter-divider" />
+          <span className="filter-label">Sort</span>
+          <select className="filter-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="default">Default order</option>
+            <option value="title">By title</option>
+            <option value="due_date">By due date</option>
+            <option value="priority">By priority</option>
+          </select>
+        </div>
+
+        {/* Views */}
+        {activeView === 'board' && (
+          <BoardView
+            lists={lists}
+            tasks={filteredTasks}
+            onCardClick={onCardClick}
+            onAddTask={addTask}
+            onAddColumn={addColumn}
+            onSaveTask={saveTask}
+            onDeleteColumn={deleteColumn}
+            onRenameColumn={renameColumn}
+            onReorderColumn={reorderColumn}
+            onDragStart={setDraggingTask}
+            onDragEnd={() => setDraggingTask(null)}
+          />
+        )}
+        {activeView === 'list' && (
+          <ListView lists={lists} tasks={filteredTasks} onCardClick={onCardClick}
+            onDragStart={setDraggingTask} onDragEnd={() => setDraggingTask(null)} />
+        )}
+        {activeView === 'calendar' && (
+          <CalendarView tasks={filteredTasks} lists={lists} onCardClick={onCardClick} onSaveTask={saveTask} />
+        )}
+        {activeView === 'timeline' && (
+          <TimelineView tasks={filteredTasks} lists={lists} onCardClick={onCardClick} />
+        )}
+        {activeView === 'dashboard' && (
+          <DashboardView tasks={filteredTasks} lists={lists} />
+        )}
+        {activeView === 'overview' && (
+          <OverviewView tasks={filteredTasks} lists={lists} board={activeBoard} />
+        )}
+      </div>
+
+      {/* Task Modal */}
+      {selectedTask && (
+        <TaskModal
+          task={selectedTask}
+          lists={lists}
+          onClose={() => setSelectedTask(null)}
+          onSave={saveTask}
+          onDelete={deleteTask}
+        />
+      )}
+    </>
+  );
+}
+
+// ============================================================
+// Render
+// ============================================================
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

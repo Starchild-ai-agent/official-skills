@@ -107,7 +107,8 @@ def bazaar_list(limit: int = 20, offset: int = 0,
             "results": results[:limit]}
 
 
-def probe_402(url: str, method: str = "GET", timeout: int = 20) -> dict:
+def probe_402(url: str, method: str = "GET", json_body=None, headers=None,
+              timeout: int = 20) -> dict:
     """FREE probe: classify the endpoint's 402 shape before any payment.
 
     Returns classification:
@@ -122,7 +123,8 @@ def probe_402(url: str, method: str = "GET", timeout: int = 20) -> dict:
     """
     import httpx
     try:
-        r = httpx.request(method, url, timeout=timeout, follow_redirects=True)
+        r = httpx.request(method, url, json=json_body, headers=headers,
+                          timeout=timeout, follow_redirects=True)
     except Exception as e:
         return {"ok": False, "classification": "unreachable", "error": str(e)}
 
@@ -193,7 +195,10 @@ def bazaar_pay(url: str, method: str = "GET", json_body=None,
 
     Payment runs through client.paid_request (Privy signer, fail-closed).
     """
-    probe = probe_402(url, method=method)
+    # Probe with the SAME request shape as the payment call — POST services
+    # that only 402 when given a valid JSON body would otherwise be
+    # misclassified as no-payment / non-standard.
+    probe = probe_402(url, method=method, json_body=json_body)
     if not probe.get("payable"):
         return {"ok": False, "paid": False, "probe": probe,
                 "error": f"refused: classification={probe.get('classification')}"}

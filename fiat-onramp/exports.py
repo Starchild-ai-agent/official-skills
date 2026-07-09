@@ -64,15 +64,17 @@ def _agent_wallet_address() -> str:
 
 
 def create_funding_link(amount_usd: float = 20.0,
-                        wallet_address: str = "",
                         currency_code: str = DEFAULT_CURRENCY_CODE,
                         base_currency_code: str = "usd",
                         redirect_url: str = "",
                         email: str = "") -> dict:
     """Build a SIGNED MoonPay hosted-widget URL that funds the agent wallet.
 
-    The walletAddress is pinned server-side and covered by the HMAC
-    signature — the user cannot redirect funds elsewhere.
+    The destination is ALWAYS the agent's own Privy wallet — there is no
+    parameter to override it. The walletAddress is pinned server-side and
+    covered by the HMAC signature, so neither the user nor a prompt can
+    redirect funds elsewhere. A user who wants crypto in their own wallet
+    should use MoonPay/an exchange directly.
 
     Returns {ok, url, wallet_address, amount_usd, currency_code, sandbox,
              baseline_balance} — send `url` to the user, keep
@@ -88,7 +90,7 @@ def create_funding_link(amount_usd: float = 20.0,
     if float(amount_usd) <= 0:
         return {"ok": False, "error": f"amount_usd must be > 0, got {amount_usd}"}
 
-    addr = wallet_address or _agent_wallet_address()
+    addr = _agent_wallet_address()
     sandbox = _env("MOONPAY_SANDBOX") == "1" or pk.startswith("pk_test")
     host = "buy-sandbox.moonpay.com" if sandbox else "buy.moonpay.com"
 
@@ -112,6 +114,16 @@ def create_funding_link(amount_usd: float = 20.0,
            f"&signature={urllib.parse.quote_plus(sig)}")
 
     baseline = get_usdc_balance(addr)
+    if not baseline.get("ok"):
+        # Without a baseline, arrival can never be confirmed — refuse to hand
+        # out the link rather than break the "no arrival claim without
+        # balance evidence" rule downstream.
+        return {"ok": False,
+                "error": "baseline balance read failed — cannot confirm arrival "
+                         "later, so no funding link was issued. Fix the balance "
+                         "read (wallet skill / RPC) and retry.",
+                "baseline_error": baseline.get("error"),
+                "wallet_address": addr}
     return {"ok": True, "url": url, "wallet_address": addr,
             "amount_usd": float(amount_usd), "currency_code": currency_code,
             "sandbox": sandbox,
@@ -161,6 +173,12 @@ def wait_for_funds(baseline: float,
     bash session, not a foreground call. Card payments usually land in
     1-10 min; bank transfers can take much longer than any sane timeout.
     """
+    try:
+        baseline = float(baseline)
+    except (TypeError, ValueError):
+        return {"ok": False, "funded": False,
+                "error": f"invalid baseline {baseline!r} — must be the numeric "
+                         "baseline_balance returned by create_funding_link()."}
     deadline = time.time() + timeout_sec
     last = baseline
     while time.time() < deadline:

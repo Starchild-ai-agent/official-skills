@@ -72,7 +72,7 @@ r2 = wait_for_funds(baseline=r["baseline_balance"], timeout_sec=900)
 
 | Function | Purpose |
 |---|---|
-| `create_funding_link(amount_usd=20, wallet_address="", currency_code="usdc_base", redirect_url="", email="")` | Signed hosted-widget URL + baseline balance snapshot |
+| `create_funding_link(amount_usd=20, currency_code="usdc_base", redirect_url="", email="")` | Signed hosted-widget URL + baseline balance snapshot. Destination is always the agent's own wallet — no address parameter exists. Returns `ok: False` (no link) if the baseline balance read fails, since arrival could never be confirmed. |
 | `get_usdc_balance(address="")` | Agent wallet USDC balance on Base (via wallet skill) |
 | `wait_for_funds(baseline, min_increase=0.01, timeout_sec=900, interval_sec=30)` | Block until balance rises above baseline; `funded: False` on timeout = still processing, NOT failure |
 

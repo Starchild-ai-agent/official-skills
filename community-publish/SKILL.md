@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.23.0
+version: 0.24.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -89,17 +89,17 @@ The authoritative answer comes ONLY from a fresh `get_listing_status(slug)` (fre
 | "list on the dashboard" / "上架" / "show on community" / "make discoverable" / "发到广场" | `list_in_dashboard(slug)` | Free listing. Requires the preview to already exist. |
 | "上架付费服务" / "make this a paid service" / "上架到服务市场（付费）" | `create_paid_service(...)` → `submit_for_review()` (recommended) → `publish_service()` | Paid listing. Needs x402 config first. |
 | "publish AND list" / "发布并上架" | `publish_preview()` THEN `list_in_dashboard()` | Two separate calls in order. |
-| "remove from dashboard" / "下架" / "unlist" / "hide from gallery" | `unlist_from_dashboard(slug)` | Free listing only. Soft-unlist (sets `is_public=false`, preserves stats). Preview URL stays alive. |
+| "remove from dashboard" / "下架" / "unlist" / "hide from gallery" | `unlist_from_dashboard(slug)` | Free listing only. Soft-unlist (sets `is_public=false`, `review_status='unlisted'`, preserves stats). Preview URL stays alive. |
 | "下架付费服务" / "unpublish service" | `unpublish_service(service_id)` | Paid listing only. |
 | "open source" / "open-source the code" / "开源代码" | `open_source(project_dir)` | Pushes code to GitHub. Does NOT list. |
-| "unpublish the URL" / "take down the link" | `unpublish_preview(slug)` | Listing row stays. |
+| "unpublish the URL" / "take down the link" / "停止服务" | `unpublish_preview(slug)` | Stops the preview container service only. Does NOT affect listing state (`is_public`/`review_status` unchanged). URL becomes inaccessible (404). |
 | "remove the open source" / "delete from GitHub" | `remove_open_source(slug)` | |
 | "fork" / "install someone's project" | `fork(source)` | |
 | "提交审核" / "submit for review" | `submit_for_review(service_id)` | Paid only. Advisory self-check — never required for publishing |
 | "发布服务" / "publish my service" | `publish_service(service_id)` | Paid only, works from any pre-listed state |
 | "更新服务" / "update service" | `update_service(service_id, ...)` | Paid only |
 | "删除服务" / "delete service" | `delete_service(service_id)` | Paid only |
-| "删除项目" / "delete listing" / "permanently remove from marketplace" | `delete_listing(slug)` | Free listing only. Permanently deletes the listing row. Use `unlist_from_dashboard()` to hide without deleting. |
+| "删除项目" / "delete listing" / "permanently remove from marketplace" | `delete_listing(slug)` | Free listing only. Permanently deletes the listing row AND the `community_slugs` record. URL becomes inaccessible (404). Removes from both explore and my-projects. Use `unlist_from_dashboard()` to hide without deleting. |
 | Ambiguous after rereading | Ask one question | "你是要 (a) 发布公开 URL，(b) 免费上架到广场，(c) 付费上架到服务市场，还是 (d) 开源代码？" |
 
 ---
@@ -194,7 +194,7 @@ is true (complete the paid-listing chain).
 - **Listing visibility default is `is_public=false`.** A successful `publish_preview` allocates the URL but does NOT make it discoverable. Discovery requires a separate `list_in_dashboard()` call.
 
 **Companions:**
-- `unpublish_preview(slug)` — remove the public URL.
+- `unpublish_preview(slug)` — stop the preview container service. URL becomes inaccessible (404). Does NOT affect listing state (`is_public`/`review_status` unchanged).
 - `list_published_previews()` — all currently published preview URLs for this user.
 
 ---
@@ -261,8 +261,8 @@ Returns `{"ok": True, "listing": {...}, "url": "...", "dashboard_url": "..."}`.
 - No review, no pricing — this is the free listing flow.
 
 **Companions:**
-- `unlist_from_dashboard(slug)` — soft-unlist from gallery (sets `is_public=false`, preserves view/favorite counts). URL stays alive. To re-list, call `list_in_dashboard()` again.
-- `delete_listing(slug)` — permanently delete the listing row (removes view/favorite counts). URL stays alive. Use `unlist_from_dashboard()` to hide without deleting.
+- `unlist_from_dashboard(slug)` — soft-unlist from gallery (sets `is_public=false`, `review_status='unlisted'`, preserves view/favorite counts). URL stays alive. To re-list, call `list_in_dashboard()` again.
+- `delete_listing(slug)` — permanently delete the listing row AND the `community_slugs` record (removes view/favorite counts). URL becomes inaccessible (404). Removes from both explore and my-projects. Use `unlist_from_dashboard()` to hide without deleting.
 - `get_listing_status(slug)` — read-only check: returns `{ok, exists, is_public, listing}`.
 
 ---

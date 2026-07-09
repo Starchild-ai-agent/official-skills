@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.9.1
+version: 2.9.2
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -317,28 +317,34 @@ The same sequence doubles as a smoke test of any x402 deployment: steps 1–2
 are free and validate the challenge contract; steps 3–4 validate settlement
 and access accounting end-to-end.
 
-## Discover services — Coinbase CDP Bazaar only (`bazaar.py`)
+## Discover services — two tracks (do not collapse)
 
-**Discovery scope is fixed:** use `bazaar_search` / `bazaar_list` against the
-Coinbase CDP Bazaar (`api.cdp.coinbase.com/.../x402/discovery`). Do **not**
-scrape third-party x402 directories, marketplaces, or random “Bazaar” sites —
-those are out of scope for this skill. Payment still uses our Privy signer
-(EIP-3009); CDP is never in the payment loop.
+Buyer discovery is **dual-track**. Do not replace one with the other.
+
+| Track | When | How |
+|---|---|---|
+| **1. Starchild community (primary for our ecosystem)** | Find services listed on our marketplace / our projects | `community-publish` → `explore_marketplace(search=...)` (unified feed). Do **not** delete, bypass, or rewrite this path; keep the existing marketplace search intent (server-side query as-is). |
+| **2. Coinbase CDP Bazaar (external official only)** | Find external x402 services on Coinbase’s catalog | `bazaar.py` → `bazaar_search` / `bazaar_list` against `api.cdp.coinbase.com/.../x402/discovery` only |
+
+**Out of scope for discovery:** third-party x402 directories, other “Bazaar” sites, ad-hoc scrapes. If a user pastes an arbitrary URL, still `probe_402` before paying.
 
 ```python
+# Track 1 — our community (primary when looking inside Starchild)
+# Use community-publish skill as documented there — do not rewrite its search.
+# explore_marketplace(search="weather", paid_only=True)
+
+# Track 2 — Coinbase CDP only (external official catalog)
 import sys; sys.path.insert(0, "/data/workspace/skills/x402")
 from bazaar import bazaar_search, bazaar_list, probe_402, bazaar_pay
-
-bazaar_search("weather", limit=5)   # free hybrid search (CDP only), Base USDC exact
-probe_402(url)                      # free: confirm standard-v2 before paying
+bazaar_search("weather", limit=5)   # CDP only, Base USDC exact filter
+probe_402(url)                      # free: confirm standard-v2
 bazaar_pay(url, max_usd=0.01)       # probe → refuse non-standard → paid_request
 ```
 
 `probe_402` / `bazaar_pay` only pay `standard-v2` (Base USDC `exact`). Other
 shapes (`wrong-rail`, `tx-hash`, `non-standard`, `no-payment`) are refused
-before any signature. Prefer URLs from `bazaar_search`/`bazaar_list`; if a
-user hands you an arbitrary URL, still `probe_402` first — refuse anything
-that is not standard x402.
+before any signature — same gate whether the URL came from community,
+CDP, or the user.
 
 ## Errors & diagnostics
 

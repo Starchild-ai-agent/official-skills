@@ -1,9 +1,16 @@
 """
-Coinbase CDP x402 Bazaar — discovery + safe-pay helpers (buyer side).
+Coinbase CDP x402 Bazaar — EXTERNAL official discovery + safe-pay (buyer).
+
+This module is Track 2 only (Coinbase CDP catalog). It does NOT replace
+Starchild community marketplace search:
+
+  Track 1 (primary for our ecosystem): community-publish.explore_marketplace
+  Track 2 (external official):         this file → api.cdp.coinbase.com
 
 Discovery is scoped to CDP only:
   https://api.cdp.coinbase.com/platform/v2/x402/discovery
 Do not scrape third-party x402 directories or other “Bazaar” sites.
+Do not change or delete the community marketplace search path.
 
 Payment goes through our own client.py (Privy signer, EIP-3009) — CDP is
 never in the payment path. Discovery API needs no key/auth.
@@ -78,10 +85,12 @@ def _summarize(item: dict) -> dict:
 
 def bazaar_search(query: str, limit: int = 10, only_payable: bool = True,
                   network: str = "eip155:8453") -> dict:
-    """Hybrid search of the Coinbase CDP Bazaar only. Free, no key.
+    """Hybrid search of the Coinbase CDP Bazaar only (Track 2). Free, no key.
 
-    Do not substitute third-party x402 directories — this skill's discovery
-    path is CDP (`api.cdp.coinbase.com`) exclusively.
+    For Starchild community services use community-publish.explore_marketplace
+    (Track 1) — do not replace that path with this function.
+    Do not substitute third-party x402 directories either; external discovery
+    here is CDP (`api.cdp.coinbase.com`) exclusively.
     """
     q = urllib.parse.urlencode({"query": query, "limit": min(limit * 3, 50),
                                 "network": network})

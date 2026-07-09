@@ -236,6 +236,12 @@
       "description": "Feishu/Lark binding: device flow authorization, connect, disconnect, status check.\n\nUse when setting up or managing Feishu/Lark connection (e.g. connect Feishu, connect Lark, bind 飞书, check Feishu status, disconnect Lark)."
     },
     {
+      "name": "fiat-onramp",
+      "path": "fiat-onramp/SKILL.md",
+      "version": "0.1.0",
+      "description": "Fund the agent wallet with fiat — signed MoonPay link converts card/Apple Pay to USDC on Base, then confirm arrival by balance polling."
+    },
+    {
       "name": "futu",
       "path": "futu/SKILL.md",
       "version": "1.0.0",
@@ -610,7 +616,7 @@
     {
       "name": "x402",
       "path": "x402/SKILL.md",
-      "version": "2.8.0",
+      "version": "2.9.0",
       "description": "Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {

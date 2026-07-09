@@ -314,6 +314,12 @@
       "description": "Kalshi prediction markets: binary event contracts on politics, economy, sports, weather.\n\nUse when trading or browsing US regulated event markets (e.g. CPI above 3%, NHL Edmonton vs Florida, jobs report > 200k, election odds)."
     },
     {
+      "name": "kanban",
+      "path": "kanban/SKILL.md",
+      "version": "1.0.0",
+      "description": "Stand up a personal Kanban board and wire this agent to it, end to end.\nServe the board, publish it to a public URL, verify the connection, and hand\nthe user their live link. Each user gets their OWN board at their OWN URL —\nself-contained, no shared server, no collisions.\n\nUse when the user wants to set up / publish / deploy their Kanban board, or\nconnect their agent to it. For day-to-day task operations (create/move/list\ntasks) use the nested companion skill `kanban-agent` (in kanban_agent_skill/)\ninstead — it is auto-discovered when this skill is installed."
+    },
+    {
       "name": "longbridge",
       "path": "longbridge/SKILL.md",
       "version": "1.0.0",

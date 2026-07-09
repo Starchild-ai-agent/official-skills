@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.9.2
+version: 2.10.1
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -317,34 +317,30 @@ The same sequence doubles as a smoke test of any x402 deployment: steps 1–2
 are free and validate the challenge contract; steps 3–4 validate settlement
 and access accounting end-to-end.
 
-## Discover services — two tracks (do not collapse)
+## Discover & pay — marketplace first, then CDP
 
-Buyer discovery is **dual-track**. Do not replace one with the other.
+Buyer flow is **marketplace-first**. Do not collapse tracks; do not scrape
+third-party x402 directories.
 
-| Track | When | How |
-|---|---|---|
-| **1. Starchild community (primary for our ecosystem)** | Find services listed on our marketplace / our projects | `community-publish` → `explore_marketplace(search=...)` (unified feed). Do **not** delete, bypass, or rewrite this path; keep the existing marketplace search intent (server-side query as-is). |
-| **2. Coinbase CDP Bazaar (external official only)** | Find external x402 services on Coinbase’s catalog | `bazaar.py` → `bazaar_search` / `bazaar_list` against `api.cdp.coinbase.com/.../x402/discovery` only |
-
-**Out of scope for discovery:** third-party x402 directories, other “Bazaar” sites, ad-hoc scrapes. If a user pastes an arbitrary URL, still `probe_402` before paying.
+| Step | Rule |
+|---|---|
+| **1. Find** | Prefer `discover_services(query)` or `community-publish.explore_marketplace`. CDP (`bazaar_search`) is fallback when marketplace has no hit. |
+| **2. Resolve pay URL** | Listed services → `community.iamstarchild.com/proxy/{service_id}` (+ path) or internal `/{user}-{slug}/...`. Never pay the raw list external URL when a proxy exists. |
+| **3. Pay** | `bazaar_pay(url)` re-resolves to marketplace proxy, then `probe_402` → `paid_request`. Community **transparent-proxies** and **books on HTTP 200**. Unlisted external URLs are **refused** — list the service on the marketplace first, then pay its proxy URL. |
 
 ```python
-# Track 1 — our community (primary when looking inside Starchild)
-# Use community-publish skill as documented there — do not rewrite its search.
-# explore_marketplace(search="weather", paid_only=True)
-
-# Track 2 — Coinbase CDP only (external official catalog)
 import sys; sys.path.insert(0, "/data/workspace/skills/x402")
-from bazaar import bazaar_search, bazaar_list, probe_402, bazaar_pay
-bazaar_search("weather", limit=5)   # CDP only, Base USDC exact filter
-probe_402(url)                      # free: confirm standard-v2
-bazaar_pay(url, max_usd=0.01)       # probe → refuse non-standard → paid_request
+from bazaar import discover_services, resolve_marketplace, probe_402, bazaar_pay
+
+discover_services("weather", limit=5)          # marketplace first, CDP fallback
+resolve_marketplace("https://example.com/api") # → pay_url via community when listed
+bazaar_pay(url, max_usd=0.01)                  # proxy-first pay; refuse non-standard
 ```
 
 `probe_402` / `bazaar_pay` only pay `standard-v2` (Base USDC `exact`). Other
 shapes (`wrong-rail`, `tx-hash`, `non-standard`, `no-payment`) are refused
-before any signature — same gate whether the URL came from community,
-CDP, or the user.
+before any signature. If marketplace matched but the proxy is not payable,
+**do not bypass** to the external origin — fix the path or skip.
 
 ## Errors & diagnostics
 

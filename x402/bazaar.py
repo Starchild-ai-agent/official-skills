@@ -1,9 +1,12 @@
 """
 Coinbase CDP x402 Bazaar — discovery + safe-pay helpers (buyer side).
 
-The Bazaar is CDP's public catalog of x402-payable endpoints (24k+). The
-discovery API needs NO key/auth. Payment itself goes through our own
-client.py (Privy signer, EIP-3009) — CDP is never in our payment path.
+Discovery is scoped to CDP only:
+  https://api.cdp.coinbase.com/platform/v2/x402/discovery
+Do not scrape third-party x402 directories or other “Bazaar” sites.
+
+Payment goes through our own client.py (Privy signer, EIP-3009) — CDP is
+never in the payment path. Discovery API needs no key/auth.
 
 Usage:
     python3 - <<'EOF'
@@ -14,12 +17,10 @@ Usage:
     EOF
 
 Safety model (three gates before money moves):
-  1. bazaar_search / bazaar_list — free, filters to networks we can pay.
-  2. probe_402(url)              — free unauthenticated request; classifies
-     the 402 shape. Only `standard-v2` is payable; `tx-hash` and other
-     non-standard shapes are refused with a reason.
-  3. bazaar_pay(url)             — probes first, then pays via client.py
-     under X402_MAX_ATOMIC-style cap. Never pays a non-standard endpoint.
+  1. bazaar_search / bazaar_list — free CDP catalog only; filters to rails
+     we can pay (Base USDC exact).
+  2. probe_402(url) — free; only `standard-v2` is payable; refuse others.
+  3. bazaar_pay(url) — probes first, then pays under max_usd cap.
 """
 from __future__ import annotations
 
@@ -77,7 +78,11 @@ def _summarize(item: dict) -> dict:
 
 def bazaar_search(query: str, limit: int = 10, only_payable: bool = True,
                   network: str = "eip155:8453") -> dict:
-    """Hybrid (text+semantic) search of the CDP Bazaar. Free, no key."""
+    """Hybrid search of the Coinbase CDP Bazaar only. Free, no key.
+
+    Do not substitute third-party x402 directories — this skill's discovery
+    path is CDP (`api.cdp.coinbase.com`) exclusively.
+    """
     q = urllib.parse.urlencode({"query": query, "limit": min(limit * 3, 50),
                                 "network": network})
     try:
@@ -95,7 +100,7 @@ def bazaar_search(query: str, limit: int = 10, only_payable: bool = True,
 
 def bazaar_list(limit: int = 20, offset: int = 0,
                 only_payable: bool = True) -> dict:
-    """Paginated inventory browse of the full catalog."""
+    """Paginated browse of the Coinbase CDP Bazaar catalog only."""
     try:
         data = _get(f"{_BAZAAR}/resources?limit={min(limit * 3, 100)}&offset={offset}")
     except Exception as e:
@@ -111,15 +116,15 @@ def probe_402(url: str, method: str = "GET", json_body=None, headers=None,
               timeout: int = 20) -> dict:
     """FREE probe: classify the endpoint's 402 shape before any payment.
 
-    Returns classification:
-      standard-v2   -> payable with client.py (accepts + exact + Base USDC)
-      wrong-rail    -> standard x402 but no accept we can pay (network/asset)
-      tx-hash       -> pseudo-x402 (raw transfer + tx-hash header). NEVER pay:
-                       our ERC-4337 wallet makes tx.from a bundler (naive
-                       verifiers reject after USDC left), and a tx hash is a
-                       public bearer token (front-runnable, no refund).
-      non-standard  -> other unpayable shapes
-      no-payment    -> endpoint didn't return 402
+    Prefer URLs from bazaar_search/bazaar_list (CDP). Still probe any URL
+    a user supplies — only `standard-v2` is payable.
+
+    Classifications:
+      standard-v2  -> payable (accepts + exact + Base USDC)
+      wrong-rail   -> x402 but not Base USDC exact
+      tx-hash      -> non-standard transfer+hash flow; refuse, do not pay
+      non-standard -> other unpayable 402 shapes
+      no-payment   -> endpoint did not return 402
     """
     import httpx
     try:
@@ -153,10 +158,7 @@ def probe_402(url: str, method: str = "GET", json_body=None, headers=None,
             or ("transfer" in low and "hash" in low)):
         out.update({"classification": "tx-hash",
                     "payable": False,
-                    "reason": "pseudo-x402: demands raw on-chain transfer + tx-hash "
-                              "header. Incompatible with our smart wallet (tx.from = "
-                              "bundler) and unsafe (hash is front-runnable, no refund). "
-                              "SKIP — do not burn USDC."})
+                    "reason": "non-standard transfer+tx-hash payment — refuse, do not pay"})
         return out
 
     if has_v2_header or accepts:

@@ -316,7 +316,7 @@
     {
       "name": "kanban",
       "path": "kanban/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Stand up a personal Kanban board and wire this agent to it, end to end.\nServe the board, publish it to a public URL, verify the connection, and hand\nthe user their live link. Each user gets their OWN board at their OWN URL —\nself-contained, no shared server, no collisions.\n\nUse when the user wants to set up / publish / deploy their Kanban board, or\nconnect their agent to it. For day-to-day task operations (create/move/list\ntasks) use the nested companion skill `kanban-agent` (in kanban_agent_skill/)\ninstead — it is auto-discovered when this skill is installed."
     },
     {

@@ -1,6 +1,6 @@
 ---
 name: user-onboarding
-version: 1.2.5
+version: 1.2.6
 description: |
   Onboarding script for first-time Starchild users: positioning, quick wins, discovery.
 
@@ -86,7 +86,7 @@ Use this **only when Step 0 found no useful memory.** Three beats, kept short. M
 > "Hi! I'm Starchild, your AI assistant. I can help you with crypto trading, news monitoring, portfolio tracking, scheduled tasks, web research, and much more! How can I assist you today?"
 
 ❌ Also bad — menu of abstract features (the "1/2/3 set up X / build Y / browse Z" template):
-> "Here's what's worth trying first:  1. Set up a daily brief  2. Build something  3. Explore the Skills marketplace"
+> "Here's what's worth trying first:  1. Set up a daily brief  2. Build something  3. Explore Skills"
 
 This looks helpful but it's the blank-box problem in disguise — the user still has to translate "daily brief" / "build something" into their own life. Skip the menu, give them verbs that map to actual moments in their week.
 
@@ -269,7 +269,7 @@ If users ask for a deeper tour, pick **1-2** topics that fit them and demo live:
 - Telegram/WeChat delivery
 - Connectors (Gmail/Calendar/etc.)
 - Build+preview+publish a tiny project
-- Skills marketplace install/build
+- Skills install/build
 - Agent wallet (crypto users only)
 - Self-improvement loop (correct + remember + save as skill)
 

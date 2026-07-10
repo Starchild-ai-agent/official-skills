@@ -37,7 +37,7 @@ Purpose of this local note: keep the key guidance inside the `user-onboarding` s
 - Deploy only after the preview output meets expectations.
 
 ### 6) Turn repetition into skills
-- If a task repeats, search the skill marketplace first.
+- If a task repeats, search for existing skills first.
 - If no suitable skill exists, create one and reuse.
 
 ### 7) Keep machine health visible

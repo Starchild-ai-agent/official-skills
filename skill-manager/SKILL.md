@@ -1,6 +1,6 @@
 ---
-name: skillmarketplace
-version: 4.0.1
+name: skill-manager
+version: 4.1.0
 description: |
   Search, install, and publish skills across official, community, and global registries.
 
@@ -9,13 +9,13 @@ description: |
 metadata:
   starchild:
     emoji: "📦"
-    skillKey: skillmarketplace
+    skillKey: skill-manager
 
 user-invocable: true
 
 ---
 
-# Skill Market
+# Skills
 
 ## Searching & Installing Skills
 

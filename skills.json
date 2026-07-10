@@ -400,7 +400,7 @@
     {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
-      "version": "1.6.1",
+      "version": "1.6.2",
       "description": "End-to-end project engineering: design, incremental build, verify, debug systematically.\n\nUse when building software, dashboards, scheduled jobs, or web apps the user has asked for (e.g. build a price monitor, daily summary task, ship an API)."
     },
     {
@@ -428,9 +428,9 @@
       "description": "Scaffold new skills with valid frontmatter, directory layout, and a starter SKILL.md.\n\nUse when building a new reusable workflow or wrapping a new API (e.g. create a kalshi skill, scaffold an API helper, start a charting skill)."
     },
     {
-      "name": "skillmarketplace",
-      "path": "skillmarketplace/SKILL.md",
-      "version": "4.0.1",
+      "name": "skill-manager",
+      "path": "skill-manager/SKILL.md",
+      "version": "4.1.0",
       "description": "Search, install, and publish skills across official, community, and global registries.\n\nUse when finding or sharing skills (e.g. install a \"funding rate\" skill, list installed skills, publish my custom skill to the registry)."
     },
     {
@@ -544,7 +544,7 @@
     {
       "name": "user-onboarding",
       "path": "user-onboarding/SKILL.md",
-      "version": "1.2.5",
+      "version": "1.2.6",
       "description": "Onboarding script for first-time Starchild users: positioning, quick wins, discovery.\n\nUse when the user is new or vague (e.g. \"what can you do\", \"I don't know where to start\", first session with no context, generic hello)."
     },
     {

@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.6.1
+version: 1.6.2
 description: |
   End-to-end project engineering: design, incremental build, verify, debug systematically.
 
@@ -50,7 +50,7 @@ triggers:
 
 **⚠️ CRITICAL — UI Design Quality Gate:** If the project produces ANY visual HTML output (dashboard, web app, landing page, portfolio, any page the user will see), you MUST `read_file` the `ui-design` skill's SKILL.md and follow it BEFORE writing any HTML/CSS. This is not optional. project-builder handles engineering; ui-design handles visual quality (and tells you when to reach for a component library like shadcn/ui, HeroUI, or coss ui instead of hand-writing). Skipping ui-design produces generic AI slop.
 
-**A. Pick the skills.** Gather every data source the project needs. For each one, prefer a skill: check `<available_skills>`, and if nothing fits, try `search_skills(query)` for official + marketplace coverage. Skills are the most reliable layer — they ship tested clients, auth, and rate-limit handling. Web search is a last resort. Only write raw HTTP / SDK code when no skill can cover the source.
+**A. Pick the skills.** Gather every data source the project needs. For each one, prefer a skill: check `<available_skills>`, and if nothing fits, try `search_skills(query)` for official + community coverage. Skills are the most reliable layer — they ship tested clients, auth, and rate-limit handling. Web search is a last resort. Only write raw HTTP / SDK code when no skill can cover the source.
 
 **B. Read the platform rules for what the project touches.** These rules live in references (not in your system prompt) so you must `read_file` them before writing code. Skipping this is the #1 cause of 401s, broken paths, and "worked locally, fails in preview" bugs.
 

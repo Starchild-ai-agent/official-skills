@@ -1,6 +1,6 @@
 ---
 name: kanban
-version: 1.0.0
+version: 1.0.1
 description: |
   Stand up a personal Kanban board and wire this agent to it, end to end.
   Serve the board, publish it to a public URL, verify the connection, and hand

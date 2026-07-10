@@ -2121,7 +2121,60 @@ function App() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  // ---- Live sync: refresh state whenever the server reports a change ----
+  const activeBoardRef = useRef(null);
+  useEffect(() => { activeBoardRef.current = activeBoard; }, [activeBoard]);
+  const draggingRef = useRef(null);
+  useEffect(() => { draggingRef.current = draggingTask; }, [draggingTask]);
+
+  const refreshData = useCallback(async () => {
+    if (draggingRef.current) return; // don't disrupt an in-flight drag; next event catches up
+    try {
+      const boardsRes = await api('/ajax/tasks/board/get');
+      const boardList = boardsRes.data || [];
+      setBoards(boardList);
+      const current = activeBoardRef.current;
+      const board = (current && boardList.find(b => b.id === current.id)) || boardList[0];
+      if (!board) { setLists([]); setTasks([]); setActiveBoard(null); return; }
+      if (!current || board.id !== current.id) setActiveBoard(board);
+      const [listsRes, tasksRes, allEntries] = await Promise.all([
+        api('/ajax/tasks/list/get', { options: { board_id: board.id } }),
+        api('/ajax/tasks/task/get', { options: { board_id: board.id } }),
+        Promise.all(boardList.map(b =>
+          api('/ajax/tasks/list/get', { options: { board_id: b.id } }).then(r => [b.id, r.data || []])
+        )),
+      ]);
+      setLists(listsRes.data || []);
+      setTasks(tasksRes.data || []);
+      setAllLists(Object.fromEntries(allEntries));
+    } catch (err) {
+      console.error('Live refresh failed:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    let es = null, poll = null, lastRev = null, closed = false;
+    const onRev = (r) => {
+      if (r == null) return;
+      if (lastRev !== null && r !== lastRev) refreshData();
+      lastRev = r;
+    };
+    const startPolling = () => {
+      if (poll || closed) return;
+      poll = setInterval(async () => {
+        try { const r = await api('/ajax/tasks/rev'); onRev(r && r.rev); } catch (e) {}
+      }, 3000);
+    };
+    try {
+      es = new EventSource(`${API_BASE}/ajax/tasks/events`);
+      es.onmessage = (ev) => { try { onRev(JSON.parse(ev.data).rev); } catch (e) {} };
+      es.onopen = () => { if (poll) { clearInterval(poll); poll = null; } };
+      es.onerror = () => startPolling(); // proxy may not support SSE — fall back to polling
+    } catch (e) {
+      startPolling();
+    }
+    return () => { closed = true; if (es) es.close(); if (poll) clearInterval(poll); };
+  }, [refreshData]);
 
   const createBoard = async (title) => {
     const frontId = genId();

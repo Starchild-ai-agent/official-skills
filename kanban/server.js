@@ -26,8 +26,34 @@ function loadData() {
 }
 
 function saveData(data) {
+  lastLocalWrite = Date.now();
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  bumpRev();
 }
+
+// ============================================================
+// Live sync (SSE) — clients subscribe to /ajax/tasks/events and
+// re-fetch whenever `rev` changes. Any mutation bumps rev.
+// ============================================================
+let rev = Date.now();
+let lastLocalWrite = 0;
+const sseClients = new Set();
+
+function bumpRev() {
+  rev++;
+  const payload = `data: ${JSON.stringify({ rev })}\n\n`;
+  for (const client of sseClients) {
+    try { client.write(payload); } catch (e) { sseClients.delete(client); }
+  }
+}
+
+// Detect out-of-band edits to data.json (e.g. re-uploaded file) and notify too.
+// Skip changes caused by our own writes (within 1.5s).
+try {
+  fs.watchFile(DATA_FILE, { interval: 1000 }, () => {
+    if (Date.now() - lastLocalWrite > 1500) bumpRev();
+  });
+} catch (e) { /* non-fatal */ }
 
 function seedData() {
   const boardId = 'board-001';
@@ -79,6 +105,22 @@ const server = http.createServer(async (req, res) => {
   store = loadData();
 
   try {
+    // ---- Live sync ----
+    if (p === '/ajax/tasks/events') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+      res.write(`data: ${JSON.stringify({ rev })}\n\n`);
+      sseClients.add(res);
+      const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) {} }, 25000);
+      req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
+      return; // keep connection open
+    }
+    if (p === '/ajax/tasks/rev') return json(res, { rev });
+
     // ---- Boards ----
     if (p === '/ajax/tasks/board/get') return json(res, { data: store.boards });
     if (p === '/ajax/tasks/board/save') { const o = body.object || {}; if (!o.id) { o.id = 'b-' + Date.now(); o.front_id = o.front_id || o.id; } const i = store.boards.findIndex(x => x.id === o.id || x.front_id === o.front_id); if (i >= 0) store.boards[i] = { ...store.boards[i], ...o }; else store.boards.push(o); saveData(store); return json(res, { data: { object: o } }); }

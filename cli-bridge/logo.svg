@@ -1,0 +1,22 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Starchild brand: mint on dark, matching across-bridge/logo.svg. -->
+  <rect width="256" height="256" rx="48" fill="#6CF9D8"/>
+
+  <!-- Two interlocking chain links, rotated 45° — the universal "link /
+       bridge" symbol, matching the 🔗 emoji in SKILL.md frontmatter. Each
+       link is a stroked rounded rect; they overlap in the middle to read
+       as interlocked. -->
+  <g stroke="#151518" stroke-width="22" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Upper-left link -->
+    <rect x="38" y="78" width="112" height="56" rx="28" transform="rotate(-30 94 106)"/>
+    <!-- Lower-right link -->
+    <rect x="106" y="122" width="112" height="56" rx="28" transform="rotate(-30 162 150)"/>
+  </g>
+
+  <!-- Inner highlight strokes to suggest the "interlocked" overlap without
+       needing a real boolean path op at this size. -->
+  <g stroke="#151518" stroke-width="6" fill="none" stroke-linecap="round" opacity="0.55">
+    <line x1="118" y1="118" x2="148" y2="135"/>
+    <line x1="108" y1="138" x2="138" y2="155"/>
+  </g>
+</svg>

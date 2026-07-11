@@ -1,7 +1,10 @@
 ---
 name: byok-custom-model
 version: 2.4.0
-description: Register a custom LLM endpoint with your own API key for chat in Starchild, including Meta/Muse Spark 1.1.
+description: |
+  Register a custom LLM endpoint with your own API key for chat in Starchild.
+
+  Use when adding a personal Anthropic, OpenAI, Grok, Qwen, DeepSeek, Meta (Muse Spark), NEAR AI, or Venice key as a chat model (e.g. add my Claude key, register DeepSeek, use Muse Spark 1.1).
 author: starchild
 delivery: script
 protected: true

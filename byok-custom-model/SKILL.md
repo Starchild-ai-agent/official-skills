@@ -1,14 +1,14 @@
 ---
 name: byok-custom-model
-version: 2.3.2
+version: 2.4.0
 description: |
   Register a custom LLM endpoint with your own API key for chat in Starchild.
 
-  Use when adding a personal Anthropic, OpenAI, Grok, Qwen, DeepSeek, NEAR AI, or Venice key as a chat model (e.g. add my Claude key, register DeepSeek).
+  Use when adding a personal Anthropic, OpenAI, Grok, Qwen, DeepSeek, Meta (Muse Spark), NEAR AI, or Venice key as a chat model (e.g. add my Claude key, register DeepSeek, use Muse Spark 1.1).
 author: starchild
 delivery: script
 protected: true
-tags: [byok, custom-model, llm, openrouter, anthropic, openai, xai, grok, deepseek, qwen, kimi, mimo, gemini, venice, near-ai, tee, confidential-inference]
+tags: [byok, custom-model, llm, openrouter, anthropic, openai, xai, grok, deepseek, qwen, kimi, mimo, gemini, venice, near-ai, meta, muse-spark, tee, confidential-inference]
 
 ---
 
@@ -26,7 +26,7 @@ This is a **script-mode skill** — no tools registered. Read this file, then ca
 
 ## Curated vendors (always check this first)
 
-The skill ships with 11 pre-configured vendors. **Always match the user's intent against this list before asking for any URL, model name, or API example** — base_url / wire / thinking / capabilities are all pre-filled, so a curated match goes straight to `add_template(vendor=...)`.
+The skill ships with 12 pre-configured vendors. **Always match the user's intent against this list before asking for any URL, model name, or API example** — base_url / wire / thinking / capabilities are all pre-filled, so a curated match goes straight to `add_template(vendor=...)`.
 
 | Vendor id | Use when user mentions… |
 |---|---|
@@ -41,6 +41,7 @@ The skill ships with 11 pre-configured vendors. **Always match the user's intent
 | `gemma` | Gemma |
 | `near-ai` | **privacy, TEE, confidential inference, "don't log my data", Web3-native** |
 | `venice` | Venice (only if user names it; see Privacy-first tier below) |
+| `meta` | Meta, Meta AI, Muse, Muse Spark, Muse Spark 1.1 |
 
 ---
 
@@ -71,11 +72,11 @@ from exports import (
     list_vendor_models, add, add_template, remove,
 )
 
-# Enumerate the 11 curated vendor presets
+# Enumerate the 12 curated vendor presets
 print(json.dumps(templates(), indent=2))
 
-# One-click registration for a curated vendor
-result = add_template(vendor="qwen")
+# One-click registration for a curated vendor (Meta / Muse Spark 1.1)
+result = add_template(vendor="meta")
 print(json.dumps(result, indent=2))
 EOF
 ```
@@ -86,7 +87,7 @@ EOF
 
 | Function | Required args | Purpose |
 |---|---|---|
-| `templates()` | — | List the 11 curated vendor presets |
+| `templates()` | — | List the 12 curated vendor presets |
 | `list_vendor_models(vendor)` | `vendor` | Live `/models` catalog (only if the template has `model_discovery`) |
 | `add_template(vendor, *, upstream_model=None, name=None)` | `vendor` | One-click registration for a curated vendor (recommended path) |
 | `parse_example(api_example)` | `api_example` | Parse docs API example into a safe draft (non-curated vendors) |
@@ -127,7 +128,26 @@ The popup, the .env write, and the channel-specific UX (web popup / TG card / We
 - **Never re-issue the secure-input popup automatically** if the user hasn't responded — wait.
 - **If `need_env_input` is returned, always call `request_env_input`.** Do not skip, do not ask the user to paste the key, do not retry `add_template` hoping it will pop the UI — it won't.
 - **Never write to `workspace/config/custom_models.yaml` or `workspace/.env` by hand.** Always go through the exports above.
-- The 11 curated vendors **always** use `add_template`. Only use `parse_example` + `add` for self-hosted or rare providers.
+- The 12 curated vendors **always** use `add_template`. Only use `parse_example` + `add` for self-hosted or rare providers.
+
+---
+
+## Meta Model API — Muse Spark 1.1 (preview)
+
+The `meta` template is for the Meta Model API, which is currently in **public preview** behind the developer portal at **https://dev.meta.ai/**.
+
+- **Apply / sign in at https://dev.meta.ai/** — same portal for signing up and for the "Muse" / "Meta Model API" access request. Users must complete Meta's application/sign-in flow there to be issued an API key.
+- **Access may depend on region / account** while the API is in public preview — not every developer account is granted immediate access. If `add_template(vendor='meta')` returns a non-2xx from the live `/v1/models` probe, do not assume the user is wrong; tell them preview access may still be pending on their account/region and to confirm status in the dev.meta.ai dashboard.
+- **The agent must use `request_env_input` for the key** — exactly like every other curated vendor. **Never accept a Meta API key pasted in chat.** If the user pastes one, ignore it and refuse to register; the secure-input popup is the only safe channel.
+- **Direct Meta billing & quota apply.** Calls are billed by Meta against the user's own Meta account — **Starchild platform credits are bypassed**, no markup, no platform-side quota. Treat any rate-limit / 429 from `api.meta.ai/v1` as a Meta-side signal, not a Starchild signal.
+
+One-click registration:
+
+```bash
+python3 -c "from exports import add_template; print(add_template(vendor='meta'))"
+```
+
+Default model: **`muse-spark-1.1`**. Base URL: **`https://api.meta.ai/v1`** (OpenAI-compatible wire). Use the generated `CUSTOM_KEY_...` name returned in `need_env_input`; do not assume or manually create a vendor env var. Docs: https://dev.meta.ai/docs/getting-started/overview.
 
 ---
 

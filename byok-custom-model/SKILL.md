@@ -1,6 +1,6 @@
 ---
 name: byok-custom-model
-version: 2.3.2
+version: 2.4.0
 description: Register a custom LLM endpoint with your own API key for chat in Starchild, including Meta/Muse Spark 1.1.
 author: starchild
 delivery: script

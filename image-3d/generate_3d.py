@@ -441,7 +441,9 @@ def _build_edit_prompt(prompt=None, category="character", style=None):
     return (
         f"Transform this image into a 3D rendered style. "
         f"Preserve the key subject, composition, and important details "
-        f"while applying 3D rendering aesthetics. {base_prompt}"
+        f"while applying 3D rendering aesthetics, UNLESS the instruction "
+        f"explicitly asks to change the composition, viewpoint, or layout — "
+        f"in that case the instruction takes precedence. {base_prompt}"
     )
 
 

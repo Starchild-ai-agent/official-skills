@@ -419,6 +419,16 @@ Use this table to map user requests to the correct style/parameters:
 | "highest quality", "best quality" | Any style + `model="gpt"` | |
 | Custom scene not in presets | Use `scene=` or `prompt=` | |
 
+### When NOT to use this skill (routing)
+
+This skill's core contract is **identity preservation**: whenever a reference photo is provided, a likeness prefix ("preserve the subject's exact facial features…") is prepended to every prompt (except the 3 `avatar_*` styles). This means:
+
+- **User wants to drastically change the face/identity or fully re-imagine the person** (e.g. "make me look like a different person", heavy character redesign) → route to **image-create** (text-to-image) instead. The likeness prefix will fight the stylization and iterations won't converge.
+- **User wants strong stylization but still recognizable** → stay here; use `anime` / `avatar_3d` etc.
+- **User wants to edit a non-person photo** → **image-edit**.
+
+If a request keeps failing to move away from the reference photo's look after 2+ iterations, that's the likeness contract working as designed — switch skills rather than re-prompting.
+
 ---
 
 ## 11. Provided scripts

@@ -485,7 +485,7 @@ FAL_KEY=your-fal-key python3 skills/image-edit/edit_image.py photo.jpg "make it 
 | Edit `FAILED` upstream | Simplify prompt, ensure source image is clear, retry |
 | Job stuck `IN_PROGRESS` >10 min | Save `request_id`, retry later |
 | Poor edit quality | Try `model="gpt"` for higher quality; be more specific in prompt |
-| Layout/grid/column count won't change no matter how many times you iterate | Use `action="restructure"` — the default `edit` template instructs the model to preserve the original composition, which silently blocks structural changes |
+| Layout/grid/column count won't change no matter how many times you iterate | Prefer `action="restructure"` for structural changes — its template mandates the layout change. Plain `edit` now has a precedence fallback (explicit structural instructions override composition preservation), but treat it only as a compatibility net, not the primary path |
 | Background not fully removed | Use `replace_bg` action with explicit background description |
 | Retouching looks unnatural | Add "keep natural texture" or "subtle" to prompt |
 

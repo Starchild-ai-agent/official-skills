@@ -1,6 +1,6 @@
 ---
 name: image-ecommerce
-version: 1.0.3
+version: 1.0.4
 description: |
   E-commerce product photography: white-background hero shots, lifestyle scenes, flat lay, detail close-ups, packaging shots, group/collection displays, scale references, seasonal/holiday themes, 360-degree views, comparison layouts, infographics, and platform-optimized images (Amazon, Shopify, Taobao, Instagram, Xiaohongshu, Etsy, eBay).
 

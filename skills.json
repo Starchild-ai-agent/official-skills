@@ -262,7 +262,7 @@
     {
       "name": "image-3d",
       "path": "image-3d/SKILL.md",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "description": "3D-style image generation: 3D characters, product renders, isometric dioramas, 3D icons, 3D text, interior design renders, architectural visualization, 3D scenes, game assets.\n\nUse when generating 3D-style 2D images from text descriptions or reference photos (e.g. 3D character design, isometric diorama, 3D product render, interior design visualization, architectural render, 3D app icon, 3D text effect, game asset render)."
     },
     {
@@ -280,7 +280,7 @@
     {
       "name": "image-ecommerce",
       "path": "image-ecommerce/SKILL.md",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "description": "E-commerce product photography: white-background hero shots, lifestyle scenes, flat lay, detail close-ups, packaging shots, group/collection displays, scale references, seasonal/holiday themes, 360-degree views, comparison layouts, infographics, and platform-optimized images (Amazon, Shopify, Taobao, Instagram, Xiaohongshu, Etsy, eBay).\n\nUse when generating professional product photos for e-commerce listings, catalogs, or marketing (e.g. product hero shot, Amazon listing image, lifestyle product photo, product on white background, product detail close-up, seasonal product campaign)."
     },
     {
@@ -292,7 +292,7 @@
     {
       "name": "image-portrait",
       "path": "image-portrait/SKILL.md",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "description": "Identity-consistent portrait generation from a reference photo. Covers professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.\n\nUse when generating styled portraits from a reference photo (e.g. professional headshot, anime avatar, cyberpunk portrait, travel photo, dating profile photo, ID photo)."
     },
     {

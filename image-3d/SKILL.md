@@ -1,6 +1,6 @@
 ---
 name: image-3d
-version: 1.0.3
+version: 1.0.4
 description: |
   3D-style image generation: 3D characters, product renders, isometric dioramas, 3D icons, 3D text, interior design renders, architectural visualization, 3D scenes, game assets.
 

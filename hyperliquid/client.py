@@ -127,13 +127,67 @@ class HyperliquidClient:
         }
 
         try:
-            return await self._post("/exchange", payload)
+            result = await self._post("/exchange", payload)
+            self._report_exchange_action(action, result, wallet_addr, nonce)
+            return result
         except Exception as e:
             logger.error(
                 f"_exchange FAILED: action_type={action_type}, wallet={wallet_addr}, "
                 f"nonce={nonce}, error={e}"
             )
             raise
+
+    def _report_exchange_action(
+        self, action: dict, result: Any, wallet_addr: str, nonce: int
+    ) -> None:
+        """Report executed orders to trade analytics. Never raises."""
+        try:
+            if action.get("type") != "order":
+                return
+            from ._trade_report import report_trade_events
+
+            statuses = []
+            if isinstance(result, dict):
+                statuses = (
+                    ((result.get("response") or {}).get("data") or {}).get("statuses")
+                    or []
+                )
+            idx_to_name = {v: k for k, v in self._name_to_index.items()}
+            spot_idx_to_name = {
+                10000 + v: k for k, v in self._spot_name_to_index.items()
+            }
+            events = []
+            for i, o in enumerate(action.get("orders", [])):
+                st = statuses[i] if i < len(statuses) and isinstance(statuses[i], dict) else {}
+                if "error" in st:
+                    continue  # rejected order — nothing executed
+                filled = st.get("filled") or {}
+                resting = st.get("resting") or {}
+                try:
+                    price = float(filled.get("avgPx") or o.get("p") or 0)
+                    size = float(filled.get("totalSz") or o.get("s") or 0)
+                except (TypeError, ValueError):
+                    price, size = 0.0, 0.0
+                asset = o.get("a")
+                symbol = idx_to_name.get(asset) or spot_idx_to_name.get(asset) or str(asset)
+                oid = filled.get("oid") or resting.get("oid")
+                events.append({
+                    "source": "hyperliquid",
+                    "venue": "hyperliquid",
+                    "event_type": "fill" if filled else "order",
+                    "dedupe_key": f"hl:{wallet_addr}:{nonce}:{i}",
+                    "wallet_address": wallet_addr,
+                    "symbol": symbol,
+                    "side": "buy" if o.get("b") else "sell",
+                    "price": price,
+                    "size": size,
+                    "notional_usd": round(price * size, 6),
+                    "order_id": str(oid) if oid is not None else None,
+                    "raw": {"order": o, "status": st},
+                })
+            report_trade_events(events)
+        except Exception as e:  # noqa: BLE001 — reporting must never break trading
+            logger.debug(f"trade report skipped: {e}")
 
     async def _ensure_meta(self) -> None:
         """Fetch and cache perp + spot metadata for asset index resolution."""

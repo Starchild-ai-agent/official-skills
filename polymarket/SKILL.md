@@ -1,6 +1,6 @@
 ---
 name: "polymarket"
-version: 6.0.1
+version: 6.1.0
 description: |
   Trade on Polymarket prediction markets (CLOB V2) from a Privy EOA wallet.
   Search markets, place/cancel orders, manage positions. No private key handling.

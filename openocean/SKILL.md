@@ -1,6 +1,6 @@
 ---
 name: openocean
-version: 1.1.1
+version: 1.2.0
 description: |
   OpenOcean DEX aggregator: quote and execute swaps with balance-delta verification.
 

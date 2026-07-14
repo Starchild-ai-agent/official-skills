@@ -328,7 +328,9 @@ def _build_edit_prompt(prompt=None, style="hero", background="white"):
     return (
         f"Transform this product image into a professional e-commerce photo. "
         f"Keep the product exactly as it is — preserve its shape, color, details, "
-        f"and branding. {base_prompt}"
+        f"and branding, UNLESS the instruction explicitly asks to change the "
+        f"product's color, material, or variant — in that case the instruction "
+        f"takes precedence over preserving those attributes. {base_prompt}"
     )
 
 

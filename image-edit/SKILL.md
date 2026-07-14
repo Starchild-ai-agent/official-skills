@@ -1,6 +1,6 @@
 ---
 name: image-edit
-version: 1.0.4
+version: 1.0.5
 description: |
   Image editing and enhancement of an existing image. Covers background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.
 
@@ -118,6 +118,7 @@ result = edit_image(
 | Image blending | `blend` | Place a person/subject into a new background or scene |
 | Outpainting | `extend` | Extend the image beyond its current boundaries |
 | Local edit | `local_edit` | Modify only a specific region of the image |
+| Structural redesign | `restructure` | Change layout/grid/column count or rearrange elements — overrides "preserve composition" |
 | Text rendering | `text_render` | Add or modify text within the image |
 | Multi-angle | `multi_angle` | Generate different viewing angles from one photo |
 | Before/after | `before_after` | Generate a side-by-side comparison image |
@@ -190,6 +191,7 @@ Use this table to map user requests to the correct action:
 | "put me on a beach", "change the scene" | `blend` | Describe the target scene |
 | "extend the image", "make it wider", "outpaint" | `extend` | Describe what to add |
 | "change just the shirt color", "edit only the sky" | `local_edit` | Specify the region and change |
+| "fewer columns", "simplify the grid", "rearrange the layout", "make it 7 columns max" | `restructure` | State the target structure explicitly (rows/columns/arrangement) |
 | "add text", "write 'Hello' on the image" | `text_render` | Specify text content and placement |
 | "show from the side", "different angle" | `multi_angle` | Describe the desired angle |
 | "before and after", "show the difference" | `before_after` | Describe the transformation |
@@ -483,6 +485,7 @@ FAL_KEY=your-fal-key python3 skills/image-edit/edit_image.py photo.jpg "make it 
 | Edit `FAILED` upstream | Simplify prompt, ensure source image is clear, retry |
 | Job stuck `IN_PROGRESS` >10 min | Save `request_id`, retry later |
 | Poor edit quality | Try `model="gpt"` for higher quality; be more specific in prompt |
+| Layout/grid/column count won't change no matter how many times you iterate | Prefer `action="restructure"` for structural changes — its template mandates the layout change. Plain `edit` now has a precedence fallback (explicit structural instructions override composition preservation), but treat it only as a compatibility net, not the primary path |
 | Background not fully removed | Use `replace_bg` action with explicit background description |
 | Retouching looks unnatural | Add "keep natural texture" or "subtle" to prompt |
 

@@ -78,6 +78,7 @@ ACTIONS = {
     "blend": "Image blending — place a person into a new background/scene",
     "extend": "Outpainting — extend the image beyond its current boundaries",
     "local_edit": "Local edit — modify only a specific region of the image",
+    "restructure": "Structural redesign — change layout, grid/column count, or rearrange elements",
     "text_render": "Text rendering — add or modify text within the image",
     "multi_angle": "Multi-angle — generate different viewing angles from one photo",
     "before_after": "Before/after comparison — generate a side-by-side comparison",
@@ -110,8 +111,18 @@ ACTIONS = {
 ACTION_PROMPTS = {
     "edit": (
         "Edit this image: {prompt}. "
-        "Maintain the overall composition and quality of the original image. "
+        "Maintain the overall composition and quality of the original image, "
+        "UNLESS the instruction explicitly asks to change the layout or structure — "
+        "in that case the instruction takes precedence over preserving composition. "
         "Apply the requested changes precisely while preserving unaffected areas."
+    ),
+    "restructure": (
+        "Redesign the layout of this image: {prompt}. "
+        "This is a STRUCTURAL change — you MUST alter the composition as instructed "
+        "(e.g. change grid dimensions, number of rows/columns, element arrangement, "
+        "or overall layout). Do NOT preserve the original layout. "
+        "Keep the visual style, color palette, and content theme of the original, "
+        "but rebuild the structure exactly as described."
     ),
     "blend": (
         "Seamlessly blend the subject from this image into the described scene: {prompt}. "

@@ -1,6 +1,6 @@
 ---
 name: orderly-onboarding
-version: 1.0.2
+version: 1.1.0
 description: |
   Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart.
 
@@ -500,3 +500,36 @@ Go to [dex.orderly.network](https://dex.orderly.network), select the **"Custom A
 - **orderly-sdk-wallet-connection** - Wallet integration
 - **orderly-sdk-debugging** - Debugging guide
 - **orderly-one-dex** - Orderly One DEX management
+
+## Trade Indexing (Starchild Agents)
+
+Starchild agent machines must index Orderly trades into the platform trade
+analytics pipeline (`POST {AI_AGENT_API_URL}/v1/trade-events`), the same way
+the hyperliquid / polymarket / DEX skills report.
+
+Because Orderly's `/v1/trades` endpoint is **private** (ed25519-signed
+requests only), each agent syncs its own account — there is no central
+backfill. Run the bundled sync script:
+
+```bash
+pip install pynacl base58   # one-time
+python3 scripts/trade_sync.py --broker woofi_pro --days 90
+```
+
+What it does (idempotent, safe to re-run or schedule):
+
+1. Resolves the agent wallet via the wallet service.
+2. Looks up — or registers, free, no funds — the Orderly account for the broker.
+3. Ensures a **read-scope** ed25519 Orderly key (EIP-712 `AddOrderlyKey`
+   signed by the agent wallet; persisted at `workspace/.orderly_key.json`,
+   mode 600).
+4. Pages through private `GET /v1/trades` and maps each fill to a trade event
+   (`venue=orderly:<broker>`, `dedupe_key=orderly:<account_id>:<trade_id>`).
+5. Fire-and-forget reports to `/v1/trade-events` — the server dedupes on
+   `(user, dedupe_key)`, so historical + live syncs never double-count.
+
+For continuous indexing, schedule it (e.g. daily) — each run picks up new
+fills since the lookback window and duplicates are dropped server-side.
+
+**After any trade you execute on Orderly via SDK/CLI/API, run this sync**
+so the fill is indexed. Reporting must never block or fail trading.

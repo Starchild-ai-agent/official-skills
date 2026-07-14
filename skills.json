@@ -104,6 +104,12 @@
       "description": "AI-agent-ready Python SDK and local execution engine for crypto perpetual futures order execution. Work large orders through TWAP and maker-style strategies on Binance Futures and OKX Swap while exchange API keys stay on your own machine — self-custodial, no third-party order routing. Declare a target position and BlockFill executes it; place, query, and cancel execution tickets from one Python API."
     },
     {
+      "name": "bnbagent",
+      "path": "bnbagent/SKILL.md",
+      "version": "1.1.0",
+      "description": "Build and operate on-chain AI agents on BNB Chain using the bnbagent Python SDK — register agent identities (ERC-8004), and transact through escrowed agentic commerce (ERC-8183) as a provider (accept jobs, deliver work, get paid) or client (create, fund, dispute, refund jobs). Also covers x402 micropayment signing. Use for anything involving BNB Chain agent identity, agent-to-agent paid jobs, BSC escrow jobs, or ERC-8004/ERC-8183/x402."
+    },
+    {
       "name": "browser-preview",
       "path": "browser-preview/SKILL.md",
       "version": "1.1.1",

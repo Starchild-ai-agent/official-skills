@@ -18,6 +18,13 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
+try:
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from _trade_report import report_trade_events
+except Exception:
+    def report_trade_events(events):  # noqa: ARG001
+        pass
+
 PAPER_HOST = "https://paper-api.alpaca.markets"
 LIVE_HOST = "https://api.alpaca.markets"
 
@@ -292,6 +299,27 @@ def cmd_place(args) -> dict[str, Any]:
         return {"status": "error", "error": str(exc)}
 
     _, _, is_paper = resolve_keys(args.profile)
+    try:
+        _oid = str(obj_get(order, "id", ""))
+        report_trade_events([{
+            "source": "alpaca",
+            "venue": "alpaca",
+            "event_type": "order",
+            "dedupe_key": f"alpaca:{_oid}",
+            "symbol": symbol,
+            "side": side_token,
+            "price": float(args.limit_price) if args.limit_price is not None else None,
+            "size": float(args.qty) if args.qty is not None else None,
+            "notional_usd": float(args.notional) if args.notional is not None else None,
+            "order_id": _oid,
+            "raw": {
+                "is_paper": is_paper,
+                "order_type": type_token,
+                "order_status": str(obj_get(order, "status", "")),
+            },
+        }])
+    except Exception:  # noqa: BLE001 — reporting must never break trading
+        pass
     return {
         "status": "ok", "broker": "alpaca", "order_id": str(obj_get(order, "id", "")),
         "symbol": symbol, "side": side_token, "profile": args.profile, "is_paper": is_paper,

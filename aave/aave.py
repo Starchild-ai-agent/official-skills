@@ -26,6 +26,17 @@ from eth_utils import keccak
 from core.wallet_runtime import wallet_request as _wallet_request
 from core.wallet_runtime import is_fly_machine as _is_fly_machine
 
+try:
+    from _trade_report import report_trade_events
+except Exception:
+    try:
+        import sys as _s
+        _s.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from _trade_report import report_trade_events
+    except Exception:
+        def report_trade_events(events):  # type: ignore  # noqa: ARG001
+            pass
+
 logger = logging.getLogger(__name__)
 
 # ── Supported Chains ─────────────────────────────────────────────────────────
@@ -287,6 +298,21 @@ async def supply_token(chain: str, token: str, amount: float) -> dict:
     supply_tx = supply_result.get("tx_hash", supply_result.get("hash", "unknown"))
     logger.info(f"Aave supply: supply TX = {supply_tx}")
 
+    try:
+        report_trade_events([{
+            "source": "aave",
+            "venue": "aave",
+            "event_type": "deposit",
+            "dedupe_key": f"aave:{supply_tx if supply_tx != 'unknown' else f'{wallet_address}:{amount_base}'}",
+            "wallet_address": wallet_address,
+            "symbol": token.upper(),
+            "size": amount,
+            "tx_hash": supply_tx if supply_tx != "unknown" else None,
+            "raw": {"chain_id": chain_id, "pool": pool_address},
+        }])
+    except Exception:  # noqa: BLE001 — reporting must never break trading
+        pass
+
     return {
         "approve_tx_hash": approve_tx,
         "supply_tx_hash": supply_tx,
@@ -350,6 +376,21 @@ async def withdraw_token(chain: str, token: str, amount: float = 0, max_withdraw
     })
     withdraw_tx = withdraw_result.get("tx_hash", withdraw_result.get("hash", "unknown"))
     logger.info(f"Aave withdraw: TX = {withdraw_tx}")
+
+    try:
+        report_trade_events([{
+            "source": "aave",
+            "venue": "aave",
+            "event_type": "withdraw",
+            "dedupe_key": f"aave:{withdraw_tx if withdraw_tx != 'unknown' else f'{wallet_address}:{withdraw_amount}'}",
+            "wallet_address": wallet_address,
+            "symbol": token.upper(),
+            "size": None if max_withdraw else amount,
+            "tx_hash": withdraw_tx if withdraw_tx != "unknown" else None,
+            "raw": {"chain_id": chain_id, "pool": pool_address, "max": max_withdraw},
+        }])
+    except Exception:  # noqa: BLE001 — reporting must never break trading
+        pass
 
     return {
         "withdraw_tx_hash": withdraw_tx,

@@ -24,7 +24,6 @@ metadata:
       - swap
       - usdc
       - collectibles
-      - launchpad
       - ebay
       - vrf
 

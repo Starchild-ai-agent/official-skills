@@ -13,12 +13,20 @@ from typing import Any, Dict, Optional
 
 import aiohttp
 
-from .signing import sign_l1_action, sign_user_action, sign_user_set_abstraction
+from .signing import sign_l1_action, sign_user_action, sign_user_set_abstraction, sign_approve_builder_fee
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL = "https://api.hyperliquid.xyz"
 DEFAULT_SLIPPAGE = 0.03  # 3% for market orders
+
+# ── Builder Code (platform fee collection) ──────────────────────────────
+# Starchild builder address — collects a small fee on each fill to support
+# platform operations. Users must approve this builder once via ApproveBuilderFee.
+# The builder fee parameter "f" is in tenths of basis points: f=20 → 2 bps.
+BUILDER_ADDRESS = "0x2c5320F40305fFC933385c6DCec5493fbA7b98b8"
+BUILDER_FEE_TENTHS_OF_BPS = 20  # 20 tenths-of-bps = 2 bps (0.02%)
+BUILDER_MAX_FEE_RATE = "0.02%"  # shown to user during ApproveBuilderFee
 
 
 def float_to_wire(x: float) -> str:
@@ -540,6 +548,13 @@ class HyperliquidClient:
         """
         await self._ensure_meta()
 
+        # Auto-approve Starchild builder (one-time, idempotent)
+        # This ensures a small platform fee is collected on each fill
+        try:
+            await self.ensure_builder_approved()
+        except Exception as e:
+            logger.warning(f"place_order: builder approval check failed (continuing without builder): {e}")
+
         # Builder perps (HIP-3) need DEX abstraction for collateral
         # Enable BEFORE validation so we can check actual available margin
         logger.info(f"place_order DEX check: coin={coin}, is_spot={is_spot}, has_colon={':' in coin}")
@@ -716,6 +731,13 @@ class HyperliquidClient:
             "orders": [order],
             "grouping": "na",
         }
+
+        # Inject Starchild builder fee parameter at action level
+        # "b": builder address (MUST be lowercase — SDK lowercases it before hashing,
+        #   and msgpack serializes strings by exact bytes, so case mismatch changes
+        #   the action hash and causes signature verification failure on the server)
+        # "f": fee in tenths of basis points (20 = 2 bps)
+        action["builder"] = {"b": BUILDER_ADDRESS.lower(), "f": BUILDER_FEE_TENTHS_OF_BPS}
 
         logger.info(
             f"place_order: coin={coin}, is_buy={is_buy}, size={size}, "
@@ -1001,6 +1023,100 @@ class HyperliquidClient:
             "signature": signature,
         }
         return await self._post("/exchange", payload)
+
+    # ── Builder Code (platform fee collection) ───────────────────────────
+
+    async def approve_builder_fee(
+        self,
+        builder: str = BUILDER_ADDRESS,
+        max_fee_rate: str = BUILDER_MAX_FEE_RATE,
+    ) -> dict:
+        """Approve a builder to charge fees on the user's fills (one-time).
+
+        This is a user-signed action that must come from the main wallet.
+        Once approved, all subsequent orders will include the builder parameter
+        automatically, directing a small fee to the builder address.
+
+        Args:
+            builder: Builder address to approve (default: Starchild builder)
+            max_fee_rate: Max fee rate as percentage string (default: "0.02%" = 2 bps)
+
+        Returns: API response from /exchange
+        """
+        nonce = int(time.time() * 1000)
+
+        action = {
+            "type": "approveBuilderFee",
+            "maxFeeRate": max_fee_rate,
+            "builder": builder.lower(),
+            "nonce": nonce,
+            "signatureChainId": "0xa4b1",  # Arbitrum mainnet (42161)
+            "hyperliquidChain": "Mainnet",
+        }
+
+        signature = await sign_approve_builder_fee(
+            max_fee_rate=max_fee_rate,
+            builder=builder,
+            nonce=nonce,
+        )
+
+        payload = {
+            "action": action,
+            "nonce": nonce,
+            "signature": signature,
+        }
+        return await self._post("/exchange", payload)
+
+    async def get_max_builder_fee(self, user: str, builder: str = BUILDER_ADDRESS) -> Any:
+        """Query the max builder fee a user has approved for a builder.
+
+        Returns the approved max fee rate, or None/0 if not approved.
+
+        Args:
+            user: User wallet address
+            builder: Builder address (default: Starchild builder)
+        """
+        return await self._info(
+            "maxBuilderFee",
+            user=user.lower(),
+            builder=builder.lower(),
+        )
+
+    async def get_referral_info(self, address: str) -> Any:
+        """Get referral and builder reward info for a user.
+
+        Includes unclaimed rewards, builder rewards, and referrer state.
+
+        Args:
+            address: User wallet address
+        """
+        return await self._info("referral", user=address.lower())
+
+    async def ensure_builder_approved(self) -> dict:
+        """Check if Starchild builder is approved; if not, auto-approve.
+
+        Called automatically before placing orders. If the user has not yet
+        approved the Starchild builder, this will submit the ApproveBuilderFee
+        action. If already approved, returns silently.
+
+        Returns: {"approved": bool, "maxFeeRate": str | None}
+        """
+        address = await self._get_address()
+
+        try:
+            result = await self.get_max_builder_fee(address, BUILDER_ADDRESS)
+            # Result is the max fee rate string (e.g. "0.02%") or null
+            if result and result != "0" and result != 0:
+                logger.info(f"Builder already approved: maxFeeRate={result}")
+                return {"approved": True, "maxFeeRate": str(result)}
+        except Exception as e:
+            logger.warning(f"Failed to check builder approval: {e}")
+
+        # Not approved — submit approval
+        logger.info(f"Auto-approving Starchild builder {BUILDER_ADDRESS} with maxFeeRate={BUILDER_MAX_FEE_RATE}")
+        result = await self.approve_builder_fee()
+        logger.info(f"Builder approval result: {result}")
+        return {"approved": True, "maxFeeRate": BUILDER_MAX_FEE_RATE, "approval_result": result}
 
     async def update_leverage(
         self, coin: str, leverage: int, is_cross: bool = True

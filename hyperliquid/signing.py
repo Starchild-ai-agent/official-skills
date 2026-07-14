@@ -350,6 +350,46 @@ async def sign_user_set_abstraction(
     )
 
 
+async def sign_approve_builder_fee(
+    max_fee_rate: str,
+    builder: str,
+    nonce: int,
+) -> dict:
+    """Sign an ApproveBuilderFee action (user-signed).
+
+    Allows a builder address to charge a fee on the user's fills, up to max_fee_rate.
+    Must be signed by the user's main wallet (not an API/agent wallet).
+
+    Args:
+        max_fee_rate: Max fee rate as a percentage string, e.g. "0.02%" for 2 bps
+        builder: Builder address (hex string)
+        nonce: Timestamp in milliseconds
+
+    Returns: {"r": "0x...", "s": "0x...", "v": 27|28}
+    """
+    types = {
+        "HyperliquidTransaction:ApproveBuilderFee": [
+            {"name": "hyperliquidChain", "type": "string"},
+            {"name": "maxFeeRate", "type": "string"},
+            {"name": "builder", "type": "address"},
+            {"name": "nonce", "type": "uint64"},
+        ]
+    }
+
+    action = {
+        "hyperliquidChain": "Mainnet",
+        "maxFeeRate": max_fee_rate,
+        "builder": builder.lower(),
+        "nonce": nonce,
+    }
+
+    return await sign_user_action(
+        action=action,
+        types=types,
+        primary_type="HyperliquidTransaction:ApproveBuilderFee",
+    )
+
+
 async def sign_user_action(
     action: dict,
     types: dict,

@@ -1567,6 +1567,92 @@ Returns: approve_tx_hash, transfer_tx_hash, amount_deposited"""
             return ToolResult(success=False, error=str(e))
 
 
+class HLApproveBuilderTool(BaseTool):
+    """Approve Starchild builder to collect a small fee on fills (one-time)."""
+
+    @property
+    def name(self) -> str:
+        return "hl_approve_builder"
+
+    @property
+    def description(self) -> str:
+        return """Approve the Starchild builder to collect a small trading fee on your fills.
+
+This is a ONE-TIME action. Once approved, a 2 bps (0.02%) builder fee is added to each
+order, which goes to support Starchild platform operations. This fee is separate from
+Hyperliquid's own trading fees.
+
+You can revoke this approval at any time on app.hyperliquid.xyz.
+
+No parameters required — uses the Starchild builder address and 2 bps fee by default.
+
+Returns: approval confirmation from Hyperliquid"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        }
+
+    async def execute(self, ctx: ToolContext, **kwargs) -> ToolResult:
+        try:
+            client = _get_client()
+            data = await client.approve_builder_fee()
+            return ToolResult(success=True, output=data)
+        except Exception as e:
+            return ToolResult(success=False, error=str(e))
+
+
+class HLBuilderStatusTool(BaseTool):
+    """Check builder approval status and collected rewards."""
+
+    @property
+    def name(self) -> str:
+        return "hl_builder_status"
+
+    @property
+    def description(self) -> str:
+        return """Check Starchild builder approval status and reward info.
+
+Shows whether you have approved the Starchild builder, the max fee rate approved,
+and any unclaimed builder/referral rewards.
+
+No parameters required.
+
+Returns: {approved: bool, maxFeeRate: str, referralInfo: {...}}"""
+
+    @property
+    def parameters(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        }
+
+    async def execute(self, ctx: ToolContext, **kwargs) -> ToolResult:
+        try:
+            client = _get_client()
+            address = await _get_address()
+
+            # Check approval status
+            max_fee = await client.get_max_builder_fee(address)
+
+            # Get referral/builder reward info
+            referral_info = await client.get_referral_info(address)
+
+            approved = bool(max_fee and str(max_fee) not in ("0", "None", ""))
+
+            return ToolResult(success=True, output={
+                "approved": approved,
+                "maxFeeRate": max_fee,
+                "referralInfo": referral_info,
+            })
+        except Exception as e:
+            return ToolResult(success=False, error=str(e))
+
+
 class HLSetAbstractionTool(BaseTool):
     """Enable or disable unified account (DEX abstraction)."""
 

@@ -1,6 +1,6 @@
 ---
 name: hyperliquid
-version: 1.5.0
+version: 1.6.0
 description: |
   Trade perp futures, spot, and RWA on Hyperliquid DEX with up to asset max leverage.
 
@@ -26,6 +26,8 @@ tools:
   - hl_transfer_usd
   - hl_withdraw
   - hl_deposit
+  - hl_approve_builder
+  - hl_builder_status
 metadata:
   starchild:
     emoji: "📈"
@@ -133,6 +135,13 @@ await client.cancel_all("BTC")
 | `hl_deposit` | Add USDC from Arbitrum (min $5) |
 | `hl_withdraw` | Send USDC to Arbitrum (1 USDC fee, ~5 min) |
 | `hl_transfer_usd` | Move USDC between spot/perp (rarely needed) |
+
+### Platform
+
+| Tool | What it does |
+|------|--------------|
+| `hl_approve_builder` | Approve Starchild builder fee collection (auto-done on first order) |
+| `hl_builder_status` | Check builder approval status and collected rewards |
 
 ---
 
@@ -699,6 +708,24 @@ hl_tpsl_order(coin="BTC", side="buy", size=0.1, trigger_px=92000, tpsl="tp")
 - **Start with small sizes** — Hyperliquid has minimum order sizes per asset (check szDecimals)
 - **Post-only (ALO) orders** save on fees (maker vs taker rates)
 - **Check fills after market orders** — IoC orders may partially fill or not fill at all
+
+---
+
+## Builder Code (Platform Fee)
+
+Starchild automatically collects a **2 bps (0.02%) builder fee** on every perp and spot order placed through this skill. This fee supports platform operations and is separate from Hyperliquid's own trading fees.
+
+**How it works:**
+- The first time a user places an order, the skill auto-approves the Starchild builder address via the `ApproveBuilderFee` action (signed by the user's main wallet)
+- All subsequent orders include a `builder` parameter: `{"b": "0x2c5320F40305fFC933385c6DCec5493fbA7b98b8", "f": 20}` (20 tenths-of-bps = 2 bps)
+- The fee is collected in the quote/collateral asset (USDC) and accumulates in the builder's referral rewards
+- Users can revoke approval at any time on app.hyperliquid.xyz
+
+**Tools:**
+- `hl_approve_builder` — Manually approve the Starchild builder (normally auto-done on first order)
+- `hl_builder_status` — Check approval status and view unclaimed builder rewards
+
+**If builder approval fails:** Orders still go through without the builder parameter. The error is logged but does not block trading.
 
 ---
 

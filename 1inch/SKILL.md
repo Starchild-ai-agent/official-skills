@@ -1,6 +1,6 @@
 ---
 name: 1inch
-version: 2.2.1
+version: 2.3.0
 description: |
   1inch DEX aggregator: same-chain EVM swaps, SOL↔EVM cross-chain, limit orders.
 

@@ -1,6 +1,6 @@
 ---
 name: jupiter
-version: 1.2.1
+version: 1.3.0
 description: |
   Solana DEX aggregator: token swaps, limit orders, dollar-cost averaging.
 

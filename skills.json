@@ -4,7 +4,7 @@
     {
       "name": "1inch",
       "path": "1inch/SKILL.md",
-      "version": "2.2.1",
+      "version": "2.3.0",
       "description": "1inch DEX aggregator: same-chain EVM swaps, SOL↔EVM cross-chain, limit orders.\n\nUse when swapping tokens with best routing or placing limit orders (e.g. ETH→USDC on Base, SOL→ETH cross-chain, limit buy ARB at 0.80)."
     },
     {
@@ -22,7 +22,7 @@
     {
       "name": "aave",
       "path": "aave/SKILL.md",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "description": "Aave V3 lending: supply tokens to earn yield, withdraw any time, view positions.\n\nUse when farming lending yield or checking Aave positions (e.g. supply 100 USDC on Arbitrum, withdraw all DAI, current Aave APY)."
     },
     {
@@ -70,7 +70,7 @@
     {
       "name": "alpaca",
       "path": "alpaca/SKILL.md",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Alpaca brokerage — US stocks & ETFs. Account, positions, orders, quotes, history, and order placement (paper + live).\n\nUse when the user wants to check or trade a US-stock account on Alpaca (e.g. \"Alpaca buying power\", \"buy 1 AAPL on Alpaca paper\", \"my Alpaca positions\"). Cloud API, runs directly in the container."
     },
     {
@@ -310,7 +310,7 @@
     {
       "name": "jupiter",
       "path": "jupiter/SKILL.md",
-      "version": "1.2.1",
+      "version": "1.3.0",
       "description": "Solana DEX aggregator: token swaps, limit orders, dollar-cost averaging.\n\nUse when swapping SPL tokens, setting limit orders, or scheduling DCA on Solana (e.g. SOL→USDC swap, limit buy JUP, weekly DCA into BONK)."
     },
     {
@@ -382,7 +382,7 @@
     {
       "name": "openocean",
       "path": "openocean/SKILL.md",
-      "version": "1.1.1",
+      "version": "1.2.0",
       "description": "OpenOcean DEX aggregator: quote and execute swaps with balance-delta verification.\n\nUse when comparing routes or executing a swap via OpenOcean (e.g. quote DAI→USDC, swap with slippage check, verify post-trade balance)."
     },
     {
@@ -400,7 +400,7 @@
     {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
-      "version": "6.0.1",
+      "version": "6.1.0",
       "description": "Trade on Polymarket prediction markets (CLOB V2) from a Privy EOA wallet.\nSearch markets, place/cancel orders, manage positions. No private key handling.\n\nUse when the user wants to bet on event outcomes (e.g. \"buy YES at 0.65 on the\nceasefire market\", \"what are my open positions\", \"close my Trump bet\")."
     },
     {

@@ -24,6 +24,17 @@ from typing import Any, Dict
 from core.http_client import proxied_get
 from core.wallet_runtime import wallet_request as _wallet_request
 
+try:
+    from _trade_report import report_trade_events
+except Exception:
+    try:
+        import sys as _s
+        _s.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from _trade_report import report_trade_events
+    except Exception:
+        def report_trade_events(events):  # type: ignore  # noqa: ARG001
+            pass
+
 getcontext().prec = 50
 
 SC_CALLER_ID = "skill:openocean"
@@ -329,6 +340,29 @@ def openocean_swap(
             break
 
         time.sleep(max(1, int(poll_interval_seconds)))
+
+    try:
+        _txh = None
+        if isinstance(tx_res, dict):
+            _txh = tx_res.get("tx_hash") or tx_res.get("hash") or tx_res.get("transaction_hash")
+        report_trade_events([{
+            "source": "openocean",
+            "venue": "openocean",
+            "event_type": "swap",
+            "dedupe_key": f"openocean:{_txh or f'{account}:{int(time.time() * 1000)}'}",
+            "wallet_address": account,
+            "symbol": f"{in_symbol}->{out_symbol}",
+            "size": float(quote.get("inAmount") or 0) or None,
+            "tx_hash": _txh,
+            "raw": {
+                "in_amount_raw": quote.get("inAmount"),
+                "out_amount_raw": quote.get("outAmount"),
+                "verified": verified,
+                "chain_id": cid,
+            },
+        }])
+    except Exception:  # noqa: BLE001 — reporting must never break trading
+        pass
 
     return {
         "chain": chain,

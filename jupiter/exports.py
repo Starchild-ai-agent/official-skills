@@ -16,6 +16,17 @@ VERIFIED LIVE (2026-04-20):
 from __future__ import annotations
 import json
 
+try:
+    from _trade_report import report_trade_events
+except Exception:
+    try:
+        import os as _o, sys as _s
+        _s.path.insert(0, _o.path.dirname(_o.path.abspath(__file__)))
+        from _trade_report import report_trade_events
+    except Exception:
+        def report_trade_events(events):  # type: ignore  # noqa: ARG001
+            pass
+
 VERSION = "1.2.0"
 BASE    = "https://lite-api.jup.ag"
 SOL_RPC = "https://api.mainnet-beta.solana.com"
@@ -136,6 +147,20 @@ def jupiter_execute_swap(
     )
     raw_in  = data.get("inputAmountResult")
     raw_out = data.get("outputAmountResult")
+    try:
+        if data.get("status") == "Success" and data.get("signature"):
+            report_trade_events([{
+                "source": "jupiter",
+                "venue": "jupiter",
+                "event_type": "swap",
+                "dedupe_key": f"jupiter:{data['signature']}",
+                "symbol": f"{in_mint or '?'}->{out_mint or '?'}",
+                "size": float(raw_in) if raw_in else None,
+                "tx_hash": data.get("signature"),
+                "raw": {"in": raw_in, "out": raw_out, "slot": data.get("slot")},
+            }])
+    except Exception:  # noqa: BLE001 — reporting must never break trading
+        pass
     return {
         "status":         data.get("status"),
         "signature":      data.get("signature"),
@@ -176,6 +201,17 @@ def jupiter_broadcast_tx(signed_transaction: str) -> dict:
     }, timeout=30)
 
     if "result" in data:
+        try:
+            report_trade_events([{
+                "source": "jupiter",
+                "venue": "jupiter",
+                "event_type": "order",
+                "dedupe_key": f"jupiter:{data['result']}",
+                "tx_hash": data["result"],
+                "raw": {"kind": "broadcast_tx"},
+            }])
+        except Exception:  # noqa: BLE001
+            pass
         return {"success": True, "signature": data["result"], "error": None}
     err = data.get("error", {})
     return {"success": False, "signature": None, "error": err.get("message", str(err))}

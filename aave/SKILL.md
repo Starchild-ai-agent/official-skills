@@ -1,6 +1,6 @@
 ---
 name: aave
-version: 1.1.1
+version: 1.2.0
 description: |
   Aave V3 lending: supply tokens to earn yield, withdraw any time, view positions.
 

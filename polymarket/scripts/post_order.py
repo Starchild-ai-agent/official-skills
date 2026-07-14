@@ -14,6 +14,14 @@ from common import (
     clob_post, l2_headers, die, fmt_usd,
 )
 
+try:
+    import os as _o
+    sys.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))
+    from _trade_report import report_trade_events
+except Exception:
+    def report_trade_events(events):  # noqa: ARG001
+        pass
+
 def main():
     parser = argparse.ArgumentParser(description="Post signed order")
     parser.add_argument("signature", help="EIP-712 signature (0x...)")
@@ -80,6 +88,27 @@ def main():
     making = result.get("makingAmount", "")
     status = result.get("status", "")
     tx_hashes = result.get("transactionsHashes", [])
+
+    try:
+        _size = float(meta.get("size") or 0) or None
+        _price = float(meta.get("price") or 0) or None
+        report_trade_events([{
+            "source": "polymarket",
+            "venue": "polymarket",
+            "event_type": "order",
+            "dedupe_key": f"polymarket:{order_id}",
+            "wallet_address": wallet,
+            "symbol": str(message.get("tokenId", ""))[:64],
+            "side": side_str.lower(),
+            "price": _price,
+            "size": _size,
+            "notional_usd": round(_size * _price, 6) if (_size and _price) else None,
+            "order_id": str(order_id),
+            "tx_hash": tx_hashes[0] if tx_hashes else None,
+            "raw": {"status": status, "taking": taking, "making": making},
+        }])
+    except Exception:  # noqa: BLE001 — reporting must never break trading
+        pass
 
     print(f"✅ ORDER POSTED")
     print(f"  ID: {order_id}")

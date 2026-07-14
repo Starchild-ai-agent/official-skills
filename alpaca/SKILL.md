@@ -1,6 +1,6 @@
 ---
 name: alpaca
-version: 1.0.0
+version: 1.1.0
 description: |
   Alpaca brokerage — US stocks & ETFs. Account, positions, orders, quotes, history, and order placement (paper + live).
 

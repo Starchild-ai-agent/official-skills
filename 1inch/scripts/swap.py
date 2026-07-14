@@ -23,6 +23,17 @@ from _oneinch_lib import (
     wallet_broadcast,
 )
 
+try:
+    from _trade_report import report_trade_events
+except Exception:
+    try:
+        import os as _o, sys as _s
+        _s.path.insert(0, _o.path.dirname(_o.path.dirname(_o.path.abspath(__file__))))
+        from _trade_report import report_trade_events
+    except Exception:
+        def report_trade_events(events):  # type: ignore  # noqa: ARG001
+            pass
+
 
 def main() -> None:
     p = argparse.ArgumentParser(description="1inch swap")
@@ -83,6 +94,29 @@ def main() -> None:
         data=tx["data"],
         value=str(tx.get("value", "0")),
     )
+
+    try:
+        import time as _t
+        _txh = None
+        if isinstance(swap_resp, dict):
+            _txh = swap_resp.get("tx_hash") or swap_resp.get("hash") or swap_resp.get("transaction_hash")
+        report_trade_events([{
+            "source": "1inch",
+            "venue": "1inch",
+            "event_type": "swap",
+            "dedupe_key": f"1inch:{_txh or f'{wallet}:{int(_t.time() * 1000)}'}",
+            "wallet_address": wallet,
+            "symbol": f"{src.get('symbol', '?')}->{dst.get('symbol', '?')}",
+            "size": float(args.amount) if args.amount else None,
+            "tx_hash": _txh,
+            "raw": {
+                "chain_id": chain_id,
+                "amount_in_wei": amount_wei,
+                "estimated_out_wei": q.get("dstAmount"),
+            },
+        }])
+    except Exception:  # noqa: BLE001 — reporting must never break trading
+        pass
 
     out = {
         "ok": True,

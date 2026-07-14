@@ -1,7 +1,8 @@
 ---
 name: collectorcrypt
 version: 1.3.0
-description: CollectorCrypt: physical trading card NFTs on Solana — marketplace, gacha packs, vault redemption, P2P swaps.
+description: >-
+  CollectorCrypt: physical trading card NFTs on Solana — marketplace, gacha packs, vault redemption, P2P swaps.
   Use when buying/selling/trading collectible card NFTs, opening mystery packs, redeeming NFTs for physical cards, or swapping assets on Solana (e.g. list Pokemon card for 50 USDC, open gacha pack, ship card to address, swap NFTs peer-to-peer).
 allowed-tools: Bash, Read, Write, WebFetch
 homepage: https://collectorcrypt.com

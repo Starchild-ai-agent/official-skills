@@ -1,6 +1,6 @@
 ---
 name: orderly-onboarding
-version: 1.1.0
+version: 1.1.1
 description: |
   Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart.
 
@@ -503,33 +503,111 @@ Go to [dex.orderly.network](https://dex.orderly.network), select the **"Custom A
 
 ## Trade Indexing (Starchild Agents)
 
-Starchild agent machines must index Orderly trades into the platform trade
-analytics pipeline (`POST {AI_AGENT_API_URL}/v1/trade-events`), the same way
-the hyperliquid / polymarket / DEX skills report.
+Starchild indexes Orderly fills into `trade_events` via
+`POST {AI_AGENT_API_URL}/v1/trade-events` (same pipeline as hyperliquid /
+polymarket / DEX skills). **Two layers — use both:**
 
-Because Orderly's `/v1/trades` endpoint is **private** (ed25519-signed
-requests only), each agent syncs its own account — there is no central
-backfill. Run the bundled sync script:
+| Layer | Who | What it covers |
+|---|---|---|
+| **Realtime (this skill)** | Agent, after each Orderly trade | Confirmed agent-initiated fills |
+| **Central daily Public Info scan** | Platform cron (~10:30 Asia/Hong_Kong) | Agent EVM + personal/login EVM wallets (~thousands of addresses); catch-up / third-party wallets |
+
+> The private ed25519 `/v1/trades` endpoint alone is **not** enough for
+> platform analytics — API-key / SDK trading often binds to the **user's
+> personal wallet**, not the agent Privy wallet. Always record the wallet
+> that **actually executed** the trade.
+
+### Critical: `wallet_address` = execution wallet
+
+When reporting, set `wallet_address` to the address that holds the Orderly
+account / signed the order — **not** always the agent Privy wallet.
+
+| Situation | `wallet_address` value |
+|---|---|
+| Trade via agent Privy wallet | agent EVM address from wallet service |
+| Trade via user's own / third-party wallet (API key, SDK, broker UI) | that third-party `0x…` address |
+| Sync script with override | `--address 0x…` or `ORDERLY_WALLET_ADDRESS` |
+
+Wrong address → volume mis-attributed or dropped from agent analytics.
+
+### Realtime report after every Orderly trade (required)
+
+After any successful Orderly order / fill (SDK, CLI, REST, or a future trading
+skill), fire-and-forget report. Never block or fail the trade on reporting
+errors.
+
+```python
+from scripts._trade_report import report_trade_events
+# or: copy the same helper used by hyperliquid / other trading skills
+
+report_trade_events([{
+    "source": "orderly",                 # realtime skill/agent report
+    "venue": "orderly:<broker>",         # e.g. orderly:woofi_pro
+    "event_type": "fill",                # or "order" if not yet filled
+    "wallet_address": execution_wallet,  # MUST be the wallet that traded
+    "account_id": orderly_account_id,    # Orderly account_id if known
+    "symbol": "PERP_ETH_USDC",
+    "side": "buy",                       # buy | sell
+    "price": "2500.1",
+    "size": "0.5",
+    "notional_usd": "1250.05",
+    "fee": "0.12",
+    "fee_currency": "USDC",
+    "order_id": str(order_id),
+    "dedupe_key": f"orderly:{account_id}:{trade_id}",  # stable unique
+    "occurred_at": "2026-07-15T12:00:00Z",             # ISO8601 UTC
+    "raw": {"trade_id": trade_id, "broker": broker},
+}])
+```
+
+`dedupe_key` convention (server unique on `(user_id, dedupe_key)`):
+
+- Prefer `orderly:{account_id}:{trade_id}` when `trade_id` is known
+- Else `orderly:{execution_wallet_lower}:{order_id}:{fill_index}`
+
+Source tags used in analytics:
+
+| `source` | Meaning | Tier |
+|---|---|---|
+| `orderly` | Realtime agent/skill report | Confirmed |
+| `orderly_sync` | This script, private `/v1/trades` | Confirmed |
+| `orderly_public_sync` | This script, Public Info API | Reference (esp. third-party) |
+| `backfill:agent_wallet` | Platform daily Public Info (agent) | Attributable |
+| `backfill:login_wallet` | Platform daily Public Info (login) | Reference |
+
+### Historical / catch-up sync script
 
 ```bash
 pip install pynacl base58   # one-time
+# Agent wallet (default)
 python3 scripts/trade_sync.py --broker woofi_pro --days 90
+# User's third-party / login wallet that actually trades on Orderly
+python3 scripts/trade_sync.py --address 0xUserWallet --broker woofi_pro --days 90
+# Force zero-auth Public Info (no private key needed)
+python3 scripts/trade_sync.py --address 0xUserWallet --public-only
 ```
 
-What it does (idempotent, safe to re-run or schedule):
+Env override (same as `--address`): `ORDERLY_WALLET_ADDRESS=0x…`
 
-1. Resolves the agent wallet via the wallet service.
-2. Looks up — or registers, free, no funds — the Orderly account for the broker.
-3. Ensures a **read-scope** ed25519 Orderly key (EIP-712 `AddOrderlyKey`
-   signed by the agent wallet; persisted at `workspace/.orderly_key.json`,
-   mode 600).
-4. Pages through private `GET /v1/trades` and maps each fill to a trade event
-   (`venue=orderly:<broker>`, `dedupe_key=orderly:<account_id>:<trade_id>`).
-5. Fire-and-forget reports to `/v1/trade-events` — the server dedupes on
-   `(user, dedupe_key)`, so historical + live syncs never double-count.
+What the script does (idempotent):
 
-For continuous indexing, schedule it (e.g. daily) — each run picks up new
-fills since the lookback window and duplicates are dropped server-side.
+1. Resolves **execution wallet**: `--address` → `ORDERLY_WALLET_ADDRESS` → agent EVM.
+2. Looks up Orderly account for that address + broker (registers only when the
+   address **is** the agent wallet and can EIP-712-sign).
+3. If a read-scope ed25519 key is available for that account → private
+   `GET /v1/trades`. Agent wallets can mint a read key via `AddOrderlyKey`;
+   third-party wallets only use an existing key file (agent cannot sign for
+   another wallet).
+4. Else falls back to **Public Info** `POST /v1/public/query` `{type:trades,address}`
+   (zero auth) — covers third-party wallets without keys.
+5. Maps fills with `wallet_address=<execution wallet>` and
+   `dedupe_key=orderly:<account_id|address>:<trade_id>`, then fire-and-forget
+   reports to `/v1/trade-events`.
 
-**After any trade you execute on Orderly via SDK/CLI/API, run this sync**
-so the fill is indexed. Reporting must never block or fail trading.
+Keys are stored per account at `workspace/.orderly_key_<account_prefix>.json`
+(mode 600). Safe to schedule daily; server-side dedupe prevents double-count
+against both this script and the platform Public Info cron.
+
+**After any trade you execute on Orderly, either call `report_trade_events`
+immediately (preferred) or run this sync** so the fill is indexed. Reporting
+must never block or fail trading.

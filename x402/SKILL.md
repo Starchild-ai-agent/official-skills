@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.10.2
+version: 2.11.0
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -70,8 +70,13 @@ with `accepts.pricingModel`, facilitator is the single source of truth for
 | `metered` | extended | like subscription, route-weighted units | mixed cheap/expensive endpoints (LLM calls etc.) |
 | `timepass` | extended | x402 payment → N-day pass on an API key | fixed-duration passes (non-natural-month) |
 
-⚠️ lifetime/monthly/weekly/quarterly/yearly REQUIRE `--facilitator-admin-token`
-(fail-closed at startup). Multi-plan: `--plan MODE=PRICE` (repeatable).
+lifetime/monthly/weekly/quarterly/yearly check "already paid" via the
+facilitator's `/access-status` endpoint. The gateway resolves this
+automatically: if `--facilitator-admin-token` is provided it calls the
+facilitator directly; otherwise it proxies through community-gateway
+(`COMMUNITY_GATEWAY_URL`, already set in user containers) which holds the
+admin token server-side — **no admin token needed in user containers**.
+Multi-plan: `--plan MODE=PRICE` (repeatable).
 → **MUST read `references/selling.md` BEFORE deploying any of these modes** —
 it has the exact commands, contract details, and template list.
 

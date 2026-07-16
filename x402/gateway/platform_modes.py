@@ -30,6 +30,7 @@ from __future__ import annotations
 import base64
 import calendar
 import json
+import os
 import time
 from datetime import datetime, timezone
 
@@ -79,14 +80,26 @@ class PlatformBilling:
         self.fac_token = cfg.get("facilitator_token") or ""
         # settlements/access-status are admin-gated on the platform facilitator
         self.fac_admin_token = cfg.get("facilitator_admin_token") or ""
-        if self.mode in SUBSCRIPTION_MODES and not self.fac_admin_token:
-            # fail-closed at STARTUP: without this token every already_paid()
-            # lookup would 401 and, if treated as unpaid, the gateway would
-            # re-settle on EVERY request — silently double-charging buyers and
-            # destroying lifetime/monthly semantics.
+        # community-gateway proxy: when the gateway doesn't have the admin
+        # token (user containers), it can query access-status through the
+        # community-gateway proxy which holds the token server-side.
+        self.community_gateway_url = (
+            cfg.get("community_gateway_url")
+            or os.environ.get("COMMUNITY_GATEWAY_URL", "")
+        ).rstrip("/")
+        # Internal API key for authenticating to community-gateway proxy
+        self._internal_api_key = (
+            cfg.get("internal_api_key")
+            or os.environ.get("INTERNAL_API_KEY", "")
+        )
+        if self.mode in SUBSCRIPTION_MODES and not self.fac_admin_token and not self.community_gateway_url:
+            # fail-closed at STARTUP: without either the admin token (direct)
+            # or a community-gateway URL (proxy), every already_paid() lookup
+            # would fail and, if treated as unpaid, the gateway would re-settle
+            # on EVERY request — silently double-charging buyers.
             raise ValueError(
-                f"mode '{self.mode}' requires `facilitator_admin_token` "
-                "(facilitator /access-status and /settlements are admin-gated)")
+                f"mode '{self.mode}' requires either `facilitator_admin_token` "
+                "or COMMUNITY_GATEWAY_URL (for proxied access-status checks)")
         # prepaid: suggested deposit size. Default 100 calls worth, floored at
         # the facilitator's default minimum deposit ($0.10 = 100000 atomic).
         dep = cfg.get("deposit_usd")
@@ -242,6 +255,20 @@ class PlatformBilling:
         if hit and hit[0] > now:
             return hit[1]
 
+        # Choose the access-status endpoint:
+        # 1. Direct facilitator (has admin token) — fastest, no extra hop
+        # 2. Community-gateway proxy (no admin token) — gateway holds the
+        #    token server-side, user containers call it with INTERNAL_API_KEY
+        use_proxy = not self.fac_admin_token and self.community_gateway_url
+        if use_proxy:
+            access_url = f"{self.community_gateway_url}/api/x402-facilitator/access-status"
+            access_headers: dict = {}
+            if self._internal_api_key:
+                access_headers["X-INTERNAL-API-KEY"] = self._internal_api_key
+        else:
+            access_url = f"{self.facilitator}/facilitator/access-status"
+            access_headers = self._headers(admin=True)
+
         has = False
         try:
             async with httpx.AsyncClient(timeout=15) as c:
@@ -256,17 +283,18 @@ class PlatformBilling:
                                             else self.mode)}
                 if self.mode in PERIOD_DAYS:
                     params["period_days"] = PERIOD_DAYS[self.mode]
-                r = await c.get(f"{self.facilitator}/facilitator/access-status",
-                                params=params,
-                                headers=self._headers(admin=True))
+                r = await c.get(access_url, params=params,
+                                headers=access_headers)
                 if r.status_code == 200:
                     has = bool(r.json().get("has_access"))
-                elif r.status_code == 400 and self.mode == "monthly":
+                elif r.status_code == 400 and self.mode == "monthly" and not use_proxy:
                     # (weekly/quarterly/yearly deliberately have no fallback:
                     # a facilitator too old for period_days can't answer them)
                     # fallback ONLY for facilitators that reject the
                     # pricing_model param (pre-support versions): pull this
                     # payer/pay_to pair's settlements and compute expiry.
+                    # NOTE: this fallback only works with direct facilitator
+                    # access (admin token); the proxy doesn't expose /settlements.
                     since = now - 40 * 86400  # covers any natural month
                     r = await c.get(f"{self.facilitator}/facilitator/settlements",
                                     params={"since": since, "limit": 1000,

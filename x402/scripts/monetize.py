@@ -272,12 +272,15 @@ def main():
             cfg["facilitator_admin_token"] = args.facilitator_admin_token
         elif args.mode in SUBSCRIPTION or any(
                 m in SUBSCRIPTION for m in cfg.get("plans", {})):
-            # fail-closed: without this token the gateway can't ask the
-            # facilitator "already paid?" and would re-settle every request,
-            # silently double-charging buyers.
-            sys.exit("subscription modes (lifetime/monthly/weekly/quarterly/yearly) "
-                     "require --facilitator-admin-token "
-                     "(facilitator /access-status and /settlements are admin-gated)")
+            # No admin token — the gateway will fall back to the
+            # community-gateway proxy for access-status checks (the proxy
+            # holds the admin token server-side). This requires
+            # COMMUNITY_GATEWAY_URL to be set in the environment.
+            cg = os.environ.get("COMMUNITY_GATEWAY_URL", "")
+            if not cg:
+                print("[x402] WARNING: no --facilitator-admin-token and no "
+                      "COMMUNITY_GATEWAY_URL — the gateway will fail at "
+                      "startup unless one of them is available.", flush=True)
         if not args.facilitator:
             sys.exit("platform modes require --facilitator (e.g. https://starchild-x402-facilitator.fly.dev)")
     if args.mode in ("subscription", "metered"):

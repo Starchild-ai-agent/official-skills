@@ -19,26 +19,24 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode pay_per_use --price 0.01 --network eip155:8453 --facilitator $FAC
 
 # lifetime: one payment = permanent access (checked via /facilitator/access-status)
-# NOTE: lifetime/monthly REQUIRE --facilitator-admin-token (fail-closed at startup;
-# access-status/settlements are admin-gated — without it the gateway cannot know
-# "already paid" and would re-settle every request, double-charging buyers)
+# The gateway checks access-status automatically:
+#   - With --facilitator-admin-token: calls facilitator directly
+#   - Without it: proxies through community-gateway (COMMUNITY_GATEWAY_URL env,
+#     already set in user containers) which holds the admin token server-side
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
-    --mode lifetime --price 5.00 --network eip155:8453 --facilitator $FAC \
-    --facilitator-admin-token $ADMIN_TOKEN
+    --mode lifetime --price 5.00 --network eip155:8453 --facilitator $FAC
 
 # monthly: natural-month subscription (same day next month, clamped to month end;
 # expiry computed from /facilitator/settlements confirmed_at)
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
-    --mode monthly --price 10.00 --network eip155:8453 --facilitator $FAC \
-    --facilitator-admin-token $ADMIN_TOKEN
+    --mode monthly --price 10.00 --network eip155:8453 --facilitator $FAC
 
 # weekly / quarterly / yearly: fixed-length subscriptions (7/90/365 days after the
-# newest qualifying payment). Same admin-token requirement as lifetime/monthly.
+# newest qualifying payment).
 # Facilitator contract: queried as access-status pricing_model=monthly +
 # period_days=7/90/365 (monthly WITHOUT period_days = natural-month semantics).
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
-    --mode weekly --price 3.00 --network eip155:8453 --facilitator $FAC \
-    --facilitator-admin-token $ADMIN_TOKEN
+    --mode weekly --price 3.00 --network eip155:8453 --facilitator $FAC
 
 # multi-plan (docs/pricing-models.md): --mode is the DEFAULT plan,
 # each --plan MODE=PRICE adds an option. Buyers pick a plan per request with the
@@ -46,7 +44,7 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 # pay_per_use cannot be combined with other plans.
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode monthly --price 10.00 --plan weekly=3 --plan yearly=90 \
-    --network eip155:8453 --facilitator $FAC --facilitator-admin-token $ADMIN_TOKEN
+    --network eip155:8453 --facilitator $FAC
 
 # prepaid: one on-chain deposit, then every call is a millisecond off-chain debit.
 # For HIGH-FREQUENCY / metered APIs: no per-call settle (2-5s + gas + 30/min
@@ -58,9 +56,12 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 
 Default protected routes: `/api/*` (override with `--route 'METHOD /path'`;
 one service price via `--price` — platform modes have no per-route pricing).
-lifetime/monthly need `--facilitator-admin-token` because
-`/facilitator/access-status` + `/facilitator/settlements` are admin-gated
-(platform ops holds the token; ask for a scoped one per deployment).
+lifetime/monthly/weekly/quarterly/yearly check "already paid" via the
+facilitator's `/access-status` endpoint. The gateway resolves this
+automatically: with `--facilitator-admin-token` it calls the facilitator
+directly; without it, it proxies through community-gateway
+(`COMMUNITY_GATEWAY_URL`, already set in user containers) which holds the
+admin token server-side — **no admin token needed in user containers**.
 Lifetime semantics: first call settles on-chain; repeat calls pass the
 already-paid check with NO second charge.
 

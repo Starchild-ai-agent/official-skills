@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.24.0
+version: 0.25.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -428,6 +428,55 @@ A paid API is an external API service that already implements x402 charging.
 
 1. **Have an x402-enabled API** — the endpoint must return `402` when unpaid and `200` + data
    after a valid `X-PAYMENT` header. Use the **x402 skill** to implement this if needed.
+
+   #### Ensuring purchases are recorded by Starchild
+
+   For the Starchild marketplace to track purchases, earnings, and usage stats,
+   choose one of the two approaches below based on your facilitator setup:
+
+   **Option A — Use the Starchild facilitator (recommended)**
+
+   Set your x402 middleware's facilitator URL to:
+
+   ```
+   https://starchild-x402-facilitator.fly.dev
+   ```
+
+   On successful settle, the Starchild facilitator automatically calls back
+   community-gateway to record the purchase. No extra setup needed — proceed
+   to step 2 with the default `create_paid_service()` call.
+
+   **Option B — Use your own facilitator + proxy mode**
+
+   If you use your own facilitator (or a third-party one), Starchild cannot
+   receive settlement callbacks. Instead, pass `source="manual"` when creating
+   the service record (step 2):
+
+   ```python
+   create_paid_service(
+       ...,
+       source="manual",   # ← enables proxy mode
+   )
+   ```
+
+   This tells the marketplace to generate a **proxy URL** for your API:
+
+   ```
+   https://community.iamstarchild.com/proxy/{service_id}/...
+   ```
+
+   Users access your API through this proxy URL. The proxy transparently
+   forwards requests to your real `api_endpoint` and, on successful payment
+   (HTTP 200 with a `payment-signature` header), automatically records the
+   purchase in Starchild's database. You do NOT need to change your facilitator
+   URL or set up any callbacks.
+
+   **402 response requirements** (checked during review):
+
+   - The `402` response body **must** include a `pricingModel` field (platform format).
+   - `payTo` **must** be your actual receiving wallet address (Base USDC).
+   - The response must be a valid x402 challenge that clients can parse.
+
 2. **Create the service record** (`service_type = "paid_api"`):
 
 ```python
@@ -449,7 +498,24 @@ create_paid_service(
 
    Required paid-API fields: `name`, `description`, `category`, `service_type`, `api_endpoint`,
    `provider_wallet`, `pricing_model`, `price`, `api_documentation`, `example_request`,
-   `example_response`. Optional: `free_trial_count` (only for `pay_per_use`).
+   `example_response`. Optional: `free_trial_count` (only for `pay_per_use`),
+   `source` (`"manual"` for proxy mode — see step 1 Option B above; omit for default
+   Starchild facilitator mode),
+   `cover_url` (custom cover image URL — must be on `storage.googleapis.com` or other
+   allowed domains; if not provided, the agent should auto-generate a suitable cover
+   image based on the service name and description, upload it via the image upload
+   service, and pass the resulting URL).
+
+   #### Cover image for paid services
+
+   Paid services do NOT auto-generate a cover image (unlike free projects which get
+   auto-captured screenshots). Pass `cover_url` in `create_paid_service()` — same rules
+   as `list_in_dashboard()`: must be on `storage.googleapis.com`, `image.thum.io`, or
+   `api.microlink.io`. If the user provides an image, upload it via the image upload
+   service and use the resulting URL. If not provided, generate a suitable cover image
+   based on the service name and description (e.g. using an image generation skill),
+   upload it, and pass the URL. You can also use `update_service(cover_url=...)` later
+   to add or change the cover.
 
 3. **Publish** → same as Flow B step 4.
 4. **Recommended self-check** → same as Flow B step 5.
@@ -746,6 +812,8 @@ EOF
 | `create_paid_service` response has `project_slug_warning` | Passed `project_slug` for a `paid_api` but the slug doesn't exist in `project_listings` | Backend cleared it automatically. If this is a standalone API, don't pass `project_slug`. If you intended Flow D, `publish_preview()` + `list_in_dashboard()` the project first, then `update_service()` with the correct slug. |
 | `create_paid_service`: `500 Failed to create service` after delete→create cycles with the SAME name | Deleted services keep their slug (soft delete), and slug generation only tries a limited number of suffixes — repeated delete/recreate with one name exhausts them | Do NOT wait and retry — the failure is permanent for that name. Use a different service name, or `restore_service(service_id)` + `update_service()` instead of delete+recreate |
 | Created multiple services when user asked for "multiple APIs" | Called `create_paid_service()` once per API instead of using `api_endpoints` | Use Flow E: one `create_paid_service()` call with `api_endpoints=[...]` array. Only split into multiple services if the APIs are truly unrelated. |
+| Purchases not recorded for external API (own facilitator) | Service was created without `source="manual"`, so no proxy URL is generated and Starchild has no way to observe payments | Either switch to the Starchild facilitator (Option A) or recreate the service with `source="manual"` (Option B) |
+| Proxy URL returns 502 for `source="manual"` service | The `api_endpoint` URL is unreachable from Starchild servers | Verify the external API is publicly accessible and not behind a firewall |
 
 ---
 

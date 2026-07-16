@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.10.1
+version: 2.10.2
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -176,6 +176,13 @@ match a ledger line. Ledger writes are best-effort and never block a payment.
 
 ## Public paid URL (Cloudflare Monetization Gateway parity)
 
+> ⚠️ **Marketplace listing?** If the goal is to list a paid service on the
+> Starchild Service Marketplace, do NOT use `make_public.py` (legacy mode).
+> Instead use `monetize.py --mode <platform_mode>` (any of: `pay_per_use` /
+> `lifetime` / `monthly` / `weekly` / `quarterly` / `yearly` / `prepaid`)
+> and follow the marketplace listing flow below (steps 5–6). `make_public.py`
+> is only for standalone public APIs that do NOT need a marketplace listing.
+
 Make any local service a PUBLIC paid API (charge any caller for any resource,
 no accounts / API keys needed — same capability set as Cloudflare's
 Monetization Gateway, running on your own machine):
@@ -187,7 +194,15 @@ Monetization Gateway, running on your own machine):
 
 **A public URL is NOT a marketplace listing.** Steps 1–4 only make the
 service reachable — the Service Marketplace will show nothing (or "free")
-until you complete the LIST chain (community-publish skill):
+until you complete the LIST chain (community-publish skill).
+
+> ⚠️ **For marketplace listing, use platform mode.** The steps below require
+> the gateway to be running in a **platform mode** (`pay_per_use` / `lifetime`
+> / `monthly` / etc. via `monetize.py`), NOT legacy `payperuse` mode. Legacy
+> mode puts 402 info in the HTTP header only — the marketplace review checks
+> the JSON body for `accepts.pricingModel` and will fail if it's missing.
+> If you used `make_public.py` above, stop the gateway and re-deploy with
+> `monetize.py --mode <platform_mode>` before proceeding to step 5.
 
 5. `create_paid_service(name=..., service_type=..., api_endpoint=<public paid
    route>, provider_wallet=..., pricing_model=..., price=...,

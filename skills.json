@@ -182,15 +182,9 @@
       "description": "Crypto derivatives data: funding rates, open interest, liquidations, long/short ratios.\n\nUse when researching perp markets, tracking Hyperliquid whale positions, or comparing ETF flows (e.g. BTC funding, ETH OI, liquidation heatmap)."
     },
     {
-      "name": "collectorcrypt",
-      "path": "collectorcrypt/SKILL.md",
-      "version": "1.3.0",
-      "description": "CollectorCrypt: physical trading card NFTs on Solana — marketplace, gacha packs, vault redemption, P2P swaps. Use when buying/selling/trading collectible card NFTs, opening mystery packs, redeeming NFTs for physical cards, or swapping assets on Solana (e.g. list Pokemon card for 50 USDC, open gacha pack, ship card to address, swap NFTs peer-to-peer)."
-    },
-    {
       "name": "community-publish",
       "path": "community-publish/SKILL.md",
-      "version": "0.25.0",
+      "version": "0.24.0",
       "description": "Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.\n\nUse when the user wants to share, publish, list, open-source, or monetize what they built (e.g. make this dashboard public, share my project, push to GitHub, 上架到服务市场, 上架付费服务, 提交审核)."
     },
     {
@@ -274,7 +268,7 @@
     {
       "name": "image-3d",
       "path": "image-3d/SKILL.md",
-      "version": "1.0.4",
+      "version": "1.0.3",
       "description": "3D-style image generation: 3D characters, product renders, isometric dioramas, 3D icons, 3D text, interior design renders, architectural visualization, 3D scenes, game assets.\n\nUse when generating 3D-style 2D images from text descriptions or reference photos (e.g. 3D character design, isometric diorama, 3D product render, interior design visualization, architectural render, 3D app icon, 3D text effect, game asset render)."
     },
     {
@@ -292,19 +286,19 @@
     {
       "name": "image-ecommerce",
       "path": "image-ecommerce/SKILL.md",
-      "version": "1.0.4",
+      "version": "1.0.3",
       "description": "E-commerce product photography: white-background hero shots, lifestyle scenes, flat lay, detail close-ups, packaging shots, group/collection displays, scale references, seasonal/holiday themes, 360-degree views, comparison layouts, infographics, and platform-optimized images (Amazon, Shopify, Taobao, Instagram, Xiaohongshu, Etsy, eBay).\n\nUse when generating professional product photos for e-commerce listings, catalogs, or marketing (e.g. product hero shot, Amazon listing image, lifestyle product photo, product on white background, product detail close-up, seasonal product campaign)."
     },
     {
       "name": "image-edit",
       "path": "image-edit/SKILL.md",
-      "version": "1.0.5",
+      "version": "1.0.4",
       "description": "Image editing and enhancement of an existing image. Covers background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.\n\nUse when editing, enhancing, or transforming an existing image (e.g. remove background, upscale photo, restore old photo, retouch portrait, change car color, apply filter, extend image)."
     },
     {
       "name": "image-portrait",
       "path": "image-portrait/SKILL.md",
-      "version": "1.0.5",
+      "version": "1.0.4",
       "description": "Identity-consistent portrait generation from a reference photo. Covers professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.\n\nUse when generating styled portraits from a reference photo (e.g. professional headshot, anime avatar, cyberpunk portrait, travel photo, dating profile photo, ID photo)."
     },
     {
@@ -394,7 +388,7 @@
     {
       "name": "orderly-onboarding",
       "path": "orderly-onboarding/SKILL.md",
-      "version": "1.0.2",
+      "version": "1.1.1",
       "description": "Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart.\n\nUse when starting on Orderly (e.g. install Orderly MCP, set up the DEX template, integrate the React SDK, use the orderly CLI)."
     },
     {
@@ -580,7 +574,7 @@
     {
       "name": "wallet",
       "path": "wallet/SKILL.md",
-      "version": "3.6.1",
+      "version": "3.6.2",
       "description": "Multi-chain wallet: EVM and Solana balances, transfers, signing, and policy.\n\nUse when checking balances, sending tokens, signing typed data, or proposing a wallet policy (e.g. send 10 USDC on Base, sign EIP-712, Solana balance)."
     },
     {
@@ -628,7 +622,7 @@
     {
       "name": "x402",
       "path": "x402/SKILL.md",
-      "version": "2.11.0",
+      "version": "2.14.1",
       "description": "Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {

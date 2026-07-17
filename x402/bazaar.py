@@ -38,10 +38,120 @@ _SKILL_DIR = "/data/workspace/skills/x402"
 _COMMUNITY_PUBLISH = "/data/workspace/skills/community-publish"
 _COMMUNITY_HOST = "community.iamstarchild.com"
 
-# Networks our client/facilitator path is verified on.
-PAYABLE_NETWORKS = {"eip155:8453", "base"}          # Base mainnet
-PAYABLE_SCHEMES = {"exact"}                          # EIP-3009 standard
+# Networks the buyer client can sign. Settlement is seller-side facilitator.
+# EVM = EIP-3009 exact + native Circle USDC. SVM = exact + mainnet USDC mint.
+# No testnets in prod pay path.
+PAYABLE_SCHEMES = {"exact"}
 USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+USDC_SOLANA = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+SOLANA_MAINNET = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+# Canonical network id → native Circle USDC (comparisons always .lower()).
+PAYABLE_USDC = {
+    "eip155:8453": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",   # Base
+    "base":        "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "eip155:137":  "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359",   # Polygon
+    "eip155:42161":"0xaf88d065e77c8cc2239327c5edb3a432268e5831",   # Arbitrum One
+    "eip155:480":  "0x79a02482a880bce3f13e09da970dc34db4cd24d1",   # World Chain
+    "eip155:143":  "0x754704bc059f8c67012fed69bc8a327a5aafb603",   # Monad
+    "eip155:43114":"0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",   # Avalanche C
+    "eip155:1":    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",   # Ethereum
+    "eip155:10":   "0x0b2c639c533813f4aa9d7837caf62653d097ff85",   # Optimism
+    "eip155:59144":"0x176211869ca2b568f2a7d4ee941e073a821ee1ff",   # Linea
+    "eip155:42220":"0xceba9300f2b948710d2653dd7b07f33a8b32118c",   # Celo
+    "eip155:130":  "0x078d782b760474a361dda0af3839290b0ef57ad6",   # Unichain
+    SOLANA_MAINNET: USDC_SOLANA.lower(),
+    "solana": USDC_SOLANA.lower(),  # V1 alias
+}
+PAYABLE_NETWORKS = set(PAYABLE_USDC.keys())
+# Static FALLBACK preference, used only when client.network_rank is
+# unavailable (outside the agent runtime). Mirrors the client's auto
+# routing: Solana → no-delegation EVM (Monad) → delegated/major EVM.
+NETWORK_PREFERENCE = (
+    SOLANA_MAINNET, "solana",
+    "eip155:143",
+    "eip155:8453", "base",
+    "eip155:137", "eip155:42161", "eip155:480",
+    "eip155:43114", "eip155:1", "eip155:10",
+    "eip155:59144", "eip155:42220", "eip155:130",
+)
+
+
+def _canon_network(network) -> str:
+    n = (network or "").strip()
+    if n == "base":
+        return "eip155:8453"
+    if n == "solana":
+        return SOLANA_MAINNET
+    return n
+
+
+def _is_payable_accept(acc: dict) -> bool:
+    if not isinstance(acc, dict):
+        return False
+    if acc.get("scheme") not in PAYABLE_SCHEMES:
+        return False
+    net = _canon_network(acc.get("network"))
+    if net not in PAYABLE_NETWORKS and acc.get("network") not in PAYABLE_NETWORKS:
+        return False
+    asset = str(acc.get("asset") or "").lower()
+    want = PAYABLE_USDC.get(net) or PAYABLE_USDC.get(acc.get("network") or "")
+    return bool(want) and asset == str(want).lower()
+
+
+def _amount_int(a: dict) -> int:
+    """Numeric amount for sorting; unparseable amounts sort LAST (never let a
+    malformed quote look cheapest)."""
+    try:
+        return int(str(a.get("amount")))
+    except (TypeError, ValueError):
+        return 1 << 62
+
+
+def _sort_payable(accepts: list, signer_mode: str = "auto") -> list:
+    """Order accepts exactly like paid_request's routing policy (shared
+    selector: client.network_rank), so the rail shown by probe_402 is the
+    rail auto actually pays. Falls back to the static NETWORK_PREFERENCE
+    when the client/signer is unavailable."""
+    try:
+        from client import network_rank, rank_signer_cached
+        signer = rank_signer_cached()
+        return sorted(accepts, key=lambda a: (
+            network_rank(_canon_network(a.get("network")),
+                         signer=signer, signer_mode=signer_mode),
+            _amount_int(a)))
+    except Exception:
+        pass
+    pref = {n: i for i, n in enumerate(NETWORK_PREFERENCE)}
+
+    def key(a):
+        n = _canon_network(a.get("network"))
+        return (pref.get(n, pref.get(a.get("network"), 99)), _amount_int(a))
+
+    return sorted(accepts, key=key)
+
+
+def _decode_payment_required_header(headers) -> list:
+    """Decode V2 PAYMENT-REQUIRED (or X-PAYMENT-REQUIRED) → accepts list."""
+    raw = None
+    try:
+        raw = headers.get("PAYMENT-REQUIRED") or headers.get("payment-required")
+        if not raw:
+            raw = headers.get("X-PAYMENT-REQUIRED") or headers.get("x-payment-required")
+    except Exception:
+        raw = None
+    if not raw:
+        return []
+    try:
+        import base64
+        s = raw.strip()
+        pad = "=" * (-len(s) % 4)
+        data = json.loads(base64.urlsafe_b64decode(s + pad))
+        accepts = data.get("accepts") or []
+        if isinstance(accepts, dict):
+            accepts = [accepts]
+        return accepts if isinstance(accepts, list) else []
+    except Exception:
+        return []
 
 
 def _get(url: str) -> dict:
@@ -59,10 +169,9 @@ def _summarize(item: dict) -> dict:
         entry = {"scheme": acc.get("scheme"), "network": acc.get("network"),
                  "amount_atomic": acc.get("amount") or acc.get("maxAmountRequired"),
                  "asset": acc.get("asset")}
-        ok = (entry["scheme"] in PAYABLE_SCHEMES
-              and entry["network"] in PAYABLE_NETWORKS
-              and str(entry["asset"]).lower() == USDC_BASE.lower())
+        ok = _is_payable_accept(acc)
         (payable if ok else other).append(entry)
+    payable = _sort_payable(payable)
     best = payable[0] if payable else None
     price_usd = None
     if best and best["amount_atomic"]:
@@ -76,6 +185,7 @@ def _summarize(item: dict) -> dict:
         "x402_version": item.get("x402Version"),
         "payable_by_us": bool(payable),
         "price_usd": price_usd,
+        "network": best.get("network") if best else None,
         "accepts_payable": payable,
         "accepts_other": other[:3],
         "last_updated": item.get("lastUpdated"),
@@ -435,28 +545,28 @@ def probe_402(url: str, method: str = "GET", json_body=None, headers=None,
                     "reason": "non-standard transfer+tx-hash payment — refuse, do not pay"})
         return out
 
+    # Prefer body accepts; fall back to PAYMENT-REQUIRED header payload.
+    if not accepts:
+        accepts = _decode_payment_required_header(r.headers)
+
     if has_v2_header or accepts:
-        payable = []
-        for acc in accepts or []:
-            if (acc.get("scheme") in PAYABLE_SCHEMES
-                    and acc.get("network") in PAYABLE_NETWORKS
-                    and str(acc.get("asset", "")).lower() == USDC_BASE.lower()):
-                payable.append(acc)
-        if has_v2_header and not accepts:
-            out.update({"classification": "standard-v2", "payable": True,
-                        "flavor": "v2-header"})
-            return out
+        payable = _sort_payable([a for a in (accepts or []) if _is_payable_accept(a)])
         if payable:
-            amt = payable[0].get("amount") or payable[0].get("maxAmountRequired")
+            best = payable[0]
+            amt = best.get("amount") or best.get("maxAmountRequired")
+            flavor = "v2-header" if has_v2_header else "json-accepts"
             out.update({"classification": "standard-v2", "payable": True,
-                        "flavor": "json-accepts",
+                        "flavor": flavor,
+                        "network": best.get("network"),
+                        "asset": best.get("asset"),
                         "live_price_atomic": amt,
                         "live_price_usd": (int(amt) / 1e6) if amt else None,
-                        "pay_to": payable[0].get("payTo")})
+                        "pay_to": best.get("payTo")})
             return out
+        # Header-only 402 with undecodable accepts: do not auto-pay (unknown rail).
         out.update({"classification": "wrong-rail", "payable": False,
-                    "reason": "standard x402 but no accept on Base USDC exact",
-                    "accepts_seen": [(a.get("scheme"), a.get("network"))
+                    "reason": "standard x402 but no accept on a known EVM USDC exact rail",
+                    "accepts_seen": [(a.get("scheme"), a.get("network"), a.get("asset"))
                                      for a in (accepts or [])][:5]})
         return out
 

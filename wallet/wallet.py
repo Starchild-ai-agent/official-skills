@@ -14,11 +14,29 @@ from tools.wallet import (
     _wallet_request,
     _get_wallet_addresses,
     _validate_and_clean_rules,
-    DEBANK_CHAIN_MAP,
+    DEBANK_CHAIN_MAP as _PLATFORM_DEBANK_MAP,
 )
 from core.http_client import proxied_get
 
 logger = logging.getLogger(__name__)
+
+# Merge platform map with known DeBank ids (monad/world/unichain/…) so skill
+# wallet_balance works even when platform fallback is stale.
+_DEBANK_CHAIN_ALIASES = {
+    "ethereum": "eth", "base": "base", "arbitrum": "arb",
+    "optimism": "op", "polygon": "matic", "linea": "linea",
+    "bsc": "bsc", "avalanche": "avax", "fantom": "ftm",
+    "gnosis": "xdai", "zksync": "era", "scroll": "scrl",
+    "blast": "blast", "mantle": "mnt", "celo": "celo",
+    "aurora": "aurora",
+    "monad": "monad", "world": "world", "worldchain": "world",
+    "unichain": "uni", "uni": "uni",
+    "abstract": "abs", "abs": "abs",
+    "sonic": "sonic", "berachain": "bera", "bera": "bera",
+}
+DEBANK_CHAIN_MAP = dict(_PLATFORM_DEBANK_MAP)
+for _k, _v in _DEBANK_CHAIN_ALIASES.items():
+    DEBANK_CHAIN_MAP.setdefault(_k, _v)
 
 EVM_CHAINS = list(DEBANK_CHAIN_MAP.keys())
 

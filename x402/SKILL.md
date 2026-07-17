@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.11.0
+version: 2.14.1
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -70,13 +70,8 @@ with `accepts.pricingModel`, facilitator is the single source of truth for
 | `metered` | extended | like subscription, route-weighted units | mixed cheap/expensive endpoints (LLM calls etc.) |
 | `timepass` | extended | x402 payment → N-day pass on an API key | fixed-duration passes (non-natural-month) |
 
-lifetime/monthly/weekly/quarterly/yearly check "already paid" via the
-facilitator's `/access-status` endpoint. The gateway resolves this
-automatically: if `--facilitator-admin-token` is provided it calls the
-facilitator directly; otherwise it proxies through community-gateway
-(`COMMUNITY_GATEWAY_URL`, already set in user containers) which holds the
-admin token server-side — **no admin token needed in user containers**.
-Multi-plan: `--plan MODE=PRICE` (repeatable).
+⚠️ lifetime/monthly/weekly/quarterly/yearly REQUIRE `--facilitator-admin-token`
+(fail-closed at startup). Multi-plan: `--plan MODE=PRICE` (repeatable).
 → **MUST read `references/selling.md` BEFORE deploying any of these modes** —
 it has the exact commands, contract details, and template list.
 
@@ -135,7 +130,13 @@ do NOT settle — the result has `paid: true` with no new on-chain tx.
 
 **Buyer signer = Privy wallet by default** (`signer_mode="auto"`); smart
 accounts are detected and signed via an ERC-1271-compatible path
-automatically. Do NOT revoke the wallet's delegation (it powers gas
+automatically. **Multi-accept routing prefers rails where Privy signs a
+plain signature** (max facilitator compatibility, no EOA funding needed):
+① Solana (ed25519) → ② EVM chains where the payer has no EIP-7702 code
+(plain ECDSA, e.g. Monad) → ③ EVM chains with delegation code (Kernel
+EIP-1271, e.g. Base) as last resort — spec-correct but some seller
+facilitators reject it; for Base-only sellers that do, use
+`signer_mode="eoa"`. Do NOT revoke the wallet's delegation (it powers gas
 sponsorship). `auto` is FAIL-CLOSED: if the Privy signer cannot be
 initialized, `paid_request` raises instead of paying from a different
 identity — allow the session-EOA fallback only explicitly via
@@ -181,13 +182,6 @@ match a ledger line. Ledger writes are best-effort and never block a payment.
 
 ## Public paid URL (Cloudflare Monetization Gateway parity)
 
-> ⚠️ **Marketplace listing?** If the goal is to list a paid service on the
-> Starchild Service Marketplace, do NOT use `make_public.py` (legacy mode).
-> Instead use `monetize.py --mode <platform_mode>` (any of: `pay_per_use` /
-> `lifetime` / `monthly` / `weekly` / `quarterly` / `yearly` / `prepaid`)
-> and follow the marketplace listing flow below (steps 5–6). `make_public.py`
-> is only for standalone public APIs that do NOT need a marketplace listing.
-
 Make any local service a PUBLIC paid API (charge any caller for any resource,
 no accounts / API keys needed — same capability set as Cloudflare's
 Monetization Gateway, running on your own machine):
@@ -199,15 +193,7 @@ Monetization Gateway, running on your own machine):
 
 **A public URL is NOT a marketplace listing.** Steps 1–4 only make the
 service reachable — the Service Marketplace will show nothing (or "free")
-until you complete the LIST chain (community-publish skill).
-
-> ⚠️ **For marketplace listing, use platform mode.** The steps below require
-> the gateway to be running in a **platform mode** (`pay_per_use` / `lifetime`
-> / `monthly` / etc. via `monetize.py`), NOT legacy `payperuse` mode. Legacy
-> mode puts 402 info in the HTTP header only — the marketplace review checks
-> the JSON body for `accepts.pricingModel` and will fail if it's missing.
-> If you used `make_public.py` above, stop the gateway and re-deploy with
-> `monetize.py --mode <platform_mode>` before proceeding to step 5.
+until you complete the LIST chain (community-publish skill):
 
 5. `create_paid_service(name=..., service_type=..., api_endpoint=<public paid
    route>, provider_wallet=..., pricing_model=..., price=...,
@@ -357,10 +343,20 @@ resolve_marketplace("https://example.com/api") # → pay_url via community when 
 bazaar_pay(url, max_usd=0.01)                  # proxy-first pay; refuse non-standard
 ```
 
-`probe_402` / `bazaar_pay` only pay `standard-v2` (Base USDC `exact`). Other
-shapes (`wrong-rail`, `tx-hash`, `non-standard`, `no-payment`) are refused
-before any signature. If marketplace matched but the proxy is not payable,
-**do not bypass** to the external origin — fix the path or skip.
+`probe_402` / `bazaar_pay` only pay `standard-v2` **exact** on known native
+USDC rails (see `bazaar.PAYABLE_USDC`): Base, Polygon, Arbitrum, World Chain,
+Solana mainnet, Monad, Avalanche, Ethereum, Optimism, Linea, Celo, Unichain.
+Multi-accept → prefer Privy-native rails (Solana → no-code EVM → delegated
+EVM; see buyer signer section). The same selector (`client.network_rank`)
+drives bazaar's `probe_402` ordering, so the rail shown at probe time is the
+rail `auto` actually pays. `signer_mode="eoa"` never registers the SVM signer
+and hard-filters Solana accepts — the pinned session-EOA payer identity is
+never substituted. Results and ledger lines carry the ACTUAL selected
+`network`/`payer`/`signer_type` (Solana settlements report the Privy Solana
+address as payer). Solana signs via Privy `wallet_sol_sign` (base64
+raw message). Not yet: EURC/alt-stables, testnets. Other shapes (`wrong-rail`,
+`tx-hash`, `non-standard`, `no-payment`) refused before any signature. Buyer
+signs; seller facilitator settles.
 
 ## Errors & diagnostics
 

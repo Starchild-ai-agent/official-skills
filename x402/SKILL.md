@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.12.0
+version: 2.13.0
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -339,10 +339,11 @@ bazaar_pay(url, max_usd=0.01)                  # proxy-first pay; refuse non-sta
 
 `probe_402` / `bazaar_pay` only pay `standard-v2` **exact** on known native
 USDC rails (see `bazaar.PAYABLE_USDC`): Base, Polygon, Arbitrum, World Chain,
-Monad, Avalanche, Ethereum, Optimism, Linea, Celo, Unichain. Multi-accept →
-prefer Base. Not yet: Solana/SVM, EURC/alt-stables, testnets. Other shapes
-(`wrong-rail`, `tx-hash`, `non-standard`, `no-payment`) refused before any
-signature. Buyer signs; seller facilitator settles.
+Solana mainnet, Monad, Avalanche, Ethereum, Optimism, Linea, Celo, Unichain.
+Multi-accept → prefer Base. Solana signs via Privy `wallet_sol_sign` (base64
+raw message). Not yet: EURC/alt-stables, testnets. Other shapes (`wrong-rail`,
+`tx-hash`, `non-standard`, `no-payment`) refused before any signature. Buyer
+signs; seller facilitator settles.
 
 ## Errors & diagnostics
 

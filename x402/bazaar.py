@@ -38,13 +38,14 @@ _SKILL_DIR = "/data/workspace/skills/x402"
 _COMMUNITY_PUBLISH = "/data/workspace/skills/community-publish"
 _COMMUNITY_HOST = "community.iamstarchild.com"
 
-# Networks the buyer client can sign (EIP-3009 exact + native USDC).
-# Settlement is seller-side facilitator; we only need sign + known USDC rail.
-# No Solana/SVM yet (different scheme stack). No testnets in prod pay path.
+# Networks the buyer client can sign. Settlement is seller-side facilitator.
+# EVM = EIP-3009 exact + native Circle USDC. SVM = exact + mainnet USDC mint.
+# No testnets in prod pay path.
 PAYABLE_SCHEMES = {"exact"}
 USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-# Canonical eip155:<id> → native Circle USDC (checksum preserved for docs;
-# comparisons always .lower()).
+USDC_SOLANA = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+SOLANA_MAINNET = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
+# Canonical network id → native Circle USDC (comparisons always .lower()).
 PAYABLE_USDC = {
     "eip155:8453": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",   # Base
     "base":        "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
@@ -58,12 +59,15 @@ PAYABLE_USDC = {
     "eip155:59144":"0x176211869ca2b568f2a7d4ee941e073a821ee1ff",   # Linea
     "eip155:42220":"0xceba9300f2b948710d2653dd7b07f33a8b32118c",   # Celo
     "eip155:130":  "0x078d782b760474a361dda0af3839290b0ef57ad6",   # Unichain
+    SOLANA_MAINNET: USDC_SOLANA.lower(),
+    "solana": USDC_SOLANA.lower(),  # V1 alias
 }
 PAYABLE_NETWORKS = set(PAYABLE_USDC.keys())
-# Prefer Base (our funded rail) then high-volume CDP rails, then the rest.
+# Prefer Base (funded) → major EVM → Solana → other EVM.
 NETWORK_PREFERENCE = (
     "eip155:8453", "base",
     "eip155:137", "eip155:42161", "eip155:480",
+    SOLANA_MAINNET, "solana",
     "eip155:143", "eip155:43114", "eip155:1", "eip155:10",
     "eip155:59144", "eip155:42220", "eip155:130",
 )
@@ -73,6 +77,8 @@ def _canon_network(network) -> str:
     n = (network or "").strip()
     if n == "base":
         return "eip155:8453"
+    if n == "solana":
+        return SOLANA_MAINNET
     return n
 
 
@@ -86,7 +92,7 @@ def _is_payable_accept(acc: dict) -> bool:
         return False
     asset = str(acc.get("asset") or "").lower()
     want = PAYABLE_USDC.get(net) or PAYABLE_USDC.get(acc.get("network") or "")
-    return bool(want) and asset == want
+    return bool(want) and asset == str(want).lower()
 
 
 def _sort_payable(accepts: list) -> list:

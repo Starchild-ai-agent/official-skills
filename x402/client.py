@@ -454,6 +454,48 @@ def _make_signer(signer_mode: str, max_amount_atomic: int,
         return s
 
 
+class PrivySvmSigner:
+    """Solana buyer signer via Privy wallet_sol_sign (base64 raw message bytes).
+
+    ExactSvmScheme only needs `.address` + `.keypair.sign_message(bytes)`.
+    We don't expose the Privy key; sign_message proxies to wallet skill.
+    """
+
+    def __init__(self):
+        from core.skill_tools import wallet as _w
+        info = _w.wallet_info()
+        wallets = info.get("wallets") if isinstance(info, dict) else info
+        addr = None
+        for w in wallets or []:
+            if isinstance(w, dict) and w.get("chain_type") == "solana":
+                addr = w.get("wallet_address") or w.get("address")
+                break
+        if not addr:
+            raise RuntimeError("no Solana wallet address from wallet_info()")
+        self._address = addr
+        self._wallet = _w
+        self.keypair = self  # ExactSvmScheme calls signer.keypair.sign_message
+
+    @property
+    def address(self) -> str:
+        return self._address
+
+    def sign_message(self, message: bytes):
+        import base64
+        from solders.signature import Signature
+        # wallet_sol_sign accepts base64 of raw bytes and returns base64 sig.
+        r = self._wallet.wallet_sol_sign(
+            message=base64.b64encode(bytes(message)).decode())
+        sig_b64 = r.get("signature") if isinstance(r, dict) else None
+        if not sig_b64:
+            raise RuntimeError(f"wallet_sol_sign failed: {r!r}")
+        return Signature.from_bytes(base64.b64decode(sig_b64))
+
+    def sign_transaction(self, tx):
+        # Not used by ExactSvmScheme.create_payment_payload (signs msg directly).
+        raise NotImplementedError("use ExactSvmScheme partial-sign path")
+
+
 def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
                   allow_fallback_eoa: bool = False):
     from x402 import x402Client
@@ -461,9 +503,19 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
     from x402.mechanisms.evm.exact.register import register_exact_evm_client
     signer = _make_signer(signer_mode, max_amount_atomic, allow_fallback_eoa)
     client = x402Client()
-    # eip155:* already covers Base + Monad; policies pick a safe accept.
+    # EVM rails (Base/Polygon/Arbitrum/Monad/…).
     register_exact_evm_client(client, signer)
-    # Prefer Base USDC when multi-accept; allow all known EVM USDC rails.
+    # Solana mainnet exact (Privy SVM signer). Best-effort: skip if solders/wallet missing.
+    svm_signer = None
+    try:
+        from x402.mechanisms.svm.exact.register import register_exact_svm_client
+        svm_signer = PrivySvmSigner()
+        register_exact_svm_client(
+            client, svm_signer,
+            networks=["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "solana"])
+    except Exception as e:
+        print(f"[x402] SVM buyer register skipped: {e}", file=sys.stderr)
+    # Prefer Base USDC when multi-accept; allow all known USDC rails incl Solana.
     client.register_policy(prefer_scheme("exact"))
     client.register_policy(prefer_network("eip155:8453"))
     client.register_policy(max_amount(max_amount_atomic))
@@ -471,23 +523,35 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
     def _only_known_usdc_rails(version, reqs):
         # Keep native Circle USDC exact rails only (see bazaar.PAYABLE_USDC).
         try:
-            from bazaar import PAYABLE_USDC
-            ok_assets = {k: v.lower() for k, v in PAYABLE_USDC.items()}
+            from bazaar import PAYABLE_USDC, _canon_network
+            ok_assets = {k: str(v).lower() for k, v in PAYABLE_USDC.items()}
         except Exception:
             ok_assets = {
                 "eip155:8453": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
                 "base": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp":
+                    "epjfwdd5aufqssqem2qn1xzybapc8g4weggkzwytdt1v",
             }
+            def _canon_network(n):  # noqa: E306
+                return "eip155:8453" if n == "base" else (
+                    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" if n == "solana" else n)
         kept = []
         for r in reqs:
             net = getattr(r, "network", None) or (r.get("network") if isinstance(r, dict) else None)
             asset = getattr(r, "asset", None) or (r.get("asset") if isinstance(r, dict) else None)
-            want = ok_assets.get(net)
+            net_c = _canon_network(net) if net else net
+            want = ok_assets.get(net_c) or ok_assets.get(net)
             if want and str(asset or "").lower() == want:
                 kept.append(r)
         return kept
 
     client.register_policy(_only_known_usdc_rails)
+    # Return EVM signer for payer metadata; attach svm for diagnostics.
+    if svm_signer is not None:
+        try:
+            signer.svm_address = svm_signer.address
+        except Exception:
+            pass
     return client, signer
 
 

@@ -45,18 +45,36 @@ except ImportError:
                 result["sol"] = addr
         return result
 
+# DeBank chain aliases (name → openapi chain id). Keep in sync with
+# /app/tools/wallet.py fallback + known DeBank-supported L2s used by x402.
+_DEBANK_CHAIN_ALIASES = {
+    "ethereum": "eth", "base": "base", "arbitrum": "arb",
+    "optimism": "op", "polygon": "matic", "linea": "linea",
+    "bsc": "bsc", "avalanche": "avax", "fantom": "ftm",
+    "gnosis": "xdai", "zksync": "era", "scroll": "scrl",
+    "blast": "blast", "mantle": "mnt", "celo": "celo",
+    "aurora": "aurora",
+    # Missing from old fallback — present on DeBank chain/list:
+    "monad": "monad",            # community_id 143
+    "world": "world",            # World Chain 480
+    "worldchain": "world",
+    "unichain": "uni",
+    "uni": "uni",                # Unichain 130
+    "abstract": "abs",
+    "abs": "abs",
+    "sonic": "sonic",
+    "berachain": "bera",
+    "bera": "bera",
+}
+
 try:
-    from tools.wallet import DEBANK_CHAIN_MAP
+    from tools.wallet import DEBANK_CHAIN_MAP as _PLATFORM_DEBANK_MAP
+    DEBANK_CHAIN_MAP = dict(_PLATFORM_DEBANK_MAP)
+    # Always merge aliases so skill stays ahead of stale platform fallback.
+    for _k, _v in _DEBANK_CHAIN_ALIASES.items():
+        DEBANK_CHAIN_MAP.setdefault(_k, _v)
 except ImportError:
-    # Same shape as tools/wallet.py's fallback: {chain_name: debank_chain_id}
-    DEBANK_CHAIN_MAP = {
-        "ethereum": "eth", "base": "base", "arbitrum": "arb",
-        "optimism": "op", "polygon": "matic", "linea": "linea",
-        "bsc": "bsc", "avalanche": "avax", "fantom": "ftm",
-        "gnosis": "xdai", "zksync": "era", "scroll": "scrl",
-        "blast": "blast", "mantle": "mnt", "celo": "celo",
-        "aurora": "aurora",
-    }
+    DEBANK_CHAIN_MAP = dict(_DEBANK_CHAIN_ALIASES)
 
 try:
     from tools.wallet import _validate_and_clean_rules

@@ -1,6 +1,6 @@
 ---
 name: wallet
-version: 3.6.1
+version: 3.6.2
 description: |
   Multi-chain wallet: EVM and Solana balances, transfers, signing, and policy.
 
@@ -58,7 +58,7 @@ The **one** operation that is NOT a script function is proposing a wallet policy
 - **Amounts are in wei** for EVM (`wallet_transfer` / `wallet_sign_transaction`). 0.01 ETH = `10000000000000000`. For ERC-20 token sends, `amount` is `0` (native) and the transfer is encoded in `data` calldata.
 - **Gas is sponsored by default** on EVM chains — user doesn't need native tokens for gas. Falls back to user-paid if unavailable. Pass `sponsor=False` to pay gas from wallet balance.
 - **Policy default: OFF** (allow-all). Only when policy is enabled do transactions need UI confirmation.
-- **Supported EVM chains**: All DeBank-supported chains. Common names auto-mapped (e.g. `avalanche` → `avax`, `bsc` → `bsc`, `zksync` → `era`). The 16 common chains (ethereum, base, arbitrum, optimism, polygon, linea, bsc, avalanche, fantom, gnosis, zksync, scroll, blast, mantle, celo, aurora) have built-in fallback mapping.
+- **Supported EVM chains**: All DeBank-supported chains. Common names auto-mapped (e.g. `avalanche` → `avax`, `bsc` → `bsc`, `zksync` → `era`). Fallback aliases include ethereum/base/arbitrum/optimism/polygon/linea/bsc/avalanche/fantom/gnosis/zksync/scroll/blast/mantle/celo/aurora **plus** monad/world/unichain/abstract/sonic/berachain.
 - **Balance sources**: DeBank (EVM), Birdeye (Solana), wallet-service (fallback). DeBank/Birdeye keys are auto-injected by sc-proxy.
 
 ## Workflows

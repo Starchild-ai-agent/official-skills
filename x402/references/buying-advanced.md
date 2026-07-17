@@ -1,7 +1,7 @@
 # x402 Buying Reference — signer details & funding the session EOA
 
 Read this BEFORE using the session EOA signer, funding a buyer wallet, or
-paying outside the supported buyer rails (Base + Monad mainnet USDC exact).
+paying outside the supported buyer rails (EVM + Solana mainnet USDC exact).
 
 ## Signer internals
 
@@ -45,10 +45,11 @@ source of truth: `bazaar.PAYABLE_USDC` /
 - Linea `59144` `0x176211869cA2b568f2A7D4EE941E073a821EE1ff`
 - Celo `42220` `0xcebA9300f2b948710d2653dD7B07f33A8B32118C`
 - Unichain `130` `0x078D782b760474a361dDA0AF3839290b0EF57AD6`
-Not yet: Solana/SVM, EURC / non-USDC stables, testnets.
+- Solana mainnet `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` mint `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` (Privy SVM signer)
+Not yet: EURC / non-USDC stables, testnets.
 
-1. Snapshot balances on the **target** network (wallet skill may not list Monad
-   yet — use RPC `balanceOf` on the USDC contract if needed).
+1. Snapshot balances on the **target** network (`wallet_balance(chain=…)` for
+   EVM incl. monad/world/unichain; `wallet_sol_balance()` for Solana).
 2. USDC on the wrong chain → move it to the service's network first
    (cross-chain: okx / bridge skills; same-chain swap: 1inch / openocean).
 3. Privy → session EOA on the target chain via `wallet_transfer` — an ERC20

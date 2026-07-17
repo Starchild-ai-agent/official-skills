@@ -574,7 +574,7 @@
     {
       "name": "wallet",
       "path": "wallet/SKILL.md",
-      "version": "3.6.1",
+      "version": "3.6.2",
       "description": "Multi-chain wallet: EVM and Solana balances, transfers, signing, and policy.\n\nUse when checking balances, sending tokens, signing typed data, or proposing a wallet policy (e.g. send 10 USDC on Base, sign EIP-712, Solana balance)."
     },
     {
@@ -622,7 +622,7 @@
     {
       "name": "x402",
       "path": "x402/SKILL.md",
-      "version": "2.12.0",
+      "version": "2.13.0",
       "description": "Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {

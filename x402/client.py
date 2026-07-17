@@ -515,9 +515,34 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
             networks=["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "solana"])
     except Exception as e:
         print(f"[x402] SVM buyer register skipped: {e}", file=sys.stderr)
-    # Prefer Base USDC when multi-accept; allow all known USDC rails incl Solana.
+    # Prefer rails where the Privy wallet signs a plain (non-EIP-1271)
+    # signature — maximum facilitator compatibility without funding an EOA:
+    #   1. SVM (Solana): Privy ed25519, universally accepted.
+    #   2. EVM chains where the payer address has NO delegation code
+    #      (e.g. Monad): plain 65B ECDSA, verified as EOA.
+    #   3. EVM chains with EIP-7702 delegation (e.g. Base): Kernel EIP-1271
+    #      wrapper — spec-correct but some seller facilitators reject it.
     client.register_policy(prefer_scheme("exact"))
-    client.register_policy(prefer_network("eip155:8453"))
+
+    def _prefer_privy_native(version, reqs):
+        def rank(r):
+            net = str(getattr(r, "network", None) or
+                      (r.get("network") if isinstance(r, dict) else "") or "")
+            if net.startswith("solana"):
+                return 0
+            if net.startswith("eip155:"):
+                try:
+                    cid = int(net.split(":", 1)[1])
+                    deleg = getattr(signer, "_delegation", None)
+                    if deleg is not None and signer._delegation(cid) is None:
+                        return 1  # no 7702 code -> plain ECDSA
+                except Exception:
+                    pass
+                return 2  # delegated (EIP-1271) -> last resort
+            return 3
+        return sorted(reqs, key=rank)
+
+    client.register_policy(_prefer_privy_native)
     client.register_policy(max_amount(max_amount_atomic))
 
     def _only_known_usdc_rails(version, reqs):

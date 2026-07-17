@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.13.0
+version: 2.14.0
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -130,7 +130,13 @@ do NOT settle — the result has `paid: true` with no new on-chain tx.
 
 **Buyer signer = Privy wallet by default** (`signer_mode="auto"`); smart
 accounts are detected and signed via an ERC-1271-compatible path
-automatically. Do NOT revoke the wallet's delegation (it powers gas
+automatically. **Multi-accept routing prefers rails where Privy signs a
+plain signature** (max facilitator compatibility, no EOA funding needed):
+① Solana (ed25519) → ② EVM chains where the payer has no EIP-7702 code
+(plain ECDSA, e.g. Monad) → ③ EVM chains with delegation code (Kernel
+EIP-1271, e.g. Base) as last resort — spec-correct but some seller
+facilitators reject it; for Base-only sellers that do, use
+`signer_mode="eoa"`. Do NOT revoke the wallet's delegation (it powers gas
 sponsorship). `auto` is FAIL-CLOSED: if the Privy signer cannot be
 initialized, `paid_request` raises instead of paying from a different
 identity — allow the session-EOA fallback only explicitly via
@@ -340,7 +346,8 @@ bazaar_pay(url, max_usd=0.01)                  # proxy-first pay; refuse non-sta
 `probe_402` / `bazaar_pay` only pay `standard-v2` **exact** on known native
 USDC rails (see `bazaar.PAYABLE_USDC`): Base, Polygon, Arbitrum, World Chain,
 Solana mainnet, Monad, Avalanche, Ethereum, Optimism, Linea, Celo, Unichain.
-Multi-accept → prefer Base. Solana signs via Privy `wallet_sol_sign` (base64
+Multi-accept → prefer Privy-native rails (Solana → no-code EVM → delegated
+EVM; see buyer signer section). Solana signs via Privy `wallet_sol_sign` (base64
 raw message). Not yet: EURC/alt-stables, testnets. Other shapes (`wrong-rail`,
 `tx-hash`, `non-standard`, `no-payment`) refused before any signature. Buyer
 signs; seller facilitator settles.

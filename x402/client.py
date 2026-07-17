@@ -878,6 +878,116 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
     return asyncio.run(run())
 
 
+def payment_preflight(amount_atomic: int, networks=None,
+                      signer_mode: str = "auto") -> dict:
+    """ONE-SHOT pre-purchase check. Run this BEFORE asking the user to
+    confirm a purchase, and surface ALL blockers together — never let the
+    user fix funding, then hit a policy wall, then hit something else in
+    serial round-trips.
+
+    Checks: ① wallet/signers reachable ② wallet policy sanity (an
+    ENABLED policy with EMPTY rules = deny-all → blocks every signature;
+    new Privy wallets should be allow-all, so this is an anomaly to fix
+    via a policy card BEFORE payment) ③ USDC balance per candidate rail.
+
+    networks: candidate rails from the service's 402 accepts (canonical ids,
+    e.g. ["eip155:8453", "solana:5eykt..."]). Default: Base+Monad+Solana.
+    Returns {ok, blockers[], warnings[], payer{}, funded_rails[], balances{}}.
+    """
+    from bazaar import PAYABLE_USDC, _canon_network, SOLANA_MAINNET
+    out = {"ok": True, "blockers": [], "warnings": [], "payer": {},
+           "balances": {}, "funded_rails": []}
+    nets = [_canon_network(n) for n in (networks or
+            ["eip155:8453", "eip155:143", SOLANA_MAINNET])]
+
+    # ① signers
+    evm_addr = sol_addr = None
+    try:
+        from core.skill_tools import wallet as _w
+        info = _w.wallet_info()
+        for w in (info.get("wallets") if isinstance(info, dict) else info) or []:
+            if w.get("chain_type") == "ethereum":
+                evm_addr = w.get("wallet_address") or w.get("address")
+            elif w.get("chain_type") == "solana":
+                sol_addr = w.get("wallet_address") or w.get("address")
+    except Exception as e:
+        out["blockers"].append(f"wallet skill unavailable: {e}")
+    out["payer"] = {"evm": evm_addr, "solana": sol_addr}
+    if signer_mode == "eoa":
+        try:
+            eoa = SessionEOASigner()
+            out["payer"] = {"evm": eoa.address, "solana": None}
+            evm_addr, sol_addr = eoa.address, None
+        except Exception as e:
+            out["blockers"].append(f"session EOA signer unavailable: {e}")
+
+    # ② policy sanity (Privy path only)
+    if signer_mode != "eoa" and evm_addr:
+        try:
+            from core.skill_tools import wallet as _w
+            pol = _w.wallet_get_policy(chain_type="ethereum")
+            rules = (pol or {}).get("rules") or []
+            if (pol or {}).get("enabled") and not rules:
+                out["blockers"].append(
+                    "wallet policy is ENABLED with EMPTY rules (deny-all) — "
+                    "every payment signature will be rejected. Propose a "
+                    "policy update (deny exportPrivateKey, allow rest) and "
+                    "have the user sign it BEFORE attempting payment.")
+            elif rules and not any(
+                    r.get("action") == "ALLOW" and r.get("method") in ("*",
+                    "signTypedData", "eth_signTypedData_v4") for r in rules):
+                out["warnings"].append(
+                    "wallet policy has no ALLOW rule covering typed-data "
+                    "signing — payment may be denied.")
+        except Exception as e:
+            out["warnings"].append(f"policy check failed (non-fatal): {e}")
+
+    # ③ balances per candidate rail (direct RPC; no DeBank round-trip)
+    for net in nets:
+        usdc = PAYABLE_USDC.get(net)
+        if not usdc:
+            continue
+        bal = None
+        try:
+            if net.startswith("solana") and sol_addr:
+                import httpx
+                r = httpx.post("https://api.mainnet-beta.solana.com", json={
+                    "jsonrpc": "2.0", "id": 1,
+                    "method": "getTokenAccountsByOwner",
+                    "params": [sol_addr,
+                               {"mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"},
+                               {"encoding": "jsonParsed"}]}, timeout=15).json()
+                bal = sum(int(v["account"]["data"]["parsed"]["info"]
+                              ["tokenAmount"]["amount"])
+                          for v in r.get("result", {}).get("value", []))
+            elif net.startswith("eip155:") and evm_addr:
+                from web3 import Web3
+                rpc = PrivySigner._RPC.get(int(net.split(":")[1]))
+                if rpc:
+                    w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={"timeout": 10}))
+                    data = "0x70a08231" + evm_addr[2:].lower().rjust(64, "0")
+                    raw = w3.eth.call({"to": Web3.to_checksum_address(usdc),
+                                       "data": data})
+                    bal = int.from_bytes(raw, "big")
+        except Exception:
+            bal = None  # RPC hiccup — report unknown, don't block
+        out["balances"][net] = bal
+        if bal is not None and bal >= amount_atomic:
+            out["funded_rails"].append(net)
+
+    known = [b for b in out["balances"].values() if b is not None]
+    if known and not out["funded_rails"]:
+        need = amount_atomic / 1e6
+        out["blockers"].append(
+            f"no candidate rail holds ≥ {need} USDC "
+            f"(balances: { {k: (v/1e6 if v is not None else '?') for k, v in out['balances'].items()} }). "
+            "Offer ALL funding options at once: pay on another funded chain, "
+            "bridge (e.g. Relay/Across), or fiat-onramp — don't just say "
+            "'fund the wallet'.")
+    out["ok"] = not out["blockers"]
+    return out
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 3:
         print(__doc__)

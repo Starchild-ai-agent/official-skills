@@ -1,7 +1,7 @@
 # x402 Buying Reference — signer details & funding the session EOA
 
 Read this BEFORE using the session EOA signer, funding a buyer wallet, or
-paying on a chain/token other than Base mainnet USDC.
+paying outside the supported buyer rails (Base + Monad mainnet USDC exact).
 
 ## Signer internals
 
@@ -31,12 +31,29 @@ verification passes with an empty wallet — settlement then fails with
 `invalid_exact_evm_insufficient_balance`. Check before paying, and bridge if
 the user's funds sit on a different chain:
 
-1. Snapshot all chains: `wallet_get_all_balances()` (wallet skill).
+Supported buyer USDC rails (EIP-3009 exact, settle by service facilitator) —
+source of truth: `bazaar.PAYABLE_USDC` /
+`bazaar.NETWORK_PREFERENCE` (prefer Base when multi-accept):
+- Base `8453` `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+- Polygon `137` `0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359`
+- Arbitrum `42161` `0xaf88d065e77c8cC2239327C5EDb3A432268e5831`
+- World Chain `480` `0x79A02482A880bCE3F13e09Da970dC34db4CD24d1`
+- Monad `143` `0x754704Bc059F8C67012fEd69BC8A327a5aafb603`
+- Avalanche `43114` `0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E`
+- Ethereum `1` `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`
+- Optimism `10` `0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85`
+- Linea `59144` `0x176211869cA2b568f2A7D4EE941E073a821EE1ff`
+- Celo `42220` `0xcebA9300f2b948710d2653dD7B07f33A8B32118C`
+- Unichain `130` `0x078D782b760474a361dDA0AF3839290b0EF57AD6`
+Not yet: Solana/SVM, EURC / non-USDC stables, testnets.
+
+1. Snapshot balances on the **target** network (wallet skill may not list Monad
+   yet — use RPC `balanceOf` on the USDC contract if needed).
 2. USDC on the wrong chain → move it to the service's network first
    (cross-chain: okx / bridge skills; same-chain swap: 1inch / openocean).
 3. Privy → session EOA on the target chain via `wallet_transfer` — an ERC20
    transfer is a CONTRACT call, not a native send: `to` = the token contract
-   (Base USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`), `amount` = 0,
+   (Base USDC above; Monad USDC `0x754704Bc059F8C67012fEd69BC8A327a5aafb603`), `amount` = 0,
    `data` = transfer calldata `0xa9059cbb` + recipient (the session EOA,
    zero-padded to 32 bytes) + atomic amount (32 bytes). Build it:
    `"0xa9059cbb" + eoa[2:].lower().zfill(64) + hex(atomic)[2:].zfill(64)`.

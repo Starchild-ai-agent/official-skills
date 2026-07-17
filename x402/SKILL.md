@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.11.0
+version: 2.12.0
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -70,13 +70,8 @@ with `accepts.pricingModel`, facilitator is the single source of truth for
 | `metered` | extended | like subscription, route-weighted units | mixed cheap/expensive endpoints (LLM calls etc.) |
 | `timepass` | extended | x402 payment → N-day pass on an API key | fixed-duration passes (non-natural-month) |
 
-lifetime/monthly/weekly/quarterly/yearly check "already paid" via the
-facilitator's `/access-status` endpoint. The gateway resolves this
-automatically: if `--facilitator-admin-token` is provided it calls the
-facilitator directly; otherwise it proxies through community-gateway
-(`COMMUNITY_GATEWAY_URL`, already set in user containers) which holds the
-admin token server-side — **no admin token needed in user containers**.
-Multi-plan: `--plan MODE=PRICE` (repeatable).
+⚠️ lifetime/monthly/weekly/quarterly/yearly REQUIRE `--facilitator-admin-token`
+(fail-closed at startup). Multi-plan: `--plan MODE=PRICE` (repeatable).
 → **MUST read `references/selling.md` BEFORE deploying any of these modes** —
 it has the exact commands, contract details, and template list.
 
@@ -181,13 +176,6 @@ match a ledger line. Ledger writes are best-effort and never block a payment.
 
 ## Public paid URL (Cloudflare Monetization Gateway parity)
 
-> ⚠️ **Marketplace listing?** If the goal is to list a paid service on the
-> Starchild Service Marketplace, do NOT use `make_public.py` (legacy mode).
-> Instead use `monetize.py --mode <platform_mode>` (any of: `pay_per_use` /
-> `lifetime` / `monthly` / `weekly` / `quarterly` / `yearly` / `prepaid`)
-> and follow the marketplace listing flow below (steps 5–6). `make_public.py`
-> is only for standalone public APIs that do NOT need a marketplace listing.
-
 Make any local service a PUBLIC paid API (charge any caller for any resource,
 no accounts / API keys needed — same capability set as Cloudflare's
 Monetization Gateway, running on your own machine):
@@ -199,15 +187,7 @@ Monetization Gateway, running on your own machine):
 
 **A public URL is NOT a marketplace listing.** Steps 1–4 only make the
 service reachable — the Service Marketplace will show nothing (or "free")
-until you complete the LIST chain (community-publish skill).
-
-> ⚠️ **For marketplace listing, use platform mode.** The steps below require
-> the gateway to be running in a **platform mode** (`pay_per_use` / `lifetime`
-> / `monthly` / etc. via `monetize.py`), NOT legacy `payperuse` mode. Legacy
-> mode puts 402 info in the HTTP header only — the marketplace review checks
-> the JSON body for `accepts.pricingModel` and will fail if it's missing.
-> If you used `make_public.py` above, stop the gateway and re-deploy with
-> `monetize.py --mode <platform_mode>` before proceeding to step 5.
+until you complete the LIST chain (community-publish skill):
 
 5. `create_paid_service(name=..., service_type=..., api_endpoint=<public paid
    route>, provider_wallet=..., pricing_model=..., price=...,
@@ -357,10 +337,12 @@ resolve_marketplace("https://example.com/api") # → pay_url via community when 
 bazaar_pay(url, max_usd=0.01)                  # proxy-first pay; refuse non-standard
 ```
 
-`probe_402` / `bazaar_pay` only pay `standard-v2` (Base USDC `exact`). Other
-shapes (`wrong-rail`, `tx-hash`, `non-standard`, `no-payment`) are refused
-before any signature. If marketplace matched but the proxy is not payable,
-**do not bypass** to the external origin — fix the path or skip.
+`probe_402` / `bazaar_pay` only pay `standard-v2` **exact** on known native
+USDC rails (see `bazaar.PAYABLE_USDC`): Base, Polygon, Arbitrum, World Chain,
+Monad, Avalanche, Ethereum, Optimism, Linea, Celo, Unichain. Multi-accept →
+prefer Base. Not yet: Solana/SVM, EURC/alt-stables, testnets. Other shapes
+(`wrong-rail`, `tx-hash`, `non-standard`, `no-payment`) refused before any
+signature. Buyer signs; seller facilitator settles.
 
 ## Errors & diagnostics
 

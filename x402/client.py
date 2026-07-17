@@ -99,7 +99,21 @@ class PrivySigner:
     # ERC-1271, so the payment must be signed through Kernel's EIP-712 wrapper:
     #   inner = EIP-3009 digest -> sign Kernel(bytes32 hash) under Kernel's
     #   domain -> final sig = 0x00 (root/sudo validator prefix) + 65B ECDSA.
-    _RPC = {8453: "https://mainnet.base.org", 84532: "https://sepolia.base.org"}
+    # Public RPCs for EIP-1271 / EIP-7702 delegation probe only (signing is off-chain).
+    _RPC = {
+        1: "https://ethereum.publicnode.com",
+        10: "https://optimism.publicnode.com",
+        130: "https://mainnet.unichain.org",
+        137: "https://polygon-bor.publicnode.com",
+        143: "https://rpc.monad.xyz",
+        480: "https://worldchain-mainnet.g.alchemy.com/public",
+        8453: "https://mainnet.base.org",
+        84532: "https://sepolia.base.org",
+        42161: "https://arbitrum-one.publicnode.com",
+        42220: "https://forno.celo.org",
+        43114: "https://avalanche-c-chain-rpc.publicnode.com",
+        59144: "https://rpc.linea.build",
+    }
 
     def _delegation(self, chain_id: int):
         """Returns (name, version) of the delegate's EIP-712 domain, or None."""
@@ -443,10 +457,37 @@ def _make_signer(signer_mode: str, max_amount_atomic: int,
 def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
                   allow_fallback_eoa: bool = False):
     from x402 import x402Client
+    from x402.client_base import max_amount, prefer_network, prefer_scheme
     from x402.mechanisms.evm.exact.register import register_exact_evm_client
     signer = _make_signer(signer_mode, max_amount_atomic, allow_fallback_eoa)
     client = x402Client()
+    # eip155:* already covers Base + Monad; policies pick a safe accept.
     register_exact_evm_client(client, signer)
+    # Prefer Base USDC when multi-accept; allow all known EVM USDC rails.
+    client.register_policy(prefer_scheme("exact"))
+    client.register_policy(prefer_network("eip155:8453"))
+    client.register_policy(max_amount(max_amount_atomic))
+
+    def _only_known_usdc_rails(version, reqs):
+        # Keep native Circle USDC exact rails only (see bazaar.PAYABLE_USDC).
+        try:
+            from bazaar import PAYABLE_USDC
+            ok_assets = {k: v.lower() for k, v in PAYABLE_USDC.items()}
+        except Exception:
+            ok_assets = {
+                "eip155:8453": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+                "base": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+            }
+        kept = []
+        for r in reqs:
+            net = getattr(r, "network", None) or (r.get("network") if isinstance(r, dict) else None)
+            asset = getattr(r, "asset", None) or (r.get("asset") if isinstance(r, dict) else None)
+            want = ok_assets.get(net)
+            if want and str(asset or "").lower() == want:
+                kept.append(r)
+        return kept
+
+    client.register_policy(_only_known_usdc_rails)
     return client, signer
 
 

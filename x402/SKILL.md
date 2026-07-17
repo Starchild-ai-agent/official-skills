@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.14.1
+version: 2.15.0
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -121,6 +121,25 @@ availability BEFORE publishing** for the update-mode check/flip flow.
 python3 skills/x402/client.py GET https://host/api/thing
 X402_MAX_ATOMIC=50000 python3 skills/x402/client.py POST https://host/x402/topup
 ```
+
+### Pre-flight FIRST (one round-trip, not serial walls)
+
+Before asking the user to confirm any purchase, run
+`client.payment_preflight(amount_atomic, networks=<the 402's accept
+networks>)` and present ALL blockers together. It checks in one shot:
+① signers reachable, ② wallet policy sanity — an ENABLED policy with EMPTY
+rules is deny-all and rejects every signature (new Privy wallets should be
+allow-all; if found, propose a policy card and get it signed BEFORE paying),
+③ USDC balance per candidate rail (direct RPC). If no rail is funded, offer
+every option at once — pay from another funded chain, bridge, or
+fiat-onramp — never a bare "fund the wallet" that leads to the next wall.
+Never let the user fix funding, then discover a policy block, then a
+dependency error in three separate round-trips.
+
+**Dependencies**: the buyer path needs `web3>=7`. If the machine pins an
+older web3 (trading bots often pin 6.x), install into a dedicated venv
+(`.venv-x402`) instead of touching the global env — do this during
+pre-flight/setup, not mid-purchase.
 
 `paid_request` auto-detects BOTH 402 flavors: V2 header challenge
 (PAYMENT-REQUIRED → x402 SDK path) and the platform JSON-body challenge

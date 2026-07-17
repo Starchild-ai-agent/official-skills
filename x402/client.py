@@ -975,6 +975,20 @@ def payment_preflight(amount_atomic: int, networks=None,
         if bal is not None and bal >= amount_atomic:
             out["funded_rails"].append(net)
 
+    # ④ dependency sanity: buyer path needs web3>=7. NEVER upgrade a pinned
+    # global web3 (trading bots) — bootstrap the isolated venv instead.
+    try:
+        import web3 as _web3
+        if int(_web3.__version__.split(".")[0]) < 7:
+            out["blockers"].append(
+                f"web3 {_web3.__version__} < 7 in this environment — run "
+                "`bash skills/x402/scripts/ensure_env.sh` (zero-interaction: "
+                "creates .venv-x402 without touching global packages) and "
+                "use the interpreter it prints. Do NOT upgrade global web3.")
+    except ImportError:
+        out["blockers"].append(
+            "web3 not installed — run `bash skills/x402/scripts/ensure_env.sh`.")
+
     known = [b for b in out["balances"].values() if b is not None]
     if known and not out["funded_rails"]:
         need = amount_atomic / 1e6

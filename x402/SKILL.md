@@ -137,9 +137,12 @@ Never let the user fix funding, then discover a policy block, then a
 dependency error in three separate round-trips.
 
 **Dependencies**: the buyer path needs `web3>=7`. If the machine pins an
-older web3 (trading bots often pin 6.x), install into a dedicated venv
-(`.venv-x402`) instead of touching the global env — do this during
-pre-flight/setup, not mid-purchase.
+older web3 (trading bots often pin 6.x), NEVER upgrade it globally — run
+`bash skills/x402/scripts/ensure_env.sh` (zero-interaction, idempotent): it
+creates an isolated `.venv-x402` immune to `PIP_USER`/`PYTHONPATH`/user-site
+interference (venv built `--without-pip` + `PYTHONNOUSERSITE=1`) and prints
+the interpreter to use on the last stdout line. `payment_preflight` detects
+the version conflict and points here. Do this at setup, not mid-purchase.
 
 `paid_request` auto-detects BOTH 402 flavors: V2 header challenge
 (PAYMENT-REQUIRED → x402 SDK path) and the platform JSON-body challenge

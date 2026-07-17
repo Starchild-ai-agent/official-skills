@@ -948,24 +948,38 @@ def payment_preflight(amount_atomic: int, networks=None,
                if signer_mode == "eoa" else
                "Check wallet availability for the required chain types."))
 
-    # ② policy sanity (Privy path only)
-    if signer_mode != "eoa" and evm_addr:
+    # ② policy sanity — PER-RAIL, not global. The Ethereum policy only
+    # gates EVM rails: a deny-all EVM policy must not block a payment that
+    # will route via Solana. A rail whose policy blocks signing is removed
+    # from the candidates (with a warning); it escalates to a blocker only
+    # if NO signable rail remains.
+    evm_nets = [n for n in nets if n.startswith("eip155:")]
+    if signer_mode != "eoa" and evm_addr and evm_nets:
         try:
             from core.skill_tools import wallet as _w
             pol = _w.wallet_get_policy(chain_type="ethereum")
             rules = (pol or {}).get("rules") or []
             if (pol or {}).get("enabled") and not rules:
-                out["blockers"].append(
-                    "wallet policy is ENABLED with EMPTY rules (deny-all) — "
-                    "every payment signature will be rejected. Propose a "
-                    "policy update (deny exportPrivateKey, allow rest) and "
-                    "have the user sign it BEFORE attempting payment.")
+                nets = [n for n in nets if not n.startswith("eip155:")]
+                msg = ("EVM wallet policy is ENABLED with EMPTY rules "
+                       "(deny-all) — EVM payment signatures will be "
+                       "rejected. Propose a policy update (deny "
+                       "exportPrivateKey, allow rest) and have the user "
+                       "sign it before paying on an EVM rail.")
+                if nets:  # other rails (e.g. Solana) remain usable
+                    out["warnings"].append(
+                        msg + f" EVM rails excluded: {evm_nets}; "
+                        f"continuing with {nets}.")
+                else:
+                    out["blockers"].append(
+                        msg + " No non-EVM rail is available for this "
+                        "service, so this blocks the payment.")
             elif rules and not any(
                     r.get("action") == "ALLOW" and r.get("method") in ("*",
                     "signTypedData", "eth_signTypedData_v4") for r in rules):
                 out["warnings"].append(
                     "wallet policy has no ALLOW rule covering typed-data "
-                    "signing — payment may be denied.")
+                    "signing — EVM payment may be denied.")
         except Exception as e:
             out["warnings"].append(f"policy check failed (non-fatal): {e}")
 

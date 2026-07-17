@@ -885,10 +885,13 @@ def payment_preflight(amount_atomic: int, networks=None,
     user fix funding, then hit a policy wall, then hit something else in
     serial round-trips.
 
-    Checks: ① wallet/signers reachable ② wallet policy sanity (an
-    ENABLED policy with EMPTY rules = deny-all → blocks every signature;
-    new Privy wallets should be allow-all, so this is an anomaly to fix
-    via a policy card BEFORE payment) ③ USDC balance per candidate rail.
+    Checks: ① signer capability per candidate rail (fail-closed: a rail the
+    selected signer cannot sign is NOT a candidate) ② wallet policy sanity
+    (an ENABLED policy with EMPTY rules = deny-all → blocks every signature;
+    new Privy wallets should be allow-all, so this is an anomaly to fix via
+    a policy card BEFORE payment) ③ USDC balance per signable rail — ok
+    requires at least ONE rail that is both signable AND verified funded;
+    unknown (RPC-failed) balances never count as funded.
 
     networks: candidate rails from the service's 402 accepts (canonical ids,
     e.g. ["eip155:8453", "solana:5eykt..."]). Default: Base+Monad+Solana.
@@ -900,26 +903,50 @@ def payment_preflight(amount_atomic: int, networks=None,
     nets = [_canon_network(n) for n in (networks or
             ["eip155:8453", "eip155:143", SOLANA_MAINNET])]
 
-    # ① signers
+    # ① signers — branch by signer_mode FIRST. Explicit EOA never touches
+    # the Privy wallet service or its policy.
     evm_addr = sol_addr = None
-    try:
-        from core.skill_tools import wallet as _w
-        info = _w.wallet_info()
-        for w in (info.get("wallets") if isinstance(info, dict) else info) or []:
-            if w.get("chain_type") == "ethereum":
-                evm_addr = w.get("wallet_address") or w.get("address")
-            elif w.get("chain_type") == "solana":
-                sol_addr = w.get("wallet_address") or w.get("address")
-    except Exception as e:
-        out["blockers"].append(f"wallet skill unavailable: {e}")
-    out["payer"] = {"evm": evm_addr, "solana": sol_addr}
     if signer_mode == "eoa":
         try:
             eoa = SessionEOASigner()
-            out["payer"] = {"evm": eoa.address, "solana": None}
-            evm_addr, sol_addr = eoa.address, None
+            evm_addr = eoa.address
         except Exception as e:
             out["blockers"].append(f"session EOA signer unavailable: {e}")
+    else:
+        try:
+            from core.skill_tools import wallet as _w
+            info = _w.wallet_info()
+            for w in (info.get("wallets") if isinstance(info, dict) else info) or []:
+                if w.get("chain_type") == "ethereum":
+                    evm_addr = w.get("wallet_address") or w.get("address")
+                elif w.get("chain_type") == "solana":
+                    sol_addr = w.get("wallet_address") or w.get("address")
+        except Exception as e:
+            out["blockers"].append(f"wallet skill unavailable: {e}")
+    out["payer"] = {"evm": evm_addr, "solana": sol_addr}
+
+    # Capability filter: keep only rails the selected signer can sign.
+    def _signable(net):
+        if net.startswith("eip155:"):
+            return evm_addr is not None
+        if net.startswith("solana"):
+            return signer_mode != "eoa" and sol_addr is not None
+        return False
+
+    unsignable = [n for n in nets if PAYABLE_USDC.get(n) and not _signable(n)]
+    nets = [n for n in nets if PAYABLE_USDC.get(n) and _signable(n)]
+    if unsignable:
+        out["warnings"].append(
+            f"rails excluded (signer '{signer_mode}' cannot sign them): "
+            f"{unsignable}")
+    if not nets:
+        out["blockers"].append(
+            f"no signable payment rail: signer_mode='{signer_mode}' cannot "
+            f"sign any of the service's accepted networks "
+            f"({unsignable or networks}). "
+            + ("Session EOA is EVM-only — use signer_mode='auto' for Solana."
+               if signer_mode == "eoa" else
+               "Check wallet availability for the required chain types."))
 
     # ② policy sanity (Privy path only)
     if signer_mode != "eoa" and evm_addr:
@@ -942,11 +969,9 @@ def payment_preflight(amount_atomic: int, networks=None,
         except Exception as e:
             out["warnings"].append(f"policy check failed (non-fatal): {e}")
 
-    # ③ balances per candidate rail (direct RPC; no DeBank round-trip)
+    # ③ balances per signable rail (direct RPC; no DeBank round-trip)
     for net in nets:
-        usdc = PAYABLE_USDC.get(net)
-        if not usdc:
-            continue
+        usdc = PAYABLE_USDC[net]
         bal = None
         try:
             if net.startswith("solana") and sol_addr:
@@ -989,15 +1014,26 @@ def payment_preflight(amount_atomic: int, networks=None,
         out["blockers"].append(
             "web3 not installed — run `bash skills/x402/scripts/ensure_env.sh`.")
 
-    known = [b for b in out["balances"].values() if b is not None]
-    if known and not out["funded_rails"]:
+    # FAIL-CLOSED: ok requires ≥1 rail that is signable AND verified funded.
+    # Unknown balances (RPC failures) never count as funded.
+    if nets and not out["funded_rails"]:
         need = amount_atomic / 1e6
-        out["blockers"].append(
-            f"no candidate rail holds ≥ {need} USDC "
-            f"(balances: { {k: (v/1e6 if v is not None else '?') for k, v in out['balances'].items()} }). "
-            "Offer ALL funding options at once: pay on another funded chain, "
-            "bridge (e.g. Relay/Across), or fiat-onramp — don't just say "
-            "'fund the wallet'.")
+        bal_view = {k: (v / 1e6 if v is not None else "unverified")
+                    for k, v in out["balances"].items()}
+        known = [b for b in out["balances"].values() if b is not None]
+        if not known:
+            out["blockers"].append(
+                f"could not verify USDC balance on ANY signable rail "
+                f"(all RPC queries failed: {bal_view}) — fail-closed. "
+                "Retry, or verify balances via the wallet skill before "
+                "proceeding.")
+        else:
+            out["blockers"].append(
+                f"no signable rail holds ≥ {need} USDC "
+                f"(balances: {bal_view}). "
+                "Offer ALL funding options at once: pay on another funded "
+                "chain, bridge (e.g. Relay/Across), or fiat-onramp — don't "
+                "just say 'fund the wallet'.")
     out["ok"] = not out["blockers"]
     return out
 

@@ -8,8 +8,7 @@
 #                                web3>=7 + x402 deps, WITHOUT touching the
 #                                global site-packages.
 #
-# Hardened against the two failure modes seen in a real 27-round debug
-# session (share 3j6rayt4vfwg):
+# Hardened against common environment interference:
 #   * PIP_USER=1 in env breaks `pip install` inside venvs
 #     ("User site-packages are not visible in this virtualenv")
 #   * PYTHONPATH / user site-packages leak the OLD web3 6.x into the venv,

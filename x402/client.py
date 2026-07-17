@@ -454,12 +454,42 @@ def _make_signer(signer_mode: str, max_amount_atomic: int,
         return s
 
 
+def _register_session_wallet(address: str, chain_type: str, marker: str) -> None:
+    """Register a payer address to ai-agent session_wallets so the community
+    proxy can attribute payments to this user (buyer_user_id). Best-effort."""
+    if os.path.exists(marker):
+        return
+    jwt = os.environ.get("CONTAINER_JWT", "") or os.environ.get("USER_JWT", "")
+    base = os.environ.get("AI_AGENT_API_URL", "").rstrip("/")
+    if not jwt or not base:
+        return
+    payload = {"wallet_address": address,
+               "wallet_type": "x402_privy_wallet",
+               "chain_type": chain_type}
+    cid = os.environ.get("CONTAINER_ID") or os.environ.get("FLY_MACHINE_ID") or ""
+    if cid:
+        payload["container_id"] = cid
+    req = urllib.request.Request(
+        base + "/v1/agent/profile/register-session-wallet",
+        data=json.dumps(payload).encode(), method="POST")
+    req.add_header("Authorization", f"Bearer {jwt}")
+    req.add_header("Content-Type", "application/json")
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        result = json.loads(resp.read().decode() or "{}")
+    if result.get("status") in ("created", "updated"):
+        os.makedirs(os.path.dirname(marker), exist_ok=True)
+        with open(marker, "w") as f:
+            f.write(address)
+
+
 class PrivySvmSigner:
     """Solana buyer signer via Privy wallet_sol_sign (base64 raw message bytes).
 
     ExactSvmScheme only needs `.address` + `.keypair.sign_message(bytes)`.
     We don't expose the Privy key; sign_message proxies to wallet skill.
     """
+
+    REGISTERED_PATH = "/data/workspace/.x402/privy.sol.registered"
 
     def __init__(self):
         from core.skill_tools import wallet as _w
@@ -475,6 +505,12 @@ class PrivySvmSigner:
         self._address = addr
         self._wallet = _w
         self.keypair = self  # ExactSvmScheme calls signer.keypair.sign_message
+        # Register the Solana payer for buyer attribution (mirrors PrivySigner;
+        # without this, Solana purchases record buyer_user_id=NULL).
+        try:
+            _register_session_wallet(addr, "solana", self.REGISTERED_PATH)
+        except Exception:
+            pass
 
     @property
     def address(self) -> str:
@@ -496,51 +532,84 @@ class PrivySvmSigner:
         raise NotImplementedError("use ExactSvmScheme partial-sign path")
 
 
+def network_rank(network: str, signer=None, signer_mode: str = "auto") -> int:
+    """Shared rail preference (lower = preferred). Used by BOTH paid_request
+    routing and bazaar probe display so the rail a user sees/confirms at probe
+    time is the rail actually selected for payment.
+
+    auto: ① Solana (Privy ed25519, universally accepted) → ② EVM where the
+    payer has NO 7702 delegation code (plain ECDSA, e.g. Monad) → ③ delegated
+    EVM (Kernel EIP-1271, e.g. Base) — spec-correct but some facilitators
+    reject it. eoa: EVM only; Solana is excluded (session EOA can't sign SVM).
+    """
+    net = "eip155:8453" if network == "base" else str(network or "")
+    if signer_mode == "eoa":
+        return 0 if net.startswith("eip155:") else 9
+    if net.startswith("solana"):
+        return 0
+    if net.startswith("eip155:"):
+        try:
+            cid = int(net.split(":", 1)[1])
+            deleg = getattr(signer, "_delegation", None)
+            if deleg is not None and signer._delegation(cid) is None:
+                return 1  # no 7702 code -> plain ECDSA
+        except Exception:
+            pass
+        return 2  # delegated (EIP-1271) or unknown -> last resort
+    return 3
+
+
+_RANK_SIGNER = None
+
+
+def rank_signer_cached():
+    """Best-effort Privy signer used ONLY for delegation probing in
+    network_rank (never signs). Raises outside the agent runtime."""
+    global _RANK_SIGNER
+    if _RANK_SIGNER is None:
+        _RANK_SIGNER = PrivySigner(max_amount_atomic=1)
+    return _RANK_SIGNER
+
+
 def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
                   allow_fallback_eoa: bool = False):
     from x402 import x402Client
     from x402.client_base import max_amount, prefer_network, prefer_scheme
     from x402.mechanisms.evm.exact.register import register_exact_evm_client
     signer = _make_signer(signer_mode, max_amount_atomic, allow_fallback_eoa)
+    is_eoa = getattr(signer, "signer_type", "") == "session_eoa"
     client = x402Client()
     # EVM rails (Base/Polygon/Arbitrum/Monad/…).
     register_exact_evm_client(client, signer)
-    # Solana mainnet exact (Privy SVM signer). Best-effort: skip if solders/wallet missing.
+    # Solana mainnet exact (Privy SVM signer). Best-effort: skip if
+    # solders/wallet missing. NEVER registered in explicit-EOA mode — the
+    # session EOA cannot sign SVM, and paying from the Privy Solana wallet
+    # would violate the user's pinned payer identity.
     svm_signer = None
-    try:
-        from x402.mechanisms.svm.exact.register import register_exact_svm_client
-        svm_signer = PrivySvmSigner()
-        register_exact_svm_client(
-            client, svm_signer,
-            networks=["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "solana"])
-    except Exception as e:
-        print(f"[x402] SVM buyer register skipped: {e}", file=sys.stderr)
-    # Prefer rails where the Privy wallet signs a plain (non-EIP-1271)
-    # signature — maximum facilitator compatibility without funding an EOA:
-    #   1. SVM (Solana): Privy ed25519, universally accepted.
-    #   2. EVM chains where the payer address has NO delegation code
-    #      (e.g. Monad): plain 65B ECDSA, verified as EOA.
-    #   3. EVM chains with EIP-7702 delegation (e.g. Base): Kernel EIP-1271
-    #      wrapper — spec-correct but some seller facilitators reject it.
+    if not is_eoa:
+        try:
+            from x402.mechanisms.svm.exact.register import register_exact_svm_client
+            svm_signer = PrivySvmSigner()
+            register_exact_svm_client(
+                client, svm_signer,
+                networks=["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "solana"])
+        except Exception as e:
+            print(f"[x402] SVM buyer register skipped: {e}", file=sys.stderr)
+    # Rail preference: see network_rank() — shared with bazaar probe so the
+    # rail shown/confirmed at probe time is the rail actually paid.
     client.register_policy(prefer_scheme("exact"))
+    _mode = "eoa" if is_eoa else "auto"
+
+    def _net_of(r):
+        return str(getattr(r, "network", None) or
+                   (r.get("network") if isinstance(r, dict) else "") or "")
 
     def _prefer_privy_native(version, reqs):
-        def rank(r):
-            net = str(getattr(r, "network", None) or
-                      (r.get("network") if isinstance(r, dict) else "") or "")
-            if net.startswith("solana"):
-                return 0
-            if net.startswith("eip155:"):
-                try:
-                    cid = int(net.split(":", 1)[1])
-                    deleg = getattr(signer, "_delegation", None)
-                    if deleg is not None and signer._delegation(cid) is None:
-                        return 1  # no 7702 code -> plain ECDSA
-                except Exception:
-                    pass
-                return 2  # delegated (EIP-1271) -> last resort
-            return 3
-        return sorted(reqs, key=rank)
+        if is_eoa:  # hard-filter non-EVM: pinned payer cannot sign these
+            reqs = [r for r in reqs if _net_of(r).startswith("eip155:")
+                    or _net_of(r) == "base"]
+        return sorted(reqs, key=lambda r: network_rank(
+            _net_of(r), signer=signer, signer_mode=_mode))
 
     client.register_policy(_prefer_privy_native)
     client.register_policy(max_amount(max_amount_atomic))
@@ -724,12 +793,27 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                         out["settlement"] = json.loads(base64.b64decode(pr))
                     except Exception:
                         out["settlement_raw"] = pr[:200]
+                # Report the ACTUAL selected rail/payer — the SDK may have
+                # paid on a different network (e.g. Solana) than the EVM
+                # signer's address implies.
+                sett = out.get("settlement") if isinstance(out.get("settlement"), dict) else {}
+                net = sett.get("network")
+                if net:
+                    out["network"] = net
+                    if str(net).startswith("solana") \
+                            and getattr(signer, "svm_address", None):
+                        out["payer"] = signer.svm_address
+                        out["signer_type"] = "privy_svm"
                 _ledger_append({
                     "event": "result", "url": url, "method": method.upper(),
-                    "payer": signer.address, "status": r.status_code,
+                    "payer": out["payer"], "status": r.status_code,
                     "paid": r.status_code == 200,
+                    "network": out.get("network"),
                     "settlement_tx": (out.get("settlement") or {}).get("transaction"),
-                    "flavor": "v2-header", **_signer_meta(signer)})
+                    "flavor": "v2-header",
+                    "signer_type": out.get("signer_type"),
+                    **({"signer_warning": out["signer_warning"]}
+                       if out.get("signer_warning") else {})})
                 return out
 
         # platform-shape challenge (Starchild community-gateway contract):

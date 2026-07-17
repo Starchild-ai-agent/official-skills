@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.14.0
+version: 2.14.1
 description: |
   Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
 
@@ -347,7 +347,13 @@ bazaar_pay(url, max_usd=0.01)                  # proxy-first pay; refuse non-sta
 USDC rails (see `bazaar.PAYABLE_USDC`): Base, Polygon, Arbitrum, World Chain,
 Solana mainnet, Monad, Avalanche, Ethereum, Optimism, Linea, Celo, Unichain.
 Multi-accept → prefer Privy-native rails (Solana → no-code EVM → delegated
-EVM; see buyer signer section). Solana signs via Privy `wallet_sol_sign` (base64
+EVM; see buyer signer section). The same selector (`client.network_rank`)
+drives bazaar's `probe_402` ordering, so the rail shown at probe time is the
+rail `auto` actually pays. `signer_mode="eoa"` never registers the SVM signer
+and hard-filters Solana accepts — the pinned session-EOA payer identity is
+never substituted. Results and ledger lines carry the ACTUAL selected
+`network`/`payer`/`signer_type` (Solana settlements report the Privy Solana
+address as payer). Solana signs via Privy `wallet_sol_sign` (base64
 raw message). Not yet: EURC/alt-stables, testnets. Other shapes (`wrong-rail`,
 `tx-hash`, `non-standard`, `no-payment`) refused before any signature. Buyer
 signs; seller facilitator settles.

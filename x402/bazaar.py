@@ -63,12 +63,15 @@ PAYABLE_USDC = {
     "solana": USDC_SOLANA.lower(),  # V1 alias
 }
 PAYABLE_NETWORKS = set(PAYABLE_USDC.keys())
-# Prefer Base (funded) → major EVM → Solana → other EVM.
+# Static FALLBACK preference, used only when client.network_rank is
+# unavailable (outside the agent runtime). Mirrors the client's auto
+# routing: Solana → no-delegation EVM (Monad) → delegated/major EVM.
 NETWORK_PREFERENCE = (
+    SOLANA_MAINNET, "solana",
+    "eip155:143",
     "eip155:8453", "base",
     "eip155:137", "eip155:42161", "eip155:480",
-    SOLANA_MAINNET, "solana",
-    "eip155:143", "eip155:43114", "eip155:1", "eip155:10",
+    "eip155:43114", "eip155:1", "eip155:10",
     "eip155:59144", "eip155:42220", "eip155:130",
 )
 
@@ -95,12 +98,34 @@ def _is_payable_accept(acc: dict) -> bool:
     return bool(want) and asset == str(want).lower()
 
 
-def _sort_payable(accepts: list) -> list:
+def _amount_int(a: dict) -> int:
+    """Numeric amount for sorting; unparseable amounts sort LAST (never let a
+    malformed quote look cheapest)."""
+    try:
+        return int(str(a.get("amount")))
+    except (TypeError, ValueError):
+        return 1 << 62
+
+
+def _sort_payable(accepts: list, signer_mode: str = "auto") -> list:
+    """Order accepts exactly like paid_request's routing policy (shared
+    selector: client.network_rank), so the rail shown by probe_402 is the
+    rail auto actually pays. Falls back to the static NETWORK_PREFERENCE
+    when the client/signer is unavailable."""
+    try:
+        from client import network_rank, rank_signer_cached
+        signer = rank_signer_cached()
+        return sorted(accepts, key=lambda a: (
+            network_rank(_canon_network(a.get("network")),
+                         signer=signer, signer_mode=signer_mode),
+            _amount_int(a)))
+    except Exception:
+        pass
     pref = {n: i for i, n in enumerate(NETWORK_PREFERENCE)}
 
     def key(a):
         n = _canon_network(a.get("network"))
-        return (pref.get(n, pref.get(a.get("network"), 99)), str(a.get("amount") or "0"))
+        return (pref.get(n, pref.get(a.get("network"), 99)), _amount_int(a))
 
     return sorted(accepts, key=key)
 

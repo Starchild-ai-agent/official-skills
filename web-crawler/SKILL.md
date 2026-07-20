@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.6.0
+version: 2.6.1
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -66,6 +66,7 @@ import sys; sys.path.insert(0, "/data/workspace/skills/web-crawler")
 from exports import scrape_markdown, youtube_transcript, sc_get
 scrape_markdown("https://example.com/article")          # Firecrawl fallback
 youtube_transcript("https://youtube.com/watch?v=ID")     # ScrapeCreators
+youtube_video("https://youtube.com/watch?v=ID")          # metadata: title/description/uploader (+ transcript)
 sc_get("/v1/tiktok/profile", handle="charlidamelio")     # any SC endpoint
 
 from exports import archive_fallback                      # paywall / Firecrawl-403
@@ -340,6 +341,14 @@ Map user intent to the right endpoint. Endpoint paths use the pattern `/v1/platf
 | Reddit | `/v1/reddit/post/comments` | url | `https://www.reddit.com/r/AskReddit/comments/...` |
 
 ### Transcripts
+
+⚠️ **Metadata first.** A transcript endpoint returns **speech text only — no
+speaker, no title, no uploader**. When summarizing a video, call the video
+metadata endpoint FIRST (`youtube_video` / `/v1/tiktok/video` / …) for title,
+description and uploader, then the transcript. **Never attribute a speaker or
+public figure from transcript content alone** — if metadata is unavailable, say
+"speaker unidentified" and summarize without naming anyone.
+
 | Platform | Endpoint | Example | Note |
 |----------|----------|---------|------|
 | TikTok | `/v1/tiktok/video/transcript` | `url=https://www.tiktok.com/...&lang=en` | also via `/v2/tiktok/video` with get_transcript=true |

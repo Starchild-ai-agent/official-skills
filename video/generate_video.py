@@ -49,6 +49,10 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
     body = {'prompt': prompt, 'duration': duration, 'aspect_ratio': "16:9"}
     if ('happy-horse' in model or 'kling' in model or 'seedance-2.0/mini' in model
             or 'grok-imagine-video' in model):
+        # Grok v1.5: proxy rejects (400) any resolution without a published
+        # price — fail fast here instead of burning a pointless proxy request.
+        if 'grok-imagine-video' in model and resolution not in ("480p", "720p"):
+            return {"success": False, "error": f"grok-imagine-video v1.5 only supports resolution 480p or 720p (no published price for '{resolution}'; the proxy rejects it)."}
         body['resolution'] = resolution
 
     # Seedance 2.0 Mini has a strict duration schema: it requires a STRING
@@ -228,7 +232,15 @@ def estimate_cost(model, duration, resolution="720p"):
     elif 'happy-horse' in model and resolution == "1080p":
         unit_price *= 2
     # Grok Imagine v1.5: 480p discount tier + flat $0.01 per input image.
+    # Only 480p/720p have published prices; anything else (e.g. 1080p,
+    # schema-valid upstream) is rejected 400 by the proxy — refuse to quote
+    # a price the proxy will never accept.
     if 'grok-imagine-video' in model:
+        if resolution not in ("480p", "720p"):
+            raise ValueError(
+                f"grok-imagine-video v1.5: resolution '{resolution}' has no "
+                "published price and is rejected by the proxy. Use 480p or 720p."
+            )
         if resolution == "480p":
             unit_price = 0.08
         return round(unit_price * duration + 0.01, 4)

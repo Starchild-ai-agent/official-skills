@@ -1,6 +1,6 @@
 ---
 name: video
-version: 3.3.4
+version: 3.4.2
 description: |
   AI video generation: text-to-video, image-to-video, video-to-video, model selection.
 
@@ -173,6 +173,13 @@ If `preview(action='serve')` returns `No available ports in pool`, ask the user 
 | **balanced** | `alibaba/happy-horse/text-to-video` | $0.70 | Default; best lip-sync, most use cases |
 | **premium** | `bytedance/seedance-2.0/fast/text-to-video` | $1.20 | Best motion + camera direction |
 | **mini** | `bytedance/seedance-2.0/mini/text-to-video` | $0.36 (480p) / $0.77 (720p) | Cheapest Seedance; resolution-tiered, no 1080p. **Duration must be a string** (`"5"`, not `5` or `"5s"`) — see gotcha below |
+| — | `xai/grok-imagine-video/v1.5/image-to-video` | $0.41 (480p) / $0.71 (720p) per 5s | **image-to-video ONLY** (single required `image_url`, no `image_urls`); +$0.01 input-image surcharge included in estimate. ⚠️ `resolution="1080p"` is schema-valid upstream but has NO published price — the proxy rejects it 400 fail-closed |
+| — | `fal-ai/kling-video/v3/turbo/standard/text-to-video` | $0.56 per 5s | Kling v3 Turbo Standard, flat $0.112/s; `.../turbo/pro/...` = $0.14/s ($0.70/5s); `.../v3/4k/...` = $0.42/s ($2.10/5s). i2v variants exist for all |
+| — | `alibaba/happy-horse/v1.1/text-to-video` | $0.70 (720p) / $0.90 (1080p) per 5s | v1.1 has its own 1080p tier **$0.18/s** (NOT the v1.0 2× rule); also `/image-to-video`, `/reference-to-video` |
+
+⚠️ **Happy Horse default resolution is 1080p upstream** (v1.0 and v1.1): omitting `resolution` bills the 1080p tier (v1.1 5s = $0.90; v1.0 ref2v 5s = $1.40). Pass `resolution="720p"` explicitly for the cheaper rate. Invalid resolution values are rejected 400 by the proxy.
+
+**Reference-to-video** (`alibaba/happy-horse/reference-to-video`, `.../v1.1/reference-to-video`): pass `image_urls=[...]` (list of 1–9 public HTTP(S) URLs) — NOT the single `image_url` param. `generate_video()` validates count and URL scheme and submits the `image_urls` payload field.
 
 Override by passing the full model id to `generate_video(model=...)`. Image-to-video variants are auto-derived by replacing `text-to-video` with `image-to-video`.
 

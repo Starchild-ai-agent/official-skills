@@ -574,7 +574,7 @@
     {
       "name": "video",
       "path": "video/SKILL.md",
-      "version": "3.3.4",
+      "version": "3.4.2",
       "description": "AI video generation: text-to-video, image-to-video, video-to-video, model selection.\n\nUse when generating a short video clip from a prompt or reference (e.g. 5s clip of a cat in rain, animate this photo, restyle this video)."
     },
     {

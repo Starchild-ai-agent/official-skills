@@ -1,6 +1,6 @@
 ---
 name: video
-version: 3.4.1
+version: 3.4.2
 description: |
   AI video generation: text-to-video, image-to-video, video-to-video, model selection.
 

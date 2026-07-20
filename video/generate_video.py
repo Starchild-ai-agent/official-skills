@@ -42,7 +42,8 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
     }, tool_default='video')
 
     body = {'prompt': prompt, 'duration': duration, 'aspect_ratio': "16:9"}
-    if 'happy-horse' in model or 'kling' in model or 'seedance-2.0/mini' in model:
+    if ('happy-horse' in model or 'kling' in model or 'seedance-2.0/mini' in model
+            or 'grok-imagine-video' in model):
         body['resolution'] = resolution
 
     # Seedance 2.0 Mini has a strict duration schema: it requires a STRING
@@ -182,14 +183,35 @@ def estimate_cost(model, duration, resolution="720p"):
         # 480p is cheaper. No 1080p tier exists for mini.
         "bytedance/seedance-2.0/mini/text-to-video": 0.1547,  # 720p
         "fal-ai/hunyuanvideo": 0.40,  # flat rate
+        # Grok Imagine Video v1.5 (image-to-video ONLY, requires image_url).
+        # 480p $0.08/s, 720p $0.14/s + flat $0.01 per input image.
+        "xai/grok-imagine-video/v1.5/image-to-video": 0.14,  # 720p base
+        # Kling v3 Turbo / 4K — flat per-second, audio-independent.
+        "fal-ai/kling-video/v3/turbo/standard/text-to-video": 0.112,
+        "fal-ai/kling-video/v3/turbo/standard/image-to-video": 0.112,
+        "fal-ai/kling-video/v3/turbo/pro/text-to-video": 0.14,
+        "fal-ai/kling-video/v3/turbo/pro/image-to-video": 0.14,
+        "fal-ai/kling-video/v3/4k/text-to-video": 0.42,
+        "fal-ai/kling-video/v3/4k/image-to-video": 0.42,
+        # Happy Horse v1.1 — own 1080p tier $0.18/s (NOT the v1.0 2x rule).
+        "alibaba/happy-horse/v1.1/text-to-video": 0.14,
+        "alibaba/happy-horse/v1.1/image-to-video": 0.14,
+        "alibaba/happy-horse/v1.1/reference-to-video": 0.14,
     }
 
     if model == "fal-ai/hunyuanvideo":
         return 0.40
 
     unit_price = prices.get(model, 0.10)  # default fallback
-    if 'happy-horse' in model and resolution == "1080p":
+    if 'happy-horse/v1.1' in model and resolution == "1080p":
+        unit_price = 0.18  # v1.1 has its own 1080p tier, NOT the v1.0 2x rule
+    elif 'happy-horse' in model and resolution == "1080p":
         unit_price *= 2
+    # Grok Imagine v1.5: 480p discount tier + flat $0.01 per input image.
+    if 'grok-imagine-video' in model:
+        if resolution == "480p":
+            unit_price = 0.08
+        return round(unit_price * duration + 0.01, 4)
     # Seedance Mini 480p discount tier (720p is the base price above).
     if 'seedance-2.0/mini' in model and resolution == "480p":
         unit_price = 0.0721

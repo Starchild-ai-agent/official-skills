@@ -33,8 +33,13 @@ from _cost_track import caller_headers, record_response  # noqa: E402
 PROXY_URL = 'http://sc-proxy.internal:8080'
 PROXIES = {'http': PROXY_URL, 'https': PROXY_URL}
 
-def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5, resolution="720p", image_url=None):
-    """Generate video end-to-end. Returns dict with success/error/paths."""
+def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5, resolution="720p", image_url=None, image_urls=None):
+    """Generate video end-to-end. Returns dict with success/error/paths.
+
+    image_url:  single public HTTP(S) URL → image-to-video models.
+    image_urls: list of 1-9 public HTTP(S) URLs → happy-horse
+                reference-to-video models ONLY (payload field `image_urls`).
+    """
 
     headers = caller_headers({
         'Authorization': 'Key fake-falai-key-12345',
@@ -62,6 +67,21 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
         if not model.endswith('/image-to-video'):
             model = model.replace('/text-to-video', '/image-to-video')
         body['image_url'] = image_url
+
+    # Reference-to-video (happy-horse only): upstream requires `image_urls`
+    # (a list of 1-9 public HTTP(S) URLs), NOT the single `image_url` field.
+    if image_urls is not None:
+        if 'reference-to-video' not in model:
+            return {"success": False, "error": "image_urls is only supported by happy-horse reference-to-video models (e.g. alibaba/happy-horse/reference-to-video)."}
+        if not isinstance(image_urls, (list, tuple)) or not (1 <= len(image_urls) <= 9):
+            return {"success": False, "error": "image_urls must be a list of 1-9 public HTTP(S) URLs."}
+        for u in image_urls:
+            if not isinstance(u, str) or u.startswith('data:') or not u.startswith(('http://', 'https://')):
+                return {"success": False, "error": f"Invalid reference image URL (must be public HTTP(S), no data: URIs): {str(u)[:80]}"}
+        body.pop('image_url', None)
+        body['image_urls'] = list(image_urls)
+    elif 'reference-to-video' in model:
+        return {"success": False, "error": "reference-to-video models require image_urls (list of 1-9 public HTTP(S) URLs)."}
     
     # Submit
     submit_url = f'https://queue.fal.run/{model}'

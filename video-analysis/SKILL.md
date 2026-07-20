@@ -1,15 +1,13 @@
 ---
 name: video-analysis
-version: 1.1.0
-description: |
-  Video understanding for any model — native passthrough for small files,
-  frame extraction + audio transcription fallback for large files.
-
-  Use when the user asks to analyze, describe, or understand a video file
-  (e.g. "what's in this video", "summarize this clip", "transcribe this recording").
+version: 1.2.0
+description: "Video understanding for any model \u2014 native passthrough for small\
+  \ files,\nframe extraction + audio transcription fallback for large files.\n\nUse\
+  \ when the user asks to analyze, describe, or understand a video file\n(e.g. \"\
+  what's in this video\", \"summarize this clip\", \"transcribe this recording\").\n"
 metadata:
   starchild:
-    emoji: "🎥"
+    emoji: "\U0001F3A5"
     skillKey: video-analysis
 delivery: script
 user-invocable: true
@@ -20,8 +18,14 @@ disable-model-invocation: false
 
 Analyze video files using either **native model understanding** or **frame extraction + transcription**.
 
-## How It Works
+⚠️ **URL input (YouTube/TikTok/IG/...)?** This skill takes a **local file path**.
+For a web URL do NOT default to `yt-dlp` download (bot-check / rate-limit prone).
+First try the `web-crawler` skill: `youtube_video(url)` for metadata + transcript
+(speech text only — never name a speaker from it alone; see that skill's
+metadata-first rule). Only fall back to downloading + `analyze_video()` when the
+transcript/metadata path fails AND you actually need frames or audio.
 
+## How It Works
 ```
 analyze_video(path, question)
       │
@@ -37,7 +41,6 @@ analyze_video(path, question)
 ```
 
 ## Quick Start
-
 ⚠️ **Invocation — do NOT use dotted imports.** The directory name contains a
 hyphen (`video-analysis`), so `from skills.video-analysis.exports import ...`
 is a **Python syntax error** (`-` is parsed as minus). This is true for every
@@ -88,7 +91,6 @@ avoid both patterns above.
 ```
 
 ## Using the Exports
-
 ```python
 from core.skill_tools import video_analysis
 
@@ -104,7 +106,6 @@ info = video_analysis.get_video_info("output/videos/my_video.mp4")
 ```
 
 ## Native Mode (small videos)
-
 For videos under the size threshold, the skill sends the full video to a model
 that supports native video input. The model sees every frame and hears the audio.
 
@@ -126,7 +127,6 @@ correctly at ~14x lower cost than the Pro baseline. For maximum accuracy
 `gemini-3.1-pro-preview` or `gemini-3.5-flash` in `config/video-analysis.yaml`.
 
 ## Extraction Mode (large videos)
-
 For videos over the size threshold, the skill extracts keyframes and transcribes audio:
 
 - **Short videos (≤60s):** One frame every N seconds (default: 2s)
@@ -138,7 +138,6 @@ The agent receives frame image paths and transcript text, then feeds them
 to the current chat model as image attachments + context text.
 
 ## Configuration
-
 Edit **`config/video-analysis.yaml`** (in the workspace) to customize. This file
 is created automatically on first use, only needs the keys you want to override,
 and **survives skill updates**.
@@ -183,7 +182,6 @@ extraction:
 | minimax/minimax-m2.7           | mm27     | budget   | Audio-only, no image |
 
 ## Agent Behavior
-
 When the user provides a video file (via upload or file path) and the current
 chat model does NOT support video:
 
@@ -197,7 +195,6 @@ When the current model DOES support video, the backend handles it natively
 via Phase 1 (base64 content block injection) — no need for this skill.
 
 ## Troubleshooting
-
 | Problem | Fix |
 |---------|-----|
 | "File not found" | Check path is workspace-relative (e.g. `output/videos/x.mp4`) |

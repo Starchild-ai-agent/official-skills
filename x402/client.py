@@ -764,10 +764,17 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
     from x402.http.clients.httpx import x402HttpxClient
 
     async def run():
-        nonlocal headers, prefer_network
+        nonlocal headers, prefer_network, json_body
         # Resolve prefer_network: explicit param > env var
         if not prefer_network:
             prefer_network = os.environ.get("X402_PREFER_NETWORK", "").strip()
+        # Defensive: if json_body is a string (caller did json.dumps before
+        # passing), parse it back to a dict so httpx json= doesn't double-encode.
+        if isinstance(json_body, str):
+            try:
+                json_body = json.loads(json_body)
+            except (json.JSONDecodeError, ValueError):
+                pass  # not valid JSON string — pass through as-is
         if pricing_model:
             headers = {**(headers or {}), "X-Pricing-Model": pricing_model}
         # Probe with PLAIN httpx first: the SDK client raises on a 402 that

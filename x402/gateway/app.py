@@ -50,7 +50,7 @@ from x402.mechanisms.evm.exact.register import register_exact_evm_server
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ledger import Ledger  # noqa: E402
 from platform_modes import (AccessCheckError, PLATFORM_MODES, SUBSCRIPTION_MODES,  # noqa: E402
-                            PlatformBilling, decode_payment_header)
+                            PlatformBilling, decode_payment_header, resolve_networks)
 
 # --------------------------------------------------------------------------
 _argv = sys.argv[1:]
@@ -64,7 +64,12 @@ with open(CONFIG_PATH) as f:
 MODE = CFG["mode"]                      # payperuse | subscription | metered
 UPSTREAM = CFG["upstream"].rstrip("/")  # http://127.0.0.1:PORT
 PAY_TO = CFG["pay_to"]
-NETWORK = CFG.get("network", "eip155:8453")
+# Multi-chain (plans-280-04 §5.6.5): resolve the full network list from the
+# all/custom config. NETWORKS is the authoritative list; NETWORK is kept as
+# the first entry for backward-compat with legacy/extended modes and the
+# info/discovery endpoints (which also expose `networks`).
+NETWORKS = resolve_networks(CFG)
+NETWORK = NETWORKS[0]
 FACILITATOR_URL = CFG.get("facilitator") or None
 # bearer token for facilitators that enforce caller auth (X402_GATEWAY_TOKENS
 # on the facilitator). Config key `facilitator_token`, env fallback.
@@ -76,9 +81,11 @@ STATE_DIR = CFG.get("state_dir") or os.path.join(os.path.dirname(os.path.abspath
 # Startup guard (also enforced by monetize.py at config time — this catches
 # HAND-EDITED configs): x402.org supports testnets only; a mainnet gateway
 # pointed at it looks healthy but every buyer settlement fails.
-if NETWORK == "eip155:8453" and "x402.org" in (FACILITATOR_URL or ""):
-    sys.exit(f"[x402 gateway] config {CONFIG_PATH}: network eip155:8453 "
-             "(Base mainnet) cannot use the x402.org facilitator "
+# Multi-chain: any mainnet network in the list triggers the guard.
+_MAINNET_IDS = {"eip155:8453", "eip155:143"}
+if any(n in _MAINNET_IDS for n in NETWORKS) and "x402.org" in (FACILITATOR_URL or ""):
+    sys.exit(f"[x402 gateway] config {CONFIG_PATH}: networks {NETWORKS} "
+             "include a mainnet chain but the facilitator is x402.org "
              "(testnet-only). Set 'facilitator' to a mainnet-capable one, "
              "e.g. https://starchild-x402-facilitator.fly.dev, then restart "
              "(monetize.py --restart <name>).")
@@ -264,7 +271,8 @@ async def abuse_guard(request: Request, call_next):
 # --------------------------------------------------------------------------
 @app.get("/x402/info")
 async def info():
-    body = {"mode": MODE, "network": NETWORK, "pay_to": PAY_TO,
+    body = {"mode": MODE, "network": NETWORK, "networks": NETWORKS,
+            "pay_to": PAY_TO,
             "facilitator": FACILITATOR_URL or "https://x402.org/facilitator",
             "routes": ROUTES}
     if platform_billing is not None:
@@ -367,6 +375,8 @@ async def proxy(path: str, request: Request):
             # generate accepts from the billing contract so platform-mode
             # services are discoverable too. Multi-plan services list every
             # plan's accepts under "plans" (selected via X-Pricing-Model).
+            # accepts is a LIST (multi-accepts, one entry per network) —
+            # plans-280-04 §5.6.2.
             resources = [
                 {"resource": route, "units": (spec or {}).get("units", 1),
                  "accepts": platform_billing.requirements(route),
@@ -386,6 +396,7 @@ async def proxy(path: str, request: Request):
             "kind": "http",
             "mode": MODE,
             "network": NETWORK,
+            "networks": NETWORKS,
             "payTo": PAY_TO,
             "facilitator": FACILITATOR_URL or "default",
             "resources": resources,

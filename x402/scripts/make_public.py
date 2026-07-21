@@ -8,7 +8,11 @@ Usage:
   python3 skills/x402/scripts/make_public.py --name my-paid-api \
       --upstream-port 5173 --mode payperuse --route 'GET /api/*=$0.01' \
       --pay-to 0xYourWallet [--gateway-port 8420] [--pass-days 30 --pass-price 4.99] \
-      [--price-per-credit 0.01 --min-credits 100]
+      [--price-per-credit 0.01 --min-credits 100] [--networks all]
+
+Networks (plans-280-04 §5.6.4):
+  --networks all            follow the platform mainnet full set (default)
+  --networks eip155:8453    custom lock to a comma-separated CAIP-2 list
 """
 import argparse, json, os, sys
 
@@ -25,7 +29,10 @@ ap.add_argument("--mode", choices=["payperuse", "subscription", "metered", "time
 ap.add_argument("--route", action="append", default=[], help="'METHOD /path=$price' (payperuse) or 'METHOD /path=units' (metered)")
 ap.add_argument("--pay-to", required=True)
 ap.add_argument("--gateway-port", type=int, default=8420)
-ap.add_argument("--network", default="eip155:8453")
+ap.add_argument("--networks", default="all",
+                help="'all' (default) = platform mainnet full set; or comma-separated CAIP-2 list")
+ap.add_argument("--network", default="",
+                help="DEPRECATED: use --networks. Single-chain custom lock if set.")
 ap.add_argument("--facilitator", default=FACILITATOR)
 ap.add_argument("--facilitator-token", default=os.environ.get("X402_FACILITATOR_TOKEN", ""),
                 help="bearer token if the facilitator enforces caller auth")
@@ -35,6 +42,17 @@ ap.add_argument("--pass-days", type=float, default=30)
 ap.add_argument("--pass-price", default="4.99")
 args = ap.parse_args()
 
+# Networks resolution (plans-280-04 §5.6.4) — align with monetize.py default "all"
+if args.network:
+    networks_list = [n.strip() for n in args.network.split(",") if n.strip()]
+    networks_mode = "custom"
+elif args.networks.strip().lower() == "all":
+    networks_list = []
+    networks_mode = "all"
+else:
+    networks_list = [n.strip() for n in args.networks.split(",") if n.strip()]
+    networks_mode = "custom" if networks_list else "all"
+
 routes = {}
 for r in args.route or ["GET /api/*=$0.01"]:
     spec, _, val = r.rpartition("=")
@@ -43,9 +61,15 @@ for r in args.route or ["GET /api/*=$0.01"]:
     else:
         routes[spec] = {"units": int(val) if val.isdigit() else 1}
 
+# NOTE: make_public scaffolds LEGACY modes only (payperuse/subscription/
+# metered/timepass). Those paths advertise a single network (NETWORKS[0])
+# even when networks_mode=all. For marketplace multi-accepts (Base+Monad),
+# use monetize.py --mode pay_per_use (platform mode) instead.
 cfg = {"mode": args.mode, "port": args.gateway_port,
        "upstream": f"http://127.0.0.1:{args.upstream_port}",
-       "pay_to": args.pay_to, "network": args.network,
+       "pay_to": args.pay_to,
+       "networks_mode": networks_mode,
+       **({"networks": networks_list} if networks_mode == "custom" and networks_list else {}),
        "facilitator": args.facilitator,
        **({"facilitator_token": args.facilitator_token} if args.facilitator_token else {}),
        "state_dir": os.path.join(WS, ".x402", args.name, "state"),
@@ -76,7 +100,12 @@ while True:
 open(os.path.join(out, "start.py"), "w").write(start)
 print(json.dumps({"ok": True, "dir": f"output/{args.name}", "config": cfg_path,
                   "gateway_port": args.gateway_port, "mode": args.mode,
+                  "networks_mode": networks_mode,
+                  "networks": (networks_list or "all (legacy modes still advertise NETWORKS[0] only)"),
                   "routes": routes,
+                  "note": "Legacy modes only advertise one network in 402. "
+                          "For Base+Monad multi-accepts use monetize.py "
+                          "--mode pay_per_use (platform mode).",
                   "next": [
                       f"preview(serve, title='{args.name}', dir='output/{args.name}', command='python3 start.py', port={args.gateway_port})",
                       f"community-publish.publish_preview(preview_id, slug='{args.name}')",

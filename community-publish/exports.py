@@ -1082,6 +1082,8 @@ def create_paid_service(
     service_description: str | None = None,
     pricing_options: list[dict] | None = None,
     api_endpoints: list[dict] | None = None,
+    networks_mode: str = "all",
+    supported_networks: list[str] | None = None,
 ) -> dict[str, Any]:
     """Create a paid service listing on the Service Marketplace.
 
@@ -1108,7 +1110,11 @@ def create_paid_service(
         api_endpoint: The x402 charge endpoint URL. For paid_project this
             is the project's public URL; for paid_api it's the external
             API URL.
-        provider_wallet: Base chain wallet address to receive payments.
+        provider_wallet: EVM wallet address (e.g. 0x...) that receives
+            USDC payments. The SAME address is used on every enabled
+            chain — Starchild's facilitator settles on each chain to this
+            address. Do NOT pass a chain-specific-only wallet; the platform
+            does not remap addresses per chain.
         pricing_model: "pay_per_use", "lifetime", "monthly", "weekly",
             "quarterly", "yearly", or "prepaid". With pricing_options this is
             the default plan.
@@ -1131,6 +1137,17 @@ def create_paid_service(
         service_description: Required for paid_project (what subscribers get).
         pricing_options: Optional multi-plan list (see SKILL.md "multiple
             pricing plans"): [{"pricing_model", "price", "is_default", "label"}].
+        networks_mode: Which chains the service accepts payment on.
+            "all" (default) = follow the platform mainnet set (currently
+            Base + Monad; new chains are picked up automatically with no
+            code change). "custom" = only the chains listed in
+            supported_networks. Defaulting to "all" is the recommended
+            path — only pass "custom" when the user explicitly asks to
+            restrict to a subset (e.g. "only Base"). Never default to a
+            hard-coded single chain like ['eip155:8453'].
+        supported_networks: CAIP-2 chain ids (e.g. ["eip155:8453",
+            "eip155:143"]) — REQUIRED and must be non-empty when
+            networks_mode="custom". Ignored when networks_mode="all".
 
     Returns:
         {"ok": True, "service": {...}, "service_id": "..."} on success
@@ -1176,6 +1193,32 @@ def create_paid_service(
                 "gateway and the self-check both treat them as required, so "
                 "they are enforced at call time."}
 
+    # Multi-chain payment config (plans-280 Phase B3).
+    # Default is "all" (follow platform mainnet set: Base + Monad today).
+    # Only validate when the caller explicitly opts into "custom".
+    # NEVER default to a hard-coded single chain (e.g. ['eip155:8453']) —
+    # that would re-introduce the Base-only behavior this skill moved away
+    # from. The gateway stores NULL supported_networks for "all" and
+    # expands it at read time via resolveNetworks().
+    if networks_mode not in ("all", "custom"):
+        return {"ok": False, "error":
+                f"networks_mode must be 'all' or 'custom', got: {networks_mode!r}"}
+    if networks_mode == "custom":
+        if not supported_networks or not isinstance(supported_networks, list) \
+                or len(supported_networks) == 0:
+            return {"ok": False, "error":
+                    "supported_networks must be a non-empty list of CAIP-2 "
+                    "chain ids (e.g. ['eip155:8453']) when networks_mode='custom'. "
+                    "Pass networks_mode='all' (the default) to accept payment "
+                    "on all platform mainnets instead."}
+        # Trim + reject blank entries; gateway also validates but fail fast here.
+        supported_networks = [n.strip() for n in supported_networks
+                              if isinstance(n, str) and n.strip()]
+        if not supported_networks:
+            return {"ok": False, "error":
+                    "supported_networks contains no valid non-empty CAIP-2 "
+                    "chain ids."}
+
     payload: dict[str, Any] = {
         "name": name,
         "description": description,
@@ -1212,6 +1255,14 @@ def create_paid_service(
         # "is_default": True, "label": "Weekly"}, ...] — gateway stores them in
         # service_pricing_options; buyers pick a plan on the detail page.
         payload["pricing_options"] = pricing_options
+
+    # Multi-chain payment config (plans-280 Phase B3). Always send
+    # networks_mode so the gateway stores it explicitly. For "all" we omit
+    # supported_networks (gateway stores NULL and expands at read time via
+    # resolveNetworks()). For "custom" we send the validated non-empty list.
+    payload["networks_mode"] = networks_mode
+    if networks_mode == "custom" and supported_networks:
+        payload["supported_networks"] = supported_networks
 
     try:
         status, body = gateway.service_create(uid, payload)
@@ -1469,17 +1520,63 @@ def update_service(service_id: str, **fields) -> dict[str, Any]:
         service_id: The UUID returned by create_paid_service().
         **fields: Any of the create_paid_service() parameters to update
             (name, description, category, api_endpoint, provider_wallet,
-            pricing_model, price, api_documentation, etc.).
+            pricing_model, price, api_documentation, etc.). Also supports
+            the multi-chain payment fields:
+            - networks_mode: "all" (follow platform mainnet set) or "custom".
+            - supported_networks: non-empty list of CAIP-2 chain ids, required
+              when networks_mode="custom". Pass networks_mode="all" (with no
+              supported_networks, or supported_networks=[]) to switch back to
+              following the platform mainnet set.
 
     Returns:
         {"ok": True, "service": {...}} on success
         {"ok": False, "error": ...} on failure
     """
     uid = _user_id()
-    # Filter out None values so we don't accidentally null out fields
+    # Filter out None values so we don't accidentally null out fields.
+    # NOTE: supported_networks=[] (empty list) is intentionally kept — it is
+    # a valid signal for "clear the custom list" when paired with
+    # networks_mode="all". Only None is dropped.
     payload = {k: v for k, v in fields.items() if v is not None}
     if not payload:
         return {"ok": False, "error": "No fields to update — pass at least one keyword argument."}
+
+    # Multi-chain payment config validation (plans-280 Phase B3).
+    # Mirrors create_paid_service(): "custom" requires a non-empty list;
+    # "all" clears the stored list (gateway stores NULL and expands at read).
+    # If the caller only passes supported_networks (no networks_mode), treat
+    # that as an explicit custom lock — do NOT default mode to "all" and drop
+    # the list (that silently ignored the caller's intent).
+    if "networks_mode" in payload or "supported_networks" in payload:
+        if "networks_mode" in payload:
+            mode = payload.get("networks_mode")
+        elif payload.get("supported_networks"):
+            mode = "custom"
+            payload["networks_mode"] = "custom"
+        else:
+            mode = "all"
+            payload["networks_mode"] = "all"
+        if mode not in ("all", "custom"):
+            return {"ok": False, "error":
+                    f"networks_mode must be 'all' or 'custom', got: {mode!r}"}
+        if mode == "custom":
+            nets = payload.get("supported_networks")
+            if not isinstance(nets, list) or len(nets) == 0:
+                return {"ok": False, "error":
+                        "supported_networks must be a non-empty list of CAIP-2 "
+                        "chain ids (e.g. ['eip155:8453']) when networks_mode='custom'. "
+                        "Pass networks_mode='all' to accept payment on all platform "
+                        "mainnets instead."}
+            nets = [n.strip() for n in nets if isinstance(n, str) and n.strip()]
+            if not nets:
+                return {"ok": False, "error":
+                        "supported_networks contains no valid non-empty CAIP-2 "
+                        "chain ids."}
+            payload["supported_networks"] = nets
+        else:
+            # networks_mode="all": drop any custom list so the gateway clears
+            # the stored supported_networks to NULL (expanded at read time).
+            payload.pop("supported_networks", None)
 
     try:
         status, body = gateway.service_update(uid, service_id, payload)

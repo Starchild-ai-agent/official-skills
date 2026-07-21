@@ -245,6 +245,17 @@ def service_create(owner_user_id: str, payload: dict) -> tuple[int, dict]:
     payload is the full service body (name, description, category,
     service_type, api_endpoint, provider_wallet, pricing_model, price,
     etc.). owner_user_id is injected into the body for internal-key auth.
+
+    Multi-chain payment config (plans-280 Phase B3):
+      - networks_mode: "all" (default) = accept payment on all platform
+        mainnets (Base + Monad today; new chains picked up automatically).
+        Gateway stores NULL supported_networks and expands at read time.
+      - supported_networks: list of CAIP-2 chain ids, required when
+        networks_mode="custom". Ignored for "all".
+
+    provider_wallet is an EVM address used on every enabled chain (the
+    Starchild facilitator settles to the same address on each chain); it
+    is NOT Base-only.
     """
     body = {**payload, "owner_user_id": owner_user_id}
     return _request("POST", "/api/services", body, timeout=30)
@@ -256,7 +267,14 @@ def service_get(owner_user_id: str, service_id: str) -> tuple[int, dict]:
 
 
 def service_update(owner_user_id: str, service_id: str, payload: dict) -> tuple[int, dict]:
-    """PUT /api/services/:id — update a service (owner only)."""
+    """PUT /api/services/:id — update a service (owner only).
+
+    payload may include networks_mode / supported_networks to change which
+    chains the service accepts payment on (plans-280 Phase B3). The gateway
+    only applies these fields when the caller explicitly provides them;
+    otherwise existing values are left unchanged. See service_create() for
+    the field semantics.
+    """
     body = {**payload, "owner_user_id": owner_user_id}
     return _request("PUT", f"/api/services/{service_id}", body, timeout=30)
 

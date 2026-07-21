@@ -1,12 +1,15 @@
 ---
 name: x402
-version: 2.15.2
+version: 2.16.0
 description: |
-  Monetize any user project/service with the x402 payment protocol on Base (Starchild platform billing: pay_per_use / lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services), and pay other agents' x402 services.
+  Monetize any user project/service with the x402 payment protocol on platform
+  networks (Base + Monad; Starchild platform billing: pay_per_use / lifetime /
+  weekly / monthly / quarterly / yearly / prepaid, plus multi-plan services),
+  and pay other agents' x402 services.
 
   Use when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint.
 author: starchild
-tags: [x402, payments, base, usdc, monetization, api, subscription, metered, agent-commerce]
+tags: [x402, payments, base, monad, usdc, monetization, api, subscription, metered, agent-commerce]
 delivery: script
 metadata:
   starchild:
@@ -18,9 +21,10 @@ metadata:
 
 # 💸 x402 Monetization Skill
 
-Turn any local HTTP service into a paid service on Base (x402 V2 protocol,
-`exact` scheme, USDC via EIP-3009 — buyer pays zero gas), and act as a buyer
-paying other agents' x402 services with the user's Privy wallet.
+Turn any local HTTP service into a paid service on platform networks (Base +
+Monad; x402 V2 protocol, `exact` scheme, USDC via EIP-3009 — buyer pays zero
+gas), and act as a buyer paying other agents' x402 services with the user's
+Privy wallet.
 
 **Architecture: reverse-proxy sidecar.** The gateway (`gateway/app.py`) sits in
 front of the user's untouched service. One unified gateway, three billing modes
@@ -29,7 +33,7 @@ as config presets — the error contract is identical across all modes.
 ```
 buyer agent ──402/PAYMENT-SIGNATURE──> gateway :840x ──plain HTTP──> user service :port
                      │
-              facilitator (verify + settle on Base) ──USDC──> user's Privy wallet
+               facilitator (verify + settle on Base/Monad) ──USDC──> user's Privy wallet
 ```
 
 ## Reference files (MUST read before the matching task)
@@ -48,13 +52,21 @@ skill. Do NOT guess or improvise what these files cover:
 ```bash
 FAC=https://starchild-x402-facilitator.fly.dev
 # pay_per_use: verify -> settle on EVERY request (simplest mode)
+# --networks defaults to "all" (Base + Monad mainnet); the 402 challenge
+# returns a multi-accepts list — the buyer picks one chain per payment.
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
-    --mode pay_per_use --price 0.01 --network eip155:8453 --facilitator $FAC
+    --mode pay_per_use --price 0.01 --facilitator $FAC
+
+# lock to a single chain (custom)
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode pay_per_use --price 0.01 --networks eip155:8453 --facilitator $FAC
 ```
 
 Platform modes follow the community-gateway billing contract: 402 JSON body
-with `accepts.pricingModel`, facilitator is the single source of truth for
-"already paid", every settle auto-callbacks community-gateway for records.
+with `accepts` as a **list** (multi-accepts, one entry per network — the buyer
+picks one chain per payment), `accepts[].pricingModel`, facilitator is the
+single source of truth for "already paid", every settle auto-callbacks
+community-gateway for records.
 
 ## Billing mode decision table
 
@@ -83,17 +95,47 @@ Registry: `/data/workspace/.x402/services.json`; per-service config/log/state:
 
 ## Networks & facilitators
 
-| Network | ID | Facilitator | Needs |
-|---------|----|-------------|-------|
-| Base Sepolia (default) | `eip155:84532` | `https://x402.org/facilitator` (default) | nothing |
-| Base mainnet | `eip155:8453` | **platform** (`https://starchild-x402-facilitator.fly.dev`, the default; override via `X402_FACILITATOR_URL` or `--facilitator`) | nothing — platform settler pays gas |
+The platform supports multiple chains. By default a service follows the
+**platform mainnet full set** (`--networks all`, the default) — currently
+Base + Monad. The 402 challenge returns a multi-accepts list (one entry per
+chain); the buyer picks one chain per payment. Lock to specific chains with
+`--networks eip155:8453,eip155:143` (custom).
 
-The platform facilitator handles /verify + /settle; its settler key only pays
-gas — fund flow is fixed by the buyer's signature and can never touch user
-funds. Safety: mandatory `eth_call` simulation before spending gas, per-payer
-rate limiting, authorization-nonce idempotency.
+| Network | CAIP-2 | USDC | EIP-712 name | Gas |
+|---------|--------|------|--------------|-----|
+| Base mainnet | `eip155:8453` | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | `USD Coin` | ETH (platform-paid) |
+| Base Sepolia (testnet) | `eip155:84532` | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | `USDC` | ETH (platform-paid) |
+| Monad mainnet | `eip155:143` | `0x754704bc059f8c67012fed69bc8a327a5aafb603` | `USDC` | MON (platform-paid) |
+| Monad testnet | `eip155:10143` | `0x534b2f3A21130d7a60830c2Df862319e593943A3` | `USDC` | MON (platform-paid) |
+
+| Facilitator | Networks | When |
+|-------------|----------|------|
+| **platform** (`https://starchild-x402-facilitator.fly.dev`, the default for mainnet; override via `X402_FACILITATOR_URL` or `--facilitator`) | Base + Monad mainnet | production — platform settler pays gas on every chain |
+| `https://x402.org/facilitator` (default for testnet) | Base Sepolia + Monad testnet | testing only — REJECTED for mainnet (startup guard) |
+
+The platform facilitator handles /verify + /settle on every supported chain;
+its settler key only pays gas — fund flow is fixed by the buyer's signature and
+can never touch user funds. **Gas is paid by the platform on every chain
+(ETH on Base, MON on Monad) — never passed to the service provider.** Safety:
+mandatory `eth_call` simulation before spending gas, per-payer rate limiting,
+authorization-nonce idempotency.
 Testnet USDC (Base Sepolia): `0x036CbD53842c5426634e7929541eC2318f3dCF7e`,
 faucet at faucet.circle.com. Prices auto-convert: `$0.01` → `10000` atomic USDC units.
+
+### Multi-chain config (`networks_mode`)
+
+| Config | Behavior |
+|--------|----------|
+| `--networks all` (default) or `networks_mode: all` | 402 accepts = platform mainnet full set (Base + Monad); testnet full set when facilitator is x402.org |
+| `--networks eip155:8453` or `networks_mode: custom` + `networks: [...]` | 402 accepts = exactly the listed chains (custom lock) |
+| (no networks field) | same as `all` |
+
+Extending the platform with a new chain only requires updating `ASSETS` +
+`MAINNET_NETWORKS` in `platform_modes.py` (and the facilitator's `KNOWN_ASSETS`)
+— every `all`-configured service picks up the new chain on its next 402, with
+**zero business-table updates**. Historical Base-only configs are migrated once
+(SQL/config sweep to `networks_mode: all`); `resolve_networks` does NOT guess
+"bare Base means all".
 
 ## Keepalive (register once per machine)
 
@@ -208,10 +250,10 @@ Make any local service a PUBLIC paid API (charge any caller for any resource,
 no accounts / API keys needed — same capability set as Cloudflare's
 Monetization Gateway, running on your own machine):
 
-1. `python3 skills/x402/scripts/make_public.py --name my-api --upstream-port <port> --mode payperuse --route 'GET /api/*=$0.01' --pay-to <wallet>` — scaffolds `output/my-api/start.py` + config
+1. `python3 skills/x402/scripts/make_public.py --name my-api --upstream-port <port> --mode payperuse --route 'GET /api/*=$0.01' --pay-to <wallet>` — scaffolds `output/my-api/start.py` + config (defaults to `--networks all`: Base + Monad)
 2. `preview(action='serve', dir='output/my-api', command='python3 start.py', port=<gateway_port>)` — note: start the upstream in the same command if it isn't already running
 3. `community-publish` skill → `publish_preview(preview_id, slug='my-api')` → public URL
-4. Price discovery is built in: `GET <public-url>/.well-known/x402` returns machine-readable routes/prices/payTo/network (Bazaar-compatible shape).
+4. Price discovery is built in: `GET <public-url>/.well-known/x402` returns machine-readable routes/prices/payTo/networks (Bazaar-compatible shape; `accepts` is a multi-chain list).
 
 **A public URL is NOT a marketplace listing.** Steps 1–4 only make the
 service reachable — the Service Marketplace will show nothing (or "free")
@@ -286,7 +328,8 @@ how buyers can obtain an access credential via x402 payment. The Agent
 should generate this documentation based on the service's actual pricing,
 duration, and URL — do NOT copy a fixed template. The documentation should
 cover:
-- The price and payment network (e.g. "$2.99 USDC on Base")
+- The price and payment networks (e.g. "$2.99 USDC on Base or Monad — buyer
+  picks one chain per payment")
 - How to pay via Agent (x402 client call to `/x402/topup`)
 - How to pay directly (any x402-compatible client with `X-PAYMENT` header)
 - What the buyer receives after payment (an `api_key` credential)
@@ -317,10 +360,12 @@ Given ONLY a service URL (no docs, no guidance), onboard and verify it with
 this sequence — everything needed is self-describing in the protocol:
 
 1. **Discover** (free): `GET <url>` with no payment headers. A 402 response
-   IS the price sheet: `accepts.amount` (atomic USDC), `accepts.pricingModel`,
-   `accepts.network`, and — on multi-plan services — a `plans` map with every
-   option's accepts. Optionally `GET <base>/.well-known/x402` for a
-   machine-readable index of all routes/prices.
+   IS the price sheet: `accepts` is a **list** (multi-accepts, one entry per
+   network) — each entry has `amount` (atomic USDC), `pricingModel`,
+   `network`, `asset`, `payTo`. Pick one chain to pay on. On multi-plan
+   services a `plans` map carries every option's accepts. Optionally
+   `GET <base>/.well-known/x402` for a machine-readable index of all
+   routes/prices/networks.
 2. **Probe plans** (free, multi-plan only): repeat the unpaid GET with
    `X-Pricing-Model: <plan>` — each 402 quotes that plan's exact amount.
    An unknown plan returns HTTP 400 listing the valid ones.

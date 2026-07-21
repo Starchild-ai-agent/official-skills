@@ -2,7 +2,7 @@
   "mode": "monthly",
   "upstream": "http://127.0.0.1:UPSTREAM_PORT",
   "pay_to": "0xYOUR_PROVIDER_WALLET",
-  "network": "eip155:8453",
+  "networks_mode": "all",
   "price_usd": "10.00",
   "facilitator": "https://starchild-x402-facilitator.fly.dev",
   "facilitator_admin_token": "REQUIRED_FOR_SETTLEMENTS_LOOKUP",

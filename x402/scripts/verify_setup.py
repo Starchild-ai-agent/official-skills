@@ -75,9 +75,13 @@ def main():
         time.sleep(1.5)
 
         # ---------- payperuse gateway ----------
+        # networks_profile=testnet so resolve_networks returns the testnet
+        # full set (the legacy single "network" field is no longer read by
+        # resolve_networks — plans-280-04 §5.6.1).
         ppu_cfg = os.path.join(tmp, "ppu.json")
         json.dump({"mode": "payperuse", "upstream": f"http://127.0.0.1:{UP_PORT}",
-                   "pay_to": PAY_TO, "network": NETWORK, "port": PPU_PORT,
+                   "pay_to": PAY_TO, "networks_mode": "custom",
+                   "networks": [NETWORK], "port": PPU_PORT,
                    "routes": {"GET /api/data": {"price": "$0.001"}},
                    "state_dir": os.path.join(tmp, "s1")}, open(ppu_cfg, "w"))
         procs.append(start([sys.executable, os.path.join(SKILL, "gateway", "app.py"), ppu_cfg]))
@@ -91,6 +95,36 @@ def main():
             check("challenge fields", acc["payTo"].lower() == PAY_TO.lower()
                   and acc["network"] == NETWORK and acc["scheme"] == "exact",
                   f"amount={acc['amount']}")
+
+        # ---------- platform multi-accepts (plans-280-04 X1/X2/X3) ----------
+        # X1: default (no networks) -> accepts = platform mainnet full set
+        sys.path.insert(0, os.path.join(SKILL, "gateway"))
+        from platform_modes import (resolve_networks, platform_mainnet_networks,
+                                    platform_testnet_networks, ASSETS)
+        # resolve_networks with empty cfg -> mainnet full set
+        nets_all = resolve_networks({})
+        check("resolve_networks default -> all", len(nets_all) >= 1,
+              f"networks={nets_all}")
+        # X2: custom single chain -> accepts length 1
+        nets_custom = resolve_networks({"networks_mode": "custom",
+                                        "networks": ["eip155:8453"]})
+        check("resolve_networks custom single", nets_custom == ["eip155:8453"],
+              f"networks={nets_custom}")
+        # X3: extend MAINNET with a fake chain -> all picks it up (no business
+        # table update needed). Simulate by checking ASSETS has Monad.
+        check("ASSETS includes Monad mainnet", "eip155:143" in ASSETS,
+              f"keys={list(ASSETS)}")
+        # illegal: custom with empty list
+        try:
+            resolve_networks({"networks_mode": "custom", "networks": []})
+            check("resolve_networks custom+empty raises", False, "no error raised")
+        except ValueError:
+            check("resolve_networks custom+empty raises", True)
+        # testnet profile via facilitator URL
+        nets_testnet = resolve_networks({"facilitator": "https://x402.org/facilitator"})
+        check("resolve_networks testnet profile",
+              set(nets_testnet).issubset(set(platform_testnet_networks())),
+              f"networks={nets_testnet}")
 
         # unprotected route passes through free
         r = httpx.get(f"http://127.0.0.1:{PPU_PORT}/", timeout=10)
@@ -119,11 +153,71 @@ def main():
         check("EIP-3009 sig accepted by facilitator", sig_ok,
               f"status={st} err={err or 'settled'}")
 
+        # ---------- platform multi-accepts gateway (plans-280-04 G1/G2) ----
+        # G1: networks_mode=all -> 402 accepts is a LIST with the platform
+        # mainnet full set (Base + Monad). G2: custom single chain -> length 1.
+        PLAT_PORT = 18510
+        plat_cfg_all = os.path.join(tmp, "plat_all.json")
+        json.dump({"mode": "pay_per_use", "upstream": f"http://127.0.0.1:{UP_PORT}",
+                   "pay_to": PAY_TO, "networks_mode": "all", "port": PLAT_PORT,
+                   "price_usd": "0.01",
+                   "facilitator": "https://starchild-x402-facilitator.fly.dev",
+                   "routes": {"* /api/*": {"units": 1}},
+                   "state_dir": os.path.join(tmp, "s_plat_all")}, open(plat_cfg_all, "w"))
+        procs.append(start([sys.executable, os.path.join(SKILL, "gateway", "app.py"), plat_cfg_all]))
+        check("platform all gateway boots", wait_port(PLAT_PORT))
+
+        r = httpx.get(f"http://127.0.0.1:{PLAT_PORT}/api/data", timeout=10)
+        check("platform 402 status", r.status_code == 402, f"status={r.status_code}")
+        try:
+            body = r.json()
+        except Exception:
+            body = {}
+        accepts = body.get("accepts")
+        check("G1: accepts is a list", isinstance(accepts, list) and len(accepts) >= 1,
+              f"len={len(accepts) if isinstance(accepts, list) else 'n/a'}")
+        if isinstance(accepts, list) and accepts:
+            nets_in_402 = [a.get("network") for a in accepts]
+            check("G1: accepts includes Base+Monad",
+                  "eip155:8453" in nets_in_402 and "eip155:143" in nets_in_402,
+                  f"networks={nets_in_402}")
+            check("G1: each accept has pricingModel",
+                  all(a.get("pricingModel") == "pay_per_use" for a in accepts),
+                  f"models={[a.get('pricingModel') for a in accepts]}")
+        # info endpoint exposes networks list
+        r = httpx.get(f"http://127.0.0.1:{PLAT_PORT}/x402/info", timeout=10)
+        check("info exposes networks list",
+              r.status_code == 200 and isinstance(r.json().get("networks"), list),
+              f"networks={r.json().get('networks')}")
+
+        # G2: custom single chain -> accepts length 1
+        PLAT_PORT_C = 18511
+        plat_cfg_c = os.path.join(tmp, "plat_custom.json")
+        json.dump({"mode": "pay_per_use", "upstream": f"http://127.0.0.1:{UP_PORT}",
+                   "pay_to": PAY_TO, "networks_mode": "custom",
+                   "networks": ["eip155:8453"], "port": PLAT_PORT_C,
+                   "price_usd": "0.01",
+                   "facilitator": "https://starchild-x402-facilitator.fly.dev",
+                   "routes": {"* /api/*": {"units": 1}},
+                   "state_dir": os.path.join(tmp, "s_plat_c")}, open(plat_cfg_c, "w"))
+        procs.append(start([sys.executable, os.path.join(SKILL, "gateway", "app.py"), plat_cfg_c]))
+        check("platform custom gateway boots", wait_port(PLAT_PORT_C))
+        r = httpx.get(f"http://127.0.0.1:{PLAT_PORT_C}/api/data", timeout=10)
+        try:
+            accepts_c = r.json().get("accepts")
+        except Exception:
+            accepts_c = None
+        check("G2: custom single chain -> accepts length 1",
+              isinstance(accepts_c, list) and len(accepts_c) == 1
+              and accepts_c[0].get("network") == "eip155:8453",
+              f"accepts={accepts_c}")
+
         # ---------- subscription gateway ----------
         sub_cfg = os.path.join(tmp, "sub.json")
         state2 = os.path.join(tmp, "s2")
         json.dump({"mode": "subscription", "upstream": f"http://127.0.0.1:{UP_PORT}",
-                   "pay_to": PAY_TO, "network": NETWORK, "port": SUB_PORT,
+                   "pay_to": PAY_TO, "networks_mode": "custom",
+                   "networks": [NETWORK], "port": SUB_PORT,
                    "routes": {"GET /api/*": {"units": 1}},
                    "topup": {"price_per_credit_usd": 0.001, "min_credits": 100},
                    "state_dir": state2}, open(sub_cfg, "w"))

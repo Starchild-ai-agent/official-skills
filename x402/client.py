@@ -817,19 +817,68 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 return out
 
         # platform-shape challenge (Starchild community-gateway contract):
-        # JSON body {x402Version, error, accepts:{...pricingModel}}
+        # JSON body {x402Version, error, accepts:[{...pricingModel}, ...]}
+        # Multi-accepts (plans-280-04): accepts is a LIST — one entry per
+        # network. Pick ONE rail with the same network_rank policy as the
+        # V2 SDK path (do NOT hard-code accepts[0], which is usually Base).
         try:
             challenge = json.loads(r0.text or "{}")
         except Exception:
             challenge = {}
-        accepts = challenge.get("accepts")
-        if isinstance(accepts, list):  # tolerate accepts as a list
-            accepts = accepts[0] if accepts else None
-        if not (isinstance(accepts, dict) and accepts.get("scheme") == "exact"):
+        accepts_raw = challenge.get("accepts")
+        if isinstance(accepts_raw, dict):
+            accepts_list = [accepts_raw]
+        elif isinstance(accepts_raw, list):
+            accepts_list = [a for a in accepts_raw
+                            if isinstance(a, dict) and a.get("scheme") == "exact"]
+        else:
+            accepts_list = []
+        if not accepts_list:
             return {"status": 402, "error": "unrecognized 402 challenge",
                     "body": _body(r0.text)}
         signer = _make_signer(signer_mode, max_amount_atomic,
                               allow_fallback_eoa)
+        _mode = ("eoa" if getattr(signer, "signer_type", "") == "session_eoa"
+                 else "auto")
+
+        def _pick_accept(cands: list, prefer_network: str | None = None) -> dict | None:
+            """Select one accept for the platform JSON-body path.
+
+            This path signs EIP-3009 via _sign_platform_payment (EVM only) —
+            Solana/SVM accepts are never candidates here. External multi-chain
+            services that include Solana pay through the V2 header + SDK path
+            above (unchanged), which registers the SVM signer.
+
+            Selection: keep prefer_network on prepaid deposit retry; else rank
+            EVM rails with network_rank (plain-ECDSA e.g. Monad before
+            delegated Base).
+            """
+            exact = [a for a in cands
+                     if isinstance(a, dict) and a.get("scheme") == "exact"]
+            if not exact:
+                return None
+            # Platform path = EVM EIP-3009 only. Drop Solana/other non-EVM so
+            # network_rank cannot pick a rail we cannot sign here.
+            exact = [a for a in exact
+                     if str(a.get("network") or "").startswith("eip155:")
+                     or str(a.get("network") or "") == "base"]
+            if not exact:
+                return None
+            if prefer_network:
+                same = [a for a in exact
+                        if str(a.get("network") or "") == prefer_network]
+                if same:
+                    return same[0]
+            return sorted(
+                exact,
+                key=lambda a: network_rank(
+                    str(a.get("network") or ""), signer=signer, signer_mode=_mode),
+            )[0]
+
+        accepts = _pick_accept(accepts_list)
+        if not accepts:
+            return {"status": 402, "error": "no payable accept in 402 challenge",
+                    "body": _body(r0.text)}
         # Up to 2 payment attempts. prepaid needs both: attempt 1 signs the
         # per-call price (authentication only — the gateway debits the prepaid
         # balance instead of settling); if the gateway answers 402
@@ -839,6 +888,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         # Other modes are unchanged: attempt 1 settles, a second 402 just
         # surfaces the gateway's error.
         r2 = r0
+        chosen_network = str(accepts.get("network") or "")
         for _ in range(2):
             xp = _sign_platform_payment(accepts, max_amount_atomic, signer=signer)
             _ledger_append({"event": "signed", "url": url,
@@ -856,23 +906,33 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                             "amount_atomic": accepts.get("amount"),
                             "status": r2.status_code,
                             "paid": r2.status_code == 200,
+                            "network": accepts.get("network"),
                             "flavor": "platform", **_signer_meta(signer)})
             if r2.status_code != 402:
                 break
             try:
-                nxt = json.loads(r2.text or "{}").get("accepts")
+                nxt_raw = json.loads(r2.text or "{}").get("accepts")
             except Exception:
                 break
-            if isinstance(nxt, list):
-                nxt = nxt[0] if nxt else None
-            if not (isinstance(nxt, dict) and nxt.get("scheme") == "exact"):
+            if isinstance(nxt_raw, dict):
+                nxt_list = [nxt_raw]
+            elif isinstance(nxt_raw, list):
+                nxt_list = nxt_raw
+            else:
+                break
+            # Deposit escalation: stay on the same chain the buyer already
+            # chose (do not jump to accepts[0] / Base).
+            nxt = _pick_accept(nxt_list, prefer_network=chosen_network)
+            if not nxt:
                 break
             if nxt.get("amount") == accepts.get("amount"):
                 break  # same ask again -> not a deposit escalation, give up
             accepts = nxt
+            chosen_network = str(accepts.get("network") or chosen_network)
         return {"status": r2.status_code, "payer": signer.address, "paid": True,
                 **_signer_meta(signer),
                 "pricing_model": accepts.get("pricingModel"),
+                "network": accepts.get("network"),
                 "body": _body(r2.text, full=True)}
 
     return asyncio.run(run())

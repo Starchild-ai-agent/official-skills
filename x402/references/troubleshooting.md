@@ -43,8 +43,8 @@ Common facilitator verify errors (2nd 402's `error` field):
   `gateway/app.py` and `client.py` self-configure `HTTPS_PROXY`/`SSL_CERT_FILE`
   from `STARCHILD_API_PROXY_*` env. Set `X402_NO_PROXY=1` only outside Starchild.
 - **Verify e2e anytime**: `python3 skills/x402/scripts/verify_setup.py`
-  (14 fund-free checks; add `--funded` for a real on-chain settlement once the
-  wallet holds USDC on the target network).
+  (fund-free checks incl. multi-accepts; add `--funded` for a real on-chain
+  settlement once the wallet holds USDC on the target network).
 - **Ledger inspection**: `sqlite3 /data/workspace/.x402/<name>/state/ledger.db 'select * from payments'`.
 - **Gateway logs**: `/data/workspace/.x402/<name>/gateway.log`.
 - **Gateway lifecycle — ONE owner per port (hard rule)**: `monetize.py`
@@ -59,12 +59,12 @@ Common facilitator verify errors (2nd 402's `error` field):
     Preview then owns restarts across reboots.
   - **monetize-managed** (local/dev): default behavior. Manage with
     `monetize.py --stop <name>` / `--restart <name>` — restart is REQUIRED
-    after editing `x402.config.json` (e.g. testnet→mainnet network switch).
+    after editing `x402.config.json` (e.g. networks switch).
 - **Preview "running" ≠ payments working**: preview health checks hit `/`,
   which the gateway proxies to the upstream — 200 there says nothing about
-  billing. Verify the gateway itself: `GET /x402/info` returns 200 JSON and
-  an unpaid paid-route returns 402. If responses look stale, suspect an old
-  process still holding the port (see port hygiene below).
+  billing. Verify the gateway itself: `GET /x402/info` returns 200 JSON (with
+  a `networks` list) and an unpaid paid-route returns 402. If responses look
+  stale, suspect an old process still holding the port (see port hygiene below).
 - **Testing gateways locally — port ownership checks**: a uvicorn gateway
   whose port is already held FAILS TO BIND while the old process keeps
   answering, so a test against that port exercises the OLD process (and its
@@ -84,3 +84,53 @@ Common facilitator verify errors (2nd 402's `error` field):
   `PAYMENT-RESPONSE`). Deps are NOT auto-installed: run
   `bash skills/x402/setup.sh` once per machine (also append it to
   `/data/workspace/setup.sh` so restarts reinstall).
+
+## Multi-chain troubleshooting (Base + Monad)
+
+- **402 `accepts` is a list, not a single object**: platform-mode 402 challenges
+  return `accepts` as an **array** (one entry per network). Buyers pick one
+  chain per payment. If your client expects a single object, update it to
+  handle a list. The x402 skill's `client.py` ranks multi-accepts with
+  `network_rank` (prefer plain-ECDSA rails like Monad over delegated Base)
+  — it does **not** hard-code `accepts[0]`.
+- **Legacy modes (`payperuse` / `subscription` / `metered` / `timepass`) only
+  advertise one network**: even with `networks_mode: all`, the SDK middleware
+  path uses `NETWORKS[0]` (Base). Multi-accepts require **platform** modes
+  (`pay_per_use` / `lifetime` / `weekly` / `monthly` / `quarterly` / `yearly` /
+  `prepaid`). Prefer platform modes for new marketplace listings.
+- **A chain's gas is empty / settle fails on Monad**: the platform settler
+  pays gas on every chain (ETH on Base, MON on Monad). If the MON gas pool is
+  depleted, Monad settles fail with a facilitator error while Base keeps
+  working. Check the facilitator's `/facilitator/stats` (admin token) for
+  per-chain gas balances. This is a platform-ops issue, not a seller issue —
+  the seller never pays gas.
+- **`networks_mode: custom` with an empty list fails at startup**:
+  `resolve_networks` raises `ValueError("networks_mode=custom requires a
+  non-empty networks list")`. Either switch to `all` or provide a non-empty
+  `networks: ["eip155:8453", ...]` list.
+- **Old config with `"network": "eip155:8453"` (single field)**: the gateway
+  no longer reads the legacy single `network` field for platform modes — it
+  uses `resolve_networks(CFG)` which looks at `networks_mode`/`networks`.
+  Migrate old configs: remove `"network"` and add `"networks_mode": "all"`
+  (or `"networks_mode": "custom", "networks": ["eip155:8453"]` to lock).
+  `resolve_networks` deliberately does NOT guess "bare Base means all" —
+  historical configs are migrated once (plans-280-04 §5.6.1.1).
+- **Listing says `all` but gateway returns single-chain accepts**: the
+  marketplace listing's `networks_mode=all` means "follow the platform full
+  set", but the gateway config may still be `custom`. They must match: if the
+  listing is `all`, the gateway config should be `networks_mode: all` (or
+  absent). Restart the gateway after editing `x402.config.json`.
+- **Buyer paid on Monad but the gateway tried to settle on Base**: this should
+  never happen — `verify`/`settle` bind to the buyer's chosen accept (parsed
+  from the `X-PAYMENT` payload's `network` field). If it does, the gateway is
+  running an old version that ignores the payload network; upgrade and restart.
+- **Prepaid balance not shared across chains**: the facilitator ledger key is
+  `(payer, pay_to)`, not per-network. If a buyer's Monad deposit doesn't show
+  up on Base, the facilitator may be running an old version with per-network
+  balances — upgrade the facilitator (plans-280-04 Phase A).
+- **Adding a new chain**: extend `ASSETS` + `MAINNET_NETWORKS` in
+  `platform_modes.py` (and the facilitator's `KNOWN_ASSETS`). Every
+  `all`-configured service picks up the new chain on its next 402 — no
+  business-table update, no listing edit, no gateway restart needed (the
+  network list is resolved at startup, so a restart IS needed for running
+  gateways to see the new chain).

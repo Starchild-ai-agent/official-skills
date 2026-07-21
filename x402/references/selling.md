@@ -6,17 +6,31 @@ Read this BEFORE deploying any mode beyond a basic `pay_per_use`.
 ## Platform modes — full commands & contract
 
 Platform modes implement the Starchild community-gateway billing contract
-(x402-facilitator `docs/pricing-models.md`): 402 JSON body with
-`accepts.pricingModel`, buyer sends `X-PAYMENT`, the **facilitator is the
-single source of truth for "already paid"** (no local payment state), and
-every settle auto-callbacks community-gateway for purchase/call records.
+(x402-facilitator `docs/pricing-models.md`): 402 JSON body with `accepts` as a
+**list** (multi-accepts, one entry per network — the buyer picks one chain per
+payment), `accepts[].pricingModel`, buyer sends `X-PAYMENT`, the **facilitator
+is the single source of truth for "already paid"** (no local payment state),
+and every settle auto-callbacks community-gateway for purchase/call records.
+
+### Multi-chain: `--networks all` (default) vs custom
+
+By default a service follows the **platform mainnet full set** (Base + Monad):
+the 402 challenge returns an accepts list with one entry per chain, and the
+buyer picks one chain to pay on. Lock to specific chains with `--networks`
+(comma-separated CAIP-2 list).
 
 ```bash
 FAC=https://starchild-x402-facilitator.fly.dev
 
 # pay_per_use: verify -> settle on EVERY request
+# --networks defaults to "all" (Base + Monad mainnet); omit it to follow the
+# platform full set. The 402 returns a multi-accepts list.
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
-    --mode pay_per_use --price 0.01 --network eip155:8453 --facilitator $FAC
+    --mode pay_per_use --price 0.01 --facilitator $FAC
+
+# custom: lock to a single chain (or a comma-separated list)
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+    --mode pay_per_use --price 0.01 --networks eip155:8453 --facilitator $FAC
 
 # lifetime: one payment = permanent access (checked via /facilitator/access-status)
 # The gateway checks access-status automatically:
@@ -24,19 +38,19 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 #   - Without it: proxies through community-gateway (COMMUNITY_GATEWAY_URL env,
 #     already set in user containers) which holds the admin token server-side
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
-    --mode lifetime --price 5.00 --network eip155:8453 --facilitator $FAC
+    --mode lifetime --price 5.00 --facilitator $FAC
 
 # monthly: natural-month subscription (same day next month, clamped to month end;
 # expiry computed from /facilitator/settlements confirmed_at)
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
-    --mode monthly --price 10.00 --network eip155:8453 --facilitator $FAC
+    --mode monthly --price 10.00 --facilitator $FAC
 
 # weekly / quarterly / yearly: fixed-length subscriptions (7/90/365 days after the
 # newest qualifying payment).
 # Facilitator contract: queried as access-status pricing_model=monthly +
 # period_days=7/90/365 (monthly WITHOUT period_days = natural-month semantics).
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
-    --mode weekly --price 3.00 --network eip155:8453 --facilitator $FAC
+    --mode weekly --price 3.00 --facilitator $FAC
 
 # multi-plan (docs/pricing-models.md): --mode is the DEFAULT plan,
 # each --plan MODE=PRICE adds an option. Buyers pick a plan per request with the
@@ -44,14 +58,16 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 # pay_per_use cannot be combined with other plans.
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode monthly --price 10.00 --plan weekly=3 --plan yearly=90 \
-    --network eip155:8453 --facilitator $FAC
+    --facilitator $FAC
 
 # prepaid: one on-chain deposit, then every call is a millisecond off-chain debit.
 # For HIGH-FREQUENCY / metered APIs: no per-call settle (2-5s + gas + 30/min
 # rate limit), per-call price can be sub-cent. --deposit = suggested top-up size
 # (default 100 calls worth, min $0.10 = facilitator X402_MIN_DEPOSIT_AMOUNT).
+# Prepaid balance is cumulative across chains: a buyer who deposits on Monad
+# can spend on Base (same pooled (payer, pay_to) balance).
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
-    --mode prepaid --price 0.001 --deposit 1.00 --network eip155:8453 --facilitator $FAC
+    --mode prepaid --price 0.001 --deposit 1.00 --facilitator $FAC
 ```
 
 Default protected routes: `/api/*` (override with `--route 'METHOD /path'`;
@@ -122,9 +138,10 @@ balance empty gateway answers 402 insufficient_balance with accepts.amount =
 ```
 
 Contract details:
-- 402 challenge: `accepts.pricingModel = "prepaid"`, `accepts.amount` = per-call
-  price normally, deposit size when topping up; extra fields
-  `accepts.depositAtomic` + `accepts.pricePerCallAtomic` tell buyers both numbers.
+- 402 challenge: `accepts` is a **list** (multi-accepts, one entry per
+  network); each entry has `pricingModel = "prepaid"`, `amount` = per-call
+  price normally (deposit size when topping up), and extra fields
+  `depositAtomic` + `pricePerCallAtomic` telling buyers both numbers.
 - The per-call X-PAYMENT signature is authentication only — the gateway calls
   /verify (cached per signature until its validBefore) then /facilitator/debit;
   the signed value is settled ONLY when it is an actual deposit (value >=
@@ -135,6 +152,40 @@ Contract details:
 - Route `units` multiply the per-call price (metered pricing, e.g.
   `--route 'POST /api/heavy=25'` charges 25x).
 - Deposit minimum: facilitator `X402_MIN_DEPOSIT_AMOUNT` (default $0.10).
+- **Multi-chain cumulative balance**: the facilitator ledger key is
+  `(payer, pay_to)`, NOT per-network. A buyer who deposits on Monad can spend
+  on Base — the balance is pooled. The buyer picks one chain per deposit
+  (one accept from the multi-accepts list); the resulting credit is chain-agnostic.
+
+### Connecting to the marketplace (community-publish)
+
+After `monetize.py` starts the gateway, list the service on the marketplace
+via the `community-publish` skill so buyers can discover and pay it:
+
+```python
+# community-publish skill (required fields shown; see community-publish SKILL.md)
+create_paid_service(
+    name="my-api",
+    description="Short description of the paid API",
+    category="工具服务",
+    service_type="paid_api",          # or "paid_project" — NOT "api"
+    api_endpoint="https://community.iamstarchild.com/<user>-<slug>/api/data",
+    provider_wallet="<your EVM address — same on every chain>",
+    pricing_model="pay_per_use",      # or lifetime/monthly/weekly/...
+    price=0.01,                       # float USDC, not a string
+    api_documentation="...",          # required for paid_api
+    example_request="...",            # required for paid_api
+    example_response="...",           # required for paid_api
+    # networks_mode="all" is the default — omit it to follow platform mainnets
+    # networks_mode="custom", supported_networks=["eip155:8453"],  # lock chain
+)
+publish_service(service_id)
+```
+
+The listing's `networks_mode` should match the gateway's config: `all` for a
+multi-accepts gateway (default), `custom` + a list for a locked-chain gateway.
+The marketplace reads `all` as "current platform full set" at display time, so
+adding a new chain later requires no listing update.
 
 ### Multi-plan services (docs/pricing-models.md)
 

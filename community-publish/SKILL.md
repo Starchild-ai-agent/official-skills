@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.25.0
+version: 0.26.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -31,7 +31,7 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 | Flow | When to use | Review? | Pricing? | Functions |
 |---|---|---|---|---|
 | **Free listing** | Free project, show on `/projects` gallery | No | No | `list_in_dashboard()` |
-| **Paid listing** | Charge for access via x402 | Optional (5-check self-report) | Yes (USDC on Base) | `create_paid_service()` → `submit_for_review()` (recommended pre-listing self-check) → `publish_service()` |
+| **Paid listing** | Charge for access via x402 | Optional (5-check self-report) | Yes (USDC on platform networks — default Base+Monad, follows `all`) | `create_paid_service()` → `submit_for_review()` (recommended pre-listing self-check) → `publish_service()` |
 
 > **`POST /api/services` no longer accepts `service_type: "free_project"`.** Free listing is done by `list_in_dashboard()` (the project gallery flow). Paid listing uses `create_paid_service()` + review + publish (the service API flow).
 
@@ -269,7 +269,27 @@ Returns `{"ok": True, "listing": {...}, "url": "...", "dashboard_url": "..."}`.
 
 ## LIST (PAID): Paid service listing on the Service Marketplace
 
-Paid services charge for access via x402 (on-chain USDC settlement on Base). An automated 5-check self-report is available; the owner decides when to go live (review never blocks publishing).
+Paid services charge for access via x402 (on-chain USDC settlement on the platform's enabled networks — by default Base + Monad, following the `all` mode). An automated 5-check self-report is available; the owner decides when to go live (review never blocks publishing).
+
+#### Multi-chain payment networks (plans-280)
+
+Every paid service has a **networks_mode** that decides which chains buyers can pay on:
+
+| `networks_mode` | Behavior | When to use |
+|---|---|---|
+| `"all"` (default) | Accept payment on **all platform mainnets** (currently Base + Monad; new chains are picked up automatically with no code change). The gateway stores `supported_networks` as NULL and expands it at read time. | The common case — pass nothing or `networks_mode="all"`. |
+| `"custom"` | Accept payment **only** on the chains listed in `supported_networks` (a non-empty list of CAIP-2 ids, e.g. `["eip155:8453"]`). Does NOT follow platform expansion. | The user explicitly says "only Base" / "only Monad" / a specific subset. |
+
+**Rules:**
+- **Default is `all`.** Never hard-code a single chain like `['eip155:8453']` as the default — that re-introduces the old Base-only behavior.
+- `custom` requires a non-empty `supported_networks`; an empty list is rejected.
+- `provider_wallet` is an **EVM address used on every enabled chain** (the Starchild facilitator settles to the same address on each chain). It is NOT Base-only.
+- Buyers see the 402 `accepts` array (one entry per enabled chain, same price) and **pick one chain per payment** — this is standard x402 multi-accepts, not a protocol change.
+- Gas for settlement is paid by the platform (Starchild facilitator), not the provider.
+- To switch an existing service back to `all`: `update_service(service_id, networks_mode="all")`.
+- To restrict to a subset: `update_service(service_id, networks_mode="custom", supported_networks=["eip155:8453"])`.
+
+This aligns with the **x402 skill's `monetize`** default (`all`). The two skills are on the same release train — if the gateway 402 `accepts` and the marketplace listing show different chains, one side was configured `custom` while the other stayed `all`.
 
 ### Service lifecycle & review states (review is ADVISORY)
 
@@ -364,7 +384,7 @@ create_paid_service(
     service_type="paid_project",
     project_slug="33-premium-signals",  # FULL published slug WITH user prefix (the URL path segment)
     api_endpoint="https://community.iamstarchild.com/33-premium-signals",
-    provider_wallet="0xAbC...yourBaseWallet",
+    provider_wallet="0xAbC...yourEvmWallet",  # EVM address — same on every enabled chain (default all: Base+Monad)
     pricing_model="monthly",
     price=10,
     service_description="Subscribers get a dashboard with live trading signals.",
@@ -474,7 +494,8 @@ A paid API is an external API service that already implements x402 charging.
    **402 response requirements** (checked during review):
 
    - The `402` response body **must** include a `pricingModel` field (platform format).
-   - `payTo` **must** be your actual receiving wallet address (Base USDC).
+   - `payTo` **must** be your actual receiving EVM wallet address (used on every enabled chain).
+   - The `accepts` array contains one entry per enabled chain (multi-accepts); buyers pick one chain per payment. Each entry has the same `amount` (USDC, 6 decimals) — the platform does not support per-chain pricing in this release.
    - The response must be a valid x402 challenge that clients can parse.
 
 2. **Create the service record** (`service_type = "paid_api"`):
@@ -486,7 +507,7 @@ create_paid_service(
     category="数据服务",
     service_type="paid_api",
     api_endpoint="https://api.example.com/v1/whales",
-    provider_wallet="0xAbC...yourBaseWallet",
+    provider_wallet="0xAbC...yourEvmWallet",  # EVM address — same on every enabled chain (default all: Base+Monad)
     pricing_model="pay_per_use",
     price=0.01,
     free_trial_count=3,
@@ -538,7 +559,7 @@ create_paid_service(
     service_type="paid_project",
     project_slug="33-random9-api",  # FULL slug WITH user prefix — links to the free project page
     api_endpoint="https://community.iamstarchild.com/33-random9-api/api/random",
-    provider_wallet="0xAbC...yourBaseWallet",
+    provider_wallet="0xAbC...yourEvmWallet",  # EVM address — same on every enabled chain (default all: Base+Monad)
     pricing_model="pay_per_use",
     price=0.01,
     service_description="Paid access to the Random9 API endpoint; the docs page stays free.",  # required for paid_project
@@ -573,11 +594,14 @@ Each endpoint is listed separately in the marketplace detail view.
 
 1. **Configure x402 charging** with per-route pricing:
    ```bash
+   # Default networks_mode is "all" (Base + Monad). Omit --networks to follow
+   # the platform mainnet set; pass --networks eip155:8453 only if the user
+   # explicitly wants to restrict to a single chain.
    python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
      --mode pay_per_use --price 0.01 \
      --route "GET /api/basic=$0.01" --route "GET /api/premium=$0.10" \
      --route "POST /api/batch=$0.50" \
-     --network eip155:8453 --facilitator $FAC
+     --facilitator $FAC
    ```
 
 2. **Create the service record** with `api_endpoints`:
@@ -594,7 +618,7 @@ create_paid_service(
         {"path": "GET /api/premium", "price": 0.10, "label": "Premium Query"},
         {"path": "POST /api/batch", "price": 0.50, "label": "Batch Process"},
     ],
-    provider_wallet="0xAbC...yourBaseWallet",
+    provider_wallet="0xAbC...yourEvmWallet",  # EVM address — same on every enabled chain (default all: Base+Monad)
     pricing_model="pay_per_use",
     price=0.01,  # price of the primary/default endpoint
     api_documentation="# Data API\n## GET /api/basic\nBasic data.\n## GET /api/premium\nPremium analytics.",
@@ -616,7 +640,7 @@ create_paid_service(
 | # | Check | What it verifies |
 |---|---|---|
 | 1 | `api_reachable` | The endpoint returns `402 Payment Required` when no `X-PAYMENT` header is sent |
-| 2 | `pricing_consistency` | The `amount` in the 402 response's `accepts` matches the `price` you declared (in USDC base units) |
+| 2 | `pricing_consistency` | The `amount` in the 402 response's `accepts` matches the `price` you declared (in USDC base units). With multi-chain `accepts` (one entry per enabled chain), each entry must carry the same `amount` — the platform does not support per-chain pricing in this release. |
 | 3 | `x402_payment` | After a valid x402 payment, the endpoint returns `200` + data |
 | 4 | `response_match` | The actual response's key fields match your `example_response` |
 | 5 | `doc_completeness` | `api_documentation` includes parameter descriptions, response format, and at least one example |
@@ -635,7 +659,7 @@ create_paid_service(
 
 ### Pricing models
 
-All paid services use the x402 `exact` payment scheme (on-chain USDC settlement on Base).
+All paid services use the x402 `exact` payment scheme (on-chain USDC settlement on the platform's enabled networks — by default Base + Monad, following `networks_mode="all"`). Gas for settlement is paid by the Starchild facilitator, not the provider.
 
 | `pricing_model` | Meaning | x402 behavior | Typical use |
 |---|---|---|---|
@@ -674,6 +698,27 @@ create_paid_service(
 **Multi-plan 402 requirement**: The service's x402 middleware must support the `X-Pricing-Model` header — when a client sends `X-Pricing-Model: yearly`, the 402 response must return the yearly plan's price. Review verifies each plan's 402 amount individually.
 
 **Reference**: See `x402-facilitator/docs/pricing-models.md` for the full specification.
+
+#### Restricting payment to specific chains (custom networks)
+
+The default `networks_mode="all"` follows the platform mainnet set (Base + Monad today). Only restrict to a subset when the user explicitly asks for it ("only accept Base", "don't take Monad payments", etc.):
+
+```python
+# Create a service that ONLY accepts Base USDC (not Monad)
+create_paid_service(
+    ...,
+    networks_mode="custom",
+    supported_networks=["eip155:8453"],   # CAIP-2 chain id; non-empty required
+)
+
+# Switch an existing service from all → custom (only Monad)
+update_service(service_id, networks_mode="custom", supported_networks=["eip155:143"])
+
+# Switch back to all (follow platform mainnets; clears the custom list)
+update_service(service_id, networks_mode="all")
+```
+
+**Do NOT default to `custom` + `['eip155:8453']`.** That re-introduces the old Base-only behavior. The default is `all`; only use `custom` when the user explicitly restricts.
 
 ### Paid service management functions
 
@@ -790,6 +835,9 @@ EOF
 - **URL ≠ code ≠ listing**: a public URL going down does NOT remove the open-source code or the marketplace listing, and vice versa. They're independent.
 - **Do NOT pass `project_slug` for standalone `paid_api` services.** `project_slug` belongs to `paid_project` only — including the "free webpage + paid API" pattern (Flow D, which uses `paid_project`; passing `paid_api` + `project_slug` gets auto-upgraded to `paid_project` with a `project_slug_warning`). Passing a preview slug or non-existent slug for a standalone API creates a phantom association. The backend silently clears non-existent slugs, but you should not pass `project_slug` unless the user explicitly wants to link a free project page with the paid API.
 - **When the user asks for multiple APIs, create ONE service with `api_endpoints`.** Do NOT call `create_paid_service()` multiple times for related APIs. Use the `api_endpoints` array to list all endpoints in a single service (Flow E). Only create multiple services if the APIs are truly unrelated (different domains, different audiences, different pricing models).
+- **Default payment networks to `all`.** Never hard-code a single chain (e.g. `['eip155:8453']`) as the default — that re-introduces the old Base-only behavior. Omit `networks_mode` / `supported_networks` (or pass `networks_mode="all"`) so the service follows the platform mainnet set (Base + Monad today; new chains picked up automatically). Only use `networks_mode="custom"` + a non-empty `supported_networks` when the user explicitly asks to restrict to a subset ("only Base", "only Monad", etc.).
+- **`provider_wallet` is an EVM address used on every enabled chain.** The Starchild facilitator settles to the same address on each chain; it is NOT Base-only. Do not describe it as a "Base wallet" to the user.
+- **Gas for settlement is paid by the platform**, not the provider. Do not tell the provider they need to fund ETH/MON for settler gas.
 
 ---
 
@@ -814,6 +862,10 @@ EOF
 | Created multiple services when user asked for "multiple APIs" | Called `create_paid_service()` once per API instead of using `api_endpoints` | Use Flow E: one `create_paid_service()` call with `api_endpoints=[...]` array. Only split into multiple services if the APIs are truly unrelated. |
 | Purchases not recorded for external API (own facilitator) | Service was created without `source="manual"`, so no proxy URL is generated and Starchild has no way to observe payments | Either switch to the Starchild facilitator (Option A) or recreate the service with `source="manual"` (Option B) |
 | Proxy URL returns 502 for `source="manual"` service | The `api_endpoint` URL is unreachable from Starchild servers | Verify the external API is publicly accessible and not behind a firewall |
+| Marketplace shows a chain the 402 `accepts` doesn't have (or vice versa) | The service `networks_mode` and the x402 gateway's `accepts` got out of sync — e.g. listing is `all` (Base+Monad) but the x402 gateway was monetized with `--networks eip155:8453` (custom, Base only) | Re-run the x402 skill's `monetize` without `--networks` (to follow `all`), OR `update_service(service_id, networks_mode="custom", supported_networks=[...])` to match the gateway. The two must agree. |
+| `create_paid_service` / `update_service` rejects with "supported_networks must be a non-empty list" | `networks_mode="custom"` was passed but `supported_networks` was missing, empty, or `None` | Pass a non-empty list of CAIP-2 ids (e.g. `["eip155:8453"]`), or switch to `networks_mode="all"` (the default) to accept all platform mainnets. |
+| Buyer can't pay on Monad (402 has no Monad `accepts`) but listing shows Monad | The x402 gateway was monetized before the multi-chain release, or with `--networks eip155:8453` | Re-run `monetize` without `--networks` so the 402 `accepts` array includes every platform mainnet. The listing `all` mode is correct; the gateway side is stale. |
+| Settlement fails on one chain but works on another | The Starchild facilitator's settler is out of gas on that chain (ETH for Base, MON for Monad) | Platform-side issue (gas is subsidized). The other chain keeps working. Report to ops — do NOT ask the provider to fund gas. |
 
 ---
 

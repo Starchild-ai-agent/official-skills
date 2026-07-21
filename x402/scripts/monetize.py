@@ -2,13 +2,23 @@
 
 Usage:
   python3 skills/x402/scripts/monetize.py \
-      --name my-api --upstream-port 5173 --mode payperuse \
-      --route "GET /api/*=\\$0.01" [--network eip155:8453] [--pay-to 0x..]
+      --name my-api --upstream-port 5173 --mode pay_per_use \
+      --price 0.01 [--networks all] [--pay-to 0x..]
 
-  # subscription / metered
+  # lock to a single chain (custom)
+  python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+      --mode pay_per_use --price 0.01 --networks eip155:8453
+
+  # subscription / metered (legacy/extended modes)
   python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
       --mode subscription --price-per-credit 0.001 --min-credits 100 \
       --route "GET /api/*=1"        # =N means N credit units per call
+
+Networks (plans-280-04 §5.6.4):
+  --networks all            follow the platform mainnet full set (default;
+                            testnet full set when the facilitator is x402.org)
+  --networks eip155:8453,eip155:143   custom lock to the given CAIP-2 list
+  (omitted)                 same as "all" — config gets networks_mode=all
 
 Writes config + starts the gateway + registers it in the x402 registry
 (/data/workspace/.x402/services.json) which keepalive.sh watches.
@@ -146,7 +156,7 @@ def main():
                     help="write config + register only; do NOT start the gateway "
                          "(use when preview(serve) will own the process)")
     ap.add_argument("--upstream-port", type=int, required=True)
-    ap.add_argument("--mode", default="payperuse",
+    ap.add_argument("--mode", default="pay_per_use",
                     choices=["pay_per_use", "lifetime", "monthly", "weekly",
                              "quarterly", "yearly", "prepaid",  # platform (Starchild community-gateway contract)
                              "payperuse", "subscription", "metered", "timepass"])  # legacy/extended
@@ -165,8 +175,14 @@ def main():
     ap.add_argument("--pass-price", default="5", help="timepass: pass price in USD, e.g. 5 or $4.99")
     ap.add_argument("--route", action="append", default=[],
                     help='payperuse: "GET /api/*=$0.01"; sub/metered: "GET /api/*=UNITS"')
-    ap.add_argument("--network", default=os.environ.get("X402_NETWORK", "eip155:84532"),
-                    help="eip155:84532 = Base Sepolia (test), eip155:8453 = Base mainnet")
+    ap.add_argument("--networks", default=os.environ.get("X402_NETWORKS", "all"),
+                    help="'all' (default) = follow the platform mainnet full set "
+                         "(Base+Monad); testnet full set when the facilitator is "
+                         "x402.org. Or a comma-separated CAIP-2 list to lock to "
+                         "specific chains, e.g. 'eip155:8453,eip155:143'.")
+    ap.add_argument("--network", default="",
+                    help="DEPRECATED: use --networks. If set, treated as a single-chain "
+                         "custom lock (networks_mode=custom, networks=[<value>]).")
     ap.add_argument("--facilitator", default=os.environ.get("X402_FACILITATOR", ""),
                     help="empty = x402.org for testnet; mainnet defaults to the platform "
                          "facilitator (override via X402_FACILITATOR_URL). "
@@ -179,22 +195,46 @@ def main():
     ap.add_argument("--port", type=int, default=0)
     args = ap.parse_args()
 
-    if args.network == "eip155:8453" and not args.facilitator:
-        # mainnet default: platform facilitator
+    # --- networks resolution (plans-280-04 §5.6.4) -------------------------
+    # --networks: "all" (default) or comma-separated CAIP-2 list (custom).
+    # --network (deprecated): if set, overrides --networks as a single-chain
+    # custom lock for backward compatibility.
+    MAINNET_IDS = {"eip155:8453", "eip155:143"}
+    # Mirror platform_modes.ASSETS — fail fast on unknown CAIP-2 ids (S-9).
+    KNOWN_NETWORKS = {
+        "eip155:8453", "eip155:84532", "eip155:143", "eip155:10143",
+    }
+    if args.network:
+        # deprecated single-chain flag -> custom lock
+        networks_list = [n.strip() for n in args.network.split(",") if n.strip()]
+        networks_mode = "custom"
+    elif args.networks.strip().lower() == "all":
+        networks_list = []
+        networks_mode = "all"
+    else:
+        networks_list = [n.strip() for n in args.networks.split(",") if n.strip()]
+        networks_mode = "custom" if networks_list else "all"
+    if networks_mode == "custom":
+        if not networks_list:
+            sys.exit("networks_mode=custom requires a non-empty --networks list")
+        bad = [n for n in networks_list if n not in KNOWN_NETWORKS]
+        if bad:
+            sys.exit(f"unsupported network(s) {bad} (known: {sorted(KNOWN_NETWORKS)})")
+    has_mainnet = any(n in MAINNET_IDS for n in networks_list) or networks_mode == "all"
+
+    # mainnet default: platform facilitator (Starchild self-hosted, multi-chain)
+    if has_mainnet and not args.facilitator:
         args.facilitator = os.environ.get(
             "X402_FACILITATOR_URL", "https://starchild-x402-facilitator.fly.dev")
 
     # Hard guard: x402.org facilitator supports TESTNETS ONLY (verified via
-    # /supported — no eip155:8453). A mainnet service pointed at it looks
+    # /supported — no mainnet chains). A mainnet service pointed at it looks
     # healthy (discovery + 402 work) but EVERY buyer settlement fails with
     # 402 unexpected_error. Seen live on a community machine.
-    if (args.network == "eip155:8453"
-            and "x402.org" in (args.facilitator or "")):
-        sys.exit("network eip155:8453 (Base mainnet) cannot use the x402.org "
-                 "facilitator (testnet-only). Use a mainnet-capable "
-                 "facilitator, e.g. --facilitator "
-                 "https://starchild-x402-facilitator.fly.dev "
-                 "facilitator.")
+    if has_mainnet and "x402.org" in (args.facilitator or ""):
+        sys.exit("mainnet networks cannot use the x402.org facilitator "
+                 "(testnet-only). Use a mainnet-capable facilitator, e.g. "
+                 "--facilitator https://starchild-x402-facilitator.fly.dev")
 
     PLATFORM = ("pay_per_use", "lifetime", "monthly", "weekly",
                 "quarterly", "yearly", "prepaid")
@@ -239,11 +279,22 @@ def main():
         "mode": args.mode,
         "upstream": f"http://127.0.0.1:{args.upstream_port}",
         "pay_to": pay_to,
-        "network": args.network,
         "port": port,
         "routes": routes,
         "state_dir": os.path.join(svc_dir, "state"),
     }
+    # Multi-chain config (plans-280-04 §5.6.4):
+    # - "all" (default): write networks_mode=all, no networks list. The
+    #   gateway resolves to the platform mainnet full set at startup.
+    # - custom: write networks_mode=custom + networks=[...]. The gateway
+    #   locks to exactly those chains.
+    # Legacy single "network" field is NOT written — resolve_networks does
+    # not do "legacy Base -> all" guessing (§5.6.1).
+    cfg["networks_mode"] = networks_mode
+    if networks_mode == "custom":
+        if not networks_list:
+            sys.exit("networks_mode=custom requires a non-empty --networks list")
+        cfg["networks"] = networks_list
     if args.facilitator:
         cfg["facilitator"] = args.facilitator
     if args.facilitator_token:
@@ -306,8 +357,9 @@ def main():
     if args.no_start:
         print(json.dumps({
             "ok": True, "name": args.name, "gateway_port": port, "started": False,
-            "mode": args.mode, "network": args.network, "pay_to": pay_to,
-            "config": cfg_path,
+            "mode": args.mode, "networks_mode": networks_mode,
+            "networks": (networks_list or "all (platform mainnet full set)"),
+            "pay_to": pay_to, "config": cfg_path,
             "gateway_command": f"python3 {os.path.join(SKILL, 'gateway', 'app.py')} {cfg_path}",
             "next": "config written, gateway NOT started. Wrap your upstream + the "
                     "gateway_command in a start.py and run it under "
@@ -330,7 +382,9 @@ def main():
 
     print(json.dumps({
         "ok": ok, "name": args.name, "gateway_port": port, "pid": pid,
-        "mode": args.mode, "network": args.network, "pay_to": pay_to,
+        "mode": args.mode, "networks_mode": networks_mode,
+        "networks": (networks_list or "all (platform mainnet full set)"),
+        "pay_to": pay_to,
         "info_endpoint": f"http://127.0.0.1:{port}/x402/info",
         "config": cfg_path, "log": log_path,
         "manage": f"monetize.py --stop {args.name} | --restart {args.name} "

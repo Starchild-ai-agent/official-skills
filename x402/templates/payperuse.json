@@ -4,7 +4,7 @@
   "mode": "payperuse",
   "upstream": "http://127.0.0.1:UPSTREAM_PORT",
   "pay_to": "YOUR_WALLET_ADDRESS",
-  "network": "eip155:8453",
+  "networks_mode": "all",
   "facilitator": "https://starchild-x402-facilitator.fly.dev",
   "port": 8402,
   "routes": {

@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.26.0
+version: 0.27.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -720,12 +720,71 @@ update_service(service_id, networks_mode="all")
 
 **Do NOT default to `custom` + `['eip155:8453']`.** That re-introduces the old Base-only behavior. The default is `all`; only use `custom` when the user explicitly restricts.
 
+---
+
+### Service Examples (API call examples) — REQUIRED before review
+
+Every paid service **must** have at least one API call example. The review
+check `examples_provided` will **reject** services without examples. Add
+examples **before** calling `submit_for_review()`.
+
+Examples show buyers what the API returns — they appear as collapsible
+request/response pairs on the service detail page. This applies to ALL
+service types (`paid_api` AND `paid_project`).
+
+**Correct listing order:**
+
+```
+1. create_paid_service(...)                     → creates the service
+2. set_service_examples(service_id, examples)   → REQUIRED before review
+3. submit_for_review(service_id)                → review checks examples
+4. publish_service(service_id)                  → go live
+```
+
+**Adding examples:**
+
+```python
+set_service_examples("service-uuid", [
+    {
+        "title": "Query BTC Price",
+        "description": "Get current Bitcoin price in USD",
+        "request": 'curl -X GET "https://api.example.com/v1/price?symbol=BTC"',
+        "response": '{"symbol": "BTC", "price": 67234.56, "currency": "USD"}'
+    },
+    {
+        "title": "Query ETH Price",
+        "request": 'curl -X GET "https://api.example.com/v1/price?symbol=ETH"',
+        "response": '{"symbol": "ETH", "price": 3456.78, "currency": "USD"}'
+    }
+])
+```
+
+**Clearing examples** (rarely needed — `set_service_examples` replaces all):
+
+```python
+clear_service_examples("service-uuid")
+```
+
+**Best practices:**
+- Add 2-5 examples covering the most common use cases
+- Use descriptive titles that explain the scenario
+- Include realistic request parameters and response data
+- Show both simple and complex usage patterns
+- `set_service_examples()` replaces ALL examples — pass the complete list every time
+
+This supersedes the legacy single `example_request` / `example_response`
+fields passed in `create_paid_service()`. Services with legacy fields still
+pass the review (backward compatible), but new services should use
+`set_service_examples()` for richer multi-scenario demonstrations.
+
 ### Paid service management functions
 
 | Function | Purpose |
 |---|---|
 | `create_paid_service(...)` | Create a service record (published state) |
-| `submit_for_review(service_id)` | Run the 5-check self-report (advisory) |
+| `set_service_examples(service_id, examples)` | **Set API call examples (REQUIRED before review)** — replaces all examples |
+| `clear_service_examples(service_id)` | Remove all API call examples |
+| `submit_for_review(service_id)` | Run the 6-check self-report (advisory) |
 | `get_review_status(service_id)` | Poll review progress + per-check details |
 | `publish_service(service_id)` | Go live (any pre-listed state) |
 | `unpublish_service(service_id)` | Take down (listed → unlisted) |
@@ -783,7 +842,7 @@ from exports import (
     create_paid_service, submit_for_review, get_review_status,
     publish_service, unpublish_service,
     list_my_services, get_service, update_service, delete_service,
-    restore_service,
+    restore_service, set_service_examples, clear_service_examples,
     # MARKETPLACE: browse + consumer actions
     explore_marketplace, explore_services, get_service_categories, get_service_detail,
     get_service_pricing, get_service_reviews, write_service_review,

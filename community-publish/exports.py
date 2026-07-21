@@ -1614,6 +1614,104 @@ def delete_service(service_id: str) -> dict[str, Any]:
     return {"ok": True}
 
 
+def set_service_examples(
+    service_id: str,
+    examples: list[dict],
+) -> dict[str, Any]:
+    """Set API call examples for a service (replaces all existing examples).
+
+    Each example demonstrates a specific API call scenario with request and
+    response. Buyers see these examples in the service detail page to
+    understand what the API returns before purchasing.
+
+    The review check ``examples_provided`` REQUIRES at least one example —
+    services without examples will be rejected during review. Call this
+    BEFORE ``submit_for_review()``.
+
+    Args:
+        service_id: The service UUID.
+        examples: List of example dicts, each containing:
+            - title (str, required): Scenario name, e.g. "Query BTC Price"
+            - description (str, optional): Additional context
+            - request (str, required): Example request (curl/HTTP format)
+            - response (str, required): Example response (JSON/text)
+          Max 10 examples. Each field max 10000 chars (title max 100).
+
+    Returns:
+        {"ok": True, "examples": [...]} on success
+        {"ok": False, "error": ...} on failure
+
+    Example:
+        set_service_examples("service-uuid", [
+            {
+                "title": "Query BTC Price",
+                "description": "Get current Bitcoin price in USD",
+                "request": 'curl -X GET "https://api.example.com/v1/price?symbol=BTC"',
+                "response": '{"symbol": "BTC", "price": 67234.56, "currency": "USD"}'
+            },
+            {
+                "title": "Query ETH Price",
+                "request": 'curl -X GET "https://api.example.com/v1/price?symbol=ETH"',
+                "response": '{"symbol": "ETH", "price": 3456.78, "currency": "USD"}'
+            }
+        ])
+    """
+    uid = _user_id()
+    if not isinstance(examples, list):
+        return {"ok": False, "error": "examples must be a list"}
+    if len(examples) == 0:
+        return {"ok": False, "error": "examples must be a non-empty list (at least one example is required for review)"}
+    if len(examples) > 10:
+        return {"ok": False, "error": f"Max 10 examples, got {len(examples)}"}
+
+    for i, ex in enumerate(examples):
+        if not isinstance(ex, dict):
+            return {"ok": False, "error": f"examples[{i}] must be a dict"}
+        if not ex.get("title") or not str(ex["title"]).strip():
+            return {"ok": False, "error": f"examples[{i}].title is required"}
+        if not ex.get("request") or not str(ex["request"]).strip():
+            return {"ok": False, "error": f"examples[{i}].request is required"}
+        if not ex.get("response") or not str(ex["response"]).strip():
+            return {"ok": False, "error": f"examples[{i}].response is required"}
+
+    try:
+        status, body = gateway.service_set_examples(uid, service_id, examples)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "examples": body.get("examples", [])}
+
+
+def clear_service_examples(service_id: str) -> dict[str, Any]:
+    """Remove all API call examples from a service.
+
+    .. warning::
+        Clearing examples will cause the review check ``examples_provided``
+        to fail. Only use this when replacing examples via
+        ``set_service_examples()`` (which does not require clearing first).
+
+    Args:
+        service_id: The service UUID.
+
+    Returns:
+        {"ok": True} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.service_clear_examples(uid, service_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True}
+
+
 # ════════════════════════════════════════════════════════════════════════
 # SERVICE MARKETPLACE — browse, review, favorite, earnings
 # ════════════════════════════════════════════════════════════════════════

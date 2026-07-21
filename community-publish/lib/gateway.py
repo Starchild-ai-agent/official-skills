@@ -285,6 +285,18 @@ def service_delete(owner_user_id: str, service_id: str) -> tuple[int, dict]:
     return _request("DELETE", f"/api/services/{service_id}", body, timeout=15)
 
 
+def service_set_examples(owner_user_id: str, service_id: str, examples: list[dict]) -> tuple[int, dict]:
+    """PUT /api/services/:id/examples — replace all API call examples (plans-286)."""
+    body = {"owner_user_id": owner_user_id, "examples": examples}
+    return _request("PUT", f"/api/services/{service_id}/examples", body, timeout=30)
+
+
+def service_clear_examples(owner_user_id: str, service_id: str) -> tuple[int, dict]:
+    """DELETE /api/services/:id/examples — clear all API call examples (plans-286)."""
+    body = {"owner_user_id": owner_user_id}
+    return _request("DELETE", f"/api/services/{service_id}/examples", body, timeout=15)
+
+
 def service_list_mine(owner_user_id: str, cursor: str | None = None, limit: int = 20) -> tuple[int, dict]:
     """GET /api/services/mine — list current user's services (paginated)."""
     from urllib.parse import quote

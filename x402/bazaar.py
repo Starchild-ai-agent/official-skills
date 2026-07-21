@@ -577,7 +577,8 @@ def probe_402(url: str, method: str = "GET", json_body=None, headers=None,
 
 def bazaar_pay(url: str, method: str = "GET", json_body=None,
                max_usd: float = 0.05, timeout: int = 60,
-               prefer_marketplace: bool = True) -> dict:
+               prefer_marketplace: bool = True,
+               prefer_network: str = "") -> dict:
     """Probe-then-pay. Unified community-proxy route.
 
     Product rule:
@@ -586,6 +587,9 @@ def bazaar_pay(url: str, method: str = "GET", json_body=None,
         (transparent passthrough; community books on HTTP 200).
       - Unlisted external URLs are REFUSED (no community bookkeeping).
         The fix is to list the service on the marketplace, not to bypass.
+
+    prefer_network: CAIP-2 network id (e.g. "eip155:8453") to prefer when
+    the service offers multiple chains. Passed through to paid_request.
 
     Payment runs through client.paid_request (Privy signer, fail-closed).
     """
@@ -645,7 +649,8 @@ def bazaar_pay(url: str, method: str = "GET", json_body=None,
     from client import paid_request
     max_atomic = int(max_usd * 1_000_000)
     res = paid_request(method, pay_url, json_body=json_body,
-                       max_amount_atomic=max_atomic, timeout=timeout)
+                       max_amount_atomic=max_atomic, timeout=timeout,
+                       prefer_network=prefer_network)
     res["probe"] = {k: probe[k] for k in ("classification", "live_price_usd")
                     if k in probe}
     res["resolution"] = {

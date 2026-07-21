@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.16.0
+version: 2.17.0
 description: |
   Monetize any user project/service with the x402 payment protocol on platform
   networks (Base + Monad; Starchild platform billing: pay_per_use / lifetime /
@@ -185,6 +185,57 @@ creates an isolated `.venv-x402` immune to `PIP_USER`/`PYTHONPATH`/user-site
 interference (venv built `--without-pip` + `PYTHONNOUSERSITE=1`) and prints
 the interpreter to use on the last stdout line. `payment_preflight` detects
 the version conflict and points here. Do this at setup, not mid-purchase.
+
+### Multi-chain selection (buyer receives multiple accepts)
+
+When a service returns 402 with `accepts` as a **list** (one entry per
+network, e.g. Base + Monad), the buyer Agent does NOT need to ask the user
+which chain to use — **chain selection is fully automatic** in both
+`paid_request` and `bazaar_pay`. The logic:
+
+1. **`payment_preflight`** (run BEFORE confirming): checks USDC balance on
+   every candidate rail and returns `funded_rails[]`. If multiple rails are
+   funded, the automatic selector picks the best one. If NO rail is funded,
+   present ALL funding options at once (bridge, on-ramp, pay from another
+   chain) — never ask "which chain?" when the answer is "none of them".
+
+2. **Automatic rail ranking** (`network_rank` in `client.py`, shared by
+   `bazaar.probe_402` display and `paid_request` payment — so the chain
+   shown at probe time IS the chain actually paid):
+   - `signer_mode="auto"`: ① Solana (ed25519, rank 0) → ② EVM chains
+     where the payer has NO EIP-7702 delegation code (plain ECDSA, e.g.
+     Monad, rank 1) → ③ EVM chains with delegation code (Kernel EIP-1271,
+     e.g. Base, rank 2)
+   - `signer_mode="eoa"`: Solana excluded; all EVM chains rank 0
+   - Within the same rank, the first accept in the list wins
+
+3. **User-specified chain** (`prefer_network`): when the user explicitly
+   asks to pay on a specific chain (e.g. "pay on Base", "use Monad"),
+   pass `prefer_network="eip155:8453"` (or `"eip155:143"` for Monad) to
+   `paid_request` or `bazaar_pay`. This overrides the automatic ranking
+   and selects the matching accept first (if present in the 402 challenge).
+   Also available via env `X402_PREFER_NETWORK`. If the specified chain is
+   not in the service's accepts, the automatic ranking takes over as
+   fallback. Common CAIP-2 ids: Base `eip155:8453`, Monad `eip155:143`,
+   Solana `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`.
+
+   ```python
+   # User says "pay on Base"
+   paid_request("GET", url, prefer_network="eip155:8453")
+   # User says "pay on Monad"
+   bazaar_pay(url, prefer_network="eip155:143")
+   # Via env (CLI)
+   X402_PREFER_NETWORK=eip155:8453 python3 skills/x402/client.py GET https://host/api
+   ```
+
+4. **Prepaid deposit retry**: if the first payment triggers a 402
+   `insufficient_balance` (prepaid top-up needed), the retry stays on the
+   SAME chain the buyer already chose (`prefer_network` parameter in
+   `_pick_accept`) — it never jumps to a different chain mid-flow.
+
+5. **Result verification**: every `paid_request` result includes `network`
+   (the chain actually used) and `signer_type` — always report these to
+   the user so they know where the payment landed.
 
 `paid_request` auto-detects BOTH 402 flavors: V2 header challenge
 (PAYMENT-REQUIRED → x402 SDK path) and the platform JSON-body challenge

@@ -572,7 +572,7 @@ def rank_signer_cached():
 
 
 def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
-                  allow_fallback_eoa: bool = False):
+                  allow_fallback_eoa: bool = False, prefer_network: str = ""):
     from x402 import x402Client
     from x402.client_base import max_amount, prefer_network, prefer_scheme
     from x402.mechanisms.evm.exact.register import register_exact_evm_client
@@ -608,8 +608,11 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
         if is_eoa:  # hard-filter non-EVM: pinned payer cannot sign these
             reqs = [r for r in reqs if _net_of(r).startswith("eip155:")
                     or _net_of(r) == "base"]
-        return sorted(reqs, key=lambda r: network_rank(
-            _net_of(r), signer=signer, signer_mode=_mode))
+        # prefer_network: user-specified chain gets rank -1 (highest priority)
+        _pn = prefer_network
+        return sorted(reqs, key=lambda r: (
+            -1 if _pn and _net_of(r) == _pn else
+            network_rank(_net_of(r), signer=signer, signer_mode=_mode)))
 
     client.register_policy(_prefer_privy_native)
     client.register_policy(max_amount(max_amount_atomic))
@@ -727,7 +730,8 @@ def _ledger_append(entry: dict):
 def paid_request(method: str, url: str, json_body=None, headers=None,
                  max_amount_atomic: int = 1_000_000, timeout: float = 60.0,
                  signer_mode: str = "auto", pricing_model: str = "",
-                 allow_fallback_eoa: bool = False):
+                 allow_fallback_eoa: bool = False,
+                 prefer_network: str = ""):
     """One-shot request with automatic x402 payment. Returns dict summary.
 
     allow_fallback_eoa: 'auto' signer mode is FAIL-CLOSED — if the Privy
@@ -739,6 +743,13 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
     pricing_model: for MULTI-PLAN services — sends X-Pricing-Model so the
     gateway quotes that plan's price in its 402 (e.g. "weekly", "yearly").
     Empty = the service's default plan.
+
+    prefer_network: CAIP-2 network id (e.g. "eip155:8453" for Base,
+    "eip155:143" for Monad) to prefer when the 402 challenge offers multiple
+    accepts. When set, the matching accept is selected first (if present in
+    the challenge); otherwise falls back to the automatic network_rank
+    ordering. Use this when the user explicitly asks to pay on a specific
+    chain. Also accepted via env X402_PREFER_NETWORK.
 
     Handles BOTH 402 flavors:
       * V2 header challenge (PAYMENT-REQUIRED) — x402 SDK path
@@ -753,7 +764,10 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
     from x402.http.clients.httpx import x402HttpxClient
 
     async def run():
-        nonlocal headers
+        nonlocal headers, prefer_network
+        # Resolve prefer_network: explicit param > env var
+        if not prefer_network:
+            prefer_network = os.environ.get("X402_PREFER_NETWORK", "").strip()
         if pricing_model:
             headers = {**(headers or {}), "X-Pricing-Model": pricing_model}
         # Probe with PLAIN httpx first: the SDK client raises on a 402 that
@@ -778,7 +792,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         if r0.headers.get("PAYMENT-REQUIRED") or r0.headers.get("X-PAYMENT-REQUIRED"):
             # V2 header challenge -> x402 SDK path
             client, signer = _build_client(max_amount_atomic, signer_mode,
-                                           allow_fallback_eoa)
+                                           allow_fallback_eoa, prefer_network)
             _ledger_append({"event": "attempt", "url": url,
                             "method": method.upper(), "payer": signer.address,
                             "flavor": "v2-header", **_signer_meta(signer)})
@@ -875,7 +889,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                     str(a.get("network") or ""), signer=signer, signer_mode=_mode),
             )[0]
 
-        accepts = _pick_accept(accepts_list)
+        accepts = _pick_accept(accepts_list, prefer_network=prefer_network or None)
         if not accepts:
             return {"status": 402, "error": "no payable accept in 402 challenge",
                     "body": _body(r0.text)}

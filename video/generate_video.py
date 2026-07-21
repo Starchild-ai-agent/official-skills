@@ -33,8 +33,13 @@ from _cost_track import caller_headers, record_response  # noqa: E402
 PROXY_URL = 'http://sc-proxy.internal:8080'
 PROXIES = {'http': PROXY_URL, 'https': PROXY_URL}
 
-def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5, resolution="720p", image_url=None):
-    """Generate video end-to-end. Returns dict with success/error/paths."""
+def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5, resolution="720p", image_url=None, image_urls=None):
+    """Generate video end-to-end. Returns dict with success/error/paths.
+
+    image_url:  single public HTTP(S) URL → image-to-video models.
+    image_urls: list of 1-9 public HTTP(S) URLs → happy-horse
+                reference-to-video models ONLY (payload field `image_urls`).
+    """
 
     headers = caller_headers({
         'Authorization': 'Key fake-falai-key-12345',
@@ -42,7 +47,12 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
     }, tool_default='video')
 
     body = {'prompt': prompt, 'duration': duration, 'aspect_ratio': "16:9"}
-    if 'happy-horse' in model or 'kling' in model or 'seedance-2.0/mini' in model:
+    if ('happy-horse' in model or 'kling' in model or 'seedance-2.0/mini' in model
+            or 'grok-imagine-video' in model):
+        # Grok v1.5: proxy rejects (400) any resolution without a published
+        # price — fail fast here instead of burning a pointless proxy request.
+        if 'grok-imagine-video' in model and resolution not in ("480p", "720p"):
+            return {"success": False, "error": f"grok-imagine-video v1.5 only supports resolution 480p or 720p (no published price for '{resolution}'; the proxy rejects it)."}
         body['resolution'] = resolution
 
     # Seedance 2.0 Mini has a strict duration schema: it requires a STRING
@@ -61,6 +71,21 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
         if not model.endswith('/image-to-video'):
             model = model.replace('/text-to-video', '/image-to-video')
         body['image_url'] = image_url
+
+    # Reference-to-video (happy-horse only): upstream requires `image_urls`
+    # (a list of 1-9 public HTTP(S) URLs), NOT the single `image_url` field.
+    if image_urls is not None:
+        if 'reference-to-video' not in model:
+            return {"success": False, "error": "image_urls is only supported by happy-horse reference-to-video models (e.g. alibaba/happy-horse/reference-to-video)."}
+        if not isinstance(image_urls, (list, tuple)) or not (1 <= len(image_urls) <= 9):
+            return {"success": False, "error": "image_urls must be a list of 1-9 public HTTP(S) URLs."}
+        for u in image_urls:
+            if not isinstance(u, str) or u.startswith('data:') or not u.startswith(('http://', 'https://')):
+                return {"success": False, "error": f"Invalid reference image URL (must be public HTTP(S), no data: URIs): {str(u)[:80]}"}
+        body.pop('image_url', None)
+        body['image_urls'] = list(image_urls)
+    elif 'reference-to-video' in model:
+        return {"success": False, "error": "reference-to-video models require image_urls (list of 1-9 public HTTP(S) URLs)."}
     
     # Submit
     submit_url = f'https://queue.fal.run/{model}'
@@ -182,14 +207,43 @@ def estimate_cost(model, duration, resolution="720p"):
         # 480p is cheaper. No 1080p tier exists for mini.
         "bytedance/seedance-2.0/mini/text-to-video": 0.1547,  # 720p
         "fal-ai/hunyuanvideo": 0.40,  # flat rate
+        # Grok Imagine Video v1.5 (image-to-video ONLY, requires image_url).
+        # 480p $0.08/s, 720p $0.14/s + flat $0.01 per input image.
+        "xai/grok-imagine-video/v1.5/image-to-video": 0.14,  # 720p base
+        # Kling v3 Turbo / 4K — flat per-second, audio-independent.
+        "fal-ai/kling-video/v3/turbo/standard/text-to-video": 0.112,
+        "fal-ai/kling-video/v3/turbo/standard/image-to-video": 0.112,
+        "fal-ai/kling-video/v3/turbo/pro/text-to-video": 0.14,
+        "fal-ai/kling-video/v3/turbo/pro/image-to-video": 0.14,
+        "fal-ai/kling-video/v3/4k/text-to-video": 0.42,
+        "fal-ai/kling-video/v3/4k/image-to-video": 0.42,
+        # Happy Horse v1.1 — own 1080p tier $0.18/s (NOT the v1.0 2x rule).
+        "alibaba/happy-horse/v1.1/text-to-video": 0.14,
+        "alibaba/happy-horse/v1.1/image-to-video": 0.14,
+        "alibaba/happy-horse/v1.1/reference-to-video": 0.14,
     }
 
     if model == "fal-ai/hunyuanvideo":
         return 0.40
 
     unit_price = prices.get(model, 0.10)  # default fallback
-    if 'happy-horse' in model and resolution == "1080p":
+    if 'happy-horse/v1.1' in model and resolution == "1080p":
+        unit_price = 0.18  # v1.1 has its own 1080p tier, NOT the v1.0 2x rule
+    elif 'happy-horse' in model and resolution == "1080p":
         unit_price *= 2
+    # Grok Imagine v1.5: 480p discount tier + flat $0.01 per input image.
+    # Only 480p/720p have published prices; anything else (e.g. 1080p,
+    # schema-valid upstream) is rejected 400 by the proxy — refuse to quote
+    # a price the proxy will never accept.
+    if 'grok-imagine-video' in model:
+        if resolution not in ("480p", "720p"):
+            raise ValueError(
+                f"grok-imagine-video v1.5: resolution '{resolution}' has no "
+                "published price and is rejected by the proxy. Use 480p or 720p."
+            )
+        if resolution == "480p":
+            unit_price = 0.08
+        return round(unit_price * duration + 0.01, 4)
     # Seedance Mini 480p discount tier (720p is the base price above).
     if 'seedance-2.0/mini' in model and resolution == "480p":
         unit_price = 0.0721

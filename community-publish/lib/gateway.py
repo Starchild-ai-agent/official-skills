@@ -258,24 +258,29 @@ def listing_get(slug: str) -> tuple[int, dict]:
 # ─── Cover Image Upload (GCS presigned URL) ────────────────────────
 
 def cover_presign(
+    owner_user_id: str,
     slug: str,
     content_type: str,
     file_size: int,
 ) -> tuple[int, dict]:
     """POST /api/projects/cover/presign — get a GCS V4 signed URL.
 
-    Uses JWT auth (CONTAINER_JWT / USER_JWT).
+    Uses X-Internal-Key auth (same as other internal endpoints).
+    The gateway's jwtOrInternalAuth middleware resolves owner_user_id
+    from the request body.
 
     Returns {"signed_url": "...", "public_url": "..."} on success.
     The caller PUTs the raw image bytes to signed_url (with the matching
     Content-Type header), then uses public_url as cover_url.
 
     Args:
+        owner_user_id: user ID (used as GCS path prefix + ownership check).
         slug: project or service slug.
         content_type: image/jpeg, image/png, or image/webp.
         file_size: file size in bytes (max 2MB).
     """
-    return _jwt_request("POST", "/api/projects/cover/presign", {
+    return _request("POST", "/api/projects/cover/presign", {
+        "owner_user_id": owner_user_id,
         "slug": slug,
         "content_type": content_type,
         "file_size": file_size,

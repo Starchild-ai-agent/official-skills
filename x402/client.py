@@ -616,7 +616,10 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
                     return int(str(v))
                 except (TypeError, ValueError):
                     pass
-        return 0
+        # Malformed/missing amount sorts LAST — never let a broken quote
+        # look cheapest and shadow a valid candidate (mirrors
+        # bazaar._amount_int).
+        return 1 << 62
 
     def _prefer_privy_native(version, reqs):
         if is_eoa:  # hard-filter non-EVM: pinned payer cannot sign these
@@ -917,9 +920,9 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 return None
             def _amt(a):
                 try:
-                    return int(str(a.get("amount") or 0))
+                    return int(str(a.get("amount")))
                 except (TypeError, ValueError):
-                    return 0
+                    return 1 << 62  # malformed sorts last, never cheapest
             if prefer_network:
                 same = [a for a in exact
                         if str(a.get("network") or "") == prefer_network]

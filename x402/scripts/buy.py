@@ -53,29 +53,69 @@ def main() -> int:
             args.method = "POST"
 
     try:
-        if not args.skip_preflight:
-            # Probe FIRST: preflight against the service's ACTUAL price and
-            # ACTUAL accepted rails — max_usd is only a spend ceiling. Using
-            # the cap as the amount would reject wallets that can afford the
-            # real price; using all networks could pass on a rail the
-            # service doesn't even accept.
-            from bazaar import probe_402
-            probe = probe_402(args.url, method=args.method, json_body=body)
+        from bazaar import bazaar_pay, probe_402, resolve_marketplace, \
+            _canon_network, _amount_int
+
+        # Resolve FIRST so probe/preflight/pay all use the SAME URL.
+        # bazaar_pay() pays the community proxy pay_url, not the raw URL —
+        # probing the raw URL could classify "no-payment" (free upstream)
+        # while the proxy returns 402, silently skipping preflight.
+        pay_url = args.url
+        _listed = True
+        try:
+            res = resolve_marketplace(args.url)
+            if res.get("ok") and res.get("pay_url"):
+                pay_url = res["pay_url"]
+            _listed = res.get("via") != "direct"
+        except Exception:
+            _listed = False
+        _direct_ok = os.environ.get("X402_INTERNAL_DIRECT_PAY") == "1"
+
+        pay_network = args.network  # rail actually validated & paid
+        if not args.skip_preflight and (_listed or _direct_ok):
+            probe = probe_402(pay_url, method=args.method, json_body=body)
             result["classification"] = probe.get("classification")
             if probe.get("payable"):
-                price = int(probe.get("live_price_atomic") or 0) or cap
-                result["live_price_usd"] = probe.get("live_price_usd")
+                # Select the FINAL rail first, then preflight with that
+                # rail's own amount+network (rails may differ in price;
+                # bazaar_pay must not fall back to an unvalidated chain).
+                rails = [r for r in probe.get("rails") or []
+                         if r.get("network")]
+                if args.network:
+                    want = _canon_network(args.network)
+                    rails = [r for r in rails
+                             if _canon_network(r["network"]) == want]
+                    if not rails:
+                        result["error"] = (
+                            f"--network {args.network} not in service "
+                            f"accepts; accepted: "
+                            f"{[r['network'] for r in probe.get('rails') or []]}")
+                        print(json.dumps(result, indent=2))
+                        return 2
+                if not rails:
+                    result["error"] = "payable but no usable rail in probe"
+                    print(json.dumps(result, indent=2))
+                    return 1
+                rail = min(rails, key=_amount_int)  # cheapest on chosen chain
+                price = _amount_int(rail)
+                if price >= (1 << 62):
+                    result["error"] = (f"malformed amount on rail "
+                                       f"{rail.get('network')}: "
+                                       f"{rail.get('amount')!r}")
+                    print(json.dumps(result, indent=2))
+                    return 1
+                pay_network = str(rail["network"])
+                result["network"] = pay_network
+                result["live_price_usd"] = price / 1e6
                 if price > cap:
                     result["error"] = (
                         f"price ${price / 1e6:.6g} exceeds --max-usd cap "
                         f"${args.max_usd:.6g}")
                     print(json.dumps(result, indent=2))
                     return 2
-                nets = ([args.network] if args.network else
-                        [r["network"] for r in probe.get("rails") or []
-                         if r.get("network")] or None)
                 from client import payment_preflight
-                pf = payment_preflight(price, networks=nets)
+                pf = payment_preflight(
+                    price, networks=[_canon_network(pay_network)])
                 if not pf.get("ok"):
                     result["error"] = "preflight blocked"
                     result["blockers"] = pf.get("blockers")
@@ -91,11 +131,13 @@ def main() -> int:
                 print(json.dumps(result, indent=2, ensure_ascii=False))
                 return 1
             # no-payment → free endpoint; fall through, bazaar_pay handles it
+        # unlisted+no gate: skip prep, let bazaar_pay emit canonical refusal
 
-        from bazaar import bazaar_pay
-        r = bazaar_pay(args.url, method=args.method, json_body=body,
+        # Pay the SAME resolved pay_url; pin the preflighted rail so
+        # bazaar_pay cannot fall back to a chain that skipped validation.
+        r = bazaar_pay(pay_url, method=args.method, json_body=body,
                        max_usd=args.max_usd,
-                       prefer_network=args.network)
+                       prefer_network=pay_network)
         result.update({k: r.get(k) for k in
                        ("status", "paid", "network", "payer", "settlement",
                         "body", "error", "pricing_model", "resolution",
@@ -104,6 +146,13 @@ def main() -> int:
             or bool(r.get("paid"))
         result["paid"] = settled
         result["tx_hash"] = (r.get("settlement") or {}).get("transaction")
+        # Post-pay audit: the paid rail must be the preflighted rail.
+        if (pay_network and r.get("network")
+                and _canon_network(r["network"])
+                != _canon_network(pay_network)):
+            result["network_mismatch"] = (
+                f"paid on {r['network']} but preflight validated "
+                f"{pay_network} — service accepts changed mid-flight")
         result["success"] = settled and 200 <= int(r.get("status") or 0) < 300
     except Exception as e:
         result["error"] = f"{type(e).__name__}: {e}"

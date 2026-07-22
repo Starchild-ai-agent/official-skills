@@ -172,7 +172,10 @@ python3 skills/x402/scripts/discover.py --query "weather api"   # catalog search
 # 2. Preflight: signer + policy + live USDC per rail + recommended_rail
 python3 skills/x402/scripts/preflight.py --usd 0.05
 
-# 3. Pay (probe → preflight gate → pay, one shot; exit 2 = blocked, nothing signed)
+# 3. Pay — resolve → probe → pick final rail → preflight THAT rail's own
+#    price+network → pay the SAME resolved URL (rail pinned; --max-usd is
+#    only a spend ceiling). Exit 2 = blocked/over-cap/network-not-accepted,
+#    nothing signed. --network not in accepts fails fast (no silent fallback).
 python3 skills/x402/scripts/buy.py --url https://host/api/thing --max-usd 0.05
 python3 skills/x402/scripts/buy.py --url https://host/x402/q \
     --json '{"q":"hello"}' --max-usd 0.10 --network eip155:8453

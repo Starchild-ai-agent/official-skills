@@ -14,16 +14,16 @@ and every settle auto-callbacks community-gateway for purchase/call records.
 
 ### Multi-chain: `--networks all` (default) vs custom
 
-By default a service follows the **platform mainnet full set** (Base + Monad):
-the 402 challenge returns an accepts list with one entry per chain, and the
-buyer picks one chain to pay on. Lock to specific chains with `--networks`
-(comma-separated CAIP-2 list).
+By default a service follows the **platform mainnet full set** (Base + Monad +
+Robinhood): the 402 challenge returns an accepts list with one entry per chain,
+and the buyer picks one chain to pay on. Lock to specific chains with
+`--networks` (comma-separated CAIP-2 list).
 
 ```bash
 FAC=https://starchild-x402-facilitator.fly.dev
 
 # pay_per_use: verify -> settle on EVERY request
-# --networks defaults to "all" (Base + Monad mainnet); omit it to follow the
+# --networks defaults to "all" (Base + Monad + Robinhood mainnet); omit it to follow the
 # platform full set. The 402 returns a multi-accepts list.
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode pay_per_use --price 0.01 --facilitator $FAC

@@ -63,7 +63,7 @@ for r in args.route or ["GET /api/*=$0.01"]:
 
 # NOTE: make_public scaffolds LEGACY modes only (payperuse/subscription/
 # metered/timepass). Those paths advertise a single network (NETWORKS[0])
-# even when networks_mode=all. For marketplace multi-accepts (Base+Monad),
+# even when networks_mode=all. For marketplace multi-accepts (Base+Monad+Robinhood),
 # use monetize.py --mode pay_per_use (platform mode) instead.
 cfg = {"mode": args.mode, "port": args.gateway_port,
        "upstream": f"http://127.0.0.1:{args.upstream_port}",
@@ -104,7 +104,7 @@ print(json.dumps({"ok": True, "dir": f"output/{args.name}", "config": cfg_path,
                   "networks": (networks_list or "all (legacy modes still advertise NETWORKS[0] only)"),
                   "routes": routes,
                   "note": "Legacy modes only advertise one network in 402. "
-                          "For Base+Monad multi-accepts use monetize.py "
+                          "For Base+Monad+Robinhood multi-accepts use monetize.py "
                           "--mode pay_per_use (platform mode).",
                   "next": [
                       f"preview(serve, title='{args.name}', dir='output/{args.name}', command='python3 start.py', port={args.gateway_port})",

@@ -107,12 +107,14 @@ class PrivySigner:
         137: "https://polygon-bor.publicnode.com",
         143: "https://rpc.monad.xyz",
         480: "https://worldchain-mainnet.g.alchemy.com/public",
+        4663: "https://rpc.mainnet.chain.robinhood.com",
         8453: "https://mainnet.base.org",
-        84532: "https://sepolia.base.org",
         42161: "https://arbitrum-one.publicnode.com",
         42220: "https://forno.celo.org",
         43114: "https://avalanche-c-chain-rpc.publicnode.com",
+        46630: "https://rpc.testnet.chain.robinhood.com",
         59144: "https://rpc.linea.build",
+        84532: "https://sepolia.base.org",
     }
 
     def _delegation(self, chain_id: int):
@@ -685,6 +687,20 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
     return client, signer
 
 
+# Networks requiring chain-read DOMAIN_SEPARATOR() for EIP-712 signing.
+# These use Diamond proxy contracts where the on-chain domain may differ from
+# the name/version metadata (e.g. Robinhood USDG).
+# TODO(plans-280-05 §5.5): implement raw-digest signing for these chains.
+# Currently the buyer signs with the name/version from the 402 challenge
+# extra field ("Global Dollar" / "1"). If the facilitator's verify uses the
+# chain-read DOMAIN_SEPARATOR (Phase A), the signature will match only if
+# the on-chain domain equals (name, version, chainId, asset). If it doesn't,
+# buyer payments on Robinhood will fail at verify — the facilitator will
+# return invalid_signature. Fix: read DOMAIN_SEPARATOR() from RPC, compute
+# structHash locally, produce raw digest, and sign with wallet raw-sign API.
+_CHAIN_DOMAIN_SEP_CHAIN_IDS = frozenset({4663, 46630})
+
+
 def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -> str:
     """Sign an EIP-3009 authorization for a platform-shape 402 (JSON-body
     `accepts` dict with pricingModel — Starchild community-gateway contract).
@@ -715,6 +731,11 @@ def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -
     fields = [_NS(name=n, type=t) for n, t in [
         ("from", "address"), ("to", "address"), ("value", "uint256"),
         ("validAfter", "uint256"), ("validBefore", "uint256"), ("nonce", "bytes32")]]
+    # TODO(plans-280-05): for _CHAIN_DOMAIN_SEP_CHAIN_IDS networks (Robinhood),
+    # read DOMAIN_SEPARATOR() from chain and produce a raw EIP-712 digest
+    # instead of relying on name/version typed-data signing. Until then, the
+    # standard path is used — it works if the on-chain domain matches the
+    # extra metadata provided by the facilitator.
     sig = signer.sign_typed_data(
         domain, {"TransferWithAuthorization": fields}, "TransferWithAuthorization",
         {"from": auth["from"], "to": auth["to"], "value": amount,
@@ -1107,14 +1128,14 @@ def payment_preflight(amount_atomic: int, networks=None,
     unknown (RPC-failed) balances never count as funded.
 
     networks: candidate rails from the service's 402 accepts (canonical ids,
-    e.g. ["eip155:8453", "solana:5eykt..."]). Default: Base+Monad+Solana.
+    e.g. ["eip155:8453", "solana:5eykt..."]). Default: Base+Monad+Robinhood+Solana.
     Returns {ok, blockers[], warnings[], payer{}, funded_rails[], balances{}}.
     """
     from bazaar import PAYABLE_USDC, _canon_network, SOLANA_MAINNET
     out = {"ok": True, "blockers": [], "warnings": [], "payer": {},
            "balances": {}, "funded_rails": []}
     nets = [_canon_network(n) for n in (networks or
-            ["eip155:8453", "eip155:143", SOLANA_MAINNET])]
+            ["eip155:8453", "eip155:143", "eip155:4663", SOLANA_MAINNET])]
 
     # ① signers — branch by signer_mode FIRST. Explicit EOA never touches
     # the Privy wallet service or its policy.

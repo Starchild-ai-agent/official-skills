@@ -85,7 +85,7 @@ Common facilitator verify errors (2nd 402's `error` field):
   `bash skills/x402/setup.sh` once per machine (also append it to
   `/data/workspace/setup.sh` so restarts reinstall).
 
-## Multi-chain troubleshooting (Base + Monad)
+## Multi-chain troubleshooting (Base + Monad + Robinhood)
 
 - **402 `accepts` is a list, not a single object**: platform-mode 402 challenges
   return `accepts` as an **array** (one entry per network). Buyers pick one
@@ -98,12 +98,12 @@ Common facilitator verify errors (2nd 402's `error` field):
   path uses `NETWORKS[0]` (Base). Multi-accepts require **platform** modes
   (`pay_per_use` / `lifetime` / `weekly` / `monthly` / `quarterly` / `yearly` /
   `prepaid`). Prefer platform modes for new marketplace listings.
-- **A chain's gas is empty / settle fails on Monad**: the platform settler
-  pays gas on every chain (ETH on Base, MON on Monad). If the MON gas pool is
-  depleted, Monad settles fail with a facilitator error while Base keeps
-  working. Check the facilitator's `/facilitator/stats` (admin token) for
-  per-chain gas balances. This is a platform-ops issue, not a seller issue —
-  the seller never pays gas.
+- **A chain's gas is empty / settle fails on Monad or Robinhood**: the platform
+  settler pays gas on every chain (ETH on Base, MON on Monad, ETH on
+  Robinhood). If the gas pool for a chain is depleted, settles on that chain
+  fail with a facilitator error while other chains keep working. Check the
+  facilitator's `/facilitator/stats` (admin token) for per-chain gas balances.
+  This is a platform-ops issue, not a seller issue — the seller never pays gas.
 - **`networks_mode: custom` with an empty list fails at startup**:
   `resolve_networks` raises `ValueError("networks_mode=custom requires a
   non-empty networks list")`. Either switch to `all` or provide a non-empty
@@ -134,3 +134,10 @@ Common facilitator verify errors (2nd 402's `error` field):
   business-table update, no listing edit, no gateway restart needed (the
   network list is resolved at startup, so a restart IS needed for running
   gateways to see the new chain).
+- **Robinhood USDG buyer signing**: the USDG contract uses a Diamond proxy
+  with a non-standard EIP-712 domain. The facilitator reads
+  `DOMAIN_SEPARATOR()` from chain for verification. Buyer-side raw-digest
+  signing is a TODO (`client.py` `_CHAIN_DOMAIN_SEP_CHAIN_IDS`); standard
+  typed-data signing is used for now. If buyer payments on Robinhood fail with
+  `invalid_signature`, this is the likely cause — the on-chain domain may not
+  match the metadata `name="Global Dollar"` / `version="1"`.

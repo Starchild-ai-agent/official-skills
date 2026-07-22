@@ -690,15 +690,79 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
 # Networks requiring chain-read DOMAIN_SEPARATOR() for EIP-712 signing.
 # These use Diamond proxy contracts where the on-chain domain may differ from
 # the name/version metadata (e.g. Robinhood USDG).
-# TODO(plans-280-05 §5.5): implement raw-digest signing for these chains.
-# Currently the buyer signs with the name/version from the 402 challenge
-# extra field ("Global Dollar" / "1"). If the facilitator's verify uses the
-# chain-read DOMAIN_SEPARATOR (Phase A), the signature will match only if
-# the on-chain domain equals (name, version, chainId, asset). If it doesn't,
-# buyer payments on Robinhood will fail at verify — the facilitator will
-# return invalid_signature. Fix: read DOMAIN_SEPARATOR() from RPC, compute
-# structHash locally, produce raw digest, and sign with wallet raw-sign API.
+# Robinhood USDG uses a Diamond proxy (EIP-2535) whose EIP-712 domain does
+# NOT match the standard (name, version, chainId, verifyingContract) hash.
+# For these chains, we read DOMAIN_SEPARATOR() from RPC, compute structHash
+# locally, produce a raw EIP-712 digest, and sign it directly — matching the
+# facilitator's verify path (server.py CHAIN_DOMAIN_SEPARATOR_NETWORKS).
 _CHAIN_DOMAIN_SEP_CHAIN_IDS = frozenset({4663, 46630})
+
+# TransferWithAuthorization type hash (EIP-3009, constant across all chains).
+# keccak256("TransferWithAuthorization(address from,address to,uint256 value,
+#            uint256 validAfter,uint256 validBefore,bytes32 nonce)")
+_TRANSFER_WITH_AUTH_TYPEHASH: bytes | None = None
+
+# DOMAIN_SEPARATOR() ABI for on-chain reads
+_DOMAIN_SEP_ABI = [{"name": "DOMAIN_SEPARATOR", "type": "function",
+                    "stateMutability": "view", "inputs": [],
+                    "outputs": [{"type": "bytes32"}]}]
+
+# Cache: {(chain_id, asset_lower): bytes32_domain_separator}
+_domain_sep_cache: dict[tuple[int, str], bytes] = {}
+
+
+def _get_transfer_with_auth_typehash() -> bytes:
+    """Lazy-init the TransferWithAuthorization type hash (needs web3)."""
+    global _TRANSFER_WITH_AUTH_TYPEHASH
+    if _TRANSFER_WITH_AUTH_TYPEHASH is None:
+        from web3 import Web3
+        _TRANSFER_WITH_AUTH_TYPEHASH = Web3.keccak(
+            text="TransferWithAuthorization(address from,address to,"
+                 "uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
+        )
+    return _TRANSFER_WITH_AUTH_TYPEHASH
+
+
+def _read_domain_separator(chain_id: int, asset: str) -> bytes:
+    """Read DOMAIN_SEPARATOR() from chain via RPC (cached, immutable per contract)."""
+    from web3 import Web3
+    key = (chain_id, asset.lower())
+    cached = _domain_sep_cache.get(key)
+    if cached is not None:
+        return cached
+
+    rpc = PrivySigner._RPC.get(chain_id)
+    if not rpc:
+        raise RuntimeError(f"No RPC URL for chain {chain_id}")
+    w3 = Web3(Web3.HTTPProvider(rpc))
+    contract = w3.eth.contract(
+        address=Web3.to_checksum_address(asset), abi=_DOMAIN_SEP_ABI)
+    ds = bytes(contract.functions.DOMAIN_SEPARATOR().call())
+    _domain_sep_cache[key] = ds
+    return ds
+
+
+def _sign_raw_digest(signer, digest: bytes) -> bytes:
+    """Sign a raw 32-byte EIP-712 digest with the signer's private key.
+
+    SessionEOASigner: uses eth_account.unsafe_sign_hash directly.
+    PrivySigner: the Privy wallet API only exposes wallet_sign_typed_data
+    (EIP-712 structured signing), not raw hash signing. For Robinhood
+    chains, PrivySigner falls back to the standard typed-data path which
+    may produce invalid_signature — this is a known limitation until Privy
+    adds a raw-sign API. SessionEOASigner (the default signer) works.
+    """
+    # SessionEOASigner has _acct (eth_account.Account)
+    acct = getattr(signer, "_acct", None)
+    if acct is not None:
+        sig_obj = acct.unsafe_sign_hash(digest)
+        return sig_obj.signature
+
+    raise RuntimeError(
+        "Cannot sign raw EIP-712 digest: signer does not expose a private "
+        "key (_acct). Robinhood USDG payments require SessionEOASigner or "
+        "a signer with raw hash signing support. PrivySigner's "
+        "wallet_sign_typed_data cannot produce raw-digest signatures.")
 
 
 def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -> str:
@@ -724,23 +788,50 @@ def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -
         "validBefore": str(now + int(accepts.get("maxTimeoutSeconds", 300))),
         "nonce": "0x" + os.urandom(32).hex(),
     }
-    class _NS:
-        def __init__(self, **kw): self.__dict__.update(kw)
-    domain = _NS(name=extra.get("name", "USD Coin"), version=extra.get("version", "2"),
-                 chain_id=chain_id, verifying_contract=accepts["asset"])
-    fields = [_NS(name=n, type=t) for n, t in [
-        ("from", "address"), ("to", "address"), ("value", "uint256"),
-        ("validAfter", "uint256"), ("validBefore", "uint256"), ("nonce", "bytes32")]]
-    # TODO(plans-280-05): for _CHAIN_DOMAIN_SEP_CHAIN_IDS networks (Robinhood),
-    # read DOMAIN_SEPARATOR() from chain and produce a raw EIP-712 digest
-    # instead of relying on name/version typed-data signing. Until then, the
-    # standard path is used — it works if the on-chain domain matches the
-    # extra metadata provided by the facilitator.
-    sig = signer.sign_typed_data(
-        domain, {"TransferWithAuthorization": fields}, "TransferWithAuthorization",
-        {"from": auth["from"], "to": auth["to"], "value": amount,
-         "validAfter": 0, "validBefore": int(auth["validBefore"]),
-         "nonce": auth["nonce"]})
+
+    # Chain-read DOMAIN_SEPARATOR path for Diamond proxy contracts (Robinhood
+    # USDG). Only used when the signer exposes a private key (_acct) for raw
+    # digest signing. PrivySigner uses wallet_sign_typed_data (no raw-sign API),
+    # so it falls through to the standard typed-data path — the facilitator's
+    # ERC-1271 fallback handles Privy's Kernel-delegated signatures.
+    _use_chain_read = (
+        chain_id in _CHAIN_DOMAIN_SEP_CHAIN_IDS
+        and getattr(signer, "_acct", None) is not None
+    )
+
+    if _use_chain_read:
+        # Raw EIP-712 digest signing — mirrors facilitator server.py verify Mode B.
+        from web3 import Web3
+        domain_sep = _read_domain_separator(chain_id, accepts["asset"])
+        typehash = _get_transfer_with_auth_typehash()
+        struct_hash = Web3.keccak(
+            typehash
+            + bytes.fromhex(auth["from"][2:].lower().zfill(64))
+            + bytes.fromhex(auth["to"][2:].lower().zfill(64))
+            + int(auth["value"]).to_bytes(32, "big")
+            + int(auth["validAfter"]).to_bytes(32, "big")
+            + int(auth["validBefore"]).to_bytes(32, "big")
+            + bytes.fromhex(auth["nonce"][2:])
+        )
+        digest = Web3.keccak(b"\x19\x01" + domain_sep + struct_hash)
+        sig = _sign_raw_digest(signer, digest)
+    else:
+        # Standard EIP-712 typed-data signing (Base, Monad, and PrivySigner
+        # on any chain including Robinhood — Privy's Kernel delegation is
+        # verified via ERC-1271 on the facilitator side).
+        class _NS:
+            def __init__(self, **kw): self.__dict__.update(kw)
+        domain = _NS(name=extra.get("name", "USD Coin"), version=extra.get("version", "2"),
+                     chain_id=chain_id, verifying_contract=accepts["asset"])
+        fields = [_NS(name=n, type=t) for n, t in [
+            ("from", "address"), ("to", "address"), ("value", "uint256"),
+            ("validAfter", "uint256"), ("validBefore", "uint256"), ("nonce", "bytes32")]]
+        sig = signer.sign_typed_data(
+            domain, {"TransferWithAuthorization": fields}, "TransferWithAuthorization",
+            {"from": auth["from"], "to": auth["to"], "value": amount,
+             "validAfter": 0, "validBefore": int(auth["validBefore"]),
+             "nonce": auth["nonce"]})
+
     payload = {"x402Version": 2, "scheme": "exact", "network": network,
                "payload": {"authorization": auth, "signature": "0x" + sig.hex()}}
     return base64.b64encode(json.dumps(payload).encode()).decode()

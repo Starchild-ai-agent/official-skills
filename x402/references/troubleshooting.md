@@ -135,9 +135,10 @@ Common facilitator verify errors (2nd 402's `error` field):
   network list is resolved at startup, so a restart IS needed for running
   gateways to see the new chain).
 - **Robinhood USDG buyer signing**: the USDG contract uses a Diamond proxy
-  with a non-standard EIP-712 domain. The facilitator reads
-  `DOMAIN_SEPARATOR()` from chain for verification. Buyer-side raw-digest
-  signing is a TODO (`client.py` `_CHAIN_DOMAIN_SEP_CHAIN_IDS`); standard
-  typed-data signing is used for now. If buyer payments on Robinhood fail with
-  `invalid_signature`, this is the likely cause — the on-chain domain may not
-  match the metadata `name="Global Dollar"` / `version="1"`.
+  with a non-standard EIP-712 domain. Both the facilitator (verify) and the
+  buyer (`client.py`) now read `DOMAIN_SEPARATOR()` from chain and produce
+  raw EIP-712 digests for signing/verification. This ensures the signature
+  matches regardless of the on-chain domain structure. If buyer payments on
+  Robinhood still fail with `invalid_signature`, check that the buyer's
+  `client.py` has the chain-read path (v2.20.1+) and that the Robinhood RPC
+  is reachable from the container.

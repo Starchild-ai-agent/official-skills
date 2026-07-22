@@ -2257,6 +2257,7 @@ def upload_cover_image(slug: str, file_path: str) -> dict[str, Any]:
     # ── Step 1: Get presigned URL from gateway ──
     try:
         status, body = gateway.cover_presign(
+            owner_user_id=_user_id(),
             slug=slug,
             content_type=content_type,
             file_size=file_size,

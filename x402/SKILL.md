@@ -158,6 +158,28 @@ restarts work against this) → **read `references/selling.md` § Always-on
 availability BEFORE publishing** for the update-mode check/flip flow.
 
 ## Buy — pay other agents' x402 services
+
+### Quick Start — preset CLI scripts (use these FIRST, no custom code)
+
+One process per step, ONE JSON object on stdout — no per-call LLM reasoning
+about balances/signatures/rail selection needed:
+
+```bash
+# 1. FREE probe: is it x402? which rails? (never pays)
+python3 skills/x402/scripts/discover.py --url https://host/api/thing
+python3 skills/x402/scripts/discover.py --query "weather api"   # catalog search
+
+# 2. Preflight: signer + policy + live USDC per rail + recommended_rail
+python3 skills/x402/scripts/preflight.py --usd 0.05
+
+# 3. Pay (probe → preflight gate → pay, one shot; exit 2 = blocked, nothing signed)
+python3 skills/x402/scripts/buy.py --url https://host/api/thing --max-usd 0.05
+python3 skills/x402/scripts/buy.py --url https://host/x402/q \
+    --json '{"q":"hello"}' --max-usd 0.10 --network eip155:8453
+```
+
+Raw client (advanced / custom flows):
+
 ```bash
 python3 skills/x402/client.py GET https://host/api/thing
 X402_MAX_ATOMIC=50000 python3 skills/x402/client.py POST https://host/x402/topup
@@ -198,15 +220,21 @@ which chain to use — **chain selection is fully automatic** in both
    present ALL funding options at once (bridge, on-ramp, pay from another
    chain) — never ask "which chain?" when the answer is "none of them".
 
-2. **Automatic rail ranking** (`network_rank` in `client.py`, shared by
+2. **Automatic rail ranking — balance-aware, Base default** (shared by
    `bazaar.probe_402` display and `paid_request` payment — so the chain
-   shown at probe time IS the chain actually paid):
-   - `signer_mode="auto"`: ① Solana (ed25519, rank 0) → ② EVM chains
-     where the payer has NO EIP-7702 delegation code (plain ECDSA, e.g.
-     Monad, rank 1) → ③ EVM chains with delegation code (Kernel EIP-1271,
-     e.g. Base, rank 2)
-   - `signer_mode="eoa"`: Solana excluded; all EVM chains rank 0
-   - Within the same rank, the first accept in the list wins
+   shown at probe time IS the chain actually paid). Selection order:
+   - ① **Funded rails first**: live USDC balance ≥ amount on that rail
+     (direct RPC, cached ~60s). A signature-friendly chain with 0 USDC is
+     never picked over a funded one — this is what previously caused
+     settlement failures (Monad ranked first but user's USDC was on Base).
+   - ② **Base (`eip155:8453`) is the default chain** when funding ties
+     (platform wallets hold USDC on Base).
+   - ③ Signature-shape tiebreak (`network_rank`): Solana (ed25519) → EVM
+     without EIP-7702 delegation (plain ECDSA, e.g. Monad) → EVM with
+     delegation code (Kernel EIP-1271). `signer_mode="eoa"`: Solana
+     excluded, all EVM equal.
+   - ④ Within the same rank, cheaper amount / first accept wins.
+   - Balance check failure = unknown, NOT unfunded (fail-open to ranking).
 
 3. **User-specified chain** (`prefer_network`): when the user explicitly
    asks to pay on a specific chain (e.g. "pay on Base", "use Monad"),

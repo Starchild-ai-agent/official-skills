@@ -405,6 +405,7 @@ async def proxy(path: str, request: Request):
 
     # ---- platform pricing modes (community-gateway contract) -------------
     prepaid_charge = None  # (pb, payer, request_id, units) — set when a prepaid debit applied
+    _settlement_receipt = None  # dict — set after a successful on-chain settle (for PAYMENT-RESPONSE header)
     if platform_billing is not None and units > 0:
         # plan selection (multi-plan): X-Pricing-Model header picks the plan;
         # no header (or single-plan service) -> default plan (MODE).
@@ -515,6 +516,13 @@ async def proxy(path: str, request: Request):
                     return JSONResponse(pb.challenge_body(
                         full, error=s.get("errorReason", "payment settlement failed")),
                         status_code=402)
+                # x402 protocol: build settlement receipt for PAYMENT-RESPONSE header
+                _settlement_receipt = {
+                    "success": True,
+                    "payer": s.get("payer", payer),
+                    "network": s.get("network", ""),
+                    "transaction": s.get("transaction", ""),
+                }
                 if selected_mode != "pay_per_use":
                     pb.grant_cache(payer)
 
@@ -570,6 +578,10 @@ async def proxy(path: str, request: Request):
 
     resp_headers = {k: v for k, v in r.headers.items()
                     if k.lower() not in ("content-length", "transfer-encoding", "content-encoding")}
+    # x402 protocol: return settlement receipt so the buyer can verify the tx.
+    if _settlement_receipt is not None:
+        resp_headers["PAYMENT-RESPONSE"] = base64.b64encode(
+            json.dumps(_settlement_receipt).encode()).decode()
     return Response(content=r.content, status_code=r.status_code,
                     headers=resp_headers, media_type=r.headers.get("content-type"))
 

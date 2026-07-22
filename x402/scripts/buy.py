@@ -61,15 +61,23 @@ def main() -> int:
         # probing the raw URL could classify "no-payment" (free upstream)
         # while the proxy returns 402, silently skipping preflight.
         pay_url = args.url
-        _listed = True
+        _direct_ok = os.environ.get("X402_INTERNAL_DIRECT_PAY") == "1"
         try:
             res = resolve_marketplace(args.url)
-            if res.get("ok") and res.get("pay_url"):
-                pay_url = res["pay_url"]
-            _listed = res.get("via") != "direct"
-        except Exception:
-            _listed = False
-        _direct_ok = os.environ.get("X402_INTERNAL_DIRECT_PAY") == "1"
+        except Exception as e:
+            # FAIL-CLOSED: a resolver failure must not skip preflight —
+            # bazaar_pay() re-resolves internally and a recovered second
+            # resolution would pay with zero preflight calls.
+            if not _direct_ok:
+                result["error"] = (f"marketplace resolution failed "
+                                   f"({type(e).__name__}: {e}); refusing to "
+                                   f"pay without a validated pay_url")
+                print(json.dumps(result, indent=2, ensure_ascii=False))
+                return 2
+            res = {"ok": False, "via": "direct"}
+        if res.get("ok") and res.get("pay_url"):
+            pay_url = res["pay_url"]
+        _listed = res.get("via") != "direct"
 
         pay_network = args.network  # rail actually validated & paid
         if not args.skip_preflight and (_listed or _direct_ok):
@@ -96,7 +104,14 @@ def main() -> int:
                     result["error"] = "payable but no usable rail in probe"
                     print(json.dumps(result, indent=2))
                     return 1
-                rail = min(rails, key=_amount_int)  # cheapest on chosen chain
+                # probe rails are ALREADY sorted funded-first → Base →
+                # network_rank → price (bazaar._sort_payable). Taking a
+                # global min(price) here would override balance-aware
+                # routing (e.g. pick an unfunded-but-cheaper Monad over a
+                # funded Base and get blocked). No --network: trust the
+                # sort. Explicit --network: cheapest within that chain.
+                rail = (min(rails, key=_amount_int) if args.network
+                        else rails[0])
                 price = _amount_int(rail)
                 if price >= (1 << 62):
                     result["error"] = (f"malformed amount on rail "

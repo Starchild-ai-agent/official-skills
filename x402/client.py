@@ -636,7 +636,9 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
             0 if _pn and _net_of(r) == _pn else 1,
             _rail_funded_state(_cn(_net_of(r)), _amt_of(r), bals),
             0 if _cn(_net_of(r)) == "eip155:8453" else 1,
-            network_rank(_net_of(r), signer=signer, signer_mode=_mode)))
+            network_rank(_net_of(r), signer=signer, signer_mode=_mode),
+            _amt_of(r)))  # cheapest wins within the same rail rank
+            # (matches bazaar._sort_payable so probe display == paid rail)
 
     client.register_policy(_prefer_privy_native)
     client.register_policy(max_amount(max_amount_atomic))
@@ -909,18 +911,18 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                      or str(a.get("network") or "") == "base"]
             if not exact:
                 return None
-            if prefer_network:
-                same = [a for a in exact
-                        if str(a.get("network") or "") == prefer_network]
-                if same:
-                    return same[0]
-            # Funded rails first, Base as default chain, then network_rank
-            # (see _prefer_privy_native for rationale — same ordering).
             def _amt(a):
                 try:
                     return int(str(a.get("amount") or 0))
                 except (TypeError, ValueError):
                     return 0
+            if prefer_network:
+                same = [a for a in exact
+                        if str(a.get("network") or "") == prefer_network]
+                if same:
+                    return sorted(same, key=_amt)[0]  # cheapest on that chain
+            # Funded rails first, Base as default chain, then network_rank
+            # (see _prefer_privy_native for rationale — same ordering).
             try:
                 from bazaar import _canon_network as _cn
                 bals = usdc_balances(
@@ -934,6 +936,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 0 if _cn(str(a.get("network") or "")) == "eip155:8453" else 1,
                 network_rank(str(a.get("network") or ""),
                              signer=signer, signer_mode=_mode),
+                _amt(a),  # cheapest within same rank — matches probe sort
             ))[0]
 
         accepts = _pick_accept(accepts_list, prefer_network=prefer_network or None)
@@ -1034,15 +1037,23 @@ def usdc_balances(networks, evm_addr=None, sol_addr=None,
         try:
             if net.startswith("solana"):
                 import httpx
-                r = httpx.post("https://api.mainnet-beta.solana.com", json={
+                resp = httpx.post("https://api.mainnet-beta.solana.com", json={
                     "jsonrpc": "2.0", "id": 1,
                     "method": "getTokenAccountsByOwner",
                     "params": [addr,
                                {"mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"},
-                               {"encoding": "jsonParsed"}]}, timeout=15).json()
+                               {"encoding": "jsonParsed"}]}, timeout=15)
+                resp.raise_for_status()
+                r = resp.json()
+                # RPC error / malformed result = UNKNOWN, never zero —
+                # a flaky RPC must not demote a funded rail.
+                if "error" in r or not isinstance(
+                        r.get("result", {}).get("value"), list):
+                    raise RuntimeError(f"solana rpc error: "
+                                       f"{str(r.get('error'))[:120]}")
                 bal = sum(int(v["account"]["data"]["parsed"]["info"]
                               ["tokenAmount"]["amount"])
-                          for v in r.get("result", {}).get("value", []))
+                          for v in r["result"]["value"])
             else:
                 from web3 import Web3
                 rpc = PrivySigner._RPC.get(int(net.split(":")[1]))

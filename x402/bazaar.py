@@ -571,6 +571,11 @@ def probe_402(url: str, method: str = "GET", json_body=None, headers=None,
             flavor = "v2-header" if has_v2_header else "json-accepts"
             out.update({"classification": "standard-v2", "payable": True,
                         "flavor": flavor,
+                        # all payable rails, routing order (funded→Base→rank)
+                        "rails": [{"network": a.get("network"),
+                                   "amount": a.get("amount")
+                                   or a.get("maxAmountRequired")}
+                                  for a in payable],
                         "network": best.get("network"),
                         "asset": best.get("asset"),
                         "live_price_atomic": amt,

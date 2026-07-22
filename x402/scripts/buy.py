@@ -54,15 +54,43 @@ def main() -> int:
 
     try:
         if not args.skip_preflight:
-            from client import payment_preflight
-            pf = payment_preflight(
-                cap, networks=[args.network] if args.network else None)
-            if not pf.get("ok"):
-                result["error"] = "preflight blocked"
-                result["blockers"] = pf.get("blockers")
-                result["balances"] = pf.get("balances")
-                print(json.dumps(result, indent=2))
-                return 2
+            # Probe FIRST: preflight against the service's ACTUAL price and
+            # ACTUAL accepted rails — max_usd is only a spend ceiling. Using
+            # the cap as the amount would reject wallets that can afford the
+            # real price; using all networks could pass on a rail the
+            # service doesn't even accept.
+            from bazaar import probe_402
+            probe = probe_402(args.url, method=args.method, json_body=body)
+            result["classification"] = probe.get("classification")
+            if probe.get("payable"):
+                price = int(probe.get("live_price_atomic") or 0) or cap
+                result["live_price_usd"] = probe.get("live_price_usd")
+                if price > cap:
+                    result["error"] = (
+                        f"price ${price / 1e6:.6g} exceeds --max-usd cap "
+                        f"${args.max_usd:.6g}")
+                    print(json.dumps(result, indent=2))
+                    return 2
+                nets = ([args.network] if args.network else
+                        [r["network"] for r in probe.get("rails") or []
+                         if r.get("network")] or None)
+                from client import payment_preflight
+                pf = payment_preflight(price, networks=nets)
+                if not pf.get("ok"):
+                    result["error"] = "preflight blocked"
+                    result["blockers"] = pf.get("blockers")
+                    result["balances"] = pf.get("balances")
+                    print(json.dumps(result, indent=2))
+                    return 2
+            elif probe.get("classification") in ("tx-hash", "wrong-rail",
+                                                 "non-standard",
+                                                 "unreachable"):
+                result["error"] = (f"not payable: "
+                                   f"{probe.get('classification')} — "
+                                   f"{probe.get('reason') or probe.get('error') or ''}")
+                print(json.dumps(result, indent=2, ensure_ascii=False))
+                return 1
+            # no-payment → free endpoint; fall through, bazaar_pay handles it
 
         from bazaar import bazaar_pay
         r = bazaar_pay(args.url, method=args.method, json_body=body,

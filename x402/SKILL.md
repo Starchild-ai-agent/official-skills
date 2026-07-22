@@ -229,8 +229,8 @@ which chain to use — **chain selection is fully automatic** in both
      settlement failures (Monad ranked first but user's USDC was on Base).
    - ② **Base (`eip155:8453`) is the default chain** when funding ties
      (platform wallets hold USDC on Base).
-   - ③ Signature-shape tiebreak (`network_rank`): Solana (ed25519) → EVM
-     without EIP-7702 delegation (plain ECDSA, e.g. Monad) → EVM with
+   - ③ Static tiebreak (`network_rank`): Solana (ed25519) → Base → other
+     EVM without EIP-7702 delegation (plain ECDSA, e.g. Monad) → EVM with
      delegation code (Kernel EIP-1271). `signer_mode="eoa"`: Solana
      excluded, all EVM equal.
    - ④ Within the same rank, cheaper amount / first accept wins.

@@ -1,10 +1,10 @@
 ---
 name: skill-manager
-version: 4.1.0
+version: 4.2.0
 description: |
-  Search, install, and publish skills across official, community, and global registries.
+  Search, install, publish, and delete skills across official, community, and global registries.
 
-  Use when finding or sharing skills (e.g. install a "funding rate" skill, list installed skills, publish my custom skill to the registry).
+  Use when finding, sharing, or removing skills (e.g. install a "funding rate" skill, list installed skills, publish my custom skill to the registry, delete a published skill).
 
 metadata:
   starchild:
@@ -134,6 +134,55 @@ curl -s -X POST "$GATEWAY/skills/publish" \
 
 ---
 
+## Deleting a Published Skill
+
+Delete a skill you previously published to the Starchild community registry. This removes all files, tags, releases, and the skills.json index entry from the community repo.
+
+**You can only delete skills in your own namespace** (`@{user_id}`).
+
+### Delete Workflow
+
+**Step 1: Get OIDC token**
+
+```bash
+TOKEN=$(curl -s --unix-socket /.fly/api \
+  -X POST -H "Content-Type: application/json" \
+  "http://localhost/v1/tokens/oidc" \
+  -d '{"aud": "skills-market-gateway"}')
+```
+
+**Step 2: Send delete request**
+
+```bash
+GATEWAY="https://skills-market-gateway.fly.dev"
+NAMESPACE="YOUR_USER_ID"   # without @ prefix
+SKILLNAME="my-skill"
+
+curl -s -X DELETE "$GATEWAY/skills/$NAMESPACE/$SKILLNAME" \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
+```
+
+### Response (200)
+
+```json
+{
+  "namespace": "@554",
+  "name": "my-skill",
+  "commit_sha": "abc123...",
+  "deleted_tags": ["@554/my-skill@1.0.0", "@554/my-skill@1.1.0"],
+  "deleted_releases": [42, 43]
+}
+```
+
+Returns **404** if the skill doesn't exist, **403** if you're not the owner.
+
+### After Deletion
+
+- The skill is removed from the community registry (skills.json, GitHub releases, tags, and source files).
+- If the skill is still installed locally, the local copy remains. Use `skill_manage(action="delete", name="my-skill")` to also remove the local copy.
+
+---
+
 ## Decision Tree
 
 ```
@@ -148,6 +197,11 @@ User wants to publish a skill
   → Validate SKILL.md frontmatter
   → Get OIDC token (audience: skills-market-gateway)
   → POST to /skills/publish
+
+User wants to delete a published skill
+  → Get OIDC token (audience: skills-market-gateway)
+  → DELETE /skills/:namespace/:name
+  → Optionally remove local copy with skill_manage(action="delete")
 
 User wants to create a new skill
   → Read the skill-creator skill first

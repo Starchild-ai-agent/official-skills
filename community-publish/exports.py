@@ -30,6 +30,7 @@ This skill handles TWO distinct concepts — keep them separate:
       - get_service()            → fetch one service
       - update_service()         → update service fields
       - delete_service()         → delete a service
+      - upload_cover_image()     → upload image to GCS, return public URL for cover_url
 
 Publishing and listing are independent. A project can be published (URL
 works) without being listed (not on the gallery), and vice versa. Paid
@@ -52,6 +53,8 @@ import base64
 import os
 import re
 import shutil
+import urllib.request
+import urllib.error
 from typing import Any
 
 # Make sibling lib/ importable
@@ -2191,3 +2194,104 @@ def restore_service(service_id: str) -> dict[str, Any]:
         return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
 
     return {"ok": True, "service": body.get("service", {})}
+
+
+# ════════════════════════════════════════════════════════════════════════
+# COVER IMAGE UPLOAD
+# ════════════════════════════════════════════════════════════════════════
+
+# Content-type mapping for common image extensions
+_EXT_TO_CONTENT_TYPE = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+}
+
+
+def upload_cover_image(slug: str, file_path: str) -> dict[str, Any]:
+    """Upload a local image file to GCS and return the public URL.
+
+    This is the RECOMMENDED way to set cover images for projects and services.
+    It handles the full flow: presign → upload → return public URL.
+
+    The returned public_url is on storage.googleapis.com and is accepted by
+    all gateway endpoints that validate cover_url domains.
+
+    Args:
+        slug: The project or service slug (used as GCS path component).
+        file_path: Path to the local image file (PNG, JPEG, or WebP, max 2MB).
+
+    Returns:
+        {"ok": True, "public_url": "https://storage.googleapis.com/..."} on success
+        {"ok": False, "error": "..."} on failure
+
+    Example:
+        >>> result = upload_cover_image("my-slug", "/tmp/cover.png")
+        >>> if result["ok"]:
+        ...     create_paid_service(..., cover_url=result["public_url"])
+    """
+    import os as _os
+    import mimetypes
+
+    # ── Validate file ──
+    if not _os.path.isfile(file_path):
+        return {"ok": False, "error": f"File not found: {file_path}"}
+
+    file_size = _os.path.getsize(file_path)
+    if file_size > 2 * 1024 * 1024:
+        return {"ok": False, "error": f"File too large: {file_size} bytes (max 2MB). Compress the image first."}
+
+    # Determine content type from extension
+    ext = _os.path.splitext(file_path)[1].lower()
+    content_type = _EXT_TO_CONTENT_TYPE.get(ext)
+    if not content_type:
+        # Try mimetypes as fallback
+        content_type, _ = mimetypes.guess_type(file_path)
+    if content_type not in ("image/png", "image/jpeg", "image/webp"):
+        return {
+            "ok": False,
+            "error": f"Unsupported image format: {ext} ({content_type}). Use PNG, JPEG, or WebP.",
+        }
+
+    # ── Step 1: Get presigned URL from gateway ──
+    try:
+        status, body = gateway.cover_presign(
+            slug=slug,
+            content_type=content_type,
+            file_size=file_size,
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to get presigned URL: {e}"}
+
+    if status != 200:
+        return {
+            "ok": False,
+            "error": f"Presign failed (HTTP {status}): {body.get('error', body)}",
+        }
+
+    signed_url = body.get("signed_url")
+    public_url = body.get("public_url")
+    if not signed_url or not public_url:
+        return {"ok": False, "error": f"Unexpected presign response: {body}"}
+
+    # ── Step 2: PUT the image to GCS ──
+    try:
+        with open(file_path, "rb") as f:
+            image_data = f.read()
+
+        put_req = urllib.request.Request(
+            signed_url,
+            data=image_data,
+            headers={"Content-Type": content_type},
+            method="PUT",
+        )
+        with urllib.request.urlopen(put_req, timeout=30) as resp:
+            if resp.status not in (200, 201):
+                return {"ok": False, "error": f"GCS upload failed: HTTP {resp.status}"}
+    except urllib.error.HTTPError as e:
+        return {"ok": False, "error": f"GCS upload failed: HTTP {e.code} — {e.read().decode('utf-8', errors='replace')[:500]}"}
+    except Exception as e:
+        return {"ok": False, "error": f"GCS upload failed: {e}"}
+
+    return {"ok": True, "public_url": public_url}

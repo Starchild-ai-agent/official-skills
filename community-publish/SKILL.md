@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.27.1
+version: 0.28.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -22,7 +22,7 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 | Concept | What it means | Functions |
 |---|---|---|
 | **PUBLISH (发布)** | Make something **accessible** — a URL works, or code is on GitHub | `publish_preview`, `unpublish_preview`, `list_published_previews`, `open_source`, `remove_open_source`, `list_open_source`, `get_open_source`, `fork`, `validate_open_source` |
-| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `delete_listing`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Browse + consumer: `explore_marketplace`, `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary` |
+| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `delete_listing`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Cover: `upload_cover_image`<br>Browse + consumer: `explore_marketplace`, `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary` |
 
 **Publishing does NOT auto-list.** `publish_preview()` only allocates the URL. `open_source()` only pushes code. Neither makes the project discoverable on the marketplace — that requires a separate, deliberate LIST call.
 
@@ -250,7 +250,7 @@ Make a published preview discoverable in the public gallery at `https://communit
 - `slug`: the **full** slug returned by `publish_preview()` (i.e. `{user_id}-{suffix}`).
 - `name`: gallery card display name. Defaults to `slug`.
 - `description`: ≤500 chars.
-- `cover_url`: must be on `storage.googleapis.com`, `image.thum.io`, or `api.microlink.io`.
+- `cover_url`: must be on `storage.googleapis.com`, `image.thum.io`, or `api.microlink.io`. **To upload a user-provided image, call `upload_cover_image(slug, file_path)` first** — it handles presign → GCS upload → returns the public URL. See [Cover Image Upload](#cover-image-upload-flow) below.
 - `tags`: ≤5 tags, ≤20 chars each.
 
 Returns `{"ok": True, "listing": {...}, "url": "...", "dashboard_url": "..."}`.
@@ -530,13 +530,20 @@ create_paid_service(
    #### Cover image for paid services
 
    Paid services do NOT auto-generate a cover image (unlike free projects which get
-   auto-captured screenshots). Pass `cover_url` in `create_paid_service()` — same rules
-   as `list_in_dashboard()`: must be on `storage.googleapis.com`, `image.thum.io`, or
-   `api.microlink.io`. If the user provides an image, upload it via the image upload
-   service and use the resulting URL. If not provided, generate a suitable cover image
-   based on the service name and description (e.g. using an image generation skill),
-   upload it, and pass the URL. You can also use `update_service(cover_url=...)` later
-   to add or change the cover.
+   auto-captured screenshots). Pass `cover_url` in `create_paid_service()` — must be on
+   `storage.googleapis.com` (or `image.thum.io` / `api.microlink.io`).
+
+   **⚠️ MANDATORY: When the user provides an image or you need to set a cover, call
+   `upload_cover_image(slug, file_path)`.** This function handles the full flow:
+   presign URL → compress → upload to GCS → return `storage.googleapis.com` public URL.
+   Do NOT use imgur, data URIs, or any other hosting — the gateway validates the domain.
+
+   If the user does not provide an image, generate one (e.g. using an image generation
+   skill), save it locally, then call `upload_cover_image()`.
+
+   You can also use `update_service(cover_url=...)` later to change the cover.
+
+   See [Cover Image Upload](#cover-image-upload-flow) for the complete reference.
 
 3. **Publish** → same as Flow B step 4.
 4. **Recommended self-check** → same as Flow B step 5.
@@ -928,9 +935,76 @@ EOF
 
 ---
 
+## Cover Image Upload Flow
+
+**⚠️ MANDATORY — read this section whenever you need to set or change a cover image.**
+
+The gateway validates `cover_url` domains. Only `storage.googleapis.com`, `image.thum.io`,
+and `api.microlink.io` are accepted. **Do NOT use imgur, data URIs, or any other hosting.**
+
+### Quick path: `upload_cover_image()`
+
+```python
+from skills.community_publish.exports import upload_cover_image
+
+result = upload_cover_image("my-slug", "/path/to/image.png")
+# result = {"ok": True, "public_url": "https://storage.googleapis.com/..."}
+
+# Then use the URL:
+list_in_dashboard("my-slug", name="My Project", cover_url=result["public_url"])
+# or:
+create_paid_service(..., cover_url=result["public_url"])
+# or:
+update_service(service_id, cover_url=result["public_url"])
+```
+
+### What `upload_cover_image()` does internally
+
+1. **Presign** — calls `POST /api/projects/cover/presign` (JWT auth) with `slug`, `content_type`, `file_size`
+2. **Upload** — PUTs the raw image bytes to the GCS V4 signed URL
+3. **Returns** — the `public_url` on `storage.googleapis.com`
+
+### Supported formats
+
+- `image/png`, `image/jpeg`, `image/webp`
+- Max 2MB — compress before uploading if needed
+
+### If the user provides a large image
+
+```python
+# Compress first (PIL example)
+from PIL import Image
+import io
+
+img = Image.open("/path/to/large.png")
+img.thumbnail((1200, 630))  # reasonable cover dimensions
+buf = io.BytesIO()
+img.save(buf, format="JPEG", quality=85)
+buf.seek(0)
+
+# Save compressed version
+compressed_path = "/tmp/cover_compressed.jpg"
+with open(compressed_path, "wb") as f:
+    f.write(buf.getvalue())
+
+# Upload
+result = upload_cover_image("my-slug", compressed_path)
+```
+
+### Common mistakes
+
+| Mistake | Why it fails | Fix |
+|---|---|---|
+| Using imgur URL as `cover_url` | Domain not in allowlist (project/internal routes reject with 400) | Use `upload_cover_image()` → GCS URL |
+| Passing data URI as `cover_url` | Gateway returns 500 (URL too long / not a valid URL) | Save to file, then `upload_cover_image()` |
+| Using thum.io to screenshot a preview page | Preview pages on internal ports are not publicly accessible | Use `upload_cover_image()` with the actual image file |
+| Not reading the knowledge doc | Missing context on GCS config, path conventions, domain rules | Always check `starchild-knowledge/starchild-community-gateway/service-cover-upload.md` |
+
+---
+
 ## References
 
 - `lib/manifest.py` — project.yaml parser/writer + semver helpers
 - `lib/validate.py` — local pre-publish validation (mirrors gateway-side checks)
 - `lib/install.py` — type-specific install handlers (task/service/script)
-- `lib/gateway.py` — HTTP client for `/api/register` (URL), `/api/code-projects/*` (code), `/api/projects-query/*` (free listing), `/api/services/*` (paid listing)
+- `lib/gateway.py` — HTTP client for `/api/register` (URL), `/api/code-projects/*` (code), `/api/projects-query/*` (free listing), `/api/services/*` (paid listing), `/api/projects/cover/presign` (cover upload)

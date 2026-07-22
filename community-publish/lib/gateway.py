@@ -21,10 +21,42 @@ def _gateway_key() -> str:
     return key
 
 
+def _user_jwt() -> str:
+    """Return the container JWT for user-level auth (presign, etc.)."""
+    jwt = os.environ.get("CONTAINER_JWT", "") or os.environ.get("USER_JWT", "")
+    if not jwt:
+        raise RuntimeError(
+            "No identity JWT available — expected CONTAINER_JWT env (production) "
+            "or USER_JWT env (dev)."
+        )
+    return jwt
+
+
 def _request(method: str, path: str, body: dict | None = None, timeout: int = 60) -> tuple[int, dict]:
     url = f"{_gateway_url()}{path}"
     data = json.dumps(body).encode("utf-8") if body is not None else None
     headers = {"X-Internal-Key": _gateway_key()}
+    if data is not None:
+        headers["Content-Type"] = "application/json"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status, json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        try:
+            return e.code, json.loads(e.read().decode("utf-8"))
+        except Exception:
+            return e.code, {"error": str(e)}
+
+
+def _jwt_request(method: str, path: str, body: dict | None = None, timeout: int = 60) -> tuple[int, dict]:
+    """Like _request but uses JWT Bearer auth instead of internal key.
+
+    Used for endpoints that require user-level auth (e.g. cover presign).
+    """
+    url = f"{_gateway_url()}{path}"
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    headers = {"Authorization": f"Bearer {_user_jwt()}"}
     if data is not None:
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
@@ -221,6 +253,33 @@ def listing_get(slug: str) -> tuple[int, dict]:
         f"/api/projects-query/by-slug/{quote(slug)}",
         timeout=10,
     )
+
+
+# ─── Cover Image Upload (GCS presigned URL) ────────────────────────
+
+def cover_presign(
+    slug: str,
+    content_type: str,
+    file_size: int,
+) -> tuple[int, dict]:
+    """POST /api/projects/cover/presign — get a GCS V4 signed URL.
+
+    Uses JWT auth (CONTAINER_JWT / USER_JWT).
+
+    Returns {"signed_url": "...", "public_url": "..."} on success.
+    The caller PUTs the raw image bytes to signed_url (with the matching
+    Content-Type header), then uses public_url as cover_url.
+
+    Args:
+        slug: project or service slug.
+        content_type: image/jpeg, image/png, or image/webp.
+        file_size: file size in bytes (max 2MB).
+    """
+    return _jwt_request("POST", "/api/projects/cover/presign", {
+        "slug": slug,
+        "content_type": content_type,
+        "file_size": file_size,
+    }, timeout=15)
 
 
 # ════════════════════════════════════════════════════════════════════════

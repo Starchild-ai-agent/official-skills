@@ -634,13 +634,8 @@
     {
       "name": "x402",
       "path": "x402/SKILL.md",
-<<<<<<< Updated upstream
-      "version": "2.19.0",
-      "description": "Monetize any user project/service with the x402 payment protocol on platform\nnetworks (Base + Monad + Robinhood; Starchild platform billing: pay_per_use /\nlifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan\nservices), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
-=======
       "version": "2.20.0",
-      "description": "Monetize any user project/service with the x402 payment protocol on platform\nnetworks (Base + Monad + Robinhood; Starchild platform billing: pay_per_use /\nlifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan\nservices), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC/USDG from other agents, or call a paid x402 endpoint."
->>>>>>> Stashed changes
+      "description": "Monetize any user project/service with the x402 payment protocol on platform\nnetworks (Base + Monad + Robinhood; Starchild platform billing: pay_per_use /\nlifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan\nservices), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {
       "name": "xai-grok-onboarding",

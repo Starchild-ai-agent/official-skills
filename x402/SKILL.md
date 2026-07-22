@@ -228,8 +228,8 @@ which chain to use — **chain selection is fully automatic** in both
    shown at probe time IS the chain actually paid). Selection order:
    - ① **Funded rails first**: live USDC balance ≥ amount on that rail
      (direct RPC, cached ~60s). A signature-friendly chain with 0 USDC is
-     never picked over a funded one — this is what previously caused
-     settlement failures (Monad ranked first but user's USDC was on Base).
+     never picked over a funded one, so settlement cannot fail for lack
+     of balance on the selected rail.
    - ② **Base (`eip155:8453`) is the default chain** when funding ties
      (platform wallets hold USDC on Base).
    - ③ Static tiebreak (`network_rank`): Solana (ed25519) → Base → other

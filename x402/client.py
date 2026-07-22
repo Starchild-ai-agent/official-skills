@@ -537,10 +537,11 @@ def network_rank(network: str, signer=None, signer_mode: str = "auto") -> int:
     routing and bazaar probe display so the rail a user sees/confirms at probe
     time is the rail actually selected for payment.
 
-    auto: ① Solana (Privy ed25519, universally accepted) → ② EVM where the
-    payer has NO 7702 delegation code (plain ECDSA, e.g. Monad) → ③ delegated
-    EVM (Kernel EIP-1271, e.g. Base) — spec-correct but some facilitators
-    reject it. eoa: EVM only; Solana is excluded (session EOA can't sign SVM).
+    auto: ① Solana (Privy ed25519, universally accepted) → ② Base (primary
+    USDC chain, most users have balance here) → ③ other EVM where the payer
+    has NO 7702 delegation code (plain ECDSA, e.g. Monad) → ④ delegated EVM
+    (Kernel EIP-1271) — spec-correct but some facilitators reject it.
+    eoa: EVM only; Solana is excluded (session EOA can't sign SVM).
     """
     net = "eip155:8453" if network == "base" else str(network or "")
     if signer_mode == "eoa":
@@ -548,15 +549,18 @@ def network_rank(network: str, signer=None, signer_mode: str = "auto") -> int:
     if net.startswith("solana"):
         return 0
     if net.startswith("eip155:"):
+        # Base is the primary USDC chain — always prefer it over other EVM.
+        if net == "eip155:8453":
+            return 1
         try:
             cid = int(net.split(":", 1)[1])
             deleg = getattr(signer, "_delegation", None)
             if deleg is not None and signer._delegation(cid) is None:
-                return 1  # no 7702 code -> plain ECDSA
+                return 2  # no 7702 code -> plain ECDSA (e.g. Monad)
         except Exception:
             pass
-        return 2  # delegated (EIP-1271) or unknown -> last resort
-    return 3
+        return 3  # delegated (EIP-1271) or unknown -> last resort
+    return 4
 
 
 _RANK_SIGNER = None
@@ -871,8 +875,8 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
             above (unchanged), which registers the SVM signer.
 
             Selection: keep prefer_network on prepaid deposit retry; else rank
-            EVM rails with network_rank (plain-ECDSA e.g. Monad before
-            delegated Base).
+            EVM rails with network_rank (Base first as primary USDC chain,
+            then plain-ECDSA e.g. Monad, then delegated EVM).
             """
             exact = [a for a in cands
                      if isinstance(a, dict) and a.get("scheme") == "exact"]

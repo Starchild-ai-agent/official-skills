@@ -65,11 +65,11 @@ PAYABLE_USDC = {
 PAYABLE_NETWORKS = set(PAYABLE_USDC.keys())
 # Static FALLBACK preference, used only when client.network_rank is
 # unavailable (outside the agent runtime). Mirrors the client's auto
-# routing: Solana → no-delegation EVM (Monad) → delegated/major EVM.
+# routing: Solana → Base (primary USDC chain) → other EVM.
 NETWORK_PREFERENCE = (
     SOLANA_MAINNET, "solana",
-    "eip155:143",
     "eip155:8453", "base",
+    "eip155:143",
     "eip155:137", "eip155:42161", "eip155:480",
     "eip155:43114", "eip155:1", "eip155:10",
     "eip155:59144", "eip155:42220", "eip155:130",

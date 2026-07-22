@@ -1,5 +1,5 @@
 ---
-name: "LayerZero Value Transfer"
+name: "layerzero-value-transfer"
 version: 1.0.0
 description: Cross-chain asset transfers via the LayerZero Value Transfer API. Quote, execute, and track bridging of 450+ tokens across 150+ chains (EVM, Solana, Aptos, TON) using OFT, Stargate, CCTP, and Aori routes. Quote-then-execute workflow with status polling.
 author: starchild

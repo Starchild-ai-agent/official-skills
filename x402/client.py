@@ -608,15 +608,44 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
         return str(getattr(r, "network", None) or
                    (r.get("network") if isinstance(r, dict) else "") or "")
 
+    def _amt_of(r):
+        for k in ("max_amount_required", "maxAmountRequired", "amount"):
+            v = r.get(k) if isinstance(r, dict) else getattr(r, k, None)
+            if v is not None:
+                try:
+                    return int(str(v))
+                except (TypeError, ValueError):
+                    pass
+        # Malformed/missing amount sorts LAST — never let a broken quote
+        # look cheapest and shadow a valid candidate (mirrors
+        # bazaar._amount_int).
+        return 1 << 62
+
     def _prefer_privy_native(version, reqs):
         if is_eoa:  # hard-filter non-EVM: pinned payer cannot sign these
             reqs = [r for r in reqs if _net_of(r).startswith("eip155:")
                     or _net_of(r) == "base"]
-        # prefer_network: user-specified chain gets rank -1 (highest priority)
         _pn = prefer_network
+        # Priority: ① explicit prefer_network ② verified-funded rails first,
+        # verified-empty last, unknown neutral (RPC flake must never block a
+        # payment) ③ Base as default chain ④ network_rank. Incident 2026-07:
+        # rank alone picked Monad while USDC sat on Base — settlement failed.
+        try:
+            from bazaar import _canon_network as _cn
+            bals = usdc_balances(
+                {_net_of(r) for r in reqs},
+                evm_addr=getattr(signer, "address", None),
+                sol_addr=(getattr(svm_signer, "address", None)
+                          if svm_signer is not None else None))
+        except Exception:
+            bals, _cn = {}, (lambda n: n)
         return sorted(reqs, key=lambda r: (
-            -1 if _pn and _net_of(r) == _pn else
-            network_rank(_net_of(r), signer=signer, signer_mode=_mode)))
+            0 if _pn and _net_of(r) == _pn else 1,
+            _rail_funded_state(_cn(_net_of(r)), _amt_of(r), bals),
+            0 if _cn(_net_of(r)) == "eip155:8453" else 1,
+            network_rank(_net_of(r), signer=signer, signer_mode=_mode),
+            _amt_of(r)))  # cheapest wins within the same rail rank
+            # (matches bazaar._sort_payable so probe display == paid rail)
 
     client.register_policy(_prefer_privy_native)
     client.register_policy(max_amount(max_amount_atomic))
@@ -889,16 +918,33 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                      or str(a.get("network") or "") == "base"]
             if not exact:
                 return None
+            def _amt(a):
+                try:
+                    return int(str(a.get("amount")))
+                except (TypeError, ValueError):
+                    return 1 << 62  # malformed sorts last, never cheapest
             if prefer_network:
                 same = [a for a in exact
                         if str(a.get("network") or "") == prefer_network]
                 if same:
-                    return same[0]
-            return sorted(
-                exact,
-                key=lambda a: network_rank(
-                    str(a.get("network") or ""), signer=signer, signer_mode=_mode),
-            )[0]
+                    return sorted(same, key=_amt)[0]  # cheapest on that chain
+            # Funded rails first, Base as default chain, then network_rank
+            # (see _prefer_privy_native for rationale — same ordering).
+            try:
+                from bazaar import _canon_network as _cn
+                bals = usdc_balances(
+                    {str(a.get("network") or "") for a in exact},
+                    evm_addr=getattr(signer, "address", None))
+            except Exception:
+                bals, _cn = {}, (lambda n: n)
+            return sorted(exact, key=lambda a: (
+                _rail_funded_state(_cn(str(a.get("network") or "")),
+                                   _amt(a), bals),
+                0 if _cn(str(a.get("network") or "")) == "eip155:8453" else 1,
+                network_rank(str(a.get("network") or ""),
+                             signer=signer, signer_mode=_mode),
+                _amt(a),  # cheapest within same rank — matches probe sort
+            ))[0]
 
         accepts = _pick_accept(accepts_list, prefer_network=prefer_network or None)
         if not accepts:
@@ -961,6 +1007,88 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 "body": _body(r2.text, full=True)}
 
     return asyncio.run(run())
+
+
+_BAL_CACHE: dict = {}   # (canonical_net, payer_addr) -> (ts, atomic_balance)
+
+
+def usdc_balances(networks, evm_addr=None, sol_addr=None,
+                  ttl: float = 60.0) -> dict:
+    """Best-effort USDC balance (atomic units) per canonical network.
+
+    None = unknown (RPC failure, unsupported network, or no address for that
+    chain type). Cached ``ttl`` seconds per (network, address) so the several
+    routing checks inside one payment share RPC round-trips. ``ttl=0`` forces
+    live reads (preflight) while still refreshing the cache for the payment
+    that follows.
+    """
+    import time as _t
+    try:
+        from bazaar import PAYABLE_USDC, _canon_network
+    except Exception:
+        return {}
+    out: dict = {}
+    for raw in networks or []:
+        net = _canon_network(str(raw or ""))
+        usdc = PAYABLE_USDC.get(net)
+        addr = sol_addr if net.startswith("solana") else evm_addr
+        if not usdc or not addr:
+            out[net] = None
+            continue
+        ck = (net, addr)
+        hit = _BAL_CACHE.get(ck)
+        if hit and ttl > 0 and _t.time() - hit[0] < ttl:
+            out[net] = hit[1]
+            continue
+        bal = None
+        try:
+            if net.startswith("solana"):
+                import httpx
+                resp = httpx.post("https://api.mainnet-beta.solana.com", json={
+                    "jsonrpc": "2.0", "id": 1,
+                    "method": "getTokenAccountsByOwner",
+                    "params": [addr,
+                               {"mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"},
+                               {"encoding": "jsonParsed"}]}, timeout=15)
+                resp.raise_for_status()
+                r = resp.json()
+                # RPC error / malformed result = UNKNOWN, never zero —
+                # a flaky RPC must not demote a funded rail.
+                if "error" in r or not isinstance(
+                        r.get("result", {}).get("value"), list):
+                    raise RuntimeError(f"solana rpc error: "
+                                       f"{str(r.get('error'))[:120]}")
+                bal = sum(int(v["account"]["data"]["parsed"]["info"]
+                              ["tokenAmount"]["amount"])
+                          for v in r["result"]["value"])
+            else:
+                from web3 import Web3
+                rpc = PrivySigner._RPC.get(int(net.split(":")[1]))
+                if rpc:
+                    w3 = Web3(Web3.HTTPProvider(
+                        rpc, request_kwargs={"timeout": 10}))
+                    data = "0x70a08231" + addr[2:].lower().rjust(64, "0")
+                    raw_b = w3.eth.call({"to": Web3.to_checksum_address(usdc),
+                                         "data": data})
+                    bal = int.from_bytes(raw_b, "big")
+        except Exception:
+            bal = None
+        if bal is not None:
+            _BAL_CACHE[ck] = (_t.time(), bal)
+        out[net] = bal
+    return out
+
+
+def _rail_funded_state(net: str, amount_atomic: int, balances: dict) -> int:
+    """Sort key for balance-aware routing: 0 = verified funded,
+    1 = unknown (RPC hiccup must NEVER block a payment), 2 = verified
+    insufficient. Incident 2026-07: static rank picked Monad while the
+    payer's USDC sat on Base — settlement failed on a zero-balance rail."""
+    b = balances.get(net)
+    if b is None:
+        return 1
+    need = amount_atomic if amount_atomic and amount_atomic > 0 else 1
+    return 0 if b >= need else 2
 
 
 def payment_preflight(amount_atomic: int, networks=None,
@@ -1068,34 +1196,13 @@ def payment_preflight(amount_atomic: int, networks=None,
         except Exception as e:
             out["warnings"].append(f"policy check failed (non-fatal): {e}")
 
-    # ③ balances per signable rail (direct RPC; no DeBank round-trip)
-    for net in nets:
-        usdc = PAYABLE_USDC[net]
-        bal = None
-        try:
-            if net.startswith("solana") and sol_addr:
-                import httpx
-                r = httpx.post("https://api.mainnet-beta.solana.com", json={
-                    "jsonrpc": "2.0", "id": 1,
-                    "method": "getTokenAccountsByOwner",
-                    "params": [sol_addr,
-                               {"mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"},
-                               {"encoding": "jsonParsed"}]}, timeout=15).json()
-                bal = sum(int(v["account"]["data"]["parsed"]["info"]
-                              ["tokenAmount"]["amount"])
-                          for v in r.get("result", {}).get("value", []))
-            elif net.startswith("eip155:") and evm_addr:
-                from web3 import Web3
-                rpc = PrivySigner._RPC.get(int(net.split(":")[1]))
-                if rpc:
-                    w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={"timeout": 10}))
-                    data = "0x70a08231" + evm_addr[2:].lower().rjust(64, "0")
-                    raw = w3.eth.call({"to": Web3.to_checksum_address(usdc),
-                                       "data": data})
-                    bal = int.from_bytes(raw, "big")
-        except Exception:
-            bal = None  # RPC hiccup — report unknown, don't block
-        out["balances"][net] = bal
+    # ③ balances per signable rail (direct RPC; no DeBank round-trip).
+    # ttl=0: preflight always reads LIVE, but refreshes the shared routing
+    # cache so the payment that follows reuses these balances for rail
+    # selection (funded-first ordering in _prefer_privy_native).
+    out["balances"] = usdc_balances(nets, evm_addr=evm_addr,
+                                    sol_addr=sol_addr, ttl=0)
+    for net, bal in out["balances"].items():
         if bal is not None and bal >= amount_atomic:
             out["funded_rails"].append(net)
 

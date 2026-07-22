@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.17.1
+version: 2.18.0
 description: |
   Monetize any user project/service with the x402 payment protocol on platform
   networks (Base + Monad; Starchild platform billing: pay_per_use / lifetime /

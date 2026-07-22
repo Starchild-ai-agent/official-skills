@@ -64,12 +64,13 @@ PAYABLE_USDC = {
 }
 PAYABLE_NETWORKS = set(PAYABLE_USDC.keys())
 # Static FALLBACK preference, used only when client.network_rank is
-# unavailable (outside the agent runtime). Mirrors the client's auto
-# routing: Solana → no-delegation EVM (Monad) → delegated/major EVM.
+# unavailable (outside the agent runtime). Base is the DEFAULT rail (where
+# platform wallets hold USDC); balance-aware routing in client.py refines
+# this order live at pay time.
 NETWORK_PREFERENCE = (
+    "eip155:8453", "base",
     SOLANA_MAINNET, "solana",
     "eip155:143",
-    "eip155:8453", "base",
     "eip155:137", "eip155:42161", "eip155:480",
     "eip155:43114", "eip155:1", "eip155:10",
     "eip155:59144", "eip155:42220", "eip155:130",
@@ -113,9 +114,22 @@ def _sort_payable(accepts: list, signer_mode: str = "auto") -> list:
     rail auto actually pays. Falls back to the static NETWORK_PREFERENCE
     when the client/signer is unavailable."""
     try:
-        from client import network_rank, rank_signer_cached
+        from client import (network_rank, rank_signer_cached,
+                            usdc_balances, _rail_funded_state)
         signer = rank_signer_cached()
+        try:
+            bals = usdc_balances(
+                {_canon_network(a.get("network")) for a in accepts},
+                evm_addr=getattr(signer, "address", None),
+                sol_addr=getattr(signer, "svm_address", None))
+        except Exception:
+            bals = {}
+        # Funded rails first → Base default → network_rank → cheapest.
+        # Matches client._prefer_privy_native so probe shows the paid rail.
         return sorted(accepts, key=lambda a: (
+            _rail_funded_state(_canon_network(a.get("network")),
+                               _amount_int(a), bals),
+            0 if _canon_network(a.get("network")) == "eip155:8453" else 1,
             network_rank(_canon_network(a.get("network")),
                          signer=signer, signer_mode=signer_mode),
             _amount_int(a)))

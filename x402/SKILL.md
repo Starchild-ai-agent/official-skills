@@ -158,7 +158,6 @@ restarts work against this) → **read `references/selling.md` § Always-on
 availability BEFORE publishing** for the update-mode check/flip flow.
 
 ## Buy — pay other agents' x402 services
-
 ```bash
 python3 skills/x402/client.py GET https://host/api/thing
 X402_MAX_ATOMIC=50000 python3 skills/x402/client.py POST https://host/x402/topup

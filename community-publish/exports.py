@@ -94,6 +94,14 @@ def _public_url_base() -> str:
     ).rstrip("/")
 
 
+def _subdomain_url(slug: str) -> str:
+    """Build the subdomain URL for a project slug.
+
+    Returns e.g. "https://my-app.community.iamstarchild.com/"
+    """
+    return f"https://{slug}.community.iamstarchild.com/"
+
+
 def _abspath(p: str) -> str:
     if os.path.isabs(p):
         return p
@@ -696,14 +704,18 @@ def publish_preview(preview_id: str, slug: str = "",
     #   (2) The full path public URL → gateway → agent should round-trip.
     sync_ok, sync_err = _notify_local_publish(int(port), preview_id)
 
-    public_url = f"{_public_url_base()}/{final_slug}"
+    # Path-based URL (used for internal verification — always works regardless
+    # of subdomain DNS config). Subdomain URL is the user-facing link.
+    path_url = f"{_public_url_base()}/{final_slug}"
+    public_url = _subdomain_url(final_slug)
 
-    # Post-flight verify: HEAD the public URL with retries. Skip if local sync
-    # failed — no point waiting 10s for something we know will 403.
+    # Post-flight verify: HEAD the path-based URL with retries. We use the
+    # path URL for verification because it's always available (subdomain
+    # routing depends on DNS + gateway code being deployed).
     verify_ok: bool | None = None
     verify_status: int | None = None
     if sync_ok:
-        verify_ok, verify_status = _verify_public_url(public_url, attempts=4, delay=2.0)
+        verify_ok, verify_status = _verify_public_url(path_url, attempts=4, delay=2.0)
 
     # If either local sync or post-flight failed, roll back the gateway
     # registration and surface a clear error. We DO NOT want a half-published
@@ -916,7 +928,7 @@ def list_in_dashboard(
     return {
         "ok": True,
         "listing": listing,
-        "url": f"{_public_url_base()}/{slug}",
+        "url": _subdomain_url(slug),
         "dashboard_url": f"{_public_url_base()}/projects",
     }
 

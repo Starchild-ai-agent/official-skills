@@ -190,7 +190,7 @@
     {
       "name": "community-publish",
       "path": "community-publish/SKILL.md",
-      "version": "0.28.1",
+      "version": "0.29.0",
       "description": "Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.\n\nUse when the user wants to share, publish, list, open-source, or monetize what they built (e.g. make this dashboard public, share my project, push to GitHub, 上架到服务市场, 上架付费服务, 提交审核)."
     },
     {
@@ -328,7 +328,7 @@
     {
       "name": "kanban",
       "path": "kanban/SKILL.md",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "Stand up a personal Kanban board and wire this agent to it, end to end.\nServe the board, publish it to a public URL, verify the connection, and hand\nthe user their live link. Each user gets their OWN board at their OWN URL —\nself-contained, no shared server, no collisions.\n\nUse when the user wants to set up / publish / deploy their Kanban board, or\nconnect their agent to it. For day-to-day task operations (create/move/list\ntasks) use the nested companion skill `kanban-agent` (in kanban_agent_skill/)\ninstead — it is auto-discovered when this skill is installed."
     },
     {
@@ -634,7 +634,7 @@
     {
       "name": "x402",
       "path": "x402/SKILL.md",
-      "version": "2.20.1",
+      "version": "2.20.2",
       "description": "Monetize any user project/service with the x402 payment protocol on platform\nnetworks (Base + Monad + Robinhood; Starchild platform billing: pay_per_use /\nlifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan\nservices), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {

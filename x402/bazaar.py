@@ -216,8 +216,15 @@ def _normalize_host(host: str) -> str:
 
 
 def _is_community_url(url: str) -> bool:
+    """Check if a URL belongs to the community gateway.
+
+    Matches both formats:
+      - Path-based:      community.iamstarchild.com/{slug}/...
+      - Subdomain-based: {slug}.community.iamstarchild.com/...
+    """
     try:
-        return _normalize_host(urlparse(url).netloc) == _COMMUNITY_HOST
+        host = _normalize_host(urlparse(url).netloc)
+        return host == _COMMUNITY_HOST or host.endswith(f".{_COMMUNITY_HOST}")
     except Exception:
         return False
 

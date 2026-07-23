@@ -81,10 +81,14 @@ HARD_ZH_RX = re.compile(r"已发布|已上线|发布成功|已更新|更新成�
 
 # Exclusion set also covers CJK curly quotes (“ ” ‘ ’) + comma/、 so a URL wrapped
 # in quotes (`已发布“…/x”`) doesn't glue the closing quote onto the captured id.
+# Match both URL formats:
+#   Path-based:      https://community.iamstarchild.com/{slug}
+#   Subdomain-based: https://{slug}.community.iamstarchild.com
 COMMUNITY_RX = re.compile(
     "https?://community\\.iamstarchild\\.com/[^\\s)\\]\"'>\u201c\u201d\u2018\u2019,\uff0c\u3001]+",
     re.I,
 )
+COMMUNITY_SUBDOMAIN_RX = re.compile(r"https?://([a-z0-9][a-z0-9-]+[a-z0-9])\.community\.iamstarchild\.com[^\s)\]\"'>]*", re.I)
 PREVIEW_RX = re.compile(r"/preview/([\w.\-]+)", re.I)
 AGENTX_RX = re.compile(r"/post/([\w\-]+)")
 
@@ -315,9 +319,20 @@ def _analyze(reply: str, tools: list, ev: dict) -> tuple | None:
     pub_ids, all_ids = _load_previews()
 
     # COMMUNITY publish claim: id must exist AND be marked published.
+    # Check both path-based and subdomain-based URLs.
     for url in COMMUNITY_RX.findall(url_scan):
         seg = re.sub(r"[?#].*$", "", url.rstrip("/").split("/")[-1])
         seg = seg.strip("\"'\u201c\u201d\u2018\u2019.,\uff0c\u3002\u3001 ")
+        if seg and seg not in all_ids and seg not in pub_ids:
+            return ("Claimed published but not in the registry. Run publish_preview, "
+                    "use the URL it returns", url)
+        if seg in all_ids and seg not in pub_ids:
+            return ("This preview exists but isn't published yet. Publish it first", url)
+
+    # Subdomain-based community URLs: {slug}.community.iamstarchild.com
+    for m in COMMUNITY_SUBDOMAIN_RX.finditer(url_scan):
+        seg = m.group(1)
+        url = m.group(0)
         if seg and seg not in all_ids and seg not in pub_ids:
             return ("Claimed published but not in the registry. Run publish_preview, "
                     "use the URL it returns", url)

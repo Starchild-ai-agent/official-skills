@@ -51,7 +51,7 @@ def _candidates() -> list:
         out.append(DISTRIBUTED_BOARD_URL.rstrip("/"))
     uid = os.environ.get("USER_ID")
     if uid:
-        out.append(f"https://community.iamstarchild.com/{uid}-{DEFAULT_SLUG}")
+        out.append(f"https://{uid}-{DEFAULT_SLUG}.community.iamstarchild.com")
     out.append("http://localhost:5555")
     return out
 
@@ -126,7 +126,7 @@ def kb_use_board(url: str) -> dict:
 
     Use this to work with a board that isn't your own — e.g. a shared/team board,
     or another agent's published board for collaboration. Pass the full public URL
-    (e.g. "https://community.iamstarchild.com/{THEIR_USER_ID}-kanban-board"). Call
+    (e.g. "https://{THEIR_USER_ID}-kanban-board.community.iamstarchild.com"). Call
     kb_reset_board() to return to automatic resolution.
     """
     global _RESOLVED_BASE
@@ -173,7 +173,7 @@ def kb_health() -> dict:
         "resolved_url": base,
         "resolved_via": how,
         "user_id": uid,
-        "expected_community_url": f"https://community.iamstarchild.com/{uid}-{DEFAULT_SLUG}" if uid else None,
+        "expected_community_url": f"https://{uid}-{DEFAULT_SLUG}.community.iamstarchild.com/" if uid else None,
         "board_count": len(boards) if ok else None,
         "candidates": checks,
         "hint": (
@@ -498,7 +498,7 @@ def kb_my_board_url() -> str | None:
     uid = os.environ.get("USER_ID")
     if not uid:
         return None
-    return f"https://community.iamstarchild.com/{uid}-{DEFAULT_SLUG}"
+    return f"https://{uid}-{DEFAULT_SLUG}.community.iamstarchild.com/"
 
 
 def kb_export_for_sharing(dest: str = None, board_url: str = None) -> dict:

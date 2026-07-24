@@ -334,8 +334,8 @@
     {
       "name": "layerzero-value-transfer",
       "path": "layerzero-value-transfer/SKILL.md",
-      "version": "1.0.0",
-      "description": "Cross-chain asset transfers via the LayerZero Value Transfer API. Quote, execute, and track bridging of 450+ tokens across 150+ chains (EVM, Solana, Aptos, TON) using OFT, Stargate, CCTP, and Aori routes. Quote-then-execute workflow with status polling."
+      "version": "1.0.1",
+      "description": "Cross-chain asset transfers via the LayerZero Value Transfer API. Quote, execute, and track bridging of 850 tokens across 170 chains (EVM, Solana, Aptos, TON) using OFT, Stargate, CCTP, and Aori routes. Quote-then-execute workflow with status polling."
     },
     {
       "name": "longbridge",

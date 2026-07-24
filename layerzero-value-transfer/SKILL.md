@@ -1,7 +1,7 @@
 ---
 name: "layerzero-value-transfer"
-version: 1.0.0
-description: Cross-chain asset transfers via the LayerZero Value Transfer API. Quote, execute, and track bridging of 450+ tokens across 150+ chains (EVM, Solana, Aptos, TON) using OFT, Stargate, CCTP, and Aori routes. Quote-then-execute workflow with status polling.
+version: 1.0.1
+description: Cross-chain asset transfers via the LayerZero Value Transfer API. Quote, execute, and track bridging of 850 tokens across 170 chains (EVM, Solana, Aptos, TON) using OFT, Stargate, CCTP, and Aori routes. Quote-then-execute workflow with status polling.
 author: starchild
 tags: [layerzero, bridge, cross-chain, defi, stargate, cctp, oft]
 metadata: {"starchild":{"emoji":"🌐","requires":{"bins":["curl"]}}}
@@ -9,7 +9,7 @@ metadata: {"starchild":{"emoji":"🌐","requires":{"bins":["curl"]}}}
 
 # LayerZero Value Transfer API
 
-Unified REST API for moving assets across 150+ blockchains. One endpoint consolidates
+Unified REST API for moving assets across 170 blockchains. One endpoint consolidates
 multiple bridge/swap protocols — you get a quote, sign the returned transactions, and
 poll for completion. Gas is paid on the source chain only.
 

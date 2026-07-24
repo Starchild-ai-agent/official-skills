@@ -1,6 +1,6 @@
 ---
 name: browser-preview
-version: 1.1.1
+version: 1.1.2
 description: |
   Preview panel and iframe diagnostics: registry, ports, paths, blank screens.
 
@@ -22,7 +22,7 @@ You already know `preview_serve` and `preview_stop`. This skill fills the gap: w
 
 ## What is the Preview Panel
 
-The frontend has a right-side panel with three tabs: **Files**, **Preview**, and **Jobs**. The Preview tab renders preview URLs inside an iframe. When you call `preview_serve`, the frontend automatically opens a Preview tab loading that URL.
+The frontend has a right-side panel with two tabs: **Files** and **Preview**. The Preview tab renders preview URLs inside an iframe. When you call `preview_serve`, the frontend automatically opens a Preview tab loading that URL. (Jobs are now managed in a standalone modal accessible from the left sidebar, not in the right panel.)
 
 Key facts:
 - Each `preview_serve` call creates one Preview tab

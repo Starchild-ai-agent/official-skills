@@ -112,7 +112,7 @@
     {
       "name": "browser-preview",
       "path": "browser-preview/SKILL.md",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "description": "Preview panel and iframe diagnostics: registry, ports, paths, blank screens.\n\nUse when a preview tab is broken or missing (e.g. white screen, tab disappeared, 404 on assets, preview not loading, list running services)."
     },
     {

@@ -239,13 +239,7 @@ details.manual .mbody{padding:0 14px 14px;display:grid;grid-template-columns:rep
         <span>Strategy backtest result — <b id="stgres-name" class="mono" style="font-size:11px">—</b></span>
         <span><span class="link" onclick="showCode(window._stgresId)">View code</span>　<span class="link" onclick="document.getElementById('stgres').style.display='none'">Collapse ✕</span></span>
       </div>
-      <div class="metrics" style="padding:10px 14px">
-        <div class="mcell"><div class="ml">Period return</div><div class="mv mono" id="sr-ret">—</div><div class="ms" id="sr-ret-s">—</div></div>
-        <div class="mcell"><div class="ml">Benchmark return</div><div class="mv mono" id="sr-bench">—</div><div class="ms">buy & hold</div></div>
-        <div class="mcell"><div class="ml">Annualized</div><div class="mv mono" id="sr-ann">—</div><div class="ms">Annualized</div></div>
-        <div class="mcell"><div class="ml">Sharpe</div><div class="mv mono" id="sr-sharpe">—</div><div class="ms">Risk-adjusted</div></div>
-        <div class="mcell"><div class="ml">Max drawdown</div><div class="mv mono" id="sr-mdd">—</div><div class="ms">Max Drawdown</div></div>
-      </div>
+      <div class="metrics" id="sr-metrics" style="padding:10px 14px"></div>
       <div style="padding:0 14px 12px;font-size:11px;color:var(--dim)" class="mono" id="sr-meta">—</div>
       <div style="padding:0 14px 14px">
         <div style="font-size:10px;color:var(--dim);margin-bottom:4px" class="mono" id="sr-curve-note">Loading equity curve…</div>
@@ -468,19 +462,41 @@ function showCode(rid){
       <span class="link" onclick="document.getElementById('code-overlay').remove()">Close ✕</span></div>
     <pre class="mono" style="font-size:11px;white-space:pre-wrap;margin:0">${esc(code)}</pre></div>`;
 }
+// Strategy metrics: render only the keys the backend actually returned.
+// Missing metrics are hidden instead of showing an em-dash placeholder.
+const SR_SPEC=[
+  ['total_return','Period return','',pctS,1],
+  ['benchmark_return','Benchmark return','buy & hold',pctS,1],
+  ['annual_return','Annualized','Annualized',pctS,1],
+  ['benchmark_annual_return','Benchmark ann.','Benchmark',pctS,1],
+  ['sharpe','Sharpe','Risk-adjusted',v=>fmtn(v,2),0],
+  ['sortino','Sortino','Downside-adjusted',v=>fmtn(v,2),0],
+  ['max_drawdown','Max drawdown','Max Drawdown',pctS,1],
+  ['volatility','Volatility','Annualized',pctS,0],
+  ['downside_risk','Downside risk','Downside Risk',pctS,0],
+  ['alpha','Alpha','Excess skill',v=>fmtn(v,3),1],
+  ['beta','Beta','Market exposure',v=>fmtn(v,3),0],
+  ['information_ratio','Information ratio','Excess stability',v=>fmtn(v,2),0],
+  ['tracking_error','Tracking error','Tracking Error',v=>fmtn(v,3),0],
+  ['calmar','Calmar','Annual / drawdown',v=>fmtn(v,2),0],
+];
+function renderStgMetrics(m){
+  const box=document.getElementById('sr-metrics');
+  const cells=SR_SPEC.filter(([k])=>m[k]!=null).map(([k,label,sub,fmt,signed])=>{
+    let s=sub;
+    if(k==='total_return'&&m.trade_count!=null)s='Fills '+m.trade_count;
+    return `<div class="mcell"><div class="ml">${label}</div>`+
+      `<div class="mv mono ${signed?sign(m[k]):''}">${fmt(m[k])}</div>`+
+      (s?`<div class="ms">${s}</div>`:'')+`</div>`;
+  });
+  box.innerHTML=cells.length?cells.join(''):'<div class="empty" style="padding:12px">This backtest returned no metrics</div>';
+}
 function loadStgBt(rid){
   const h=btHist.find(x=>x.run_id===rid);if(!h)return;
   const m=h.metrics||{},p=h.params||{};
   window._stgresId=rid;
-  const set=(id,v,cls)=>{const e=document.getElementById(id);e.innerText=v==null?'—':v;if(cls!=null)e.className='mv mono '+cls;};
-  set('stgres-name',p.name||p.formula||rid.slice(0,12));
-  const ret=m.total_return!=null?m.total_return:m.annual_return;
-  set('sr-ret',pctS(ret),sign(ret));
-  document.getElementById('sr-ret-s').innerText=m.trade_count!=null?('Fills '+m.trade_count):'—';
-  set('sr-bench',pctS(m.benchmark_return),sign(m.benchmark_return));
-  set('sr-ann',pctS(m.annual_return),sign(m.annual_return));
-  set('sr-sharpe',m.sharpe!=null?fmtn(m.sharpe,2):(m.information_ratio!=null?fmtn(m.information_ratio,2)+' (IR)':'—'));
-  set('sr-mdd',pctS(m.max_drawdown),sign(m.max_drawdown));
+  document.getElementById('stgres-name').innerText=p.name||p.formula||rid.slice(0,12);
+  renderStgMetrics(m);
   document.getElementById('sr-meta').innerText=`${(p.market||'').toUpperCase()} · ${p.start_date||'?'} ~ ${p.end_date||'?'} · Capital ${p.start_capital||'—'} · ${h.ts||''} · Source ${h.source==='agent'?'Agent':'manual'}`;
   document.getElementById('stgres').style.display='block';
   loadEquityCurve(rid);

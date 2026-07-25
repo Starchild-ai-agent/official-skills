@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TQX Studio · 选择你的风格</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0f12;color:#d7dbe2;font-family:'Inter',-apple-system,'Segoe UI',sans-serif;padding:36px 28px;font-size:13px}
+h1{font-size:18px;font-weight:700;margin-bottom:6px}
+.sub{color:#7b8393;font-size:12px;margin-bottom:28px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(430px,1fr));gap:22px;max-width:1500px}
+.opt{border-radius:10px;overflow:hidden;border:1px solid #23262e;transition:border-color .2s}
+.opt:hover{border-color:#4a5568}
+.opt-head{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;background:#14161b}
+.opt-head b{font-size:13px}
+.opt-head .tagline{font-size:11px;color:#7b8393;margin-top:2px}
+.pick{font-size:11px;color:#8fb3ff;border:1px solid #31415e;padding:4px 12px;border-radius:5px}
+/* ============ mock common ============ */
+.mock{padding:14px;font-size:10px;pointer-events:none;user-select:none}
+.m-top{display:flex;justify-content:space-between;align-items:center;padding:0 0 10px}
+.m-body{display:grid;grid-template-columns:110px 1fr;gap:10px}
+.m-rail{padding:9px;display:flex;flex-direction:column;gap:6px}
+.m-main{display:flex;flex-direction:column;gap:8px}
+.m-cells{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.m-cell{padding:7px 8px}
+.m-cell .l{font-size:7px;opacity:.55;text-transform:uppercase;letter-spacing:.06em}
+.m-cell .v{font-size:13px;font-weight:600;margin-top:2px;font-family:ui-monospace,monospace}
+.m-chart{height:74px;position:relative;overflow:hidden}
+.m-chart svg{position:absolute;inset:0;width:100%;height:100%}
+.m-table{display:flex;flex-direction:column}
+.m-tr{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;padding:4px 8px;font-family:ui-monospace,monospace;font-size:8.5px}
+.m-in{height:14px;border-radius:2px}
+.m-btn{height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;letter-spacing:.08em}
+.m-lbl{font-size:7px;opacity:.5;text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+
+/* ============ A: Bloomberg Terminal ============ */
+.tA .mock{background:#000;color:#c8c8c8}
+.tA .m-top{border-bottom:1px solid #222}
+.tA .brand{color:#ff9900;font-weight:700;font-family:ui-monospace,monospace;letter-spacing:.1em}
+.tA .m-rail{background:#0a0a0a;border:1px solid #222}
+.tA .m-in{background:#111;border:1px solid #333}
+.tA .m-btn{background:#ff9900;color:#000}
+.tA .m-cell{background:#0a0a0a;border:1px solid #222}
+.tA .m-cell .v{color:#ffb84d}
+.tA .m-chart{background:#0a0a0a;border:1px solid #222}
+.tA .m-tr{border-bottom:1px solid #1a1a1a}
+.tA .m-tr.h{color:#ff9900;font-weight:700}
+.tA .up{color:#00d26a}.tA .dn{color:#ff3b3b}
+
+/* ============ B: Institutional Slate ============ */
+.tB .mock{background:#11141a;color:#c9ced8}
+.tB .brand{color:#e8eaf0;font-weight:600;letter-spacing:.05em}
+.tB .brand i{color:#4d7cfe;font-style:normal}
+.tB .m-rail{background:#161a22;border:1px solid #232936;border-radius:6px}
+.tB .m-in{background:#0d1016;border:1px solid #2a3140}
+.tB .m-btn{background:#4d7cfe;color:#fff;border-radius:4px}
+.tB .m-cell{background:#161a22;border:1px solid #232936;border-radius:6px}
+.tB .m-cell .v{color:#eef1f6}
+.tB .m-chart{background:#161a22;border:1px solid #232936;border-radius:6px}
+.tB .m-tr{border-bottom:1px solid #1d222c}
+.tB .m-tr.h{color:#6b7484}
+.tB .up{color:#2ecc80}.tB .dn{color:#f4525f}
+
+/* ============ C: Neon Ice ============ */
+.tC .mock{background:#05080d;color:#bfd4e4}
+.tC .brand{color:#38e1ff;font-family:ui-monospace,monospace;font-weight:700;letter-spacing:.12em;text-shadow:0 0 8px rgba(56,225,255,.5)}
+.tC .m-rail{background:#080d15;border:1px solid #12293c}
+.tC .m-in{background:#060a10;border:1px solid #163349}
+.tC .m-btn{background:transparent;border:1px solid #38e1ff;color:#38e1ff;box-shadow:0 0 10px rgba(56,225,255,.25) inset}
+.tC .m-cell{background:#080d15;border:1px solid #12293c;border-left:2px solid #38e1ff}
+.tC .m-cell .v{color:#7deaff;text-shadow:0 0 6px rgba(56,225,255,.4)}
+.tC .m-chart{background:#080d15;border:1px solid #12293c}
+.tC .m-tr{border-bottom:1px solid #0d1a28}
+.tC .m-tr.h{color:#3d6f92}
+.tC .up{color:#27f5a4}.tC .dn{color:#ff5470}
+
+/* ============ D: Paper Light ============ */
+.tD .mock{background:#f6f5f1;color:#2b2e35}
+.tD .brand{color:#1a1c22;font-weight:700;letter-spacing:.03em}
+.tD .brand i{color:#c0392b;font-style:normal}
+.tD .m-rail{background:#fff;border:1px solid #e2e0d8;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.tD .m-in{background:#f6f5f1;border:1px solid #ddd9cf}
+.tD .m-btn{background:#1a1c22;color:#fff;border-radius:4px}
+.tD .m-cell{background:#fff;border:1px solid #e2e0d8;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.tD .m-cell .v{color:#14161a}
+.tD .m-chart{background:#fff;border:1px solid #e2e0d8;border-radius:6px}
+.tD .m-tr{border-bottom:1px solid #eceae3}
+.tD .m-tr.h{color:#8a8778}
+.tD .up{color:#1e8e5a}.tD .dn{color:#c0392b}
+
+/* ============ E: Matrix Ops ============ */
+.tE .mock{background:#020503;color:#9fd8ab;font-family:ui-monospace,monospace}
+.tE .brand{color:#22ff88;font-weight:700;letter-spacing:.14em;text-shadow:0 0 10px rgba(34,255,136,.45)}
+.tE .m-rail{background:#04120a;border:1px solid #0f3320}
+.tE .m-in{background:#031008;border:1px solid #11402a}
+.tE .m-btn{background:#0d2818;border:1px solid #22ff88;color:#22ff88}
+.tE .m-cell{background:#04120a;border:1px solid #0f3320}
+.tE .m-cell .v{color:#5cffab}
+.tE .m-chart{background:#04120a;border:1px solid #0f3320}
+.tE .m-tr{border-bottom:1px solid #07200f}
+.tE .m-tr.h{color:#2b7a4d}
+.tE .up{color:#22ff88}.tE .dn{color:#ff5959}
+</style>
+</head>
+<body>
+<h1>TQX Studio · 选一个你喜欢的风格</h1>
+<div class="sub">同一个界面 · 五种主题小样 —— 告诉我编号（A–E），我立刻整站换肤。也可以混搭：比如"B 的布局 + A 的橙色数字"。</div>
+<div class="grid">
+
+<!-- A -->
+<div class="opt tA">
+  <div class="opt-head"><div><b>A · Bloomberg Terminal</b><div class="tagline">纯黑 + 琥珀橙文字 · 老牌终端机质感 · 无光晕无纹理</div></div><span class="pick">选 A</span></div>
+  <div class="mock">
+    <div class="m-top"><span class="brand">TQX&gt;QUANT</span><span style="color:#00d26a">● LIVE</span></div>
+    <div class="m-body">
+      <div class="m-rail"><div class="m-lbl">FACTOR</div><div class="m-in"></div><div class="m-in"></div><div class="m-in" style="height:24px"></div><div class="m-btn">RUN</div></div>
+      <div class="m-main">
+        <div class="m-cells">
+          <div class="m-cell"><div class="l">IC MEAN</div><div class="v dn">-0.0191</div></div>
+          <div class="m-cell"><div class="l">IC_IR</div><div class="v">-0.808</div></div>
+          <div class="m-cell"><div class="l">T-STAT</div><div class="v">-3.61</div></div>
+          <div class="m-cell"><div class="l">SHARPE</div><div class="v up">3.97</div></div>
+        </div>
+        <div class="m-chart"><svg viewBox="0 0 300 74" preserveAspectRatio="none"><polyline points="0,60 40,55 80,48 120,50 160,38 200,30 240,24 300,12" fill="none" stroke="#ff9900" stroke-width="1.5"/><polyline points="0,62 40,60 80,59 120,61 160,58 200,57 240,58 300,55" fill="none" stroke="#555" stroke-width="1"/></svg></div>
+        <div class="m-table">
+          <div class="m-tr h"><span>SYMBOL</span><span>FACTOR</span><span>GRP</span><span>ACT</span></div>
+          <div class="m-tr"><span>MNDR.NB</span><span class="up">18.97</span><span>G1</span><span style="color:#ff9900">BUY</span></div>
+          <div class="m-tr"><span>AAPL.US</span><span class="up">0.041</span><span>G1</span><span style="color:#ff9900">BUY</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- B -->
+<div class="opt tB">
+  <div class="opt-head"><div><b>B · Institutional Slate</b><div class="tagline">深蓝灰 + 电光蓝点缀 · 现代机构风 · 圆角卡片 · 干净克制</div></div><span class="pick">选 B</span></div>
+  <div class="mock">
+    <div class="m-top"><span class="brand">TQX <i>Quant Studio</i></span><span style="color:#2ecc80;font-size:8px">● CONNECTED</span></div>
+    <div class="m-body">
+      <div class="m-rail"><div class="m-lbl">因子回测</div><div class="m-in"></div><div class="m-in"></div><div class="m-in" style="height:24px"></div><div class="m-btn">运行回测</div></div>
+      <div class="m-main">
+        <div class="m-cells">
+          <div class="m-cell"><div class="l">IC 均值</div><div class="v dn">-0.0191</div></div>
+          <div class="m-cell"><div class="l">IC_IR</div><div class="v">-0.808</div></div>
+          <div class="m-cell"><div class="l">t 统计量</div><div class="v">-3.61</div></div>
+          <div class="m-cell"><div class="l">夏普</div><div class="v up">3.97</div></div>
+        </div>
+        <div class="m-chart"><svg viewBox="0 0 300 74" preserveAspectRatio="none"><polyline points="0,60 40,55 80,48 120,50 160,38 200,30 240,24 300,12" fill="none" stroke="#4d7cfe" stroke-width="1.5"/><polyline points="0,62 40,60 80,59 120,61 160,58 200,57 240,58 300,55" fill="none" stroke="#3a4152" stroke-width="1"/></svg></div>
+        <div class="m-table">
+          <div class="m-tr h"><span>代码</span><span>因子值</span><span>分组</span><span>操作</span></div>
+          <div class="m-tr"><span>MNDR.NB</span><span class="up">18.97</span><span>组1</span><span style="color:#4d7cfe">下单</span></div>
+          <div class="m-tr"><span>AAPL.US</span><span class="up">0.041</span><span>组1</span><span style="color:#4d7cfe">下单</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- C -->
+<div class="opt tC">
+  <div class="opt-head"><div><b>C · Neon Ice</b><div class="tagline">极暗蓝黑 + 冰蓝霓虹 · 赛博但冷色调 · 微光晕</div></div><span class="pick">选 C</span></div>
+  <div class="mock">
+    <div class="m-top"><span class="brand">TQX::QUANT</span><span style="color:#27f5a4;font-size:8px">◉ ONLINE</span></div>
+    <div class="m-body">
+      <div class="m-rail"><div class="m-lbl">FACTOR.RUN</div><div class="m-in"></div><div class="m-in"></div><div class="m-in" style="height:24px"></div><div class="m-btn">EXECUTE</div></div>
+      <div class="m-main">
+        <div class="m-cells">
+          <div class="m-cell"><div class="l">IC MEAN</div><div class="v dn">-0.0191</div></div>
+          <div class="m-cell"><div class="l">IC_IR</div><div class="v">-0.808</div></div>
+          <div class="m-cell"><div class="l">T-STAT</div><div class="v">-3.61</div></div>
+          <div class="m-cell"><div class="l">SHARPE</div><div class="v up">3.97</div></div>
+        </div>
+        <div class="m-chart"><svg viewBox="0 0 300 74" preserveAspectRatio="none"><polyline points="0,60 40,55 80,48 120,50 160,38 200,30 240,24 300,12" fill="none" stroke="#38e1ff" stroke-width="1.5"/><polyline points="0,62 40,60 80,59 120,61 160,58 200,57 240,58 300,55" fill="none" stroke="#1d3d54" stroke-width="1"/></svg></div>
+        <div class="m-table">
+          <div class="m-tr h"><span>SYMBOL</span><span>FACTOR</span><span>GRP</span><span>ACT</span></div>
+          <div class="m-tr"><span>MNDR.NB</span><span class="up">18.97</span><span>G1</span><span style="color:#38e1ff">TRADE</span></div>
+          <div class="m-tr"><span>AAPL.US</span><span class="up">0.041</span><span>G1</span><span style="color:#38e1ff">TRADE</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- D -->
+<div class="opt tD">
+  <div class="opt-head"><div><b>D · Paper Light</b><div class="tagline">米白亮色 + 黑红点缀 · 财经报纸质感 · 唯一亮色方案</div></div><span class="pick">选 D</span></div>
+  <div class="mock">
+    <div class="m-top"><span class="brand">TQX <i>Quant</i> Studio</span><span style="color:#1e8e5a;font-size:8px">● 已连接</span></div>
+    <div class="m-body">
+      <div class="m-rail"><div class="m-lbl">因子回测</div><div class="m-in"></div><div class="m-in"></div><div class="m-in" style="height:24px"></div><div class="m-btn">运行回测</div></div>
+      <div class="m-main">
+        <div class="m-cells">
+          <div class="m-cell"><div class="l">IC 均值</div><div class="v dn">-0.0191</div></div>
+          <div class="m-cell"><div class="l">IC_IR</div><div class="v">-0.808</div></div>
+          <div class="m-cell"><div class="l">t 统计量</div><div class="v">-3.61</div></div>
+          <div class="m-cell"><div class="l">夏普</div><div class="v up">3.97</div></div>
+        </div>
+        <div class="m-chart"><svg viewBox="0 0 300 74" preserveAspectRatio="none"><polyline points="0,60 40,55 80,48 120,50 160,38 200,30 240,24 300,12" fill="none" stroke="#1a1c22" stroke-width="1.5"/><polyline points="0,62 40,60 80,59 120,61 160,58 200,57 240,58 300,55" fill="none" stroke="#c9c5b8" stroke-width="1"/></svg></div>
+        <div class="m-table">
+          <div class="m-tr h"><span>代码</span><span>因子值</span><span>分组</span><span>操作</span></div>
+          <div class="m-tr"><span>MNDR.NB</span><span class="up">18.97</span><span>组1</span><span style="color:#c0392b">下单</span></div>
+          <div class="m-tr"><span>AAPL.US</span><span class="up">0.041</span><span>组1</span><span style="color:#c0392b">下单</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- E -->
+<div class="opt tE">
+  <div class="opt-head"><div><b>E · Matrix Ops</b><div class="tagline">纯黑 + 荧光绿 · 黑客终端 · 全等宽字体</div></div><span class="pick">选 E</span></div>
+  <div class="mock">
+    <div class="m-top"><span class="brand">[TQX::QUANT]</span><span style="color:#22ff88;font-size:8px">▲ ACTIVE</span></div>
+    <div class="m-body">
+      <div class="m-rail"><div class="m-lbl">&gt; factor</div><div class="m-in"></div><div class="m-in"></div><div class="m-in" style="height:24px"></div><div class="m-btn">&gt; RUN_</div></div>
+      <div class="m-main">
+        <div class="m-cells">
+          <div class="m-cell"><div class="l">ic_mean</div><div class="v dn">-0.0191</div></div>
+          <div class="m-cell"><div class="l">ic_ir</div><div class="v">-0.808</div></div>
+          <div class="m-cell"><div class="l">t_stat</div><div class="v">-3.61</div></div>
+          <div class="m-cell"><div class="l">sharpe</div><div class="v up">3.97</div></div>
+        </div>
+        <div class="m-chart"><svg viewBox="0 0 300 74" preserveAspectRatio="none"><polyline points="0,60 40,55 80,48 120,50 160,38 200,30 240,24 300,12" fill="none" stroke="#22ff88" stroke-width="1.5"/><polyline points="0,62 40,60 80,59 120,61 160,58 200,57 240,58 300,55" fill="none" stroke="#134d2c" stroke-width="1"/></svg></div>
+        <div class="m-table">
+          <div class="m-tr h"><span>symbol</span><span>factor</span><span>grp</span><span>act</span></div>
+          <div class="m-tr"><span>MNDR.NB</span><span class="up">18.97</span><span>g1</span><span style="color:#22ff88">buy</span></div>
+          <div class="m-tr"><span>AAPL.US</span><span class="up">0.041</span><span>g1</span><span style="color:#22ff88">buy</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,10 +1,10 @@
 ---
 name: tqx-quant
-version: 2.3.3
+version: 2.3.4
 description: |
-  TQX (tqx.trade) HK/US stock quant: factor analysis, strategy backtests, and agent-driven paper trading via tqx-cli.
+  TQX (tqx.trade) HK/US stock quant: factor analysis, strategy backtests, and agent-driven trading (paper or live) via the TQX CLIs.
 
-  Use when the user wants to run factor IC/IR analysis, backtest a Python trading strategy on Hong Kong or US stocks, or set up agent-automated trading (e.g. "backtest a moving-average strategy on AAPL", "analyze a momentum factor on HK stocks", "let the agent trade my paper account").
+  Use when the user wants to run factor IC/IR analysis, backtest a Python trading strategy on Hong Kong or US stocks, or set up agent-automated trading on a paper or live account (e.g. "backtest a moving-average strategy on AAPL", "analyze a momentum factor on HK stocks", "let the agent trade my TQX account", "join the TQX trading competition").
 author: starchild
 tags: [quant, backtest, factor-analysis, stocks, tqx, trading]
 ---
@@ -35,7 +35,9 @@ TQX publishes two official skills. Fetch the raw URLs directly (the repo UI is a
 
 ## User onboarding (first-time setup, ~3 minutes)
 
-1. **Register** at https://www.tqx.trade (email signup). A PAPER (simulation) account is provisioned automatically — all workflows below are safe to run on it.
+1. **Register** at https://www.tqx.trade (email signup). A PAPER (simulation) account is provisioned automatically — all workflows below are safe to run on it. Paper and live are the SAME API: `tqx trading account` reports `"mode": "PAPER"` or `"mode": "LIVE"`, and every command (`positions`, `orders place|modify|cancel`, `trades`) is identical on both. Switching to real money is an account-level change on TQX, not a different code path — which is exactly why order-size caps and the human-approval rule below matter.
+
+   **Trading competition:** TQX runs an agent trading competition — entry and rules at https://luma.com/dawwrdxk?tk=adzfZA. Competition accounts are created from the same dashboard (https://www.tqx.trade/hk/competition-manage?catalog=2), which is also where the `TQX_API_KEY` for the trading CLI is issued.
 2. **Collect credentials securely**: agents must use `request_env_input` for `TQX_EMAIL` and `TQX_PASSWORD` — never ask for credentials in chat.
 3. **Install + login + verify**:
 
@@ -204,7 +206,7 @@ Factor mode is whole-market cross-sectional only (`--market hk|us`) — it CANNO
 
 Use the strategy code contract in §2 verbatim — it IS the template. Change `context.symbol` and the signal logic only. Keep the None-bar guard and dynamic account discovery.
 
-### T3 — Agent-driven automated trading loop (paper account)
+### T3 — Agent-driven automated trading loop
 
 Pattern verified over a 10-round live run (~21 min, end-to-end):
 
@@ -218,7 +220,7 @@ loop every N minutes:
 ```
 
 Hard rules for automation:
-- **PAPER account only** until the user explicitly approves real trading; cap order size during development.
+- **PAPER account by default.** Live trading uses the identical command surface, so nothing in the code stops a live order — only your gating does. Require an explicit user approval before pointing the loop at a live account, keep a hard order-size cap, and always pass `--idempotencyKey` so a retry can never double-fill.
 - **Journal every decision** (JSONL is enough) — users must be able to audit why each trade happened.
 - **Re-login on ANY auth-ish error string** (see token gotcha above); a mid-loop token expiry must self-heal, not kill the loop.
 - **Check compute balance before each backtest-class call** to avoid silent overdraft.
@@ -234,7 +236,8 @@ A complete, tested web workbench ships with this skill — do NOT build a dashbo
 | `index.html` | Single-file frontend: factor analysis, backtest submit/history, positions, agent decision timeline |
 | `agent.py` | Agent trading loop (LLM via `proxied_post` + tool calls), JSONL decision journal |
 | `backtests.py` / `strategies.py` / `journal.py` | Disk persistence modules (see data spec below) |
-| `styles/index.html` | Alternate theme variant for user selection |
+
+**UI language:** the template ships English-only. Any Chinese you see at runtime comes from the TQX API itself (metric key names, error strings) — do not translate those, they are matched against.
 
 **Run:** `python3 server.py` from the studio dir (background), then `preview(action="serve")` on it. Credentials come from `TQX_EMAIL` / `TQX_PASSWORD` env vars (collect via secure input — never hardcode).
 

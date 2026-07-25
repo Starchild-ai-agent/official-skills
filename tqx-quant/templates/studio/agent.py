@@ -403,7 +403,7 @@ TOOLS_SCHEMA = [
             "start_date": {"type": "string", "description": "YYYYMMDD"},
             "end_date": {"type": "string", "description": "YYYYMMDD"},
             "start_capital": {"type": "number", "description": "Initial capital, e.g. 1000000"},
-            "commission_rate": {"type": "number", "description": "e.g. 0.0003 for 万三"},
+            "commission_rate": {"type": "number", "description": "e.g. 0.0003 = 3 bps"},
             "slippage": {"type": "number", "description": "e.g. 0.001"},
             "frequency": {"type": "string", "enum": ["1d", "1M"], "description": "Rebalance frequency: daily or monthly"},
             "name": {"type": "string"}

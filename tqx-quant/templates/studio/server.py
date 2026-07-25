@@ -110,8 +110,8 @@ class TQXHandler(http.server.SimpleHTTPRequestHandler):
 
         if parsed.path == '/api/accounts':
             self._send_json({"items": [
-                {"id": "paper", "label": "仿真盘 PAPER · account 517", "active": True},
-                {"id": "live", "label": "真实盘（未接入）", "active": False, "disabled": True},
+                {"id": "paper", "label": "PAPER · simulated account", "active": True},
+                {"id": "live", "label": "LIVE · same API, enabled on the TQX account", "active": False},
             ]})
             return
 
@@ -126,6 +126,42 @@ class TQXHandler(http.server.SimpleHTTPRequestHandler):
             market = query.get('market', ['us'])[0]
             res = self._run_cmd(["tqx-cli", "--json", "strategy_list", "--market", market])
             self._send_json(res)
+            return
+
+        if parsed.path == '/api/backtests/curve':
+            run_id = query.get('run_id', [''])[0]
+            if not run_id:
+                self._send_json({"error": "missing run_id"}, 400)
+                return
+            import backtests
+            cached = backtests.load_curve(run_id)
+            if cached and cached.get('points'):
+                self._send_json({"ok": True, "cached": True, "points": cached['points']})
+                return
+            bid = backtests.raw_backtest_id(run_id)
+            pts = []
+            if bid:
+                load_env(); sync_tqx_config(); self._ensure_research_login()
+                res = self._run_cmd(["tqx-cli", "--json", "backtest_result", str(bid),
+                                     "--section", "profit", "--page-size", "1000", "--all-pages"])
+                prof = ((res.get('results') or {}).get('profit') or {})
+                pts = backtests.build_curve(prof.get('items'))
+                if not pts and prof.get('error'):
+                    # token may have just expired -> force re-login once
+                    self._ensure_research_login(force=True)
+                    res = self._run_cmd(["tqx-cli", "--json", "backtest_result", str(bid),
+                                         "--section", "profit", "--page-size", "1000", "--all-pages"])
+                    prof = ((res.get('results') or {}).get('profit') or {})
+                    pts = backtests.build_curve(prof.get('items'))
+            if pts:
+                try:
+                    backtests.save_curve(run_id, pts)
+                except Exception:
+                    pass
+                self._send_json({"ok": True, "cached": False, "points": pts})
+            else:
+                self._send_json({"ok": False, "points": [],
+                                 "error": "no profit series for this run"})
             return
 
         if parsed.path == '/api/factor/result':
@@ -204,7 +240,7 @@ class TQXHandler(http.server.SimpleHTTPRequestHandler):
                 elif isinstance(err_val, str):
                     err_msg = err_val
                 else:
-                    err_msg = c_res.get('detail') or "因子创建失败"
+                    err_msg = c_res.get('detail') or "Factor creation failed"
                 self._send_json({"error": err_msg, "details": c_res}, 400)
                 return
 
@@ -220,7 +256,7 @@ class TQXHandler(http.server.SimpleHTTPRequestHandler):
                 elif isinstance(err_val, str):
                     err_msg = err_val
                 else:
-                    err_msg = r_res.get('detail') or "因子运行失败"
+                    err_msg = r_res.get('detail') or "Factor run failed"
                 self._send_json({"error": err_msg, "details": r_res}, 400)
                 return
 
@@ -268,7 +304,7 @@ class TQXHandler(http.server.SimpleHTTPRequestHandler):
             try:
                 import journal
                 ok = isinstance(res, dict) and not res.get("error")
-                journal.log_decision("manual", f"手动下单 {side} {quantity} {symbol}",
+                journal.log_decision("manual", f"Manual order {side} {quantity} {symbol}",
                     reason or "", [{"tool": "place_order",
                     "args": {"symbol": symbol, "side": side, "order_type": order_type,
                              "quantity": quantity, "price": price},
@@ -315,8 +351,8 @@ class TQXHandler(http.server.SimpleHTTPRequestHandler):
             import strategies
             rec = strategies.create(data)
             import journal
-            journal.log_decision('backtest', f"应用策略到自动交易: {rec['name']}",
-                                 f"公式 {rec['formula']} | 市场 {rec['market']} | 指标 {json.dumps(rec['metrics'], ensure_ascii=False)}",
+            journal.log_decision('backtest', f"Applied strategy to auto trading: {rec['name']}",
+                                 f"formula {rec['formula']} | market {rec['market']} | metrics {json.dumps(rec['metrics'], ensure_ascii=False)}",
                                  [])
             self._send_json({"success": True, "strategy": rec})
             return
@@ -344,11 +380,12 @@ class TQXHandler(http.server.SimpleHTTPRequestHandler):
                 import agent as tqx_agent
                 import importlib; importlib.reload(tqx_agent)
                 instruction = (
-                    f"【策略自动执行】策略「{rec['name']}」({rec['market'].upper()}市场)，"
-                    f"因子公式: {rec['formula']}。"
-                    f"请执行一次调仓检查：1) 用该公式跑最新因子回测，取 Top 选股；"
-                    f"2) 对比当前仿真盘持仓；3) 若 Top1 未持有，用市价单在仿真盘买入 1 股作为信号验证，"
-                    f"若已持有则回复无需操作。全程使用 PAPER 仿真盘，单笔不超过 1 股。"
+                    f"[Scheduled strategy run] Strategy \"{rec['name']}\" ({rec['market'].upper()} market), "
+                    f"factor formula: {rec['formula']}. "
+                    f"Run one rebalance check: 1) run the factor backtest with this formula and take the top picks; "
+                    f"2) compare against current positions; 3) if the top pick is not held, place a market order for 1 share "
+                    f"as a signal check; if already held, reply that no action is needed. "
+                    f"Stay on the PAPER account, max 1 share per order."
                 )
                 out = tqx_agent.run_agent_turn([{"role": "user", "content": instruction}])
                 import time as _t
@@ -377,10 +414,10 @@ class TQXHandler(http.server.SimpleHTTPRequestHandler):
         email = os.environ.get("TQX_EMAIL", "")
         password = os.environ.get("TQX_PASSWORD", "")
         if not email or not password:
-            return {"success": False, "message": "未配置账号密码"}
+            return {"success": False, "message": "Credentials not configured"}
 
         if not force and os.path.exists("/root/.tqx/config.yaml"):
-            return {"success": True, "message": "配置正常"}
+            return {"success": True, "message": "Configuration OK"}
 
         cmd = ["tqx-cli", "--json", "login", "--email", email, "--password", password]
         res = self._run_cmd(cmd)
@@ -462,14 +499,14 @@ def get_demo_backtest():
     return jsonify({
         'ok': True,
         'backtest': {
-            'name': '双均线策略 (AAPL.NB, 2025-01-01~2025-12-31)',
-            'strategy': '5MA > 20MA 买入 90% 头寸 / 下穿全部卖出',
+            'name': 'Dual moving average (AAPL.NB, 2025-01-01~2025-12-31)',
+            'strategy': '5MA > 20MA: buy 90% position / cross-down: sell all',
             'metrics': {
                 'total_return': -0.131,
                 'benchmark_return': 0.119,
                 'trades': 18
             },
             'status': 'SUCCESS',
-            'note': '已验证：美股标的必须用 .NB 后缀（AAPL.NB）。.US 后缀会导致行情为空、静默零成交。'
+            'note': 'US symbols must use the .NB suffix (AAPL.NB). A .US suffix returns empty market data and silently zero fills.'
         }
     })

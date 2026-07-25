@@ -43,7 +43,7 @@ def create(payload):
         sid = uuid.uuid4().hex[:8]
         rec = {
             'id': sid,
-            'name': (payload.get('name') or '未命名策略')[:60],
+            'name': (payload.get('name') or 'Untitled strategy')[:60],
             'market': payload.get('market', 'us'),
             'formula': (payload.get('formula') or '')[:300],
             'start_date': payload.get('start_date'),
@@ -52,7 +52,7 @@ def create(payload):
             'metrics': payload.get('metrics') or {},
             'top_picks': (payload.get('top_picks') or [])[:10],
             'status': 'paused',           # paused | active
-            'account': 'paper',           # 目前仅仿真盘
+            'account': 'paper',           # paper account for now; live uses the same API
             'created': time.strftime('%Y-%m-%d %H:%M'),
             'last_run': None,
             'run_count': 0,

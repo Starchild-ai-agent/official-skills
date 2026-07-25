@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -167,18 +167,20 @@ details.manual .mbody{padding:0 14px 14px;display:grid;grid-template-columns:rep
   </div>
   <div class="hstats">
     <div class="hstat"><div class="l">Algo Power</div><div class="v" id="cp-val">—</div></div>
-    <div class="hstat"><div class="l">持仓市值 HKD</div><div class="v" id="cash-val">—</div></div>
+    <div class="hstat"><div class="l">Position value HKD</div><div class="v" id="cash-val">—</div></div>
     <div class="conn"><span class="dot" id="status-dot"></span><span id="status-txt">connecting</span></div>
+    <button id="langBtn" class="mono" onclick="tqxToggleLang()"
+      style="background:#141821;border:1px solid var(--line);color:var(--dim);font-size:11px;padding:5px 11px;border-radius:5px;cursor:pointer;letter-spacing:.5px">EN</button>
   </div>
 </header>
 
 <div class="hint">
-  <span>◆</span><span>对话在 <b>Starchild 主线程</b>驱动 — 直接告诉我需求，我跑因子/回测/下单，结果回填此页。下方面板供你 <b>手动微调</b>与查看。</span>
+  <span>◆</span><span>This page is driven by the <b>Starchild main thread</b>— just tell me what you need; I run the factors / backtests / orders and write the results back here. The panels below are for <b>manual tweaks</b>and review.</span>
 </div>
 
 <div class="pnav">
-  <div class="pbtn active" id="pbtn-bt" onclick="showPage('bt')">◈ 回测研究</div>
-  <div class="pbtn" id="pbtn-tr" onclick="showPage('tr')">◉ 自动交易</div>
+  <div class="pbtn active" id="pbtn-bt" onclick="showPage('bt')">◈ Backtest Research</div>
+  <div class="pbtn" id="pbtn-tr" onclick="showPage('tr')">◉ Auto Trading</div>
 </div>
 
 <div id="page-bt">
@@ -186,36 +188,36 @@ details.manual .mbody{padding:0 14px 14px;display:grid;grid-template-columns:rep
   <!-- LEFT RAIL -->
   <div class="rail">
     <div class="blk">
-      <div class="blk-h">因子回测</div>
+      <div class="blk-h">Factor Backtest</div>
       <div class="fld">
-        <label>市场</label>
-        <select id="market"><option value="us">美股 US</option><option value="hk">港股 HK</option></select>
+        <label>Market</label>
+        <select id="market"><option value="us">US stocks</option><option value="hk">HK stocks</option></select>
       </div>
       <div class="fld">
-        <label>因子公式</label>
+        <label>Factor formula</label>
         <textarea id="formula">close/ref(close,5)-1</textarea>
         <div class="chips">
-          <span class="chip" onclick="insF('close/ref(close,5)-1')">5日动量</span>
-          <span class="chip" onclick="insF('close/ref(close,20)-1')">20日动量</span>
-          <span class="chip" onclick="insF('-1*(close/ref(close,1)-1)')">反转</span>
-          <span class="chip" onclick="insF('(high-low)/close')">振幅</span>
-          <span class="chip" onclick="insF('volume/ref(volume,20)')">量比</span>
+          <span class="chip" onclick="insF('close/ref(close,5)-1')">5D momentum</span>
+          <span class="chip" onclick="insF('close/ref(close,20)-1')">20D momentum</span>
+          <span class="chip" onclick="insF('-1*(close/ref(close,1)-1)')">Reversal</span>
+          <span class="chip" onclick="insF('(high-low)/close')">Amplitude</span>
+          <span class="chip" onclick="insF('volume/ref(volume,20)')">Volume ratio</span>
         </div>
       </div>
       <div class="row2">
-        <div class="fld"><label>起始</label><input id="start_date" value="20260601"></div>
-        <div class="fld"><label>结束</label><input id="end_date" value="20260701"></div>
+        <div class="fld"><label>Start</label><input id="start_date" value="20260601"></div>
+        <div class="fld"><label>End</label><input id="end_date" value="20260701"></div>
       </div>
       <div class="row2">
-        <div class="fld"><label>分组数</label><input id="group_number" value="2"></div>
-        <div class="fld"><label>调仓周期(天)</label><input id="adjustment_cycle" placeholder="默认"></div>
+        <div class="fld"><label>Groups</label><input id="group_number" value="2"></div>
+        <div class="fld"><label>Rebalance (days)</label><input id="adjustment_cycle" placeholder="default"></div>
       </div>
-      <div class="fld"><label>因子方向</label>
-        <select id="factor_direction"><option value="1">正向 · 因子值越大越好</option><option value="-1">反向 · 因子值越小越好</option></select>
+      <div class="fld"><label>Factor direction</label>
+        <select id="factor_direction"><option value="1">Positive · higher factor value is better</option><option value="-1">Negative · lower factor value is better</option></select>
       </div>
-      <button class="act" id="btn-research" onclick="runResearch()"><span id="txt-research">运行因子回测</span></button>
+      <button class="act" id="btn-research" onclick="runResearch()"><span id="txt-research">Run factor backtest</span></button>
       <div style="margin-top:10px;font-size:10px;color:var(--dim);line-height:1.6">
-        需要<b>指定股票池 / 自定义买卖逻辑 / 佣金滑点</b>？用右下角 Agent 对话描述需求，Agent 会生成策略代码并回测，结果同样进入回测历史。
+        Need<b>a custom universe / custom entry-exit logic / commission & slippage</b>? Describe it in the Agent chat at the bottom right — the Agent writes the strategy code, backtests it, and the run lands in the backtest history too.
       </div>
     </div>
 
@@ -224,149 +226,153 @@ details.manual .mbody{padding:0 14px 14px;display:grid;grid-template-columns:rep
   <!-- MAIN -->
   <div class="main">
     <div class="metrics">
-      <div class="mcell"><div class="ml">IC 均值<span class="tip">?<span class="tiptext"><b>Information Coefficient</b> — 因子值与未来收益的相关性。|IC|&gt;0.03 通常视为有效；正负号代表预测方向。</span></span></div><div class="mv mono" id="m-ic">—</div><div class="ms" id="m-ic-s">待运行</div></div>
-      <div class="mcell"><div class="ml">IC_IR<span class="tip">?<span class="tiptext"><b>IC 信息比率</b> = IC均值 / IC标准差。衡量因子预测的稳定性，|IR|&gt;0.5 较稳定。</span></span></div><div class="mv mono" id="m-ir">—</div><div class="ms" id="m-ir-s">稳定性</div></div>
-      <div class="mcell"><div class="ml">t 统计量<span class="tip">?<span class="tiptext"><b>t-statistic</b> — 检验 IC 是否显著异于 0。|t|&gt;2 (p&lt;0.05) 视为统计显著。</span></span></div><div class="mv mono" id="m-t">—</div><div class="ms" id="m-t-s">显著性</div></div>
-      <div class="mcell"><div class="ml">组1 年化<span class="tip">?<span class="tiptext"><b>Annualized Return</b> — 因子最优分组的年化收益率。回测区间短会放大年化数值。</span></span></div><div class="mv mono" id="m-ret">—</div><div class="ms" id="m-ret-s">最优分组</div></div>
-      <div class="mcell"><div class="ml">组1 夏普<span class="tip">?<span class="tiptext"><b>Sharpe Ratio</b> — 每单位风险的超额收益。&gt;1 良好，&gt;2 优秀。</span></span></div><div class="mv mono" id="m-sharpe">—</div><div class="ms" id="m-sharpe-s">风险调整</div></div>
+      <div class="mcell"><div class="ml">Mean IC<span class="tip">?<span class="tiptext"><b>Information Coefficient</b> — correlation between the factor value and future returns. |IC|&gt;0.03 is usually considered meaningful; the sign is the predicted direction.</span></span></div><div class="mv mono" id="m-ic">—</div><div class="ms" id="m-ic-s">Pending</div></div>
+      <div class="mcell"><div class="ml">IC_IR<span class="tip">?<span class="tiptext"><b>IC information ratio</b> = mean IC / IC std dev. Measures how stable the factor's prediction is; |IR|&gt;0.5 is reasonably stable.</span></span></div><div class="mv mono" id="m-ir">—</div><div class="ms" id="m-ir-s">Stability</div></div>
+      <div class="mcell"><div class="ml">t statistic<span class="tip">?<span class="tiptext"><b>t-statistic</b> — tests whether IC differs significantly from 0. |t|&gt;2 (p&lt;0.05) is statistically significant.</span></span></div><div class="mv mono" id="m-t">—</div><div class="ms" id="m-t-s">Significance</div></div>
+      <div class="mcell"><div class="ml">G1 annualized<span class="tip">?<span class="tiptext"><b>Annualized Return</b> — annualized return of the factor's best group. Short backtest windows inflate this number.</span></span></div><div class="mv mono" id="m-ret">—</div><div class="ms" id="m-ret-s">Best group</div></div>
+      <div class="mcell"><div class="ml">G1 Sharpe<span class="tip">?<span class="tiptext"><b>Sharpe Ratio</b> — excess return per unit of risk. &gt;1 is good, &gt;2 is excellent.</span></span></div><div class="mv mono" id="m-sharpe">—</div><div class="ms" id="m-sharpe-s">Risk-adjusted</div></div>
     </div>
 
     <!-- strategy backtest result (populated when a strategy run is loaded from history) -->
     <div class="card" id="stgres" style="display:none;margin-bottom:14px">
       <div class="card-h" style="display:flex;justify-content:space-between;align-items:center">
-        <span>策略回测结果 — <b id="stgres-name" class="mono" style="font-size:11px">—</b></span>
-        <span><span class="link" onclick="showCode(window._stgresId)">查看代码</span>　<span class="link" onclick="document.getElementById('stgres').style.display='none'">收起 ✕</span></span>
+        <span>Strategy backtest result — <b id="stgres-name" class="mono" style="font-size:11px">—</b></span>
+        <span><span class="link" onclick="showCode(window._stgresId)">View code</span>　<span class="link" onclick="document.getElementById('stgres').style.display='none'">Collapse ✕</span></span>
       </div>
       <div class="metrics" style="padding:10px 14px">
-        <div class="mcell"><div class="ml">区间收益</div><div class="mv mono" id="sr-ret">—</div><div class="ms" id="sr-ret-s">—</div></div>
-        <div class="mcell"><div class="ml">基准收益</div><div class="mv mono" id="sr-bench">—</div><div class="ms">买入持有</div></div>
-        <div class="mcell"><div class="ml">年化</div><div class="mv mono" id="sr-ann">—</div><div class="ms">Annualized</div></div>
-        <div class="mcell"><div class="ml">夏普</div><div class="mv mono" id="sr-sharpe">—</div><div class="ms">风险调整</div></div>
-        <div class="mcell"><div class="ml">最大回撤</div><div class="mv mono" id="sr-mdd">—</div><div class="ms">Max Drawdown</div></div>
+        <div class="mcell"><div class="ml">Period return</div><div class="mv mono" id="sr-ret">—</div><div class="ms" id="sr-ret-s">—</div></div>
+        <div class="mcell"><div class="ml">Benchmark return</div><div class="mv mono" id="sr-bench">—</div><div class="ms">buy & hold</div></div>
+        <div class="mcell"><div class="ml">Annualized</div><div class="mv mono" id="sr-ann">—</div><div class="ms">Annualized</div></div>
+        <div class="mcell"><div class="ml">Sharpe</div><div class="mv mono" id="sr-sharpe">—</div><div class="ms">Risk-adjusted</div></div>
+        <div class="mcell"><div class="ml">Max drawdown</div><div class="mv mono" id="sr-mdd">—</div><div class="ms">Max Drawdown</div></div>
       </div>
       <div style="padding:0 14px 12px;font-size:11px;color:var(--dim)" class="mono" id="sr-meta">—</div>
+      <div style="padding:0 14px 14px">
+        <div style="font-size:10px;color:var(--dim);margin-bottom:4px" class="mono" id="sr-curve-note">Loading equity curve…</div>
+        <div class="chart-box" style="height:220px"><canvas id="chartEquity"></canvas></div>
+      </div>
     </div>
 
     <div class="charts">
-      <div class="card"><div class="card-h">分组累计收益</div><div class="chart-box"><canvas id="chartReturns"></canvas></div></div>
-      <div class="card"><div class="card-h">多空组合利差</div><div class="chart-box"><canvas id="chartLS"></canvas></div></div>
+      <div class="card"><div class="card-h">Cumulative return by group</div><div class="chart-box"><canvas id="chartReturns"></canvas></div></div>
+      <div class="card"><div class="card-h">Long-short spread</div><div class="chart-box"><canvas id="chartLS"></canvas></div></div>
     </div>
 
     <div class="applybar" id="applybar">
-      <div class="at">回测完成 — <b id="apply-sum">—</b>　满意的话可将此因子保存为策略，在「自动交易」页由 Agent 监控执行。</div>
-      <button class="sbtn primary" onclick="applyStrategy()">应用到自动交易 →</button>
+      <div class="at">Backtest complete — <b id="apply-sum">—</b>　Happy with it? Save the factor as a strategy and let the Agent monitor and execute it on the Auto Trading page.</div>
+      <button class="sbtn primary" onclick="applyStrategy()">Apply to Auto Trading →</button>
     </div>
 
     <div class="tabs">
-      <div class="tab active" onclick="switchTab(event,'sec-top',['sec-top','sec-ind'])">Top 选股</div>
-      <div class="tab" onclick="switchTab(event,'sec-ind',['sec-top','sec-ind'])">全部指标</div>
+      <div class="tab active" onclick="switchTab(event,'sec-top',['sec-top','sec-ind'])">Top picks</div>
+      <div class="tab" onclick="switchTab(event,'sec-ind',['sec-top','sec-ind'])">All metrics</div>
     </div>
 
-    <div id="sec-top" class="panel"><table><thead><tr><th>日期</th><th>代码</th><th>名称</th><th>因子值</th><th>操作</th></tr></thead><tbody id="top-tbody"><tr><td colspan="5" class="empty">运行因子回测后显示 Top 选股</td></tr></tbody></table></div>
-    <div id="sec-ind" class="panel" style="display:none"><table><thead><tr><th>指标</th><th>数值</th></tr></thead><tbody id="ind-tbody"><tr><td colspan="2" class="empty">运行后显示全部因子指标</td></tr></tbody></table></div>
+    <div id="sec-top" class="panel"><table><thead><tr><th>Date</th><th>Code</th><th>Name</th><th>Factor value</th><th>Action</th></tr></thead><tbody id="top-tbody"><tr><td colspan="5" class="empty">Run a factor backtest to see the top picks</td></tr></tbody></table></div>
+    <div id="sec-ind" class="panel" style="display:none"><table><thead><tr><th>Metrics</th><th>Value</th></tr></thead><tbody id="ind-tbody"><tr><td colspan="2" class="empty">Run a backtest to see all factor metrics</td></tr></tbody></table></div>
 
     <div class="card" style="margin-top:14px">
       <div class="card-h" style="display:flex;justify-content:space-between;align-items:center">
-        <span>回测历史</span>
-        <button class="sbtn" id="cmp-btn" onclick="compareSelected()" disabled>对比选中 (0)</button>
+        <span>Backtest history</span>
+        <button class="sbtn" id="cmp-btn" onclick="compareSelected()" disabled>Compare selected (0)</button>
       </div>
       <div class="panel" style="border:none;margin:0">
-    <!-- 策略回测示例（已验证） -->
+    <!-- Sample strategy backtest -->
     <div style="background:var(--card,rgba(128,128,128,.08));border:1px solid var(--border);padding:12px;border-radius:4px;margin-bottom:16px;font-size:12px;color:inherit">
-      <h4 style="margin:0 0 8px 0">📊 回测示例：双均线策略 (AAPL)</h4>
+      <h4 style="margin:0 0 8px 0">📊 Backtest example: dual moving average (AAPL)</h4>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div>
-          <strong>参数</strong><br/>
-          策略：5MA &gt; 20MA 买入 / 下穿卖出<br/>
-          标的：AAPL.NB（美股后缀为 .NB）<br/>
-          周期：2025-01-01 ~ 2025-12-31<br/>
-          初始资金：$100万
+          <strong>Params</strong><br/>
+          Strategy: buy when 5MA crosses above 20MA, sell on cross-down<br/>
+          Symbol: AAPL.NB (US stocks take the .NB suffix)<br/>
+          Window: 2025-01-01 ~ 2025-12-31<br/>
+          Initial capital: $1M
         </div>
         <div>
-          <strong>结果</strong><br/>
-          区间收益：-13.1%（基准买入持有 +11.9%）<br/>
-          成交笔数：18<br/>
-          状态：<span style="color:var(--ok,#3fb950)">✓ 回测成功</span>
+          <strong>Result</strong><br/>
+          Period return: -13.1% (benchmark buy & hold  +11.9%）<br/>
+          Fills: 18<br/>
+          Status: <span style="color:var(--ok,#3fb950)">✓ backtest succeeded</span>
         </div>
       </div>
       <p style="margin:8px 0 0 0;font-size:11px;opacity:.65">
-        说明：美股标的必须用 <code>.NB</code> 后缀（如 <code>AAPL.NB</code>）；<code>.US</code> 会导致行情为空、静默零成交。
+        Note: US symbols must use the <code>.NB</code> suffix (e.g. <code>AAPL.NB</code>）；<code>.US</code> returns empty market data and silently produces zero fills.
       </p>
     </div>
 
-        <table><thead><tr><th></th><th>时间</th><th>类型</th><th>公式 / 策略</th><th>市场</th><th>IC</th><th>IC_IR</th><th>夏普</th><th>年化</th><th>来源</th><th>操作</th></tr></thead>
-        <tbody id="bth-tbody"><tr><td colspan="11" class="empty">暂无回测记录</td></tr></tbody></table>
+        <table><thead><tr><th></th><th>Time</th><th>Type</th><th>Formula / strategy</th><th>Market</th><th>IC</th><th>IC_IR</th><th>Sharpe</th><th>Annualized</th><th>Source</th><th>Action</th></tr></thead>
+        <tbody id="bth-tbody"><tr><td colspan="11" class="empty">No backtest runs yet</td></tr></tbody></table>
       </div>
       <div id="cmp-box" style="display:none;padding:12px 14px;border-top:1px solid var(--border)"></div>
     </div>
 
     <div class="card" style="margin-top:14px">
-      <div class="card-h">AGENT 决策记录</div>
-      <div id="dcs-list-bt" class="dcs"><div class="empty" style="padding:18px">暂无决策记录 — Agent 回测或下单后自动记录</div></div>
+      <div class="card-h">AGENT DECISION LOG</div>
+      <div id="dcs-list-bt" class="dcs"><div class="empty" style="padding:18px">No decisions yet — logged automatically once the Agent runs a backtest or places an order</div></div>
     </div>
   </div>
 </div>
 </div><!-- /page-bt -->
 
-<!-- ============ 自动交易 PAGE ============ -->
+<!-- ============ AUTO TRADING PAGE ============ -->
 <div id="page-tr" style="display:none">
 
   <div class="acctbar">
-    <span class="lbl">账户</span>
+    <span class="lbl">Account</span>
     <select id="acct-sel" onchange="switchAccount()"></select>
-    <span class="lbl" id="acct-note" style="margin-left:auto">PAPER 仿真环境 · 委托由 TQX API 执行</span>
+    <span class="lbl" id="acct-note" style="margin-left:auto">PAPER environment · orders executed through the TQX API</span>
   </div>
 
   <div class="card" style="margin-bottom:14px">
     <div class="card-h" style="display:flex;justify-content:space-between;align-items:center">
-      <span>策略信号监控</span>
-      <span class="mono" style="font-size:10px;color:var(--dim)">回测研究页 → 应用后出现在这里</span>
+      <span>Strategy signal monitor</span>
+      <span class="mono" style="font-size:10px;color:var(--dim)">Backtest Research page → applied strategies show up here</span>
     </div>
     <div style="padding:12px 14px">
       <div class="stg-grid" id="stg-grid"></div>
-      <div class="empty" id="stg-empty" style="padding:8px">暂无策略 — 在「回测研究」页跑一个因子回测，点「应用到自动交易」</div>
+      <div class="empty" id="stg-empty" style="padding:8px">No strategies yet — run a factor backtest on the Backtest Research page, then hit Apply to Auto Trading</div>
     </div>
   </div>
 
   <div class="card" style="margin-bottom:14px">
     <div class="card-h" style="display:flex;justify-content:space-between;align-items:center">
-      <span>账户净值 NAV</span>
-      <span class="mono" style="font-size:10px;color:var(--dim)" id="nav-meta">采样中 · 每10分钟</span>
+      <span>Account NAV</span>
+      <span class="mono" style="font-size:10px;color:var(--dim)" id="nav-meta">Sampling · every 10 min</span>
     </div>
     <div class="navstats mono">
-      <div><span class="nl">最新净值</span><span class="nv" id="nav-latest">—</span></div>
-      <div><span class="nl">累计收益</span><span class="nv" id="nav-ret">—</span></div>
-      <div><span class="nl">最大回撤</span><span class="nv" id="nav-mdd">—</span></div>
-      <div><span class="nl">可用现金</span><span class="nv" id="nav-cash">—</span></div>
+      <div><span class="nl">Latest NAV</span><span class="nv" id="nav-latest">—</span></div>
+      <div><span class="nl">Cumulative return</span><span class="nv" id="nav-ret">—</span></div>
+      <div><span class="nl">Max drawdown</span><span class="nv" id="nav-mdd">—</span></div>
+      <div><span class="nl">Available cash</span><span class="nv" id="nav-cash">—</span></div>
     </div>
     <div class="chart-box" style="height:190px"><canvas id="chartNav"></canvas></div>
   </div>
 
   <div class="tabs">
-    <div class="tab active" onclick="switchTab(event,'sec-pos',['sec-pos','sec-ord','sec-trd'])">持仓</div>
-    <div class="tab" onclick="switchTab(event,'sec-ord',['sec-pos','sec-ord','sec-trd'])">订单</div>
-    <div class="tab" onclick="switchTab(event,'sec-trd',['sec-pos','sec-ord','sec-trd'])">成交</div>
+    <div class="tab active" onclick="switchTab(event,'sec-pos',['sec-pos','sec-ord','sec-trd'])">Positions</div>
+    <div class="tab" onclick="switchTab(event,'sec-ord',['sec-pos','sec-ord','sec-trd'])">Orders</div>
+    <div class="tab" onclick="switchTab(event,'sec-trd',['sec-pos','sec-ord','sec-trd'])">Fills</div>
   </div>
 
-  <div id="sec-pos" class="panel"><table><thead><tr><th>代码</th><th>数量</th><th>成本</th><th>市值</th><th>盈亏</th></tr></thead><tbody id="pos-tbody"><tr><td colspan="5" class="empty">无持仓</td></tr></tbody></table></div>
-  <div id="sec-ord" class="panel" style="display:none"><table><thead><tr><th>订单号</th><th>代码</th><th>方向</th><th>数量</th><th>状态</th><th>操作</th></tr></thead><tbody id="ord-tbody"><tr><td colspan="6" class="empty">无挂单</td></tr></tbody></table></div>
-  <div id="sec-trd" class="panel" style="display:none"><table><thead><tr><th>时间</th><th>代码</th><th>方向</th><th>数量</th><th>价格</th></tr></thead><tbody id="trd-tbody"><tr><td colspan="5" class="empty">无成交记录</td></tr></tbody></table></div>
+  <div id="sec-pos" class="panel"><table><thead><tr><th>Code</th><th>Qty</th><th>Cost</th><th>Value</th><th>PnL</th></tr></thead><tbody id="pos-tbody"><tr><td colspan="5" class="empty">No positions</td></tr></tbody></table></div>
+  <div id="sec-ord" class="panel" style="display:none"><table><thead><tr><th>Order ID</th><th>Code</th><th>Side</th><th>Qty</th><th>Status</th><th>Action</th></tr></thead><tbody id="ord-tbody"><tr><td colspan="6" class="empty">No open orders</td></tr></tbody></table></div>
+  <div id="sec-trd" class="panel" style="display:none"><table><thead><tr><th>Time</th><th>Code</th><th>Side</th><th>Qty</th><th>Price</th></tr></thead><tbody id="trd-tbody"><tr><td colspan="5" class="empty">No fills</td></tr></tbody></table></div>
 
   <div class="card" style="margin-top:14px">
-    <div class="card-h">AGENT 决策记录</div>
-    <div id="dcs-list" class="dcs"><div class="empty" style="padding:18px">暂无决策记录 — Agent 下单或回测后自动记录</div></div>
+    <div class="card-h">AGENT DECISION LOG</div>
+    <div id="dcs-list" class="dcs"><div class="empty" style="padding:18px">No decisions yet — logged automatically once the Agent places an order or runs a backtest</div></div>
   </div>
 
   <details class="manual">
-    <summary>▸ 手动下单（辅助功能，点击展开）</summary>
+    <summary>▸ Manual order (helper — click to expand)</summary>
     <div class="mbody">
-      <div class="fld"><label>标的代码</label><input id="trade-symbol" value="AAPL.US"></div>
-      <div class="fld"><label>方向</label><select id="trade-side"><option value="BUY">买入 BUY</option><option value="SELL">卖出 SELL</option></select></div>
-      <div class="fld"><label>类型</label><select id="trade-type" onchange="togglePrice()"><option value="MARKET">市价 MARKET</option><option value="LIMIT">限价 LIMIT</option></select></div>
-      <div class="fld"><label>数量</label><input id="trade-qty" value="1"></div>
-      <div class="fld" id="price-wrap" style="display:none"><label>价格</label><input id="trade-price" value=""></div>
-      <div class="fld"><label>备注 (reason)</label><input id="trade-reason" value=""></div>
-      <button class="act ghost" onclick="placeOrder()" style="margin:0">提交订单</button>
+      <div class="fld"><label>Symbol</label><input id="trade-symbol" value="AAPL.US"></div>
+      <div class="fld"><label>Side</label><select id="trade-side"><option value="BUY">BUY</option><option value="SELL">SELL</option></select></div>
+      <div class="fld"><label>Type</label><select id="trade-type" onchange="togglePrice()"><option value="MARKET">MARKET</option><option value="LIMIT">LIMIT</option></select></div>
+      <div class="fld"><label>Qty</label><input id="trade-qty" value="1"></div>
+      <div class="fld" id="price-wrap" style="display:none"><label>Price</label><input id="trade-price" value=""></div>
+      <div class="fld"><label>Note (reason)</label><input id="trade-reason" value=""></div>
+      <button class="act ghost" onclick="placeOrder()" style="margin:0">Submit order</button>
     </div>
   </details>
 
@@ -379,12 +385,12 @@ function baseOpts(){return{responsive:true,maintainAspectRatio:false,interaction
 function initCharts(){
   const e1=document.getElementById('chartReturns').getContext('2d');
   c1=new Chart(e1,{type:'line',data:{labels:[],datasets:[
-    {label:'组1',data:[],borderColor:'#f84600',backgroundColor:'transparent',borderWidth:1.6,tension:.2,pointRadius:0},
-    {label:'组2',data:[],borderColor:'#5e6673',backgroundColor:'transparent',borderWidth:1.2,tension:.2,pointRadius:0,borderDash:[4,3]}
+    {label:'G1',data:[],borderColor:'#f84600',backgroundColor:'transparent',borderWidth:1.6,tension:.2,pointRadius:0},
+    {label:'G2',data:[],borderColor:'#5e6673',backgroundColor:'transparent',borderWidth:1.2,tension:.2,pointRadius:0,borderDash:[4,3]}
   ]},options:baseOpts()});
   const e2=document.getElementById('chartLS').getContext('2d');
   c2=new Chart(e2,{type:'line',data:{labels:[],datasets:[
-    {label:'多空利差',data:[],borderColor:'#ff7a3c',backgroundColor:'rgba(248,70,0,.06)',fill:true,borderWidth:1.6,tension:.2,pointRadius:0}
+    {label:'L/S spread',data:[],borderColor:'#ff7a3c',backgroundColor:'rgba(248,70,0,.06)',fill:true,borderWidth:1.6,tension:.2,pointRadius:0}
   ]},options:baseOpts()});
 }
 /* ---- helpers ---- */
@@ -397,13 +403,13 @@ function showPage(p){['bt','tr'].forEach(x=>{document.getElementById('page-'+x).
 function fillTrade(sym){showPage('tr');document.querySelector('details.manual').open=true;document.getElementById('trade-symbol').value=sym;document.getElementById('trade-symbol').scrollIntoView({behavior:'smooth',block:'center'});}
 /* ---- accounts ---- */
 function loadAccounts(){fetch('api/accounts').then(r=>r.json()).then(d=>{const s=document.getElementById('acct-sel');s.innerHTML=(d.items||[]).map(a=>`<option value="${a.id}" ${a.disabled?'disabled':''} ${a.active?'selected':''}>${a.label}</option>`).join('');}).catch(()=>{});}
-function switchAccount(){const s=document.getElementById('acct-sel');if(s.value!=='paper'){alert('真实盘尚未接入，当前仅支持仿真盘');s.value='paper';}}
+function switchAccount(){const s=document.getElementById('acct-sel');if(s.value!=='paper'){alert('Live trading is not wired up yet — paper trading only for now');s.value='paper';}}
 /* ---- strategies ---- */
 function applyStrategy(){
-  const lf=window.lastFactor;if(!lf){alert('请先运行因子回测');return;}
-  const name=prompt('给这个策略起个名字：',lf.suggest||'动量策略');if(name===null)return;
+  const lf=window.lastFactor;if(!lf){alert('Run a factor backtest first');return;}
+  const name=prompt('Name this strategy:',lf.suggest||'Momentum strategy');if(name===null)return;
   fetch('api/strategies/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...lf.payload,name})})
-    .then(r=>r.json()).then(d=>{if(d.success){document.getElementById('apply-sum').innerText='已保存「'+name+'」';showPage('tr');}else alert('保存失败: '+(d.error||''));});
+    .then(r=>r.json()).then(d=>{if(d.success){document.getElementById('apply-sum').innerText='Saved 「'+name+'」';showPage('tr');}else alert('Save failed: '+(d.error||''));});
 }
 function fetchStrategies(){fetch('api/strategies').then(r=>r.json()).then(d=>renderStrategies(d.items||[])).catch(()=>{});}
 function renderStrategies(items){
@@ -412,14 +418,14 @@ function renderStrategies(items){
   g.innerHTML=items.map(s=>{
     const m=s.metrics||{};const on=s.status==='active';
     return `<div class="stg">
-      <div class="sh"><span class="sn">${esc(s.name)}</span><span class="badge ${on?'on':'off'}">${on?'● 运行中':'○ 已暂停'}</span></div>
+      <div class="sh"><span class="sn nz">${esc(s.name)}</span><span class="badge ${on?'on':'off'}">${on?'● Running':'○ Paused'}</span></div>
       <div class="sf">${esc(s.formula)}</div>
-      <div class="sm"><span>IC <b class="${sign(m.ic)}">${m.ic||'—'}</b></span><span>夏普 <b>${m.sharpe||'—'}</b></span><span>年化 <b class="${sign(m.annualized)}">${m.annualized||'—'}</b></span><span>${(s.market||'').toUpperCase()}</span></div>
-      <div class="sm" style="margin-bottom:10px"><span class="dim">最近执行 ${s.last_run||'从未'}</span><span class="dim">共 ${s.run_count||0} 次</span></div>
+      <div class="sm"><span>IC <b class="${sign(m.ic)}">${m.ic||'—'}</b></span><span>Sharpe <b>${m.sharpe||'—'}</b></span><span>Annualized <b class="${sign(m.annualized)}">${m.annualized||'—'}</b></span><span>${(s.market||'').toUpperCase()}</span></div>
+      <div class="sm" style="margin-bottom:10px"><span class="dim">Last run ${s.last_run||'Never'}</span><span class="dim">${s.run_count||0} runs</span></div>
       <div class="sa">
-        <button class="sbtn" onclick="toggleStg('${s.id}','${on?'paused':'active'}')">${on?'暂停':'启用'}</button>
-        <button class="sbtn primary" id="ex-${s.id}" onclick="execStg('${s.id}')" ${on?'':'disabled'}>执行调仓</button>
-        <button class="sbtn" onclick="delStg('${s.id}')" style="margin-left:auto">删除</button>
+        <button class="sbtn" onclick="toggleStg('${s.id}','${on?'paused':'active'}')">${on?'Pause':'Enable'}</button>
+        <button class="sbtn primary" id="ex-${s.id}" onclick="execStg('${s.id}')" ${on?'':'disabled'}>Run rebalance</button>
+        <button class="sbtn" onclick="delStg('${s.id}')" style="margin-left:auto">Delete</button>
       </div></div>`;}).join('');
 }
 /* ---- backtest history ---- */
@@ -430,7 +436,7 @@ function fmtn(v,d){return v==null?'—':Number(v).toFixed(d==null?3:d);}
 function fetchBtHistory(){fetch('api/backtests').then(r=>r.json()).then(d=>{btHist=d.items||[];renderBtHistory();}).catch(()=>{});}
 function renderBtHistory(){
   const tb=document.getElementById('bth-tbody');
-  if(!btHist.length){tb.innerHTML='<tr><td colspan="11" class="empty">暂无回测记录</td></tr>';return;}
+  if(!btHist.length){tb.innerHTML='<tr><td colspan="11" class="empty">No backtest runs yet</td></tr>';return;}
   tb.innerHTML=btHist.map(h=>{
     const m=h.metrics||{},p=h.params||{};
     const running=h.status!=='done';
@@ -438,28 +444,28 @@ function renderBtHistory(){
     return `<tr>
       <td><input type="checkbox" class="bth-ck" value="${h.run_id}" onchange="updateCmpBtn()" ${running?'disabled':''}></td>
       <td class="dim">${h.ts||''}</td>
-      <td>${isStg?'<span style="color:var(--accent)">策略</span>':'因子'}</td>
-      <td class="mono" style="font-size:10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.formula||'')}">${esc((isStg&&p.name)?p.name:(p.formula||'—'))}</td>
+      <td>${isStg?'<span style="color:var(--accent)">strategy</span>':'factor'}</td>
+      <td class="mono nz" style="font-size:10px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(p.formula||'')}">${esc((isStg&&p.name)?p.name:(p.formula||'—'))}</td>
       <td>${(p.market||'').toUpperCase()}</td>
       <td class="${sign(m.ic)}">${running?'…':(isStg?'—':fmtn(m.ic))}</td>
       <td>${running?'':(isStg?'—':fmtn(m.ic_ir))}</td>
       <td>${running?'':fmtn(m.sharpe,2)}</td>
       <td class="${sign(m.annual_return!=null?m.annual_return:m.total_return)}">${running?'':(isStg?pctS(m.annual_return!=null?m.annual_return:m.total_return):pct(m.annual_return))}</td>
-      <td class="dim">${h.source==='agent'?'Agent':'手动'}</td>
-      <td>${running?'<span class="dim">运行中</span>':(isStg?`<span class="link" onclick="loadStgBt('${h.run_id}')">载入</span>　<span class="link" onclick="showCode('${h.run_id}')">代码</span>`:`<span class="link" onclick="loadBt('${h.run_id}')">载入</span>`)}</td>
+      <td class="dim">${h.source==='agent'?'Agent':'manual'}</td>
+      <td>${running?'<span class="dim">Running</span>':(isStg?`<span class="link" onclick="loadStgBt('${h.run_id}')">Load</span>　<span class="link" onclick="showCode('${h.run_id}')">Code</span>`:`<span class="link" onclick="loadBt('${h.run_id}')">Load</span>`)}</td>
     </tr>`;}).join('');
 }
 function showCode(rid){
   const h=btHist.find(x=>x.run_id===rid);const p=(h&&h.params)||{};
-  const code=p.code||p.formula||'(未保存策略代码)';
+  const code=p.code||p.formula||'(No strategy code saved)';
   let ov=document.getElementById('code-overlay');
   if(!ov){ov=document.createElement('div');ov.id='code-overlay';
     ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;display:flex;align-items:center;justify-content:center';
     ov.onclick=e=>{if(e.target===ov)ov.remove();};document.body.appendChild(ov);}
   ov.innerHTML=`<div style="background:var(--bg,#111);border:1px solid var(--border,#333);border-radius:6px;max-width:720px;width:90%;max-height:80vh;overflow:auto;padding:16px">
     <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-      <b>${esc(p.name||'策略代码')}</b>
-      <span class="link" onclick="document.getElementById('code-overlay').remove()">关闭 ✕</span></div>
+      <b>${esc(p.name||'Strategy code')}</b>
+      <span class="link" onclick="document.getElementById('code-overlay').remove()">Close ✕</span></div>
     <pre class="mono" style="font-size:11px;white-space:pre-wrap;margin:0">${esc(code)}</pre></div>`;
 }
 function loadStgBt(rid){
@@ -470,16 +476,34 @@ function loadStgBt(rid){
   set('stgres-name',p.name||p.formula||rid.slice(0,12));
   const ret=m.total_return!=null?m.total_return:m.annual_return;
   set('sr-ret',pctS(ret),sign(ret));
-  document.getElementById('sr-ret-s').innerText=m.trade_count!=null?('成交 '+m.trade_count+' 笔'):'—';
+  document.getElementById('sr-ret-s').innerText=m.trade_count!=null?('Fills '+m.trade_count):'—';
   set('sr-bench',pctS(m.benchmark_return),sign(m.benchmark_return));
   set('sr-ann',pctS(m.annual_return),sign(m.annual_return));
   set('sr-sharpe',m.sharpe!=null?fmtn(m.sharpe,2):(m.information_ratio!=null?fmtn(m.information_ratio,2)+' (IR)':'—'));
   set('sr-mdd',pctS(m.max_drawdown),sign(m.max_drawdown));
-  document.getElementById('sr-meta').innerText=`${(p.market||'').toUpperCase()} · ${p.start_date||'?'} ~ ${p.end_date||'?'} · 初始资金 ${p.start_capital||'—'} · ${h.ts||''} · 来源 ${h.source==='agent'?'Agent':'手动'}`;
+  document.getElementById('sr-meta').innerText=`${(p.market||'').toUpperCase()} · ${p.start_date||'?'} ~ ${p.end_date||'?'} · Capital ${p.start_capital||'—'} · ${h.ts||''} · Source ${h.source==='agent'?'Agent':'manual'}`;
   document.getElementById('stgres').style.display='block';
+  loadEquityCurve(rid);
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function updateCmpBtn(){const n=document.querySelectorAll('.bth-ck:checked').length;const b=document.getElementById('cmp-btn');b.disabled=n<2;b.innerText=`对比选中 (${n})`;}
+let cEq=null;
+function loadEquityCurve(rid){
+  const note=document.getElementById('sr-curve-note');
+  note.innerText='Loading equity curve…';
+  fetch('api/backtests/curve?run_id='+rid).then(r=>r.json()).then(d=>{
+    const pts=d.points||[];
+    if(!pts.length){note.innerText='No daily return series for this run';if(cEq){cEq.destroy();cEq=null;}return;}
+    note.innerText=`Cumulative equity curve · ${pts.length} trading days · ${pts[0].d} ~ ${pts[pts.length-1].d}`;
+    const labels=pts.map(p=>p.d), s=pts.map(p=>p.s==null?null:p.s*100), b=pts.map(p=>p.b==null?null:p.b*100);
+    const cfg={type:'line',data:{labels,datasets:[
+      {label:'strategy',data:s,borderColor:'#f84600',backgroundColor:'rgba(248,70,0,.06)',fill:true,borderWidth:1.6,tension:.15,pointRadius:0},
+      {label:'Benchmark',data:b,borderColor:'#5e6673',backgroundColor:'transparent',borderWidth:1.2,tension:.15,pointRadius:0,borderDash:[4,3]}
+    ]},options:(()=>{const o=baseOpts();o.scales.x.ticks=Object.assign({},AX,{maxTicksLimit:8});o.scales.y.ticks=Object.assign({},AX,{callback:v=>v.toFixed(0)+'%'});return o;})()};
+    if(cEq)cEq.destroy();
+    cEq=new Chart(document.getElementById('chartEquity').getContext('2d'),cfg);
+  }).catch(()=>{note.innerText='Failed to load equity curve';});
+}
+function updateCmpBtn(){const n=document.querySelectorAll('.bth-ck:checked').length;const b=document.getElementById('cmp-btn');b.disabled=n<2;b.innerText=`Compare selected (${n})`;}
 function loadBt(rid){
   const h=btHist.find(x=>x.run_id===rid);if(h&&h.params){
     if(h.params.formula)document.getElementById('formula').value=h.params.formula;
@@ -495,8 +519,8 @@ function loadBt(rid){
 function compareSelected(){
   const ids=[...document.querySelectorAll('.bth-ck:checked')].map(c=>c.value).slice(0,4);
   const rows=ids.map(id=>btHist.find(x=>x.run_id===id)).filter(Boolean);
-  const keys=[['ic','IC均值',v=>fmtn(v)],['rank_ic','Rank IC',v=>fmtn(v)],['ic_ir','IC_IR',v=>fmtn(v)],['t_value','t统计量',v=>fmtn(v,2)],['sharpe','夏普',v=>fmtn(v,2)],['annual_return','年化',pct]];
-  let html='<table><thead><tr><th>指标</th>'+rows.map(r=>`<th class="mono" style="font-size:10px" title="${esc((r.params||{}).formula||'')}">${esc(((r.params||{}).formula||r.run_id).slice(0,24))}<br><span class="dim">${r.ts}</span></th>`).join('')+'</tr></thead><tbody>';
+  const keys=[['ic','mean IC',v=>fmtn(v)],['rank_ic','Rank IC',v=>fmtn(v)],['ic_ir','IC_IR',v=>fmtn(v)],['t_value','t statistic',v=>fmtn(v,2)],['sharpe','Sharpe',v=>fmtn(v,2)],['annual_return','Annualized',pct]];
+  let html='<table><thead><tr><th>Metrics</th>'+rows.map(r=>`<th class="mono" style="font-size:10px" title="${esc((r.params||{}).formula||'')}">${esc(((r.params||{}).formula||r.run_id).slice(0,24))}<br><span class="dim">${r.ts}</span></th>`).join('')+'</tr></thead><tbody>';
   keys.forEach(([k,label,fmt])=>{
     const vals=rows.map(r=>(r.metrics||{})[k]);
     const best=Math.max(...vals.map(v=>v==null?-9e9:v));
@@ -506,39 +530,39 @@ function compareSelected(){
   const box=document.getElementById('cmp-box');box.style.display='block';box.innerHTML=html;
 }
 function toggleStg(id,st){fetch('api/strategies/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status:st})}).then(()=>fetchStrategies());}
-function delStg(id){if(!confirm('删除该策略？'))return;fetch('api/strategies/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,delete:true})}).then(()=>fetchStrategies());}
+function delStg(id){if(!confirm('Delete this strategy?'))return;fetch('api/strategies/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,delete:true})}).then(()=>fetchStrategies());}
 function execStg(id){
-  const b=document.getElementById('ex-'+id);if(b.disabled)return;b.disabled=true;b.innerText='Agent 执行中…';
+  const b=document.getElementById('ex-'+id);if(b.disabled)return;b.disabled=true;b.innerText='Agent working…';
   fetch('api/strategies/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
     .then(r=>r.json()).then(d=>{
-      if(d.error)alert('执行失败: '+d.error);else alert('执行完成：\n'+(d.reply||'').slice(0,600));
+      if(d.error)alert('Execution failed: '+d.error);else alert('Done: \n'+(d.reply||'').slice(0,600));
       fetchStrategies();fetchDecisions();fetchStatus();
-    }).catch(e=>alert('执行异常: '+e)).finally(()=>{b.disabled=false;b.innerText='执行调仓';});
+    }).catch(e=>alert('Execution error: '+e)).finally(()=>{b.disabled=false;b.innerText='Run rebalance';});
 }
 
 /* ---- factor run ---- */
 function runResearch(){
   const b=document.getElementById('btn-research');b.disabled=true;
-  document.getElementById('txt-research').innerText='运行中…';
+  document.getElementById('txt-research').innerText='Running…';
   const body={market:document.getElementById('market').value,formula:document.getElementById('formula').value,start_date:document.getElementById('start_date').value,end_date:document.getElementById('end_date').value,group_number:parseInt(document.getElementById('group_number').value)||2,adjustment_cycle:document.getElementById('adjustment_cycle').value.trim(),factor_direction:document.getElementById('factor_direction').value};
   fetch('api/factor/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(r=>r.json()).then(d=>{
-      if(d.run_id){document.getElementById('txt-research').innerText='计算中…';pollResult(d.run_id,0);}
-      else{alert('提交失败: '+(d.error||JSON.stringify(d)));resetR();}
-    }).catch(e=>{alert('请求失败: '+e);resetR();});
+      if(d.run_id){document.getElementById('txt-research').innerText='Computing…';pollResult(d.run_id,0);}
+      else{alert('Submit failed: '+(d.error||JSON.stringify(d)));resetR();}
+    }).catch(e=>{alert('Request failed: '+e);resetR();});
 }
 function pollResult(id,n){
-  if(n>30){alert('回测超时');resetR();return;}
+  if(n>30){alert('Backtest timed out');resetR();return;}
   setTimeout(()=>{
     fetch('api/factor/result?run_id='+id).then(r=>r.json()).then(d=>{
       const st=d.status||d.run_status;
       if(st==='SUCCESS'){renderFactor(d);resetR();}
-      else if(st==='FAILED'||st==='ERROR'){alert('回测失败: '+(d.failed_sections||st));resetR();}
+      else if(st==='FAILED'||st==='ERROR'){alert('Backtest failed: '+(d.failed_sections||st));resetR();}
       else pollResult(id,n+1);
     }).catch(()=>pollResult(id,n+1));
   },4000);
 }
-function resetR(){const b=document.getElementById('btn-research');b.disabled=false;document.getElementById('txt-research').innerText='运行因子回测';}
+function resetR(){const b=document.getElementById('btn-research');b.disabled=false;document.getElementById('txt-research').innerText='Run factor backtest';}
 
 function renderFactor(d){
   const fa=(d.results&&d.results.factor_analysis)||{};
@@ -548,58 +572,58 @@ function renderFactor(d){
   const ind={};fda.forEach(r=>ind[r.indicator]=r.factor1);
   set('m-ic',ind['IC_mean'],sign(ind['IC_mean']),'Rank IC '+(ind['Rank_IC']||'—'));
   set('m-ir',ind['IC_IR'],'','IR '+(ind['IR']||'—'));
-  set('m-t',ind['t统计量'],'','p = '+(ind['p-value']||'—'));
+  set('m-t',ind['t statistic'],'','p = '+(ind['p-value']||'—'));
   // group return (best group = index 0)
   const gr=(fa.query_group_return_analysis&&fa.query_group_return_analysis.group_return_analysis)||[];
-  if(gr[0]){set('m-ret',gr[0].annualizedReturn,sign(gr[0].annualizedReturn),'回撤 '+(gr[0].maxDrawdown||'—'));set('m-sharpe',gr[0].sharpeRatio,'','胜率 '+(gr[0].monthlyWinRate||'—'));}
+  if(gr[0]){set('m-ret',gr[0].annualizedReturn,sign(gr[0].annualizedReturn),'Drawdown '+(gr[0].maxDrawdown||'—'));set('m-sharpe',gr[0].sharpeRatio,'','Win rate '+(gr[0].monthlyWinRate||'—'));}
   // full indicators tab
   const it=document.getElementById('ind-tbody');
-  it.innerHTML=fda.length?fda.map(r=>`<tr><td class="dim">${r.indicator}</td><td class="${sign(r.factor1)}">${r.factor1}</td></tr>`).join(''):'<tr><td colspan="2" class="empty">无数据</td></tr>';
+  it.innerHTML=fda.length?fda.map(r=>`<tr><td class="dim">${r.indicator}</td><td class="${sign(r.factor1)}">${r.factor1}</td></tr>`).join(''):'<tr><td colspan="2" class="empty">No data</td></tr>';
   // charts
   const rc=(fa.query_return_chart&&fa.query_return_chart.return_chart)||{};
   const xs=((rc.x&&rc.x[0]&&rc.x[0].data)||[]).map(t=>String(t).slice(5,10));
   const ys=rc.y||[];
-  const g1=ys.find(y=>y.name==='组1'),g2=ys.find(y=>y.name==='组2'),ls=ys.find(y=>(y.name||'').indexOf('多空')>=0);
+  const g1=ys.find(y=>y.name==='G1'),g2=ys.find(y=>y.name==='G2'),ls=ys.find(y=>(y.name||'').indexOf('\u591a\u7a7a') /* API series name: long-short */>=0);
   if(c1&&xs.length){c1.data.labels=xs;c1.data.datasets[0].data=(g1&&g1.data)||[];c1.data.datasets[1].data=(g2&&g2.data)||[];c1.update();}
   if(c2&&xs.length){c2.data.labels=xs;c2.data.datasets[0].data=(ls&&ls.data)||[];c2.update();}
   // top picks
   const top=(fa.query_last_date_top_factor&&fa.query_last_date_top_factor.last_date_top_factor)||[];
   const tb=document.getElementById('top-tbody');
-  tb.innerHTML=top.length?top.map(r=>`<tr><td class="dim">${r.date||''}</td><td><b>${r.symbol}</b></td><td class="dim">${r.name||''}</td><td class="${sign(r.factor1)}">${r.factor1}</td><td><span class="link" onclick="fillTrade('${r.symbol}')">下单 →</span></td></tr>`).join(''):'<tr><td colspan="5" class="empty">无选股</td></tr>';
+  tb.innerHTML=top.length?top.map(r=>`<tr><td class="dim">${r.date||''}</td><td><b>${r.symbol}</b></td><td class="dim">${r.name||''}</td><td class="${sign(r.factor1)}">${r.factor1}</td><td><span class="link" onclick="fillTrade('${r.symbol}')">Place order →</span></td></tr>`).join(''):'<tr><td colspan="5" class="empty">No picks</td></tr>';
   // store for "apply to auto-trading"
   window.lastFactor={
-    suggest:(document.getElementById('formula').value||'').slice(0,20)+' 策略',
+    suggest:(document.getElementById('formula').value||'').slice(0,20)+' strategy',
     payload:{
       market:document.getElementById('market').value,
       formula:document.getElementById('formula').value,
       start_date:document.getElementById('start_date').value,
       end_date:document.getElementById('end_date').value,
       group_number:document.getElementById('group_number').value,
-      metrics:{ic:ind['IC_mean'],ir:ind['IC_IR'],t:ind['t统计量'],
+      metrics:{ic:ind['IC_mean'],ir:ind['IC_IR'],t:ind['t statistic'],
         annualized:gr[0]?gr[0].annualizedReturn:null,sharpe:gr[0]?gr[0].sharpeRatio:null,max_drawdown:gr[0]?gr[0].maxDrawdown:null},
       top_picks:top.slice(0,10).map(r=>({symbol:r.symbol,name:r.name,factor:r.factor1,date:r.date}))
     }
   };
   const ab=document.getElementById('applybar');ab.style.display='flex';fetchBtHistory();
-  document.getElementById('apply-sum').innerText=`IC ${ind['IC_mean']||'—'} · 夏普 ${gr[0]?gr[0].sharpeRatio:'—'} · 年化 ${gr[0]?gr[0].annualizedReturn:'—'}`;
+  document.getElementById('apply-sum').innerText=`IC ${ind['IC_mean']||'—'} · Sharpe ${gr[0]?gr[0].sharpeRatio:'—'} · Annualized ${gr[0]?gr[0].annualizedReturn:'—'}`;
 }
 
 /* ---- trading ---- */
 function placeOrder(){
   const body={symbol:document.getElementById('trade-symbol').value,side:document.getElementById('trade-side').value,order_type:document.getElementById('trade-type').value,quantity:document.getElementById('trade-qty').value,reason:document.getElementById('trade-reason').value};
   if(body.order_type==='LIMIT')body.price=document.getElementById('trade-price').value;
-  if(!confirm(`确认 ${body.side} ${body.quantity} ${body.symbol} (${body.order_type})?`))return;
+  if(!confirm(`Confirm ${body.side} ${body.quantity} ${body.symbol} (${body.order_type})?`))return;
   fetch('api/trading/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(r=>r.json()).then(d=>{
       const ok=d.success||d.order_id||(d.data&&d.data.orderId);
-      alert(ok?'✓ 已提交':'提交结果:\n'+JSON.stringify(d,null,2));
+      alert(ok?'✓ submitted':'Submit result:\n'+JSON.stringify(d,null,2));
       setTimeout(fetchStatus,1500);
-    }).catch(e=>alert('下单失败: '+e));
+    }).catch(e=>alert('Order failed: '+e));
 }
 function cancelOrder(id){
-  if(!confirm('确认撤单 '+id+' ?'))return;
+  if(!confirm('Cancel this order? '+id+' ?'))return;
   fetch('api/trading/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({order_id:id})})
-    .then(r=>r.json()).then(d=>{alert('撤单结果:\n'+JSON.stringify(d,null,2));fetchStatus();});
+    .then(r=>r.json()).then(d=>{alert('Cancel result:\n'+JSON.stringify(d,null,2));fetchStatus();});
 }
 
 /* ---- status / account ---- */
@@ -618,15 +642,15 @@ function fetchStatus(){
 }
 function renderPos(items){
   const t=document.getElementById('pos-tbody');
-  t.innerHTML=items.length?items.map(p=>{const pnl=p.unrealized_pnl;return `<tr><td><b>${p.symbol||p.symbol_name}</b></td><td>${p.quantity||0}</td><td class="dim">${p.average_cost||'—'}</td><td>${p.market_value||'—'}</td><td class="${sign(pnl)}">${pnl!=null?pnl:'—'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">无持仓</td></tr>';
+  t.innerHTML=items.length?items.map(p=>{const pnl=p.unrealized_pnl;return `<tr><td><b>${p.symbol||p.symbol_name}</b></td><td>${p.quantity||0}</td><td class="dim">${p.average_cost||'—'}</td><td>${p.market_value||'—'}</td><td class="${sign(pnl)}">${pnl!=null?pnl:'—'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No positions</td></tr>';
 }
 function renderOrd(items){
   const t=document.getElementById('ord-tbody');
-  t.innerHTML=items.length?items.map(o=>{const oid=o.orderId||o.order_id||o.id;const side=(o.side||'').toUpperCase();const st=o.status||o.orderStatus||'';const canx=/PENDING|SUBMIT|NEW|OPEN/i.test(st);return `<tr><td class="dim">${String(oid).slice(-8)}</td><td><b>${o.symbol||o.ticker}</b></td><td><span class="badge ${side==='BUY'?'b':'s'}">${side}</span></td><td>${o.quantity||o.qty||0}</td><td class="dim">${st}</td><td>${canx?`<span class="link" onclick="cancelOrder('${oid}')">撤单</span>`:'—'}</td></tr>`;}).join(''):'<tr><td colspan="6" class="empty">无挂单</td></tr>';
+  t.innerHTML=items.length?items.map(o=>{const oid=o.orderId||o.order_id||o.id;const side=(o.side||'').toUpperCase();const st=o.status||o.orderStatus||'';const canx=/PENDING|SUBMIT|NEW|OPEN/i.test(st);return `<tr><td class="dim">${String(oid).slice(-8)}</td><td><b>${o.symbol||o.ticker}</b></td><td><span class="badge ${side==='BUY'?'b':'s'}">${side}</span></td><td>${o.quantity||o.qty||0}</td><td class="dim">${st}</td><td>${canx?`<span class="link" onclick="cancelOrder('${oid}')">Cancel</span>`:'—'}</td></tr>`;}).join(''):'<tr><td colspan="6" class="empty">No open orders</td></tr>';
 }
 function renderTrd(items){
   const t=document.getElementById('trd-tbody');
-  t.innerHTML=items.length?items.map(x=>{const side=(x.side||'').toUpperCase();return `<tr><td class="dim">${(x.executed_at||'').toString().slice(0,19).replace('T',' ')}</td><td><b>${x.symbol||x.symbol_name}</b></td><td><span class="badge ${side==='BUY'?'b':'s'}">${side}</span></td><td>${x.quantity||0}</td><td class="dim">${x.price||'—'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">无成交记录</td></tr>';
+  t.innerHTML=items.length?items.map(x=>{const side=(x.side||'').toUpperCase();return `<tr><td class="dim">${(x.executed_at||'').toString().slice(0,19).replace('T',' ')}</td><td><b>${x.symbol||x.symbol_name}</b></td><td><span class="badge ${side==='BUY'?'b':'s'}">${side}</span></td><td>${x.quantity||0}</td><td class="dim">${x.price||'—'}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No fills</td></tr>';
 }
 
 /* ---- NAV curve ---- */
@@ -639,7 +663,7 @@ function fetchNav(){
       const r=st.cum_return*100,el=document.getElementById('nav-ret');
       el.innerText=(r>=0?'+':'')+r.toFixed(2)+'%';el.style.color=r>=0?'#22c55e':'#d82b4c';
       document.getElementById('nav-mdd').innerText='-'+(st.max_drawdown*100).toFixed(2)+'%';
-      document.getElementById('nav-meta').innerText=st.points+' 点 · 自 '+(st.since||'—');
+      document.getElementById('nav-meta').innerText=st.points+' pts · since '+(st.since||'—');
     }
     const last=pts[pts.length-1];
     if(last&&last.cash!=null)document.getElementById('nav-cash').innerText=last.cash.toLocaleString(undefined,{maximumFractionDigits:0});
@@ -666,8 +690,8 @@ function fetchDecisions(){
         return `${tag} ${a.tool} ${arg}${oid}`;
       }).join('<br>');
       return `<div class="dc"><div class="dct">${x.time||''}</div><div class="dcb">
-        <span class="dcsrc ${x.source}">${x.source}</span><span class="dcins">${esc(x.instruction)}</span>
-        ${x.reasoning?`<div class="dcr">${esc(x.reasoning)}</div>`:''}
+        <span class="dcsrc ${x.source}">${x.source}</span><span class="dcins nz">${esc(x.instruction)}</span>
+        ${x.reasoning?`<div class="dcr nz">${esc(x.reasoning)}</div>`:''}
         ${acts?`<div class="dca">${acts}</div>`:''}</div></div>`;
     }).join('');
     ['dcs-list','dcs-list-bt'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=html;});

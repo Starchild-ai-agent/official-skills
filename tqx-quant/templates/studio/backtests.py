@@ -108,3 +108,60 @@ def get(run_id):
             return json.load(f)
     except Exception:
         return None
+
+
+# ---------------- equity curve (daily NAV) ----------------
+def curve_path(run_id):
+    return os.path.join(DIR, '%s.curve.json' % run_id)
+
+
+def load_curve(run_id):
+    p = curve_path(run_id)
+    if not os.path.exists(p):
+        return None
+    try:
+        with open(p, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def save_curve(run_id, points):
+    tmp = curve_path(run_id) + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump({'run_id': run_id, 'points': points}, f, ensure_ascii=False)
+    os.replace(tmp, curve_path(run_id))
+
+
+def build_curve(profit_items):
+    """TQX profit rows -> ascending [{d, s, b}] (date, strategy cum return, benchmark cum return)."""
+    pts = []
+    for it in profit_items or []:
+        if not isinstance(it, dict):
+            continue
+        d = str(it.get('gmt_create') or '')
+        if len(d) != 8:
+            continue
+        pts.append({'d': '%s-%s-%s' % (d[:4], d[4:6], d[6:]),
+                    's': it.get('strategy_profit'),
+                    'b': it.get('csi_stock')})
+    pts.sort(key=lambda x: x['d'])
+    return pts
+
+
+def raw_backtest_id(run_id):
+    """Read stored raw result and return the inner TQX backtest_id (needed for profit paging)."""
+    p = os.path.join(DIR, '%s.json' % run_id)
+    if not os.path.exists(p):
+        return None
+    try:
+        with open(p, 'r', encoding='utf-8') as f:
+            raw = json.load(f)
+    except Exception:
+        return None
+    res = raw.get('results') or {}
+    bid = res.get('backtest_id')
+    if bid:
+        return bid
+    bt = res.get('backtest') or {}
+    return bt.get('backtest_id')

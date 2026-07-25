@@ -197,6 +197,9 @@ def _parse_strategy_metrics(result):
         "back_profit": "total_return", "back_profit_year": "annual_return",
         "max_drawdown_rate": "max_drawdown", "sharpe_ratio": "sharpe",
         "benchmark_profit": "benchmark_return", "information_ratio": "information_ratio",
+        "benchmark_profit_year": "benchmark_annual_return", "alpha": "alpha", "beta": "beta",
+        "sortino": "sortino", "downside_risk": "downside_risk", "kama_ratio": "calmar",
+        "tracking_error": "tracking_error", "time_consume": "time_consume",
     }
 
     def scan(obj):

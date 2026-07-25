@@ -1,5 +1,5 @@
 ---
-name: tqx-quant
+name: tqx
 version: 2.3.4
 description: |
   TQX (tqx.trade) HK/US stock quant: factor analysis, strategy backtests, and agent-driven trading (paper or live) via the TQX CLIs.

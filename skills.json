@@ -506,8 +506,8 @@
       "description": "Token unlock schedules, cliff events, daily emissions, allocation breakdowns.\n\nUse when checking upcoming unlocks, supply pressure, or vesting cliffs before a trade (e.g. ARB unlock, ENA emission, SUI cliff)."
     },
     {
-      "name": "tqx-quant",
-      "path": "tqx-quant/SKILL.md",
+      "name": "tqx",
+      "path": "tqx/SKILL.md",
       "version": "2.3.4",
       "description": "TQX (tqx.trade) HK/US stock quant: factor analysis, strategy backtests, and agent-driven trading (paper or live) via the TQX CLIs.\n\nUse when the user wants to run factor IC/IR analysis, backtest a Python trading strategy on Hong Kong or US stocks, or set up agent-automated trading on a paper or live account (e.g. \"backtest a moving-average strategy on AAPL\", \"analyze a momentum factor on HK stocks\", \"let the agent trade my TQX account\", \"join the TQX trading competition\")."
     },

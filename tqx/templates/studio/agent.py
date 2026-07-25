@@ -10,7 +10,7 @@ from core.http_client import proxied_post
 
 AGENT_MODEL = os.environ.get("TQX_AGENT_MODEL", "openai/gpt-4o-mini")
 LLM_URL = "https://openrouter.ai/api/v1/chat/completions"
-CALLER_ID = "preview:tqx-quant-strategy-studio"
+CALLER_ID = "preview:tqx-strategy-studio"
 
 
 # --------------------------------------------------------------------------

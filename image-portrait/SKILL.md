@@ -484,8 +484,11 @@ FAL_KEY=your-fal-key python3 skills/image-portrait/generate_portrait.py photo.jp
 
 | Model | Edit (with ref image) | Generate (text only) |
 |-------|----------------------|---------------------|
-| nano2 | `fal-ai/nano-banana-2/edit` | `fal-ai/nano-banana-2` |
-| nanopro | `fal-ai/nano-banana-pro/edit` | `fal-ai/nano-banana-pro` |
+| nano2 | `fal-ai/gemini-3.1-flash-image-preview/edit` | `fal-ai/gemini-3.1-flash-image-preview` |
+| nanopro | `fal-ai/gemini-3-pro-image-preview/edit` | `fal-ai/gemini-3-pro-image-preview` |
 | gpt | `openai/gpt-image-2/edit` | `openai/gpt-image-2` |
+
+The `nano2` / `nanopro` aliases are fal's Nano Banana 2 / Nano Banana Pro models,
+served through their `gemini-*-image-preview` endpoint IDs — use the IDs above.
 
 ---

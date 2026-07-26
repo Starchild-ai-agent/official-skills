@@ -504,7 +504,11 @@ FAL_KEY=your-fal-key python3 skills/image-edit/edit_image.py photo.jpg "make it 
 
 | Model | Edit endpoint |
 |-------|--------------|
-| nanopro | `fal-ai/nano-banana-pro/edit` |
+| nano2 | `fal-ai/gemini-3.1-flash-image-preview/edit` |
+| nanopro | `fal-ai/gemini-3-pro-image-preview/edit` |
 | gpt | `openai/gpt-image-2/edit` |
+
+The `nano2` / `nanopro` aliases are fal's Nano Banana 2 / Nano Banana Pro models,
+served through their `gemini-*-image-preview` endpoint IDs — use the IDs above.
 
 ---

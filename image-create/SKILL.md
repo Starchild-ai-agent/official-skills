@@ -697,7 +697,11 @@ FAL_KEY=your-fal-key python3 skills/image-create/generate_image.py "a cute robot
 
 | Model | Generate (text only) | Edit (with ref image) |
 |-------|---------------------|----------------------|
-| nanopro | `fal-ai/nano-banana-pro` | `fal-ai/nano-banana-pro/edit` |
+| nano2 | `fal-ai/gemini-3.1-flash-image-preview` | `fal-ai/gemini-3.1-flash-image-preview/edit` |
+| nanopro | `fal-ai/gemini-3-pro-image-preview` | `fal-ai/gemini-3-pro-image-preview/edit` |
 | gpt | `openai/gpt-image-2` | `openai/gpt-image-2/edit` |
+
+The `nano2` / `nanopro` aliases are fal's Nano Banana 2 / Nano Banana Pro models,
+served through their `gemini-*-image-preview` endpoint IDs — use the IDs above.
 
 ---

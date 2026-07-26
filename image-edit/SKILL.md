@@ -1,6 +1,6 @@
 ---
 name: image-edit
-version: 1.0.5
+version: 1.0.6
 description: |
   Image editing and enhancement of an existing image. Covers background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.
 

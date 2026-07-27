@@ -1,6 +1,6 @@
 ---
 name: cli-bridge
-version: 0.3.3
+version: 0.3.4
 description: |
   Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.
 
@@ -362,6 +362,56 @@ streamed in chunks so large files don't blow the WS frame limit.
 > granted, the policy is **deny-all** until commands are opted in, and the
 > daemon's self-update verifies an **Ed25519 signature** before swapping
 > binaries. Widen deliberately.
+
+## Local agent migration (zero-paste flow)
+
+When the user asks to migrate another AI agent's data into Starchild and
+the laptop daemon is connected, skip the manual export-prompt flow — the
+agent drives both ends itself. The relay stays in the loop (billing
+preserved); only the two human paste steps are eliminated, because
+code/token pass internally between export and import.
+
+**Flow (validated end-to-end 2026-07-09, Claude Code → Starchild):**
+
+1. **Discover** — two passes via `local_shell`, don't rely on a fixed list:
+   a. Known state dirs: `~/.claude` (Claude Code), `~/.codex`, `~/.cursor`,
+      `~/.gemini`, `~/.openclaw`, `~/.clawdbot`, `~/.aider*`, `~/.continue`,
+      `~/.windsurf`, `~/.goose`, `~/.config/github-copilot`.
+   b. Generic sweep for anything the list missed:
+      `ls -d ~/.*/ ~/.config/*/ 2>/dev/null` and eyeball for AI-agent-looking
+      names (agent/copilot/ai/llm/bot). New tools appear constantly — treat
+      the known list as a starting point, not a boundary.
+   List what each discovered dir contains before proposing scope.
+2. **Select** — show the user a table (content, size, recommendation) and
+   let them choose scope. Default-skip session histories (`projects/` can
+   be hundreds of MB) and anything credential-like.
+3. **Read** — `cat` the selected files via `local_shell` (read-only).
+4. **Build bundle** — in the agent workspace, assemble the standard
+   migration structure (`manifest.json`, `memory/agent.json`,
+   `memory/user.json`, `identity/profile.json`, `identity/soul.md`,
+   `user/settings.json`, `tasks/tasks.json`, `env/keys.json` — key names
+   only, never values; extra files under `files/`).
+   ⚠️ `manifest.json` MUST contain a top-level `"version"` field —
+   the agent-import validator rejects the bundle without it (`"source"`
+   and `"description"` are also read for the summary). Do not use
+   `"bundle_version"`.
+5. **Upload** — `tar czf bundle.tar.gz -C <dir> . && curl -s -X POST
+   https://sc-agent-migration.fly.dev/paste --data-binary @bundle.tar.gz`
+   → response has `code` + `download_token` (1h TTL, single-use token).
+6. **Import immediately** — pass code/token straight to
+   `skills/agent-import/scripts/download.py`, then apply components per
+   the agent-import SKILL.md (settings → identity → SOUL → memory →
+   tasks → env keys → files). Never echo the download_token into chat.
+7. **Report** — checklist of imported vs skipped items; clean up
+   `migration/` and the tarball.
+
+**Typical mappings:** `CLAUDE.md` → memory entries (user conventions);
+custom commands / subagent definitions → `files/` (review whether to
+convert to Starchild skills after import); persona files → SOUL merge.
+
+**Fallback:** source agent is cloud-hosted (files not on the laptop) →
+use the classic relay flow: paste the export prompt to the source agent,
+user relays code + download_token manually.
 
 ## End-to-end smoke test
 

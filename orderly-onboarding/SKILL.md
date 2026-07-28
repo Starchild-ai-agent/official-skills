@@ -1,6 +1,6 @@
 ---
 name: orderly-onboarding
-version: 1.1.1
+version: 1.1.2
 description: |
   Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart. Also indexes executed Orderly fills into Starchild trade analytics.
 

@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.29.0
+version: 0.30.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -352,6 +352,26 @@ already-`listed` service never delists it.
 - **Merged-into-project-card visibility:** when a listed service has `project_slug` pointing to a PUBLIC project, it is folded into that project's card in unified marketplace views. Consequence: the service will NOT appear as a standalone item in `explore_services()` or `list_my_services()` — this is by design, not a listing failure. It is still live and purchasable via the project card, `get_service(service_id)`, and `get_user_services(user_id)`, and it IS discoverable via `explore_marketplace()` (unified feed). To verify a merged service is listed, check `get_service()` → `review_status == "listed"`, not `explore_services()` results.
 - **When the user asks for multiple APIs, create ONE service with `api_endpoints`** — do NOT create multiple separate services. See Flow E.
 
+### Tagging — predefined tag slugs for marketplace filtering
+
+When creating a paid service, pass `tags` with 1-3 tag slugs from the predefined list below. The agent should choose the most relevant tags based on the service's name and description. Tags are used for marketplace filtering and discovery — they replace the old `category` field.
+
+**Predefined tag slugs** (pick 1-3 most relevant):
+
+| Domain | Tags |
+|--------|------|
+| DeFi & Trading | `defi`, `trading`, `dex`, `dex-swap`, `lending`, `lending-yield`, `yield`, `staking`, `derivatives`, `bridge` |
+| On-chain Data | `onchain-data`, `token-analytics`, `price-feed`, `wallet`, `wallet-portfolio`, `nft` |
+| AI & ML | `ai-inference`, `llm-inference`, `text-analysis`, `image-generation`, `text-to-speech`, `video-transcription`, `translation` |
+| Web & Data | `web-search`, `web-scraping`, `screenshot-pdf`, `news-feed`, `seo`, `data-service`, `data-storage`, `analytics` |
+| Security & Compliance | `aml-sanctions`, `security`, `privacy`, `threat-detection`, `agent-safety`, `agent-trust` |
+| Infrastructure | `smart-contract`, `oracle`, `zk-proofs`, `layer2`, `mev`, `compute`, `storage`, `developer-tools`, `identity`, `payment`, `payments` |
+| Social & Media | `social`, `social-media`, `gaming`, `metaverse` |
+| Finance (TradFi) | `stock-equity`, `sec-edgar`, `real-estate`, `insurance`, `prediction-market` |
+| Other | `dao`, `governance`, `email-sms`, `weather`, `geolocation`, `healthcare`, `agriculture`, `astrology-fortune`, `rwa`, `research-academic`, `legal-gov`, `launchpad` |
+
+Example: a DeFi price API → `tags=["defi", "price-feed", "trading"]`
+
 ### Flow B — Paid Project listing
 
 A paid project charges for access. There are two forms — both use
@@ -380,8 +400,8 @@ implements (paywall interceptor for Form 1, nothing extra for Form 2).
 create_paid_service(
     name="Premium Trading Signals",
     description="Real-time trading signals with on-chain confirmation.",
-    category="数据服务",
     service_type="paid_project",
+    tags=["trading", "onchain-data"],
     project_slug="33-premium-signals",  # FULL published slug WITH user prefix (the URL path segment)
     api_endpoint="https://community.iamstarchild.com/33-premium-signals",
     provider_wallet="0xAbC...yourEvmWallet",  # EVM address — same on every enabled chain (default all: Base+Monad+Robinhood)
@@ -391,9 +411,9 @@ create_paid_service(
 )
 ```
 
-   Required paid-project fields: `name`, `description`, `category`, `service_type`,
+   Required paid-project fields: `name`, `description`, `service_type`,
    `project_slug`, `api_endpoint`, `provider_wallet`, `pricing_model`, `price`,
-   `service_description`.
+   `service_description`. Recommended: `tags` (1-3 predefined tag slugs for marketplace filtering).
 
    ⚠️ `project_slug` must be the **full published slug including the user prefix**
    (e.g. `33-premium-signals`, exactly the path segment in the project URL
@@ -504,8 +524,8 @@ A paid API is an external API service that already implements x402 charging.
 create_paid_service(
     name="On-chain Whale Tracker API",
     description="REST API returning real-time whale wallet movements across 12 chains.",
-    category="数据服务",
     service_type="paid_api",
+    tags=["onchain-data", "wallet-portfolio", "trading"],
     api_endpoint="https://api.example.com/v1/whales",
     provider_wallet="0xAbC...yourEvmWallet",  # EVM address — same on every enabled chain (default all: Base+Monad+Robinhood)
     pricing_model="pay_per_use",
@@ -517,7 +537,7 @@ create_paid_service(
 )
 ```
 
-   Required paid-API fields: `name`, `description`, `category`, `service_type`, `api_endpoint`,
+   Required paid-API fields: `name`, `description`, `service_type`, `api_endpoint`,
    `provider_wallet`, `pricing_model`, `price`, `api_documentation`, `example_request`,
    `example_response`. Optional: `free_trial_count` (only for `pay_per_use`),
    `source` (`"manual"` for proxy mode — see step 1 Option B above; omit for default
@@ -562,8 +582,8 @@ The marketplace shows a single merged card with both "Visit Project" and "Call A
 create_paid_service(
     name="Random9 API",
     description="Random 9-digit number API. Free docs page + paid API calls.",
-    category="工具服务",
     service_type="paid_project",
+    tags=["developer-tools"],
     project_slug="33-random9-api",  # FULL slug WITH user prefix — links to the free project page
     api_endpoint="https://community.iamstarchild.com/33-random9-api/api/random",
     provider_wallet="0xAbC...yourEvmWallet",  # EVM address — same on every enabled chain (default all: Base+Monad+Robinhood)
@@ -617,8 +637,8 @@ Each endpoint is listed separately in the marketplace detail view.
 create_paid_service(
     name="Data API Service",
     description="Multiple API endpoints at different prices.",
-    category="数据服务",
     service_type="paid_api",
+    tags=["data-service"],
     api_endpoint="https://example.com/api/basic",  # primary endpoint for review
     api_endpoints=[
         {"path": "GET /api/basic", "price": 0.01, "label": "Basic Query"},
@@ -809,8 +829,7 @@ write reviews, manage favorites, and check earnings — same as the web frontend
 | Function | Purpose |
 |---|---|
 | `explore_marketplace(search, paid_only, ...)` | ⭐ **UNIFIED browse — use this FIRST to find paid services/APIs.** Project cards + standalone services in one feed (same as web All/Paid tabs); the only search path that surfaces services merged into public project cards. Items have `type`: `service` (use `id`) or `project` (paid cards carry `service_id`) — feed into `get_service_detail()` |
-| `explore_services(search, category, sort, ...)` | Browse STANDALONE service items only (services API). ⚠️ Services merged into a public project card do NOT appear here — use `explore_marketplace()` for full coverage |
-| `get_service_categories()` | List all categories with counts |
+| `explore_services(search, sort, tags, ...)` | Browse STANDALONE service items only (services API). ⚠️ Services merged into a public project card do NOT appear here — use `explore_marketplace()` for full coverage |
 | `get_service_detail(service_id)` | Public detail for a published service (includes docs, increments views) |
 | `get_service_pricing(service_id)` | Verified pricing with real-time x402 check |
 | `get_service_reviews(service_id, sort)` | List reviews for a service (public) |
@@ -851,7 +870,7 @@ from exports import (
     list_my_services, get_service, update_service, delete_service,
     restore_service, set_service_examples, clear_service_examples,
     # MARKETPLACE: browse + consumer actions
-    explore_marketplace, explore_services, get_service_categories, get_service_detail,
+    explore_marketplace, explore_services, get_service_detail,
     get_service_pricing, get_service_reviews, write_service_review,
     get_user_services, favorite_service, unfavorite_service,
     get_favorite_services, get_service_purchase_status,
@@ -870,8 +889,8 @@ print(list_in_dashboard(slug="33-my-app", name="My App", description="A cool app
 res = create_paid_service(
     name="My Paid App",
     description="Premium features",
-    category="工具服务",
     service_type="paid_project",
+    tags=["developer-tools"],
     project_slug="33-my-app",  # full published slug WITH user prefix
     api_endpoint="https://community.iamstarchild.com/33-my-app",
     provider_wallet="0xAbC...",

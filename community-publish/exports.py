@@ -1081,12 +1081,12 @@ def delete_listing(slug: str) -> dict[str, Any]:
 def create_paid_service(
     name: str,
     description: str,
-    category: str,
     service_type: str,
     api_endpoint: str,
     provider_wallet: str,
     pricing_model: str,
     price: float,
+    category: str = "other",
     project_slug: str | None = None,
     cover_url: str | None = None,
     tags: list[str] | None = None,
@@ -1120,7 +1120,8 @@ def create_paid_service(
     Args:
         name: Service display name (≤500 chars).
         description: Service description (Markdown).
-        category: Service category (e.g. "数据服务", "工具服务").
+        category: DEPRECATED — no longer used for filtering or display.
+            Defaults to 'other'. Pass tags instead for marketplace discovery.
         service_type: "paid_project" or "paid_api".
         api_endpoint: The x402 charge endpoint URL. For paid_project this
             is the project's public URL; for paid_api it's the external
@@ -1143,7 +1144,12 @@ def create_paid_service(
             validates the slug against project_listings and silently clears
             non-existent slugs. Must be the full slug with user prefix.
         cover_url: Optional cover image URL.
-        tags: Optional list of ≤5 tags (≤20 chars each).
+        tags: 1-3 predefined tag slugs for marketplace filtering (replaces
+            the old category field). Choose from the predefined tag list in
+            SKILL.md (e.g. ["defi", "trading", "price-feed"]). The agent
+            should select the most relevant tags based on the service's
+            name and description. Tags are used for marketplace discovery
+            and filtering. ≤5 tags, ≤20 chars each.
         free_trial_count: Optional, only for pay_per_use (N free calls).
         api_documentation: Required for paid_api (Markdown, with params +
             response format + example).
@@ -1237,7 +1243,7 @@ def create_paid_service(
     payload: dict[str, Any] = {
         "name": name,
         "description": description,
-        "category": category,
+        "category": category or "other",
         "service_type": service_type,
         "api_endpoint": api_endpoint,
         "provider_wallet": provider_wallet,
@@ -1534,7 +1540,7 @@ def update_service(service_id: str, **fields) -> dict[str, Any]:
     Args:
         service_id: The UUID returned by create_paid_service().
         **fields: Any of the create_paid_service() parameters to update
-            (name, description, category, api_endpoint, provider_wallet,
+            (name, description, api_endpoint, provider_wallet,
             pricing_model, price, api_documentation, etc.). Also supports
             the multi-chain payment fields:
             - networks_mode: "all" (follow platform mainnet set) or "custom".
@@ -1737,7 +1743,7 @@ def clear_service_examples(service_id: str) -> dict[str, Any]:
 
 def explore_services(
     search: str | None = None,
-    category: str | None = None,
+    category: str | None = None,  # deprecated, kept for backward compat
     service_type: str | None = None,
     tags: list[str] | None = None,
     sort: str = "latest",
@@ -1749,7 +1755,7 @@ def explore_services(
 
     Args:
         search: Full-text search query.
-        category: Filter by category (e.g. "数据服务").
+        category: DEPRECATED — no longer used. Use tags instead.
         service_type: Filter by type ("paid_project" or "paid_api").
         tags: Filter by tags (list of strings).
         sort: Sort order — "latest", "popular", "price_low", "price_high", "rating".
@@ -1845,21 +1851,10 @@ def explore_marketplace(
 
 
 def get_service_categories() -> dict[str, Any]:
-    """List all service categories with counts.
-
-    Returns:
-        {"ok": True, "categories": [...]} on success
-        {"ok": False, "error": ...} on failure
+    """DEPRECATED — categories have been replaced by tags (plans-289).
+    Returns an empty list. Use explore_services(tags=[...]) for filtering.
     """
-    try:
-        status, body = gateway.service_categories()
-    except Exception as e:
-        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
-
-    if status != 200:
-        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
-
-    return {"ok": True, "categories": body.get("categories", [])}
+    return {"ok": True, "categories": []}
 
 
 def get_service_detail(service_id: str) -> dict[str, Any]:

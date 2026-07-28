@@ -274,7 +274,7 @@ def cover_presign(
 def service_create(owner_user_id: str, payload: dict) -> tuple[int, dict]:
     """POST /api/services — create a paid service listing.
 
-    payload is the full service body (name, description, category,
+    payload is the full service body (name, description,
     service_type, api_endpoint, provider_wallet, pricing_model, price,
     etc.). owner_user_id is injected into the body for internal-key auth.
 

@@ -24,6 +24,7 @@ Usage:
 import argparse
 import asyncio
 import base64
+import hashlib
 import json
 import os
 import sys
@@ -246,10 +247,27 @@ def signed_get(key, path):
     )
 
 
+def synthetic_trade_id(ts_ms, symbol, side, price, size):
+    """Stable fallback id when the API row carries no trade/match id.
+
+    Archived Public Info rows sometimes omit id/trade_id/match_id. Without this
+    every such fill would collapse into the same dedupe_key and the server's
+    unique index would keep only one row per wallet.
+    """
+    basis = f"{ts_ms}:{symbol or ''}:{side or ''}:{price}:{size}"
+    return "h" + hashlib.sha1(basis.encode()).hexdigest()[:20]
+
+
 def map_fill_private(t, addr, account_id, broker):
     price = float(t.get("executed_price") or 0)
     size = float(t.get("executed_quantity") or 0)
-    trade_id = t.get("id")
+    trade_id = t.get("id") or synthetic_trade_id(
+        t.get("executed_timestamp") or 0,
+        t.get("symbol"),
+        (t.get("side") or "").lower(),
+        price,
+        size,
+    )
     return {
         "source": "orderly_sync",
         "venue": f"orderly:{broker}",
@@ -285,6 +303,8 @@ def map_fill_public(t, addr, account_id, broker):
             ts_ms = int(ts_ms)
         except ValueError:
             ts_ms = 0
+    if not trade_id:
+        trade_id = synthetic_trade_id(ts_ms, t.get("symbol"), side, price, size)
     return {
         "source": "orderly_public_sync",
         "venue": f"orderly:{broker}",
@@ -308,7 +328,7 @@ def map_fill_public(t, addr, account_id, broker):
 
 
 def fetch_private_fills(key, start_ms):
-    events, page = [], 1
+    page = 1
     while True:
         st, res = signed_get(key, f"/v1/trades?size=500&page={page}&start_t={start_ms}")
         if not res.get("success"):
@@ -400,8 +420,12 @@ async def main():
         f"mode={mode} is_agent={is_agent} fills={len(events)}"
     )
     if events:
-        report_trade_events(events)
-        print("reported (fire-and-forget; server dedupes on user_id+dedupe_key)")
+        # blocking=True is REQUIRED here: this is a short-lived script and a
+        # background daemon thread would be killed on exit before the POST.
+        sent = report_trade_events(events, blocking=True)
+        print(f"reported {sent}/{len(events)} events (server dedupes on user_id+dedupe_key)")
+        if sent < len(events):
+            print("WARNING: some batches failed — re-run is safe (idempotent)")
 
 
 if __name__ == "__main__":

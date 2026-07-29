@@ -1,6 +1,6 @@
 ---
 name: okx
-version: 1.0.7
+version: 1.1.0
 description: |
   OKX OnChainOS: on-chain trading, analytics, security, DeFi across 20+ chains.
 
@@ -27,10 +27,10 @@ disable-model-invocation: false
 > below lives upstream at [`okx/onchainos-skills`](https://github.com/okx/onchainos-skills)
 > and is fetched fresh on install, so you always get the latest version.
 
-OKX OnChainOS is a suite of **16 specialized sub-skills** covering on-chain
+OKX OnChainOS is a suite of **8 specialized sub-skills** covering on-chain
 trading, market analytics, smart-money signals, DeFi investing & positions,
-wallet ops, security scanning, payment protocols, and crypto news & sentiment
-across 20+ blockchains (Ethereum, Solana, XLayer, Base, BSC, Arbitrum, Polygon,
+wallet ops, security scanning, payment protocols, agent identity & task
+marketplace, and crypto news & sentiment across 20+ blockchains (Ethereum, Solana, XLayer, Base, BSC, Arbitrum, Polygon,
 Optimism, Avalanche, TRON, …).
 
 Most sub-skills drive a single binary, `onchainos`, which is downloaded on first
@@ -129,7 +129,7 @@ failures or losses from using the built-in keys are the caller's responsibility.
 
 For production, bring your own credentials:
 
-1. Apply at [web3.okx.com → Build → Dev Portal](https://web3.okx.com/build/dev-portal)
+1. Apply at [web3.okx.com → OnchainOS → Dev Portal](https://web3.okx.com/onchain-os/dev-portal)
 2. Set env vars (or a `.env` in the project root — never commit it):
    ```bash
    export OKX_API_KEY=<your key>
@@ -154,38 +154,24 @@ account — it does NOT import your existing OKX App / extension wallet.
 
 ## Sub-skills by category
 
-### 📊 Discovery & Market Data (7)
+### 📊 Discovery & Market Data (2)
 
 | Sub-skill | Use for |
 |---|---|
-| `okx-dex-market` | Real-time prices, K-line charts, index prices, wallet PnL analysis, address tracker activities |
-| `okx-dex-token` | Token search, metadata, market cap, rankings, liquidity pools, hot tokens, advanced info, holder analysis, top traders, trade history, holder cluster analysis |
-| `okx-dex-signal` | Smart money / whale / KOL signal tracking, leaderboard rankings |
-| `okx-dex-trenches` | Meme pump/trenches token scanning, dev reputation, bundle detection, aped wallets |
-| `okx-dex-social` | Crypto news (latest, by symbol, search, detail, source platforms), market-wide sentiment ranking + per-coin sentiment with trend, per-token vibe timeline + TOP50 KOL leaderboard |
-| `okx-defi-portfolio` | DeFi positions and holdings overview across protocols and chains |
+| `okx-dex-market` | Read-only on-chain DEX data: real-time prices / K-line / index / wallet PnL, address tracker activities, smart money / whale / KOL signal tracking + leaderboard rankings, token search / metadata / market cap / rankings / liquidity / hot tokens / holder & cluster analysis / top traders / trade history, crypto news / sentiment / vibe / KOL leaderboard, meme pump / trenches scanning / dev reputation / bundle detection, and WS/script real-time streaming |
 | `okx-dapp-discovery` | Third-party DApp discovery and direct plugin routing — currently supports Polymarket, Aave V3, Hyperliquid, PancakeSwap V3 AMM, Morpho V1 Optimizer |
 
-### 🔄 Trading & Execution (3)
+### 💼 Wallet, Trading & Security (1)
 
 | Sub-skill | Use for |
 |---|---|
-| `okx-dex-swap` | Token swap via DEX aggregation (500+ liquidity sources) |
-| `okx-defi-invest` | DeFi product discovery, deposit, withdraw, claim rewards across Aave, Lido, PancakeSwap, Kamino, NAVI and more |
-| `okx-onchain-gateway` | Gas estimation, transaction simulation, broadcasting, order tracking |
+| `okx-agentic-wallet` | Wallet lifecycle (auth, balance, portfolio PnL, send, tx history, contract call), Gas Station, DEX swap, cross-chain bridge, limit-order strategy, transaction gateway (gas / simulate / broadcast / track order), public-address portfolio, security scanning (token risk, DApp phishing, tx & signature checks, approvals), audit log |
 
-### 💼 Wallet (2)
+### 🏦 DeFi (1)
 
 | Sub-skill | Use for |
 |---|---|
-| `okx-agentic-wallet` | Wallet lifecycle: auth, balance, portfolio PnL, send, tx history, contract call |
-| `okx-wallet-portfolio` | Public address balance, token holdings, portfolio value |
-
-### 🔐 Security (1)
-
-| Sub-skill | Use for |
-|---|---|
-| `okx-security` | Security scanning: token risk, DApp phishing, tx pre-execution, signature safety, approval management |
+| `okx-defi` | OKX-aggregated DeFi: product discovery, deposit, withdraw, claim rewards across Aave, Lido, PancakeSwap, Kamino, NAVI and more, plus positions and holdings overview across protocols and chains |
 
 ### 💸 Payments (1)
 
@@ -193,12 +179,18 @@ account — it does NOT import your existing OKX App / extension wallet.
 |---|---|
 | `okx-agent-payments-protocol` | Unified payment dispatcher across x402 (`exact` / `aggr_deferred` schemes — TEE or local-key sign), MPP (`charge` / `session` intents — open / voucher / topUp / close, transaction or hash mode), and a2a-pay (paymentId-based create / pay / status). Routes to per-scheme/intent references. |
 
-### 🛠️ Ops (2)
+### 🤖 Agent & AI (2)
+
+| Sub-skill | Use for |
+|---|---|
+| `okx-ai` | ERC-8004 on-chain Agent identity (register / update / search / rate / service-list) + agent task marketplace (publish / accept / deliver / dispute) + live task-progress monitor |
+| `okx-guide` | Onboarding & guide hub: Onchain OS onboarding + welcome banner, OKX.AI intro & role-registration routing, customer-support / Help Center guidance |
+
+### 🛠️ Ops (1)
 
 | Sub-skill | Use for |
 |---|---|
 | `okx-growth-competition` | Agentic Wallet exclusive trading competitions: list, join, view leaderboard, claim rewards |
-| `okx-audit-log` | Audit log export and troubleshooting |
 
 ---
 
@@ -207,20 +199,22 @@ account — it does NOT import your existing OKX App / extension wallet.
 | I want to… | Sub-skill | Suggested path |
 |---|---|---|
 | Check a token price or chart | `okx-dex-market` | A (no key) |
-| Search / analyze a token's holders | `okx-dex-token` | A (no key) |
-| Follow smart money buys | `okx-dex-signal` | A (no key) |
-| Scan new meme launches | `okx-dex-trenches` | A (no key) |
-| Look at any public wallet | `okx-wallet-portfolio` | A (no key) |
-| Scan a token / dApp for risk | `okx-security` | A (no key) |
-| Estimate gas / simulate a tx | `okx-onchain-gateway` | A or B |
+| Search / analyze a token's holders | `okx-dex-market` | A (no key) |
+| Follow smart money buys | `okx-dex-market` | A (no key) |
+| Scan new meme launches | `okx-dex-market` | A (no key) |
+| Look at any public wallet | `okx-agentic-wallet` (public-address portfolio) | A (no key) |
+| Scan a token / dApp for risk | `okx-agentic-wallet` (security scanning) | A (no key) |
+| Estimate gas / simulate a tx | `okx-agentic-wallet` (gateway) | A or B |
 | Manage / send from my own wallet | `okx-agentic-wallet` | B (requires login) |
-| Swap tokens | `okx-dex-swap` REST + sign with the `wallet` skill (Agent Wallet) |
-| Find best DeFi yield (any protocol) | `okx-defi-invest` | B (signing) |
-| View my DeFi positions | `okx-defi-portfolio` | A (no key) |
+| Swap tokens | `okx-agentic-wallet` (DEX swap) REST + sign with the `wallet` skill (Agent Wallet) |
+| Find best DeFi yield (any protocol) | `okx-defi` | B (signing) |
+| View my DeFi positions | `okx-defi` | A (no key) |
 | Use a specific DApp (Aave, Polymarket, …) | `okx-dapp-discovery` | B (full DApp flow) |
 | Pay an x402 / MPP / a2a-pay gated resource | `okx-agent-payments-protocol` | B (signing) |
+| Register / rate an on-chain agent, agent task marketplace | `okx-ai` | B (signing) |
+| Onboarding, OKX.AI intro, customer support | `okx-guide` | A (no key) |
 | Join a trading competition | `okx-growth-competition` | B (wallet required) |
-| Debug a CLI failure | `okx-audit-log` | B (local CLI logs) |
+| Debug a CLI failure | `okx-agentic-wallet` (audit log) | B (local CLI logs) |
 
 ---
 
@@ -260,14 +254,13 @@ onchainos workflow portfolio --address <addr> [--chains ethereum,solana]
 
 ### Typical skill flows
 
-- **Search & buy**: `okx-dex-token` (find token) → `okx-wallet-portfolio` (check funds) → `okx-dex-swap` (execute trade)
-- **Portfolio overview**: `okx-wallet-portfolio` (holdings) → `okx-dex-token` (enrich with analytics) → `okx-dex-market` (price charts)
-- **Market research**: `okx-dex-token` (trending/rankings) → `okx-dex-market` (candles/history) → `okx-dex-swap` (trade)
-- **Swap & broadcast**: `okx-dex-swap` (get tx data) → sign locally → `okx-onchain-gateway` (broadcast → track order)
-- **Pre-flight check**: `okx-onchain-gateway` (estimate gas → simulate → broadcast → track order)
-- **Full trading flow**: `okx-dex-token` (search) → `okx-dex-market` (price/chart) → `okx-wallet-portfolio` (check balance) → `okx-dex-swap` (get tx) → `okx-onchain-gateway` (simulate + broadcast + track)
-- **Leaderboard → research → trade**: `okx-dex-signal` (top traders by PnL/win rate) → `okx-dex-token` (token analytics) → `okx-dex-swap` (execute trade)
-- **Follow smart money**: `okx-dex-signal` (KOL/smart money buys) → `okx-dex-token` (details + holder cluster) → `okx-dex-market` (price chart) → `okx-dex-swap` (trade)
+- **Search & buy**: `okx-dex-market` (find token) → `okx-agentic-wallet` (check funds + execute trade)
+- **Portfolio overview**: `okx-agentic-wallet` (holdings) → `okx-dex-market` (enrich with analytics + price charts)
+- **Market research**: `okx-dex-market` (trending/rankings + candles/history) → `okx-agentic-wallet` (trade)
+- **Swap & broadcast**: `okx-agentic-wallet` (get quote → swap → broadcast → track order)
+- **Full trading flow**: `okx-dex-market` (search + price/chart) → `okx-agentic-wallet` (check balance → swap → simulate + broadcast + track)
+- **Leaderboard → research → trade**: `okx-dex-market` (top traders by PnL/win rate + token analytics) → `okx-agentic-wallet` (execute trade)
+- **Follow smart money**: `okx-dex-market` (KOL/smart money buys + token details + holder cluster + price chart) → `okx-agentic-wallet` (trade)
 
 ---
 
@@ -291,8 +284,8 @@ onchainos mcp
   portfolios) work via Path A without any user-supplied API Key.
 - **Trading & sending** default to the user's Agent Wallet via the `wallet`
   skill. Only fall back to `onchainos wallet login` when the user asks.
-- **Security gate**: when `okx-security` reports a fail, the calling agent
-  MUST block the related operation rather than proceed.
+- **Security gate**: when `okx-agentic-wallet`'s security scanning reports a
+  fail, the calling agent MUST block the related operation rather than proceed.
 
 ---
 
@@ -301,4 +294,4 @@ onchainos mcp
 - **Upstream repo**: [okx/onchainos-skills](https://github.com/okx/onchainos-skills)
 - **OnchainOS docs**: [OKX Web3 Build — OnchainOS](https://www.okx.com/web3/build/docs/onchain-os/introduction)
 - **Skills registry**: [skills.sh/okx/onchainos-skills](https://skills.sh/okx/onchainos-skills)
-- **Dev portal (API Key)**: [web3.okx.com/build/dev-portal](https://web3.okx.com/build/dev-portal)
+- **Dev portal (API Key)**: [web3.okx.com/onchain-os/dev-portal](https://web3.okx.com/onchain-os/dev-portal)

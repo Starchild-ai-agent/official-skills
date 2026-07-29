@@ -943,8 +943,27 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 pass
             return out
 
-        if r0.headers.get("PAYMENT-REQUIRED") or r0.headers.get("X-PAYMENT-REQUIRED"):
-            # V2 header challenge -> x402 SDK path
+        # Platform-shape detection: if the 402 body is a Starchild platform
+        # challenge (accepts list with pricingModel), skip the V2 SDK path
+        # and fall through to the platform path below.  The platform path
+        # uses _sign_platform_payment which correctly handles Privy's Kernel
+        # delegation wrapper; the V2 SDK does not, causing
+        # invalid_exact_evm_invalid_signature on delegated wallets.
+        _is_platform = False
+        try:
+            _pb = json.loads(r0.text or "{}")
+            _pa = _pb.get("accepts")
+            if isinstance(_pa, list) and _pa:
+                _f = _pa[0] if isinstance(_pa[0], dict) else {}
+                _is_platform = bool(
+                    _f.get("pricingModel")
+                    or (_f.get("extra") or {}).get("pricingModel"))
+        except Exception:
+            pass
+
+        if not _is_platform and (
+                r0.headers.get("PAYMENT-REQUIRED") or r0.headers.get("X-PAYMENT-REQUIRED")):
+            # V2 header challenge -> x402 SDK path (non-platform services)
             client, signer = _build_client(max_amount_atomic, signer_mode,
                                            allow_fallback_eoa, prefer_network)
             _ledger_append({"event": "attempt", "url": url,

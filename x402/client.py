@@ -1096,7 +1096,8 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
             if r2.status_code != 402:
                 break
             try:
-                nxt_raw = json.loads(r2.text or "{}").get("accepts")
+                nxt_body = json.loads(r2.text or "{}")
+                nxt_raw = nxt_body.get("accepts")
             except Exception:
                 break
             if isinstance(nxt_raw, dict):
@@ -1114,11 +1115,22 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 break  # same ask again -> not a deposit escalation, give up
             accepts = nxt
             chosen_network = str(accepts.get("network") or chosen_network)
-        return {"status": r2.status_code, "payer": signer.address, "paid": True,
-                **_signer_meta(signer),
-                "pricing_model": accepts.get("pricingModel"),
-                "network": accepts.get("network"),
-                "body": _body(r2.text, full=True)}
+        # Extract error from the last 402 body for diagnostics
+        _last_error = ""
+        if r2.status_code == 402:
+            try:
+                _last_error = json.loads(r2.text or "{}").get("error", "")
+            except Exception:
+                pass
+        out = {"status": r2.status_code, "payer": signer.address,
+               "paid": r2.status_code < 400,
+               **_signer_meta(signer),
+               "pricing_model": accepts.get("pricingModel"),
+               "network": accepts.get("network"),
+               "body": _body(r2.text, full=True)}
+        if _last_error:
+            out["error"] = _last_error
+        return out
 
     return asyncio.run(run())
 

@@ -178,6 +178,48 @@ def resolve_networks(cfg: dict) -> list[str]:
     return base()
 
 
+# ─── Dynamic asset-info lookup (plans-290) ────────────────────────────
+# Cache: {network: {"asset": ..., "extra": ...}} or {network: None}
+_asset_info_cache: dict = {}
+_ASSET_INFO_CACHE_TTL = 300  # 5 minutes
+
+
+def _fetch_asset_info(network: str, community_gateway_url: str) -> dict | None:
+    """Fetch asset info for a network from community-gateway's /asset-info API.
+
+    Used by _match_accept when the buyer signs for a network this gateway
+    doesn't know about (added after startup). The community-gateway maintains
+    the authoritative X402_ASSETS registry and exposes it via a public API.
+
+    Returns {"asset": "0x...", "extra": {"name": ..., "version": ...}} or None.
+    Cached for 5 minutes to avoid per-request HTTP calls.
+    """
+    cached = _asset_info_cache.get(network)
+    if cached is not None:
+        ts, info = cached
+        if time.time() - ts < _ASSET_INFO_CACHE_TTL:
+            return info
+
+    if not community_gateway_url:
+        # Try the default production URL
+        community_gateway_url = os.environ.get(
+            "COMMUNITY_GATEWAY_URL", "https://community.iamstarchild.com")
+
+    try:
+        url = f"{community_gateway_url}/api/x402-facilitator/asset-info/{network}"
+        resp = httpx.get(url, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            info = {"asset": data["asset"], "extra": data.get("extra", {})}
+            _asset_info_cache[network] = (time.time(), info)
+            return info
+        _asset_info_cache[network] = (time.time(), None)
+        return None
+    except Exception:
+        # Network error — don't cache failures, fall through to legacy matching
+        return None
+
+
 _access_cache: dict = {}  # (payer, mode) -> (expires_ts, has_access)
 _CACHE_TTL = 60
 
@@ -295,6 +337,32 @@ class PlatformBilling:
         net = payload.get("network", "")
         if net and net in self.networks:
             return self.requirements_for(net, resource)
+        # Graceful handling for networks added to the platform AFTER this
+        # gateway process started (plans-290). The community-gateway proxy
+        # supplements 402 accepts with new-chain entries, so a buyer may sign
+        # for a network this running gateway doesn't know about. Fetch the
+        # asset info dynamically from community-gateway's /asset-info API
+        # so the facilitator receives the correct chain/asset — no dependency
+        # on ASSETS or self.networks being up to date.
+        if net and net not in self.networks:
+            asset_info = _fetch_asset_info(net, self.community_gateway_url)
+            if asset_info:
+                req = {
+                    "scheme": "exact",
+                    "network": net,
+                    "amount": self.amount_atomic,
+                    "asset": asset_info["asset"],
+                    "payTo": self.pay_to,
+                    "maxTimeoutSeconds": 300,
+                    "extra": asset_info.get("extra", {}),
+                    "pricingModel": self.mode,
+                }
+                if resource:
+                    req["resource"] = resource
+                if self.mode == "prepaid":
+                    req["depositAtomic"] = str(self.deposit_atomic)
+                    req["pricePerCallAtomic"] = self.amount_atomic
+                return req
         auth = payload.get("payload", {}).get("authorization", {}) or {}
         to = (auth.get("to") or "").lower()
         val = str(auth.get("value", ""))

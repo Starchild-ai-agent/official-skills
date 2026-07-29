@@ -481,14 +481,6 @@ async def proxy(path: str, request: Request):
                             full, error=dep.get("errorReason", "deposit settlement failed"),
                             deposit=True), status_code=402)
                     bal = int(dep.get("balance_atomic", 0))
-                    # Fallback: if deposit succeeded on-chain but balance_atomic
-                    # came back as 0 (ledger race / confirm_deposit anomaly),
-                    # re-query the authoritative balance before giving up.
-                    if bal < price:
-                        try:
-                            bal = await pb.balance(payer)
-                        except Exception:
-                            pass  # keep the original bal; next check handles it
                 if bal < price:
                     return JSONResponse(pb.challenge_body(
                         full, error=f"insufficient_balance: {bal} < {price} — "

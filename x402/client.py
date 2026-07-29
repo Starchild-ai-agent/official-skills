@@ -109,6 +109,8 @@ class PrivySigner:
         480: "https://worldchain-mainnet.g.alchemy.com/public",
         4663: "https://rpc.mainnet.chain.robinhood.com",
         8453: "https://mainnet.base.org",
+        196: "https://rpc.xlayer.tech",
+        1952: "https://testrpc.xlayer.tech",
         42161: "https://arbitrum-one.publicnode.com",
         42220: "https://forno.celo.org",
         43114: "https://avalanche-c-chain-rpc.publicnode.com",
@@ -1219,7 +1221,7 @@ def payment_preflight(amount_atomic: int, networks=None,
     unknown (RPC-failed) balances never count as funded.
 
     networks: candidate rails from the service's 402 accepts (canonical ids,
-    e.g. ["eip155:8453", "solana:5eykt..."]). Default: Base+Monad+Robinhood+Solana.
+    e.g. ["eip155:8453", "solana:5eykt..."]). Default: Base+Monad+Robinhood+X Layer+Solana.
     Returns {ok, blockers[], warnings[], payer{}, funded_rails[], balances{}}.
     """
     from bazaar import PAYABLE_USDC, _canon_network, SOLANA_MAINNET

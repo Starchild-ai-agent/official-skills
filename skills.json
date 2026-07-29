@@ -190,7 +190,7 @@
     {
       "name": "community-publish",
       "path": "community-publish/SKILL.md",
-      "version": "0.30.0",
+      "version": "0.30.1",
       "description": "Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.\n\nUse when the user wants to share, publish, list, open-source, or monetize what they built (e.g. make this dashboard public, share my project, push to GitHub, 上架到服务市场, 上架付费服务, 提交审核)."
     },
     {
@@ -640,8 +640,8 @@
     {
       "name": "x402",
       "path": "x402/SKILL.md",
-      "version": "2.20.2",
-      "description": "Monetize any user project/service with the x402 payment protocol on platform\nnetworks (Base + Monad + Robinhood; Starchild platform billing: pay_per_use /\nlifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan\nservices), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
+      "version": "2.21.0",
+      "description": "Monetize any user project/service with the x402 payment protocol on platform\nnetworks (Base + Monad + Robinhood + X Layer; Starchild platform billing: pay_per_use /\nlifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan\nservices), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {
       "name": "xai-grok-onboarding",

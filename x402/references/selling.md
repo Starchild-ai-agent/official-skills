@@ -23,7 +23,7 @@ and the buyer picks one chain to pay on. Lock to specific chains with
 FAC=https://starchild-x402-facilitator.fly.dev
 
 # pay_per_use: verify -> settle on EVERY request
-# --networks defaults to "all" (Base + Monad + Robinhood mainnet); omit it to follow the
+# --networks defaults to "all" (Base + Monad + Robinhood + X Layer mainnet); omit it to follow the
 # platform full set. The 402 returns a multi-accepts list.
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode pay_per_use --price 0.01 --facilitator $FAC

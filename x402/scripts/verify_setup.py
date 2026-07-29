@@ -155,7 +155,7 @@ def main():
 
         # ---------- platform multi-accepts gateway (plans-280-04 G1/G2) ----
         # G1: networks_mode=all -> 402 accepts is a LIST with the platform
-        # mainnet full set (Base + Monad + Robinhood). G2: custom single chain -> length 1.
+        # mainnet full set (Base + Monad + Robinhood + X Layer). G2: custom single chain -> length 1.
         PLAT_PORT = 18510
         plat_cfg_all = os.path.join(tmp, "plat_all.json")
         json.dump({"mode": "pay_per_use", "upstream": f"http://127.0.0.1:{UP_PORT}",
@@ -178,9 +178,9 @@ def main():
               f"len={len(accepts) if isinstance(accepts, list) else 'n/a'}")
         if isinstance(accepts, list) and accepts:
             nets_in_402 = [a.get("network") for a in accepts]
-            check("G1: accepts includes Base+Monad+Robinhood",
+            check("G1: accepts includes Base+Monad+Robinhood+X Layer",
                   "eip155:8453" in nets_in_402 and "eip155:143" in nets_in_402
-                  and "eip155:4663" in nets_in_402,
+                  and "eip155:4663" in nets_in_402 and "eip155:196" in nets_in_402,
                   f"networks={nets_in_402}")
             check("G1: each accept has pricingModel",
                   all(a.get("pricingModel") == "pay_per_use" for a in accepts),

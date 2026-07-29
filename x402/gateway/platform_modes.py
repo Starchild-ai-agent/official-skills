@@ -18,7 +18,7 @@ x402-facilitator/docs/pricing-models.md:
                minimum, in which case it IS the deposit.
 
 Multi-chain support (plans-280-04 §5.6):
-  * ASSETS mirrors the facilitator KNOWN_ASSETS across Base + Monad + Robinhood (mainnet
+  * ASSETS mirrors the facilitator KNOWN_ASSETS across Base + Monad + Robinhood + X Layer (mainnet
     and testnet).
   * resolve_networks(cfg) implements the all/custom model — "all" follows the
     platform mainnet (or testnet) full set; "custom" locks to an explicit list.
@@ -92,13 +92,19 @@ ASSETS = {
     # Robinhood testnet: USDG (Global Dollar).
     "eip155:46630": ("0x7E955252E15c84f5768B83c41a71F9eba181802F",
                      {"name": "Global Dollar", "version": "1"}),
+    # X Layer mainnet: USDC (Circle FiatTokenV2, standard EIP-712 domain).
+    "eip155:196":   ("0x74b7F16337b8972027F6196A17a631aC6dE26d22",
+                     {"name": "USD Coin", "version": "2"}),
+    # X Layer testnet: USDC_TEST (FiatTokenV2, different contract + name from mainnet).
+    "eip155:1952":  ("0xcb8bf24c6ce16ad21d707c9505421a17f2bec79d",
+                     {"name": "USDC_TEST", "version": "2"}),
 }
 
 # Platform network full sets — "all" resolves to these. Extend here when the
 # facilitator adds a new mainnet/testnet chain (no business-table UPDATE needed:
 # all-configured services pick up the new chain on next 402 automatically).
-MAINNET_NETWORKS = ("eip155:8453", "eip155:143", "eip155:4663")     # Base + Monad + Robinhood mainnet
-TESTNET_NETWORKS = ("eip155:84532", "eip155:10143", "eip155:46630")  # Base Sepolia + Monad + Robinhood testnet
+MAINNET_NETWORKS = ("eip155:8453", "eip155:143", "eip155:4663", "eip155:196")     # Base + Monad + Robinhood + X Layer mainnet
+TESTNET_NETWORKS = ("eip155:84532", "eip155:10143", "eip155:46630", "eip155:1952")  # Base Sepolia + Monad + Robinhood + X Layer testnet
 
 
 def platform_mainnet_networks() -> list[str]:

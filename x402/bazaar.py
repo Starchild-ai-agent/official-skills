@@ -53,6 +53,7 @@ PAYABLE_USDC = {
     "eip155:42161":"0xaf88d065e77c8cc2239327c5edb3a432268e5831",   # Arbitrum One
     "eip155:480":  "0x79a02482a880bce3f13e09da970dc34db4cd24d1",   # World Chain
     "eip155:143":  "0x754704bc059f8c67012fed69bc8a327a5aafb603",   # Monad
+    "eip155:196":  "0x74b7f16337b8972027f6196a17a631ac6de26d22",   # X Layer
     "eip155:4663": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",   # Robinhood USDG
     "eip155:43114":"0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e",   # Avalanche C
     "eip155:1":    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",   # Ethereum
@@ -72,6 +73,7 @@ NETWORK_PREFERENCE = (
     "eip155:8453", "base",
     SOLANA_MAINNET, "solana",
     "eip155:143",
+    "eip155:196",
     "eip155:4663",
     "eip155:137", "eip155:42161", "eip155:480",
     "eip155:43114", "eip155:1", "eip155:10",

@@ -85,7 +85,7 @@ Common facilitator verify errors (2nd 402's `error` field):
   `bash skills/x402/setup.sh` once per machine (also append it to
   `/data/workspace/setup.sh` so restarts reinstall).
 
-## Multi-chain troubleshooting (Base + Monad + Robinhood)
+## Multi-chain troubleshooting (Base + Monad + Robinhood + X Layer)
 
 - **402 `accepts` is a list, not a single object**: platform-mode 402 challenges
   return `accepts` as an **array** (one entry per network). Buyers pick one

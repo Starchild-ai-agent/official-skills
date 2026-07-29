@@ -1160,7 +1160,7 @@ def create_paid_service(
             pricing plans"): [{"pricing_model", "price", "is_default", "label"}].
         networks_mode: Which chains the service accepts payment on.
             "all" (default) = follow the platform mainnet set (currently
-            Base + Monad + Robinhood; new chains are picked up automatically with no
+            Base + Monad + Robinhood + X Layer; new chains are picked up automatically with no
             code change). "custom" = only the chains listed in
             supported_networks. Defaulting to "all" is the recommended
             path — only pass "custom" when the user explicitly asks to
@@ -1215,7 +1215,7 @@ def create_paid_service(
                 "they are enforced at call time."}
 
     # Multi-chain payment config (plans-280 Phase B3).
-    # Default is "all" (follow platform mainnet set: Base + Monad + Robinhood).
+    # Default is "all" (follow platform mainnet set: Base + Monad + Robinhood + X Layer).
     # Only validate when the caller explicitly opts into "custom".
     # NEVER default to a hard-coded single chain (e.g. ['eip155:8453']) —
     # that would re-introduce the Base-only behavior this skill moved away

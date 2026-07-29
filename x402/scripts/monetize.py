@@ -177,9 +177,9 @@ def main():
                     help='payperuse: "GET /api/*=$0.01"; sub/metered: "GET /api/*=UNITS"')
     ap.add_argument("--networks", default=os.environ.get("X402_NETWORKS", "all"),
                     help="'all' (default) = follow the platform mainnet full set "
-                         "(Base+Monad+Robinhood); testnet full set when the facilitator is "
+                         "(Base+Monad+Robinhood+X Layer); testnet full set when the facilitator is "
                          "x402.org. Or a comma-separated CAIP-2 list to lock to "
-                         "specific chains, e.g. 'eip155:8453,eip155:143,eip155:4663'.")
+                         "specific chains, e.g. 'eip155:8453,eip155:143,eip155:4663,eip155:196'.")
     ap.add_argument("--network", default="",
                     help="DEPRECATED: use --networks. If set, treated as a single-chain "
                          "custom lock (networks_mode=custom, networks=[<value>]).")

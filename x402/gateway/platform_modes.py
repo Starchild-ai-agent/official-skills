@@ -104,6 +104,7 @@ ASSETS = {
 # feePayer is the facilitator's Solana public key — set via X402_SOLANA_FEE_PAYER
 # env or auto-fetched from facilitator /supported. If unset, Solana is excluded.
 _sol_fee_payer = os.environ.get("X402_SOLANA_FEE_PAYER", "").strip()
+_sol_devnet_fee_payer = ""  # default: no Solana devnet (defined before if-block to avoid NameError)
 if _sol_fee_payer:
     ASSETS["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"] = (
         "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",

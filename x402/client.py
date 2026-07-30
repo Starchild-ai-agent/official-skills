@@ -950,9 +950,16 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         # uses _sign_platform_payment which correctly handles Privy's Kernel
         # delegation wrapper; the V2 SDK does not, causing
         # invalid_exact_evm_invalid_signature on delegated wallets.
+        #
+        # EXCEPTION: when prefer_network is Solana, the platform path can't
+        # handle it (EVM EIP-3009 only). Route to V2 SDK path instead — the
+        # SDK has the SVM signer registered and its transport parses body-
+        # based V2 challenges (x402Version: 2) automatically.
         _is_platform = False
+        _is_v2_body = False
         try:
             _pb = json.loads(r0.text or "{}")
+            _is_v2_body = _pb.get("x402Version") == 2
             _pa = _pb.get("accepts")
             if isinstance(_pa, list) and _pa:
                 _f = _pa[0] if isinstance(_pa[0], dict) else {}
@@ -962,8 +969,19 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         except Exception:
             pass
 
-        if not _is_platform and (
-                r0.headers.get("PAYMENT-REQUIRED") or r0.headers.get("X-PAYMENT-REQUIRED")):
+        # Solana override: platform path is EVM-only; when the user explicitly
+        # prefers Solana and the body is V2, route to the SDK path which has
+        # the SVM signer and can handle body-based 402 challenges.
+        _solana_override = (
+            prefer_network and str(prefer_network).startswith("solana")
+            and _is_v2_body and _is_platform)
+        if _solana_override:
+            _is_platform = False  # force V2 SDK path
+
+        if (not _is_platform) and (
+                r0.headers.get("PAYMENT-REQUIRED")
+                or r0.headers.get("X-PAYMENT-REQUIRED")
+                or _is_v2_body):
             # V2 header challenge -> x402 SDK path (non-platform services)
             client, signer = _build_client(max_amount_atomic, signer_mode,
                                            allow_fallback_eoa, prefer_network)

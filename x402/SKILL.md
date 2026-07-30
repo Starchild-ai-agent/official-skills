@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.23.2
+version: 2.23.3
 description: |
   Monetize any user project/service with the x402 payment protocol on platform
   networks (Base + Monad + Robinhood + X Layer + Solana; Starchild platform billing: pay_per_use /

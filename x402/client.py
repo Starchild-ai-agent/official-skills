@@ -840,6 +840,154 @@ def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -
     return base64.b64encode(json.dumps(payload).encode()).decode()
 
 
+def _sign_solana_payment(accepts: dict, max_amount_atomic: int,
+                         svm_signer=None) -> str:
+    """Sign a Solana SPL TransferChecked payment for a platform-shape 402.
+
+    Mirrors the logic of x402 SDK's ExactSvmScheme.create_payment_payload:
+    builds a VersionedTransaction with ComputeBudget + TransferChecked + Memo
+    instructions, partially signed by the buyer (facilitator co-signs later).
+    Returns the base64 X-PAYMENT header value.
+    """
+    import binascii
+
+    from solana.rpc.api import Client as SolanaClient
+    from solders.instruction import AccountMeta, Instruction
+    from solders.message import MessageV0
+    from solders.pubkey import Pubkey
+    from solders.signature import Signature
+    from solders.transaction import VersionedTransaction
+
+    if svm_signer is None:
+        svm_signer = PrivySvmSigner()
+
+    amount = int(accepts["amount"])
+    if amount > max_amount_atomic:
+        raise ValueError(
+            f"x402 spend guard: {amount} atomic units exceeds cap {max_amount_atomic}.")
+
+    network = accepts["network"]
+    extra = accepts.get("extra") or {}
+    fee_payer_str = extra.get("feePayer")
+    if not fee_payer_str:
+        raise ValueError("feePayer is required in accepts.extra for Solana payments")
+
+    fee_payer = Pubkey.from_string(fee_payer_str)
+    mint = Pubkey.from_string(accepts["asset"])
+    payer_pubkey = Pubkey.from_string(svm_signer.address)
+
+    # Derive token program and decimals from on-chain mint account
+    _SOL_RPC_URL = "https://api.mainnet-beta.solana.com"
+    sol_client = SolanaClient(_SOL_RPC_URL)
+
+    _TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+    _TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
+    mint_info = sol_client.get_account_info(mint)
+    if not mint_info.value:
+        raise ValueError(f"Token mint not found: {mint}")
+    mint_owner = str(mint_info.value.owner)
+    if mint_owner == _TOKEN_PROGRAM:
+        token_program = Pubkey.from_string(_TOKEN_PROGRAM)
+    elif mint_owner == _TOKEN_2022_PROGRAM:
+        token_program = Pubkey.from_string(_TOKEN_2022_PROGRAM)
+    else:
+        raise ValueError(f"Unknown token program: {mint_owner}")
+    decimals = mint_info.value.data[44]
+
+    # Derive ATAs (Associated Token Accounts)
+    _ATA_PROGRAM = Pubkey.from_string("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
+
+    def _derive_ata(owner_str: str, mint_str: str, tp: Pubkey) -> Pubkey:
+        owner_pk = Pubkey.from_string(owner_str)
+        mint_pk = Pubkey.from_string(mint_str)
+        seeds = [bytes(owner_pk), bytes(tp), bytes(mint_pk)]
+        ata, _bump = Pubkey.find_program_address(seeds, _ATA_PROGRAM)
+        return ata
+
+    source_ata = _derive_ata(svm_signer.address, accepts["asset"], token_program)
+    # payTo may be an EVM address (0x...) for platform services — the
+    # facilitator resolves it to the seller's Solana ATA on settlement.
+    # But we still need a destination ATA for the transaction. For platform
+    # services the feePayer IS the facilitator's Solana address, and the
+    # actual settlement routing is handled server-side. Use feePayer as
+    # the destination for the transfer (facilitator receives, then routes).
+    pay_to = accepts.get("payTo", "")
+    if pay_to.startswith("0x"):
+        # EVM payTo on a Solana accept — facilitator handles routing.
+        # Transfer to facilitator (feePayer) who settles to the seller.
+        dest_ata = _derive_ata(fee_payer_str, accepts["asset"], token_program)
+    else:
+        dest_ata = _derive_ata(pay_to, accepts["asset"], token_program)
+
+    # Build instructions
+    _COMPUTE_BUDGET = Pubkey.from_string(
+        "ComputeBudget111111111111111111111111111111")
+    _MEMO_PROGRAM = Pubkey.from_string(
+        "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
+
+    # 1. SetComputeUnitLimit: [2, u32 LE]
+    set_cu_limit_data = bytes([2]) + (20000).to_bytes(4, "little")
+    set_cu_limit_ix = Instruction(
+        program_id=_COMPUTE_BUDGET, accounts=[], data=set_cu_limit_data)
+
+    # 2. SetComputeUnitPrice: [3, u64 LE]  (1 microlamport)
+    set_cu_price_data = bytes([3]) + (1).to_bytes(8, "little")
+    set_cu_price_ix = Instruction(
+        program_id=_COMPUTE_BUDGET, accounts=[], data=set_cu_price_data)
+
+    # 3. TransferChecked: [12, u64 amount LE, u8 decimals]
+    transfer_data = (bytes([12])
+                     + amount.to_bytes(8, "little")
+                     + bytes([decimals]))
+    transfer_ix = Instruction(
+        program_id=token_program,
+        accounts=[
+            AccountMeta(source_ata, is_signer=False, is_writable=True),
+            AccountMeta(mint, is_signer=False, is_writable=False),
+            AccountMeta(dest_ata, is_signer=False, is_writable=True),
+            AccountMeta(payer_pubkey, is_signer=True, is_writable=False),
+        ],
+        data=transfer_data)
+
+    # 4. Memo (random nonce for uniqueness, or seller-defined)
+    seller_memo = extra.get("memo")
+    if seller_memo and isinstance(seller_memo, str):
+        memo_data = seller_memo.encode("utf-8")[:256]
+    else:
+        memo_data = binascii.hexlify(os.urandom(16))
+    memo_ix = Instruction(
+        program_id=_MEMO_PROGRAM, accounts=[], data=memo_data)
+
+    # Get latest blockhash
+    blockhash_resp = sol_client.get_latest_blockhash()
+    blockhash = blockhash_resp.value.blockhash
+
+    # Build MessageV0
+    message = MessageV0.try_compile(
+        payer=fee_payer,
+        instructions=[set_cu_limit_ix, set_cu_price_ix, transfer_ix, memo_ix],
+        address_lookup_table_accounts=[],
+        recent_blockhash=blockhash)
+
+    # Partial sign: prepend 0x80 version byte before signing (MessageV0)
+    msg_bytes_with_version = bytes([0x80]) + bytes(message)
+    client_signature = svm_signer.keypair.sign_message(msg_bytes_with_version)
+
+    # index 0 = fee_payer (facilitator placeholder), index 1 = buyer
+    signatures = [Signature.default(), client_signature]
+    tx = VersionedTransaction.populate(message, signatures)
+    tx_base64 = base64.b64encode(bytes(tx)).decode("utf-8")
+
+    # Build x402 V2 payment payload
+    payload = {
+        "x402Version": 2,
+        "scheme": "exact",
+        "network": network,
+        "payload": {"transaction": tx_base64},
+    }
+    return base64.b64encode(json.dumps(payload).encode()).decode()
+
+
 def _signer_meta(signer) -> dict:
     """signer_type / signer_warning for result dicts and ledger lines."""
     meta = {"signer_type": getattr(signer, "signer_type", "unknown")}
@@ -947,14 +1095,11 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         # Platform-shape detection: if the 402 body is a Starchild platform
         # challenge (accepts list with pricingModel), skip the V2 SDK path
         # and fall through to the platform path below.  The platform path
-        # uses _sign_platform_payment which correctly handles Privy's Kernel
-        # delegation wrapper; the V2 SDK does not, causing
-        # invalid_exact_evm_invalid_signature on delegated wallets.
-        #
-        # EXCEPTION: when prefer_network is Solana, the platform path can't
-        # handle it (EVM EIP-3009 only). Route to V2 SDK path instead — the
-        # SDK has the SVM signer registered and its transport parses body-
-        # based V2 challenges (x402Version: 2) automatically.
+        # uses _sign_platform_payment (EVM) or _sign_solana_payment (SVM)
+        # which correctly handle Privy's Kernel delegation wrapper and
+        # Privy SVM signing respectively; the V2 SDK does not handle
+        # body-based V2 challenges (x402Version: 2 in JSON body without
+        # PAYMENT-REQUIRED header), causing Invalid payment required response.
         _is_platform = False
         _is_v2_body = False
         try:
@@ -968,15 +1113,6 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                     or (_f.get("extra") or {}).get("pricingModel"))
         except Exception:
             pass
-
-        # Solana override: platform path is EVM-only; when the user explicitly
-        # prefers Solana and the body is V2, route to the SDK path which has
-        # the SVM signer and can handle body-based 402 challenges.
-        _solana_override = (
-            prefer_network and str(prefer_network).startswith("solana")
-            and _is_v2_body and _is_platform)
-        if _solana_override:
-            _is_platform = False  # force V2 SDK path
 
         if (not _is_platform) and (
                 r0.headers.get("PAYMENT-REQUIRED")
@@ -1050,21 +1186,41 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         def _pick_accept(cands: list, prefer_network: str | None = None) -> dict | None:
             """Select one accept for the platform JSON-body path.
 
-            This path signs EIP-3009 via _sign_platform_payment (EVM only) —
-            Solana/SVM accepts are never candidates here. External multi-chain
-            services that include Solana pay through the V2 header + SDK path
-            above (unchanged), which registers the SVM signer.
+            EVM rails: signed via _sign_platform_payment (EIP-3009).
+            Solana rails: signed via _sign_solana_payment (SPL TransferChecked).
+
+            When prefer_network is a Solana network, Solana accepts are kept
+            and preferred. Otherwise only EVM accepts are candidates (Solana
+            is dropped so network_rank cannot pick a rail we cannot sign).
 
             Selection: keep prefer_network on prepaid deposit retry; else rank
-            EVM rails with network_rank (Base first as primary USDC chain,
+            rails with network_rank (Base first as primary USDC chain,
             then plain-ECDSA e.g. Monad, then delegated EVM).
             """
             exact = [a for a in cands
                      if isinstance(a, dict) and a.get("scheme") == "exact"]
             if not exact:
                 return None
-            # Platform path = EVM EIP-3009 only. Drop Solana/other non-EVM so
-            # network_rank cannot pick a rail we cannot sign here.
+            _prefer_solana = (prefer_network
+                              and str(prefer_network).startswith("solana"))
+            if _prefer_solana:
+                # When Solana is explicitly preferred, try Solana accepts first
+                sol = [a for a in exact
+                       if str(a.get("network") or "").startswith("solana")]
+                if sol:
+                    def _amt_s(a):
+                        try:
+                            return int(str(a.get("amount")))
+                        except (TypeError, ValueError):
+                            return 1 << 62
+                    same = [a for a in sol
+                            if str(a.get("network") or "") == prefer_network]
+                    if same:
+                        return sorted(same, key=_amt_s)[0]
+                    return sorted(sol, key=_amt_s)[0]
+                # No Solana accepts available — fall through to EVM
+            # EVM EIP-3009 path. Drop Solana/other non-EVM so network_rank
+            # cannot pick a rail we cannot sign via _sign_platform_payment.
             exact = [a for a in exact
                      if str(a.get("network") or "").startswith("eip155:")
                      or str(a.get("network") or "") == "base"]
@@ -1112,25 +1268,50 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         # surfaces the gateway's error.
         r2 = r0
         chosen_network = str(accepts.get("network") or "")
+        _is_solana_rail = chosen_network.startswith("solana")
+        # Lazily create the SVM signer only when a Solana rail is selected.
+        _svm_signer = None
+        if _is_solana_rail:
+            try:
+                _svm_signer = PrivySvmSigner()
+            except Exception as _e:
+                return {"status": 402,
+                        "error": f"Solana signer unavailable: {_e}",
+                        "body": _body(r0.text)}
         for _ in range(2):
-            xp = _sign_platform_payment(accepts, max_amount_atomic, signer=signer)
+            if chosen_network.startswith("solana"):
+                xp = _sign_solana_payment(accepts, max_amount_atomic,
+                                          svm_signer=_svm_signer)
+                _payer_addr = _svm_signer.address if _svm_signer else "unknown"
+                _flavor = "platform-svm"
+            else:
+                xp = _sign_platform_payment(accepts, max_amount_atomic,
+                                            signer=signer)
+                _payer_addr = signer.address
+                _flavor = "platform"
             _ledger_append({"event": "signed", "url": url,
-                            "method": method.upper(), "payer": signer.address,
+                            "method": method.upper(), "payer": _payer_addr,
                             "amount_atomic": accepts.get("amount"),
                             "pricing_model": accepts.get("pricingModel"),
                             "network": accepts.get("network"),
                             "pay_to": accepts.get("payTo"),
-                            "flavor": "platform", **_signer_meta(signer)})
+                            "flavor": _flavor,
+                            **({"signer_type": "privy_svm"}
+                               if chosen_network.startswith("solana")
+                               else _signer_meta(signer))})
             async with _httpx.AsyncClient(timeout=timeout, follow_redirects=True) as plain:
                 r2 = await plain.request(method.upper(), url, json=json_body,
                                          headers={**(headers or {}), "X-PAYMENT": xp})
             _ledger_append({"event": "result", "url": url,
-                            "method": method.upper(), "payer": signer.address,
+                            "method": method.upper(), "payer": _payer_addr,
                             "amount_atomic": accepts.get("amount"),
                             "status": r2.status_code,
                             "paid": r2.status_code == 200,
                             "network": accepts.get("network"),
-                            "flavor": "platform", **_signer_meta(signer)})
+                            "flavor": _flavor,
+                            **({"signer_type": "privy_svm"}
+                               if chosen_network.startswith("solana")
+                               else _signer_meta(signer))})
             if r2.status_code != 402:
                 break
             try:
@@ -1160,9 +1341,16 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 _last_error = json.loads(r2.text or "{}").get("error", "")
             except Exception:
                 pass
-        out = {"status": r2.status_code, "payer": signer.address,
+        _final_payer = (_svm_signer.address if _svm_signer
+                        and chosen_network.startswith("solana")
+                        else signer.address)
+        _final_signer_meta = ({"signer_type": "privy_svm"}
+                              if _svm_signer
+                              and chosen_network.startswith("solana")
+                              else _signer_meta(signer))
+        out = {"status": r2.status_code, "payer": _final_payer,
                "paid": r2.status_code < 400,
-               **_signer_meta(signer),
+               **_final_signer_meta,
                "pricing_model": accepts.get("pricingModel"),
                "network": accepts.get("network"),
                "body": _body(r2.text, full=True)}

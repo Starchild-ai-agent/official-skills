@@ -344,11 +344,11 @@ def main():
             # No admin token — the gateway will fall back to the
             # community-gateway proxy for access-status checks (the proxy
             # holds the admin token server-side). This requires
-            # COMMUNITY_GATEWAY_URL to be set in the environment.
-            cg = os.environ.get("COMMUNITY_GATEWAY_URL", "")
+            # COMMUNITY_PUBLIC_URL to be set in the environment.
+            cg = os.environ.get("COMMUNITY_PUBLIC_URL", "")
             if not cg:
                 print("[x402] WARNING: no --facilitator-admin-token and no "
-                      "COMMUNITY_GATEWAY_URL — the gateway will fail at "
+                      "COMMUNITY_PUBLIC_URL — the gateway will fail at "
                       "startup unless one of them is available.", flush=True)
         if not args.facilitator:
             sys.exit("platform modes require --facilitator (e.g. https://starchild-x402-facilitator.fly.dev)")

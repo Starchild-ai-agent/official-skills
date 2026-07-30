@@ -35,7 +35,7 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 # lifetime: one payment = permanent access (checked via /facilitator/access-status)
 # The gateway checks access-status automatically:
 #   - With --facilitator-admin-token: calls facilitator directly
-#   - Without it: proxies through community-gateway (COMMUNITY_GATEWAY_URL env,
+#   - Without it: proxies through community-gateway (COMMUNITY_PUBLIC_URL env,
 #     already set in user containers) which holds the admin token server-side
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode lifetime --price 5.00 --facilitator $FAC
@@ -76,7 +76,7 @@ lifetime/monthly/weekly/quarterly/yearly check "already paid" via the
 facilitator's `/access-status` endpoint. The gateway resolves this
 automatically: with `--facilitator-admin-token` it calls the facilitator
 directly; without it, it proxies through community-gateway
-(`COMMUNITY_GATEWAY_URL`, already set in user containers) which holds the
+(`COMMUNITY_PUBLIC_URL`, already set in user containers) which holds the
 admin token server-side — **no admin token needed in user containers**.
 Lifetime semantics: first call settles on-chain; repeat calls pass the
 already-paid check with NO second charge.

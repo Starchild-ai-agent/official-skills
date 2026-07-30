@@ -101,30 +101,32 @@ ASSETS = {
 }
 
 # Solana: SPL Token USDC (not EIP-3009; uses x402 SDK ExactSvmScheme).
-# feePayer is the facilitator's Solana public key — set via X402_SOLANA_FEE_PAYER
-# env or auto-fetched from facilitator /supported. If unset, Solana is excluded.
-_sol_fee_payer = os.environ.get("X402_SOLANA_FEE_PAYER", "").strip()
-_sol_devnet_fee_payer = ""  # default: no Solana devnet (defined before if-block to avoid NameError)
-if _sol_fee_payer:
-    ASSETS["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"] = (
-        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-        {"feePayer": _sol_fee_payer},
+# feePayer is the platform facilitator's Solana public key. Hardcoded here
+# so all agent containers automatically include Solana in their 402 accepts
+# without needing any extra env var. Override via X402_SOLANA_FEE_PAYER if
+# the facilitator key ever changes.
+_PLATFORM_SOL_FEE_PAYER = "FYgkFMkvHwVhUJBm9zhboJPtHxZT5Qtx1TN59zxPpQ7g"
+_sol_fee_payer = os.environ.get("X402_SOLANA_FEE_PAYER", "").strip() or _PLATFORM_SOL_FEE_PAYER
+ASSETS["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"] = (
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    {"feePayer": _sol_fee_payer},
+)
+# Solana devnet (optional, for local testing only — requires explicit env var)
+_sol_devnet_fee_payer = os.environ.get("X402_SOLANA_DEVNET_FEE_PAYER", "").strip()
+if _sol_devnet_fee_payer:
+    ASSETS["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"] = (
+        "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+        {"feePayer": _sol_devnet_fee_payer},
     )
-    # Solana devnet (optional, for testing)
-    _sol_devnet_fee_payer = os.environ.get("X402_SOLANA_DEVNET_FEE_PAYER", "").strip()
-    if _sol_devnet_fee_payer:
-        ASSETS["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"] = (
-            "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
-            {"feePayer": _sol_devnet_fee_payer},
-        )
 
 # Platform network full sets — "all" resolves to these. Extend here when the
 # facilitator adds a new mainnet/testnet chain (no business-table UPDATE needed:
 # all-configured services pick up the new chain on next 402 automatically).
 _evm_mainnet = ("eip155:8453", "eip155:143", "eip155:4663", "eip155:196")     # Base + Monad + Robinhood + X Layer
 _evm_testnet = ("eip155:84532", "eip155:10143", "eip155:46630", "eip155:1952")  # Base Sepolia + Monad + Robinhood + X Layer
-MAINNET_NETWORKS = _evm_mainnet + (("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",) if _sol_fee_payer else ())
-TESTNET_NETWORKS = _evm_testnet + (("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",) if _sol_devnet_fee_payer else ())  # type: ignore[possibly-undefined]
+# Solana mainnet is always included (feePayer defaults to platform facilitator key)
+MAINNET_NETWORKS = _evm_mainnet + ("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",)
+TESTNET_NETWORKS = _evm_testnet + (("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",) if _sol_devnet_fee_payer else ())
 
 
 def platform_mainnet_networks() -> list[str]:
@@ -223,7 +225,7 @@ def _fetch_asset_info(network: str, community_gateway_url: str) -> dict | None:
     if not community_gateway_url:
         # Try the default production URL
         community_gateway_url = os.environ.get(
-            "COMMUNITY_GATEWAY_URL", "https://community.iamstarchild.com")
+            "COMMUNITY_PUBLIC_URL", "https://community.iamstarchild.com")
 
     try:
         url = f"{community_gateway_url}/api/x402-facilitator/asset-info/{network}"
@@ -273,7 +275,7 @@ class PlatformBilling:
         # community-gateway proxy which holds the token server-side.
         self.community_gateway_url = (
             cfg.get("community_gateway_url")
-            or os.environ.get("COMMUNITY_GATEWAY_URL", "")
+            or os.environ.get("COMMUNITY_PUBLIC_URL", "")
         ).rstrip("/")
         # Internal API key for authenticating to community-gateway proxy
         self._internal_api_key = (
@@ -287,7 +289,7 @@ class PlatformBilling:
             # on EVERY request — silently double-charging buyers.
             raise ValueError(
                 f"mode '{self.mode}' requires either `facilitator_admin_token` "
-                "or COMMUNITY_GATEWAY_URL (for proxied access-status checks)")
+                "or COMMUNITY_PUBLIC_URL (for proxied access-status checks)")
         # prepaid: suggested deposit size. Default 100 calls worth, floored at
         # the facilitator's default minimum deposit ($0.10 = 100000 atomic).
         dep = cfg.get("deposit_usd")

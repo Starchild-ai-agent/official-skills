@@ -978,12 +978,18 @@ def _sign_solana_payment(accepts: dict, max_amount_atomic: int,
     tx = VersionedTransaction.populate(message, signatures)
     tx_base64 = base64.b64encode(bytes(tx)).decode("utf-8")
 
-    # Build x402 V2 payment payload
+    # Build x402 V2 payment payload.
+    # Include authorization.from so the community-gateway's decode_payment_header
+    # can extract the payer address (it only looks at payload.authorization.from;
+    # Solana payloads have no authorization field natively).
     payload = {
         "x402Version": 2,
         "scheme": "exact",
         "network": network,
-        "payload": {"transaction": tx_base64},
+        "payload": {
+            "transaction": tx_base64,
+            "authorization": {"from": svm_signer.address},
+        },
     }
     return base64.b64encode(json.dumps(payload).encode()).decode()
 

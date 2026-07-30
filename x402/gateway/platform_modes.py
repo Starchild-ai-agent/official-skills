@@ -277,10 +277,12 @@ class PlatformBilling:
             cfg.get("community_gateway_url")
             or os.environ.get("COMMUNITY_PUBLIC_URL", "")
         ).rstrip("/")
-        # Internal API key for authenticating to community-gateway proxy
-        self._internal_api_key = (
+        # Auth for community-gateway proxy (access-status, settlements).
+        # Clawd containers use COMMUNITY_GATEWAY_KEY to authenticate with
+        # community-gateway via X-Internal-Key header.
+        self._community_gateway_key = (
             cfg.get("internal_api_key")
-            or os.environ.get("INTERNAL_API_KEY", "")
+            or os.environ.get("COMMUNITY_GATEWAY_KEY", "")
         )
         if self.mode in SUBSCRIPTION_MODES and not self.fac_admin_token and not self.community_gateway_url:
             # fail-closed at STARTUP: without either the admin token (direct)
@@ -601,8 +603,8 @@ class PlatformBilling:
         if use_proxy:
             access_url = f"{self.community_gateway_url}/api/x402-facilitator/access-status"
             access_headers: dict = {}
-            if self._internal_api_key:
-                access_headers["X-INTERNAL-API-KEY"] = self._internal_api_key
+            if self._community_gateway_key:
+                access_headers["X-Internal-Key"] = self._community_gateway_key
         else:
             access_url = f"{self.facilitator}/facilitator/access-status"
             access_headers = self._headers(admin=True)

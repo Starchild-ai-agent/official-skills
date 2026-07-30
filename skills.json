@@ -14,12 +14,6 @@
       "description": "PANews crypto news: headlines, articles, columns, events, smart money boards.\n\nUse when reading PANews coverage or smart-money data (e.g. today's headlines, search \"restaking\", read article 12345, latest Polymarket leaderboard)."
     },
     {
-      "name": "shopify",
-      "path": "Shopify/SKILL.md",
-      "version": "1.0.0",
-      "description": "Shopify development skills: Admin GraphQL, Storefront, Hydrogen, Liquid, Polaris, Functions, POS, and more.\n\nUse when building, querying, or validating code for Shopify's development ecosystem (e.g. Admin API queries, Hydrogen components, Liquid themes, checkout extensions).\n\nSkills are installable via the `npx skill` CLI and provide Claude Code with API-specific context, documentation search, and code validation for each Shopify surface."
-    },
-    {
       "name": "aave",
       "path": "aave/SKILL.md",
       "version": "1.2.0",
@@ -216,6 +210,12 @@
       "path": "debank/SKILL.md",
       "version": "2.0.3",
       "description": "Multi-chain wallet portfolios: token balances, tx history, DeFi positions, NFTs.\n\nUse when inspecting any EVM address (e.g. show vitalik.eth balances, decode this tx, what DeFi protocols does 0x... use)."
+    },
+    {
+      "name": "deep-research",
+      "path": "deep-research/SKILL.md",
+      "version": "0.1.0",
+      "description": "Evidence-grounded deep research pipeline — plan, gather with an append-only evidence ledger, synthesize citing only ledger eids, then machine-validate every claim (unknown citations and unsupported numbers are deleted, not flagged)."
     },
     {
       "name": "defillama",
@@ -438,6 +438,12 @@
       "path": "sc-vpn/SKILL.md",
       "version": "1.0.2",
       "description": "Route outbound HTTP through SC-VPN Gateway to bypass region restrictions.\n\nUse when a script hits a geo block and needs to appear from a specific country (e.g. Binance 451, US-only news site, request as JP, KR exit IP)."
+    },
+    {
+      "name": "shopify",
+      "path": "Shopify/SKILL.md",
+      "version": "1.0.0",
+      "description": "Shopify development skills: Admin GraphQL, Storefront, Hydrogen, Liquid, Polaris, Functions, POS, and more.\n\nUse when building, querying, or validating code for Shopify's development ecosystem (e.g. Admin API queries, Hydrogen components, Liquid themes, checkout extensions).\n\nSkills are installable via the `npx skill` CLI and provide Claude Code with API-specific context, documentation search, and code validation for each Shopify surface."
     },
     {
       "name": "skill-creator",

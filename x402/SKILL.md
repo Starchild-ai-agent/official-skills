@@ -1,9 +1,9 @@
 ---
 name: x402
-version: 2.22.2
+version: 2.23.0
 description: |
   Monetize any user project/service with the x402 payment protocol on platform
-  networks (Base + Monad + Robinhood + X Layer; Starchild platform billing: pay_per_use /
+  networks (Base + Monad + Robinhood + X Layer + Solana; Starchild platform billing: pay_per_use /
   lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan
   services), and pay other agents' x402 services.
 
@@ -33,7 +33,7 @@ as config presets — the error contract is identical across all modes.
 ```
 buyer agent ──402/PAYMENT-SIGNATURE──> gateway :840x ──plain HTTP──> user service :port
                      │
-               facilitator (verify + settle on Base/Monad/Robinhood/X Layer) ──USDC/USDG──> user's Privy wallet
+               facilitator (verify + settle on Base/Monad/Robinhood/X Layer/Solana) ──USDC/USDG──> user's Privy wallet
 ```
 
 ## Reference files (MUST read before the matching task)
@@ -52,7 +52,7 @@ skill. Do NOT guess or improvise what these files cover:
 ```bash
 FAC=https://starchild-x402-facilitator.fly.dev
 # pay_per_use: verify -> settle on EVERY request (simplest mode)
-# --networks defaults to "all" (Base + Monad + Robinhood + X Layer mainnet); the 402 challenge
+# --networks defaults to "all" (Base + Monad + Robinhood + X Layer + Solana mainnet); the 402 challenge
 # returns a multi-accepts list — the buyer picks one chain per payment.
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode pay_per_use --price 0.01 --facilitator $FAC
@@ -97,7 +97,7 @@ Registry: `/data/workspace/.x402/services.json`; per-service config/log/state:
 
 The platform supports multiple chains. By default a service follows the
 **platform mainnet full set** (`--networks all`, the default) — currently
-Base + Monad + Robinhood + X Layer. The 402 challenge returns a multi-accepts list (one
+Base + Monad + Robinhood + X Layer + Solana. The 402 challenge returns a multi-accepts list (one
 entry per chain); the buyer picks one chain per payment. Lock to specific
 chains with `--networks eip155:8453,eip155:143,eip155:4663,eip155:196` (custom).
 
@@ -114,13 +114,13 @@ chains with `--networks eip155:8453,eip155:143,eip155:4663,eip155:196` (custom).
 
 | Facilitator | Networks | When |
 |-------------|----------|------|
-| **platform** (`https://starchild-x402-facilitator.fly.dev`, the default for mainnet; override via `X402_FACILITATOR_URL` or `--facilitator`) | Base + Monad + Robinhood + X Layer mainnet | production — platform settler pays gas on every chain |
+| **platform** (`https://starchild-x402-facilitator.fly.dev`, the default for mainnet; override via `X402_FACILITATOR_URL` or `--facilitator`) | Base + Monad + Robinhood + X Layer + Solana mainnet | production — platform settler pays gas on every chain |
 | `https://x402.org/facilitator` (default for testnet) | Base Sepolia + Monad + Robinhood + X Layer testnet | testing only — REJECTED for mainnet (startup guard) |
 
 The platform facilitator handles /verify + /settle on every supported chain;
 its settler key only pays gas — fund flow is fixed by the buyer's signature and
-can never touch user funds. **Gas is paid by the platform on every chain
-(ETH on Base, MON on Monad, ETH on Robinhood, OKB on X Layer) — never passed to the service
+can never touch user funds. **Gas/fees are paid by the platform on every chain
+(ETH on Base, MON on Monad, ETH on Robinhood, OKB on X Layer, SOL on Solana) — never passed to the service
 provider.** Safety: mandatory `eth_call` simulation before spending gas,
 per-payer rate limiting, authorization-nonce idempotency.
 Testnet USDC (Base Sepolia): `0x036CbD53842c5426634e7929541eC2318f3dCF7e`,
@@ -130,7 +130,7 @@ faucet at faucet.circle.com. Prices auto-convert: `$0.01` → `10000` atomic USD
 
 | Config | Behavior |
 |--------|----------|
-| `--networks all` (default) or `networks_mode: all` | 402 accepts = platform mainnet full set (Base + Monad + Robinhood + X Layer); testnet full set when facilitator is x402.org |
+| `--networks all` (default) or `networks_mode: all` | 402 accepts = platform mainnet full set (Base + Monad + Robinhood + X Layer + Solana); testnet full set when facilitator is x402.org |
 | `--networks eip155:8453` or `networks_mode: custom` + `networks: [...]` | 402 accepts = exactly the listed chains (custom lock) |
 | (no networks field) | same as `all` |
 
@@ -224,7 +224,7 @@ the version conflict and points here. Do this at setup, not mid-purchase.
 ### Multi-chain selection (buyer receives multiple accepts)
 
 When a service returns 402 with `accepts` as a **list** (one entry per
-network, e.g. Base + Monad + Robinhood + X Layer), the buyer Agent does NOT need to ask the user
+network, e.g. Base + Monad + Robinhood + X Layer + Solana), the buyer Agent does NOT need to ask the user
 which chain to use — **chain selection is fully automatic** in both
 `paid_request` and `bazaar_pay`. The logic:
 
@@ -243,8 +243,8 @@ which chain to use — **chain selection is fully automatic** in both
      of balance on the selected rail.
    - ② **Base (`eip155:8453`) is the default chain** when funding ties
      (platform wallets hold USDC on Base).
-   - ③ Static tiebreak (`network_rank`): Solana (ed25519) → Base → other
-     EVM without EIP-7702 delegation (plain ECDSA, e.g. Monad) → EVM with
+   - ③ Static tiebreak (`network_rank`): Base (primary USDC chain) → Solana /
+     other EVM without EIP-7702 delegation (plain ECDSA, e.g. Monad) → EVM with
      delegation code (Kernel EIP-1271). `signer_mode="eoa"`: Solana
      excluded, all EVM equal.
    - ④ Within the same rank, cheaper amount / first accept wins.
@@ -265,6 +265,8 @@ which chain to use — **chain selection is fully automatic** in both
    paid_request("GET", url, prefer_network="eip155:8453")
    # User says "pay on Monad"
    bazaar_pay(url, prefer_network="eip155:143")
+   # User says "pay on Solana" / "use Solana"
+   paid_request("GET", url, prefer_network="solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp")
    # Via env (CLI)
    X402_PREFER_NETWORK=eip155:8453 python3 skills/x402/client.py GET https://host/api
    ```
@@ -288,8 +290,8 @@ do NOT settle — the result has `paid: true` with no new on-chain tx.
 accounts are detected and signed via an ERC-1271-compatible path
 automatically. **Multi-accept routing prefers rails where Privy signs a
 plain signature** (max facilitator compatibility, no EOA funding needed):
-① Solana (ed25519) → ② EVM chains where the payer has no EIP-7702 code
-(plain ECDSA, e.g. Monad) → ③ EVM chains with delegation code (Kernel
+① Base (primary USDC chain) → ② Solana / EVM chains where the payer has no
+EIP-7702 code (plain ECDSA, e.g. Monad) → ③ EVM chains with delegation code (Kernel
 EIP-1271, e.g. Base) as last resort — spec-correct but some seller
 facilitators reject it; for Base-only sellers that do, use
 `signer_mode="eoa"`. Do NOT revoke the wallet's delegation (it powers gas
@@ -301,6 +303,10 @@ Every result includes `signer_type` (`"privy"` | `"session_eoa"`); an
 opted-in fallback also sets `signer_warning` — check them to confirm which
 identity actually paid. ⚠️ The two signers are DIFFERENT payer identities:
 subscriptions/prepaid balances do NOT carry over between them.
+Similarly, EVM and Solana prepaid balances are separate (different
+pay_to addresses) — a deposit on Solana cannot be spent on EVM and
+vice versa. The gateway sums both balances for display but debits
+from the chain where the deposit was made.
 → **EOA funding steps and signer internals: read
 `references/buying-advanced.md` BEFORE using the session EOA.**
 
@@ -342,7 +348,7 @@ Make any local service a PUBLIC paid API (charge any caller for any resource,
 no accounts / API keys needed — same capability set as Cloudflare's
 Monetization Gateway, running on your own machine):
 
-1. `python3 skills/x402/scripts/make_public.py --name my-api --upstream-port <port> --mode payperuse --route 'GET /api/*=$0.01' --pay-to <wallet>` — scaffolds `output/my-api/start.py` + config (defaults to `--networks all`: Base + Monad + Robinhood + X Layer)
+1. `python3 skills/x402/scripts/make_public.py --name my-api --upstream-port <port> --mode payperuse --route 'GET /api/*=$0.01' --pay-to <wallet>` — scaffolds `output/my-api/start.py` + config (defaults to `--networks all`: Base + Monad + Robinhood + X Layer + Solana)
 2. `preview(action='serve', dir='output/my-api', command='python3 start.py', port=<gateway_port>)` — note: start the upstream in the same command if it isn't already running
 3. `community-publish` skill → `publish_preview(preview_id, slug='my-api')` → public URL
 4. Price discovery is built in: `GET <public-url>/.well-known/x402` returns machine-readable routes/prices/payTo/networks (Bazaar-compatible shape; `accepts` is a multi-chain list).
@@ -505,7 +511,7 @@ bazaar_pay(url, max_usd=0.01)                  # proxy-first pay; refuse non-sta
 `probe_402` / `bazaar_pay` only pay `standard-v2` **exact** on known native
 USDC rails (see `bazaar.PAYABLE_USDC`): Base, Polygon, Arbitrum, World Chain,
 Solana mainnet, Monad, Avalanche, Ethereum, Optimism, Linea, Celo, Unichain.
-Multi-accept → prefer Privy-native rails (Solana → no-code EVM → delegated
+Multi-accept → prefer Privy-native rails (Base → Solana/no-code EVM → delegated
 EVM; see buyer signer section). The same selector (`client.network_rank`)
 drives bazaar's `probe_402` ordering, so the rail shown at probe time is the
 rail `auto` actually pays. `signer_mode="eoa"` never registers the SVM signer

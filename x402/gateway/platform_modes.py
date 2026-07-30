@@ -100,11 +100,30 @@ ASSETS = {
                      {"name": "USDC_TEST", "version": "2"}),
 }
 
+# Solana: SPL Token USDC (not EIP-3009; uses x402 SDK ExactSvmScheme).
+# feePayer is the facilitator's Solana public key — set via X402_SOLANA_FEE_PAYER
+# env or auto-fetched from facilitator /supported. If unset, Solana is excluded.
+_sol_fee_payer = os.environ.get("X402_SOLANA_FEE_PAYER", "").strip()
+if _sol_fee_payer:
+    ASSETS["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"] = (
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        {"feePayer": _sol_fee_payer},
+    )
+    # Solana devnet (optional, for testing)
+    _sol_devnet_fee_payer = os.environ.get("X402_SOLANA_DEVNET_FEE_PAYER", "").strip()
+    if _sol_devnet_fee_payer:
+        ASSETS["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"] = (
+            "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+            {"feePayer": _sol_devnet_fee_payer},
+        )
+
 # Platform network full sets — "all" resolves to these. Extend here when the
 # facilitator adds a new mainnet/testnet chain (no business-table UPDATE needed:
 # all-configured services pick up the new chain on next 402 automatically).
-MAINNET_NETWORKS = ("eip155:8453", "eip155:143", "eip155:4663", "eip155:196")     # Base + Monad + Robinhood + X Layer mainnet
-TESTNET_NETWORKS = ("eip155:84532", "eip155:10143", "eip155:46630", "eip155:1952")  # Base Sepolia + Monad + Robinhood + X Layer testnet
+_evm_mainnet = ("eip155:8453", "eip155:143", "eip155:4663", "eip155:196")     # Base + Monad + Robinhood + X Layer
+_evm_testnet = ("eip155:84532", "eip155:10143", "eip155:46630", "eip155:1952")  # Base Sepolia + Monad + Robinhood + X Layer
+MAINNET_NETWORKS = _evm_mainnet + (("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",) if _sol_fee_payer else ())
+TESTNET_NETWORKS = _evm_testnet + (("solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",) if _sol_devnet_fee_payer else ())  # type: ignore[possibly-undefined]
 
 
 def platform_mainnet_networks() -> list[str]:
@@ -228,6 +247,9 @@ class PlatformBilling:
     def __init__(self, cfg: dict):
         self.mode = cfg["mode"]
         self.pay_to = cfg["pay_to"]
+        # Solana pay_to: Base58 address for Solana networks. If absent, Solana
+        # networks are excluded from the 402 accepts list (plans-292).
+        self.sol_pay_to = cfg.get("sol_pay_to", "")
         # Multi-chain: resolve the full network list from config. The price is
         # the same across all networks (same amount_atomic); only the asset
         # address and EIP-712 domain differ per chain.
@@ -276,18 +298,29 @@ class PlatformBilling:
 
     # -- requirements / 402 -------------------------------------------------
 
-    def requirements_for(self, network: str, resource: str = "") -> dict:
+    def _pay_to_for_network(self, network: str) -> str | None:
+        """Return the correct payTo address for a network, or None if unavailable.
+        Solana networks require a Base58 address; EVM networks use 0x addresses."""
+        if network.startswith("solana:"):
+            return self.sol_pay_to or None
+        return self.pay_to
+
+    def requirements_for(self, network: str, resource: str = "") -> dict | None:
         """Build a single accept object for a specific network (plans-280-04
-        §5.6.2). The buyer signs exactly one of these per payment."""
+        §5.6.2). Returns None if the network requires an address we don't have
+        (e.g. Solana without sol_pay_to — plans-292)."""
         if network not in ASSETS:
             raise ValueError(f"unsupported network {network}")
+        pay_to = self._pay_to_for_network(network)
+        if pay_to is None:
+            return None  # no Solana address configured, skip this network
         asset, extra = ASSETS[network]
         req = {
             "scheme": "exact",
             "network": network,
             "amount": self.amount_atomic,
             "asset": asset,
-            "payTo": self.pay_to,
+            "payTo": pay_to,
             "maxTimeoutSeconds": 300,
             "extra": dict(extra),
             "pricingModel": self.mode,
@@ -306,7 +339,7 @@ class PlatformBilling:
         """Multi-accepts: one accept object per configured network. The 402
         challenge and discovery endpoint return this list; the buyer picks one
         rail per payment (plans-280-04 §5.6.2)."""
-        return [self.requirements_for(n, resource) for n in self.networks]
+        return [r for n in self.networks if (r := self.requirements_for(n, resource)) is not None]
 
     def challenge_body(self, resource: str = "", error: str = "X-PAYMENT header is required",
                        deposit: bool = False) -> dict:
@@ -336,7 +369,9 @@ class PlatformBilling:
         """
         net = payload.get("network", "")
         if net and net in self.networks:
-            return self.requirements_for(net, resource)
+            req = self.requirements_for(net, resource)
+            if req is not None:
+                return req
         # Graceful handling for networks added to the platform AFTER this
         # gateway process started (plans-290). The community-gateway proxy
         # supplements 402 accepts with new-chain entries, so a buyer may sign
@@ -347,22 +382,26 @@ class PlatformBilling:
         if net and net not in self.networks:
             asset_info = _fetch_asset_info(net, self.community_gateway_url)
             if asset_info:
-                req = {
-                    "scheme": "exact",
-                    "network": net,
-                    "amount": self.amount_atomic,
-                    "asset": asset_info["asset"],
-                    "payTo": self.pay_to,
-                    "maxTimeoutSeconds": 300,
-                    "extra": asset_info.get("extra", {}),
-                    "pricingModel": self.mode,
-                }
-                if resource:
-                    req["resource"] = resource
-                if self.mode == "prepaid":
-                    req["depositAtomic"] = str(self.deposit_atomic)
-                    req["pricePerCallAtomic"] = self.amount_atomic
-                return req
+                pay_to = self._pay_to_for_network(net)
+                if pay_to is None:
+                    pass  # no address for this network, fall through
+                else:
+                    req = {
+                        "scheme": "exact",
+                        "network": net,
+                        "amount": self.amount_atomic,
+                        "asset": asset_info["asset"],
+                        "payTo": pay_to,
+                        "maxTimeoutSeconds": 300,
+                        "extra": asset_info.get("extra", {}),
+                        "pricingModel": self.mode,
+                    }
+                    if resource:
+                        req["resource"] = resource
+                    if self.mode == "prepaid":
+                        req["depositAtomic"] = str(self.deposit_atomic)
+                        req["pricePerCallAtomic"] = self.amount_atomic
+                    return req
         auth = payload.get("payload", {}).get("authorization", {}) or {}
         to = (auth.get("to") or "").lower()
         val = str(auth.get("value", ""))
@@ -382,9 +421,18 @@ class PlatformBilling:
             if req["payTo"].lower() == to and (not val or req["amount"] == val
                                                or val == str(self.deposit_atomic)):
                 return req
-        # Last resort: first network. This should not happen with well-formed
-        # clients; the facilitator will reject if the asset/domain mismatches.
-        return self.requirements_for(self.networks[0], resource)
+        # Last resort: first network with a valid payTo. This should not happen
+        # with well-formed clients; the facilitator will reject if the asset/domain mismatches.
+        for n in self.networks:
+            req = self.requirements_for(n, resource)
+            if req is not None:
+                return req
+        # All networks skipped (no valid payTo) — return EVM first network as fallback
+        # (facilitator will reject the mismatched payTo)
+        return {"scheme": "exact", "network": self.networks[0], "amount": self.amount_atomic,
+                "asset": ASSETS[self.networks[0]][0], "payTo": self.pay_to,
+                "maxTimeoutSeconds": 300, "extra": dict(ASSETS[self.networks[0]][1]),
+                "pricingModel": self.mode}
 
     # -- facilitator calls ---------------------------------------------------
     def _headers(self, admin: bool = False) -> dict:
@@ -436,15 +484,27 @@ class PlatformBilling:
         return v
 
     async def balance(self, payer: str) -> int:
-        # Balance is cumulative across chains (facilitator ledger key is
-        # (payer, pay_to), not per-network). A buyer who deposits on Monad
-        # and then calls on Base draws from the same pooled balance.
+        # Balance query: EVM and Solana deposits use different pay_to addresses,
+        # so we query both and sum them (plans-292). A buyer who deposits on
+        # Monad draws from (payer, evm_pay_to); a Solana deposit draws from
+        # (payer, sol_pay_to). The gateway sums both for a unified view.
+        total = 0
         async with httpx.AsyncClient(timeout=15) as c:
             r = await c.get(f"{self.facilitator}/facilitator/balance",
                             params={"payer": payer, "pay_to": self.pay_to},
                             headers=self._headers())
             r.raise_for_status()
-            return int(r.json().get("balance_atomic", 0))
+            total += int(r.json().get("balance_atomic", 0))
+            if self.sol_pay_to:
+                try:
+                    r2 = await c.get(f"{self.facilitator}/facilitator/balance",
+                                     params={"payer": payer, "pay_to": self.sol_pay_to},
+                                     headers=self._headers())
+                    r2.raise_for_status()
+                    total += int(r2.json().get("balance_atomic", 0))
+                except Exception:
+                    pass  # Solana balance query failed, use EVM balance only
+        return total
 
     async def deposit(self, payload: dict, resource: str) -> dict:
         """Forward the signed payload to /facilitator/deposit-settle (on-chain
@@ -465,26 +525,49 @@ class PlatformBilling:
                     route: str = "") -> dict:
         amount = int(self.amount_atomic) * max(int(units), 1)
         async with httpx.AsyncClient(timeout=15) as c:
+            # Try EVM pay_to first (most common)
             r = await c.post(f"{self.facilitator}/facilitator/debit",
                              headers=self._headers(),
                              json={"payer": payer, "pay_to": self.pay_to,
                                    "amount_atomic": amount,
                                    "request_id": request_id, "route": route})
-            return r.json()
+            result = r.json()
+            # If insufficient on EVM and Solana pay_to exists, try Solana balance
+            if not result.get("ok") and result.get("error") == "insufficient_balance" and self.sol_pay_to:
+                r2 = await c.post(f"{self.facilitator}/facilitator/debit",
+                                  headers=self._headers(),
+                                  json={"payer": payer, "pay_to": self.sol_pay_to,
+                                        "amount_atomic": amount,
+                                        "request_id": request_id, "route": route})
+                sol_result = r2.json()
+                if sol_result.get("ok"):
+                    return sol_result
+            return result
 
     async def refund(self, payer: str, request_id: str, units: int = 1,
                      route: str = "") -> None:
         """Credit back a debit after an upstream failure (negative debit with a
-        derived request_id, so it is idempotent and never collides)."""
+        derived request_id, so it is idempotent and never collides).
+        Tries EVM pay_to first; if the original debit was against Solana
+        pay_to, the refund must go there too (idempotent request_id ensures
+        no double-credit)."""
         amount = -int(self.amount_atomic) * max(int(units), 1)
         try:
             async with httpx.AsyncClient(timeout=15) as c:
-                await c.post(f"{self.facilitator}/facilitator/debit",
-                             headers=self._headers(),
-                             json={"payer": payer, "pay_to": self.pay_to,
-                                   "amount_atomic": amount,
-                                   "request_id": f"{request_id}:refund",
-                                   "route": route})
+                r = await c.post(f"{self.facilitator}/facilitator/debit",
+                                 headers=self._headers(),
+                                 json={"payer": payer, "pay_to": self.pay_to,
+                                       "amount_atomic": amount,
+                                       "request_id": f"{request_id}:refund",
+                                       "route": route})
+                # If EVM refund was a replay (original debit was on Solana), try Solana
+                if self.sol_pay_to and r.json().get("error") == "insufficient_balance":
+                    await c.post(f"{self.facilitator}/facilitator/debit",
+                                 headers=self._headers(),
+                                 json={"payer": payer, "pay_to": self.sol_pay_to,
+                                       "amount_atomic": amount,
+                                       "request_id": f"{request_id}:refund",
+                                       "route": route})
         except Exception as e:
             print(f"[x402-platform] prepaid refund failed: {e}", flush=True)
 
@@ -531,6 +614,9 @@ class PlatformBilling:
                 # server-side and returns expires_at.
                 # Access-status is network-agnostic: a payer who settled on
                 # Monad has access on Base too (same pay_to, same price).
+                # Query access-status for EVM pay_to first; if not found and
+                # sol_pay_to exists, also check Solana pay_to (plans-292:
+                # a Solana payment should grant access same as EVM).
                 params = {"payer": payer, "pay_to": self.pay_to,
                           "min_amount": self.amount_atomic,
                           "pricing_model": ("monthly" if self.mode in PERIOD_DAYS
@@ -541,6 +627,19 @@ class PlatformBilling:
                                 headers=access_headers)
                 if r.status_code == 200:
                     has = bool(r.json().get("has_access"))
+                # If EVM pay_to has no access and Solana pay_to exists, check Solana
+                if not has and self.sol_pay_to:
+                    try:
+                        sol_params = dict(params)
+                        sol_params["pay_to"] = self.sol_pay_to
+                        r_sol = await c.get(access_url, params=sol_params,
+                                            headers=access_headers)
+                        if r_sol.status_code == 200:
+                            has = bool(r_sol.json().get("has_access"))
+                    except Exception:
+                        pass  # Solana check failed, use EVM result
+                if r.status_code == 200:
+                    pass  # already handled above
                 elif r.status_code == 400 and self.mode == "monthly" and not use_proxy:
                     # (weekly/quarterly/yearly deliberately have no fallback:
                     # a facilitator too old for period_days can't answer them)

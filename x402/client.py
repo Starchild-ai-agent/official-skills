@@ -541,21 +541,20 @@ def network_rank(network: str, signer=None, signer_mode: str = "auto") -> int:
     routing and bazaar probe display so the rail a user sees/confirms at probe
     time is the rail actually selected for payment.
 
-    auto: ① Solana (Privy ed25519, universally accepted) → ② Base (primary
-    USDC chain, most users have balance here) → ③ other EVM where the payer
-    has NO 7702 delegation code (plain ECDSA, e.g. Monad) → ④ delegated EVM
-    (Kernel EIP-1271) — spec-correct but some facilitators reject it.
+    auto: ① Base (primary USDC chain, most users have balance here) →
+    ② Solana / other EVM where the payer has NO 7702 delegation code (plain
+    ECDSA, e.g. Monad) — Solana is treated equally with plain-ECDSA EVM,
+    selected when funded → ③ delegated EVM (Kernel EIP-1271) — spec-correct
+    but some facilitators reject it.
     eoa: EVM only; Solana is excluded (session EOA can't sign SVM).
     """
     net = "eip155:8453" if network == "base" else str(network or "")
     if signer_mode == "eoa":
         return 0 if net.startswith("eip155:") else 9
-    if net.startswith("solana"):
-        return 0
     if net.startswith("eip155:"):
         # Base is the primary USDC chain — always prefer it over other EVM.
         if net == "eip155:8453":
-            return 1
+            return 0
         try:
             cid = int(net.split(":", 1)[1])
             deleg = getattr(signer, "_delegation", None)
@@ -564,6 +563,8 @@ def network_rank(network: str, signer=None, signer_mode: str = "auto") -> int:
         except Exception:
             pass
         return 3  # delegated (EIP-1271) or unknown -> last resort
+    if net.startswith("solana"):
+        return 2  # same tier as plain-ECDSA EVM; selected when funded
     return 4
 
 

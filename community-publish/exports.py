@@ -1099,6 +1099,7 @@ def create_paid_service(
     api_endpoints: list[dict] | None = None,
     networks_mode: str = "all",
     supported_networks: list[str] | None = None,
+    provider_sol_wallet: str | None = None,
 ) -> dict[str, Any]:
     """Create a paid service listing on the Service Marketplace.
 
@@ -1160,7 +1161,7 @@ def create_paid_service(
             pricing plans"): [{"pricing_model", "price", "is_default", "label"}].
         networks_mode: Which chains the service accepts payment on.
             "all" (default) = follow the platform mainnet set (currently
-            Base + Monad + Robinhood + X Layer; new chains are picked up automatically with no
+            Base + Monad + Robinhood + X Layer + Solana; new chains are picked up automatically with no
             code change). "custom" = only the chains listed in
             supported_networks. Defaulting to "all" is the recommended
             path — only pass "custom" when the user explicitly asks to
@@ -1215,7 +1216,7 @@ def create_paid_service(
                 "they are enforced at call time."}
 
     # Multi-chain payment config (plans-280 Phase B3).
-    # Default is "all" (follow platform mainnet set: Base + Monad + Robinhood + X Layer).
+    # Default is "all" (follow platform mainnet set: Base + Monad + Robinhood + X Layer + Solana).
     # Only validate when the caller explicitly opts into "custom".
     # NEVER default to a hard-coded single chain (e.g. ['eip155:8453']) —
     # that would re-introduce the Base-only behavior this skill moved away
@@ -1257,6 +1258,20 @@ def create_paid_service(
         payload["project_slug"] = project_slug
     if cover_url:
         payload["cover_url"] = cover_url
+    # Solana wallet address (plans-292): auto-fetch from Privy if not provided
+    if not provider_sol_wallet:
+        try:
+            from core.skill_tools import wallet as _w
+            info = _w.wallet_info()
+            wallets = info.get("wallets") if isinstance(info, dict) else info
+            for w in wallets or []:
+                if isinstance(w, dict) and w.get("chain_type") == "solana":
+                    provider_sol_wallet = w.get("wallet_address") or w.get("address")
+                    break
+        except Exception:
+            pass  # Solana address unavailable — Solana network excluded from accepts
+    if provider_sol_wallet:
+        payload["provider_sol_wallet"] = provider_sol_wallet
     if tags:
         payload["tags"] = [str(t)[:20] for t in tags[:5]]
     if free_trial_count is not None:

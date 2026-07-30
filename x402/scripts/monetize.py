@@ -73,6 +73,20 @@ def default_pay_to() -> str:
     return next(w["wallet_address"] for w in info["wallets"] if w["chain_type"] == "ethereum")
 
 
+def default_sol_pay_to() -> str:
+    """Return the Solana pay_to address from Privy wallet, or empty string."""
+    try:
+        from core.skill_tools import wallet
+        info = wallet.wallet_info()
+        wallets = info.get("wallets") if isinstance(info, dict) else info
+        for w in wallets or []:
+            if isinstance(w, dict) and w.get("chain_type") == "solana":
+                return w.get("wallet_address") or w.get("address") or ""
+    except Exception:
+        pass
+    return ""
+
+
 def start_gateway(cfg_path: str, log_path: str) -> int:
     with open(log_path, "w") as lf:
         p = subprocess.Popen([sys.executable, os.path.join(SKILL, "gateway", "app.py"), cfg_path],
@@ -177,7 +191,7 @@ def main():
                     help='payperuse: "GET /api/*=$0.01"; sub/metered: "GET /api/*=UNITS"')
     ap.add_argument("--networks", default=os.environ.get("X402_NETWORKS", "all"),
                     help="'all' (default) = follow the platform mainnet full set "
-                         "(Base+Monad+Robinhood+X Layer); testnet full set when the facilitator is "
+                         "(Base+Monad+Robinhood+X Layer+Solana); testnet full set when the facilitator is "
                          "x402.org. Or a comma-separated CAIP-2 list to lock to "
                          "specific chains, e.g. 'eip155:8453,eip155:143,eip155:4663,eip155:196'.")
     ap.add_argument("--network", default="",
@@ -190,6 +204,8 @@ def main():
     ap.add_argument("--facilitator-token", default=os.environ.get("X402_FACILITATOR_TOKEN", ""),
                     help="bearer token if the facilitator enforces caller auth (X402_GATEWAY_TOKENS)")
     ap.add_argument("--pay-to", default="")
+    ap.add_argument("--sol-pay-to", default="",
+                    help="Solana wallet address (Base58) for receiving payments on Solana networks")
     ap.add_argument("--price-per-credit", type=float, default=0.01)
     ap.add_argument("--min-credits", type=int, default=100)
     ap.add_argument("--port", type=int, default=0)
@@ -258,6 +274,7 @@ def main():
             sys.exit("at least one --route required")
 
     pay_to = args.pay_to or default_pay_to()
+    sol_pay_to = getattr(args, "sol_pay_to", "") or default_sol_pay_to()
     port = args.port or free_port()
 
     # Upstream port conflict check: warn (not fail) if the upstream port is
@@ -279,6 +296,7 @@ def main():
         "mode": args.mode,
         "upstream": f"http://127.0.0.1:{args.upstream_port}",
         "pay_to": pay_to,
+        "sol_pay_to": sol_pay_to,
         "port": port,
         "routes": routes,
         "state_dir": os.path.join(svc_dir, "state"),

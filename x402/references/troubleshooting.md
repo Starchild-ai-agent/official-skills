@@ -85,7 +85,7 @@ Common facilitator verify errors (2nd 402's `error` field):
   `bash skills/x402/setup.sh` once per machine (also append it to
   `/data/workspace/setup.sh` so restarts reinstall).
 
-## Multi-chain troubleshooting (Base + Monad + Robinhood + X Layer)
+## Multi-chain troubleshooting (Base + Monad + Robinhood + X Layer + Solana)
 
 - **402 `accepts` is a list, not a single object**: platform-mode 402 challenges
   return `accepts` as an **array** (one entry per network). Buyers pick one
@@ -142,3 +142,34 @@ Common facilitator verify errors (2nd 402's `error` field):
   Robinhood still fail with `invalid_signature`, check that the buyer's
   `client.py` has the chain-read path (v2.20.1+) and that the Robinhood RPC
   is reachable from the container.
+- **Solana settle fails but EVM chains work fine**: the Solana fee payer
+  (configured via `X402_SOLANA_SETTLER_PRIVATE_KEY`) needs SOL for gas.
+  Check `/facilitator/stats` for `sol_balance_sol`. If zero, fund the fee
+  payer address shown in `solana_fee_payer`. Unlike EVM where the settler
+  is a single EOA across all chains, Solana uses a separate keypair.
+- **Solana `transaction_simulation_failed`**: the buyer's USDC ATA
+  (Associated Token Account) or the pay_to's USDC ATA may not exist.
+  ATAs are created automatically when USDC is first transferred to an
+  address. Ensure both buyer and pay_to have received at least one USDC
+  transfer on the target network (mainnet or devnet).
+- **`provider_wallet` and Solana**: the `provider_wallet` (pay_to) in
+  community-gateway is an EVM address. For Solana settlements, the
+  facilitator's `_settle_solana()` passes this address to the x402 SDK
+  which derives the Solana ATA from it. **Important**: the pay_to for
+  Solana must be a valid Solana base58 address, NOT an EVM 0x address.
+  In the current platform architecture, the facilitator receives the
+  pay_to from the 402 challenge's `payTo` field — for Solana services,
+  this must be a Solana address. The gateway's `platform_modes.py`
+  handles this by including the correct pay_to per network in the
+  multi-accepts list.
+- **`signer_mode="eoa"` excludes Solana**: when the buyer uses an
+  explicit session EOA (`signer_mode="eoa"`), Solana accepts are
+  filtered out because the EVM EOA cannot sign Solana transactions.
+  Only `signer_mode="auto"` (default) enables Solana payments via the
+  Privy SVM signer.
+- **Solana not in `/supported`**: ensure `X402_SOLANA_SETTLER_PRIVATE_KEY`
+  is set in the facilitator's environment and the facilitator was
+  restarted. Check startup logs for `[x402-facilitator] Solana: enabled`.
+  If you see `Solana: no X402_SOLANA_SETTLER_PRIVATE_KEY, skipping` or
+  `Solana: deps missing`, the key is unset or `solana`/`solders` packages
+  are not installed.

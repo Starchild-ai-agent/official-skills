@@ -280,12 +280,12 @@ def service_create(owner_user_id: str, payload: dict) -> tuple[int, dict]:
 
     Multi-chain payment config (plans-280 Phase B3):
       - networks_mode: "all" (default) = accept payment on all platform
-        mainnets (Base + Monad + Robinhood + X Layer; new chains picked up automatically).
+        mainnets (Base + Monad + Robinhood + X Layer + Solana; new chains picked up automatically).
         Gateway stores NULL supported_networks and expands at read time.
       - supported_networks: list of CAIP-2 chain ids, required when
         networks_mode="custom". Ignored for "all".
 
-    provider_wallet is an EVM address used on every enabled chain (the
+    provider_wallet is an EVM address used on every enabled EVM chain (the
     Starchild facilitator settles to the same address on each chain); it
     is NOT Base-only.
     """

@@ -518,7 +518,14 @@ class PlatformBilling:
         per-call amount so the facilitator settles the deposit size."""
         auth = payload.get("payload", {}).get("authorization", {}) or {}
         req = self._match_accept(payload, resource)
-        req["amount"] = str(auth.get("value", req["amount"]))
+        # EVM payloads carry authorization.value (the signed amount).
+        # Solana payloads may omit it (older clients); fall back to
+        # depositAtomic so the facilitator settles the correct deposit size.
+        signed_value = auth.get("value")
+        if signed_value:
+            req["amount"] = str(signed_value)
+        else:
+            req["amount"] = str(self.deposit_atomic)
         async with httpx.AsyncClient(timeout=60) as c:
             r = await c.post(f"{self.facilitator}/facilitator/deposit-settle",
                              headers=self._headers(),

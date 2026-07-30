@@ -988,7 +988,7 @@ def _sign_solana_payment(accepts: dict, max_amount_atomic: int,
         "network": network,
         "payload": {
             "transaction": tx_base64,
-            "authorization": {"from": svm_signer.address},
+            "authorization": {"from": svm_signer.address, "value": str(amount)},
         },
     }
     return base64.b64encode(json.dumps(payload).encode()).decode()

@@ -476,6 +476,12 @@
       "description": "Starchild Auth SDK: add OAuth login to any web app with one SDK.\n\nUse when integrating Starchild login into a project (e.g. add Starchild sign-in to my React app, set up OAuth with iamstarchild.com, implement login/logout with Starchild Auth SDK)."
     },
     {
+      "name": "starchild-swap-and-bridge",
+      "path": "starchild-swap-and-bridge/SKILL.md",
+      "version": "1.2.0",
+      "description": "Unified swap + bridge router combining WOOFi (best-price meta-aggregator on 14 EVM\nchains) and the LayerZero Value Transfer API (broad multi-chain bridging incl.\nSolana, Aptos, TON — discover supported chains/tokens dynamically). One workflow:\nclassify the request, validate the wallet can actually execute, quote, compare\ncomplete routes, approve-then-requote-then-execute, and verify destination receipt."
+    },
+    {
       "name": "taapi",
       "path": "taapi/SKILL.md",
       "version": "2.0.3",

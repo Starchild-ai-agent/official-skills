@@ -16,7 +16,7 @@ This skill handles TWO distinct concepts — keep them separate:
 
   LIST (上架) — make something discoverable/purchasable on the marketplace:
     Free listing (no review, no pricing):
-      - list_in_dashboard()      → show on /projects gallery
+      - list_in_dashboard()      → show in the in-app Projects gallery
       - unlist_from_dashboard()  → hide from gallery (soft, preserves stats)
       - delete_listing()         → permanently delete listing row
       - get_listing_status()     → check if listed
@@ -929,7 +929,14 @@ def list_in_dashboard(
         "ok": True,
         "listing": listing,
         "url": _subdomain_url(slug),
-        "dashboard_url": f"{_public_url_base()}/projects",
+        # NOTE: there is NO public web URL for the projects gallery — it is
+        # the "Projects" panel inside the Starchild app. Do NOT construct a
+        # gallery link (community.iamstarchild.com/projects 404s with
+        # "Can't access this preview"). Tell the user in words instead.
+        "discoverable_in": (
+            "the Projects panel inside the Starchild app "
+            "(top bar → Projects → Explore)"
+        ),
     }
 
 

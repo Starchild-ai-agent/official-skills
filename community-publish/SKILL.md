@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.31.0
+version: 0.31.1
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -30,7 +30,7 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 
 | Flow | When to use | Review? | Pricing? | Functions |
 |---|---|---|---|---|
-| **Free listing** | Free project, show on `/projects` gallery | No | No | `list_in_dashboard()` |
+| **Free listing** | Free project, show in the in-app Projects gallery | No | No | `list_in_dashboard()` |
 | **Paid listing** | Charge for access via x402 | Optional (5-check self-report) | Yes (USDC/USDG/USDC(Solana) on platform networks — default Base+Monad+Robinhood+X Layer+Solana, follows `all`) | `create_paid_service()` → `submit_for_review()` (recommended pre-listing self-check) → `publish_service()` |
 
 > **`POST /api/services` no longer accepts `service_type: "free_project"`.** Free listing is done by `list_in_dashboard()` (the project gallery flow). Paid listing uses `create_paid_service()` + review + publish (the service API flow).
@@ -44,7 +44,7 @@ A project's "publicness" is **three orthogonal switches**, not one:
 | Switch | Off state | On state | Flipped by |
 |---|---|---|---|
 | **URL access** | Visiting the URL returns 404 | URL works for anyone who has the link | `publish_preview` / `unpublish_preview` |
-| **Gallery discoverability** | Not on `/projects` gallery | Appears in the gallery | `list_in_dashboard` / `unlist_from_dashboard` |
+| **Gallery discoverability** | Not in the Projects gallery | Appears in the gallery | `list_in_dashboard` / `unlist_from_dashboard` |
 | **Marketplace listing** | Not on the Service Marketplace | Discoverable + purchasable | `create_paid_service` + `publish_service` / `unpublish_service` |
 
 A project can be in any combination. Never collapse these into "is it public yet".
@@ -241,11 +241,13 @@ src/
 
 ---
 
-## LIST (FREE): `list_in_dashboard()` — show on /projects gallery
+## LIST (FREE): `list_in_dashboard()` — show in the in-app Projects gallery
 
 `list_in_dashboard(slug, name=None, description="", cover_url=None, tags=None)`
 
-Make a published preview discoverable in the public gallery at `https://community.iamstarchild.com/projects`. Without this, the preview URL works but is invisible to anyone who doesn't already know it.
+Make a published preview discoverable in the Projects gallery **inside the Starchild app** (top bar → Projects → Explore). Without this, the preview URL works but is invisible to anyone who doesn't already know it.
+
+⚠️ The gallery has **no standalone web URL** — do NOT give users a link like `community.iamstarchild.com/projects` (that path is treated as a project slug and shows a "Can't access this preview" 404). After listing, reply with the **direct project URL only**, and say in words that it is now discoverable in the app's Projects panel.
 
 - `slug`: the **full** slug returned by `publish_preview()` (i.e. `{user_id}-{suffix}`).
 - `name`: gallery card display name. Defaults to `slug`.
@@ -253,7 +255,7 @@ Make a published preview discoverable in the public gallery at `https://communit
 - `cover_url`: must be on `storage.googleapis.com`, `image.thum.io`, or `api.microlink.io`. **To upload a user-provided image, call `upload_cover_image(slug, file_path)` first** — it handles presign → GCS upload → returns the public URL. See [Cover Image Upload](#cover-image-upload-flow) below.
 - `tags`: ≤5 tags, ≤20 chars each.
 
-Returns `{"ok": True, "listing": {...}, "url": "...", "dashboard_url": "..."}`.
+Returns `{"ok": True, "listing": {...}, "url": "...", "discoverable_in": "..."}`.
 
 **Constraints:**
 - Requires `publish_preview()` to have run first for the same slug — returns 404 otherwise.

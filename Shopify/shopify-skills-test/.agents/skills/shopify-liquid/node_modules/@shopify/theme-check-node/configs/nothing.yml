@@ -1,3 +1,0 @@
-extends: []
-ignore:
-  - node_modules/**

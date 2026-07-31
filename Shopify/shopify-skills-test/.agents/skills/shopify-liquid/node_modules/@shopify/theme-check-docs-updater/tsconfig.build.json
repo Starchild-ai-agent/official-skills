@@ -1,7 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "exclude": ["**/*.spec.ts"],
-  "references": [
-    { "path": "../theme-check-common/tsconfig.build.json" }
-  ]
-}

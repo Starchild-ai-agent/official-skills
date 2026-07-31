@@ -929,7 +929,8 @@ def list_in_dashboard(
         "ok": True,
         "listing": listing,
         "url": _subdomain_url(slug),
-        "dashboard_url": f"{_public_url_base()}/projects",
+        "note": "Now discoverable on the community Projects gallery. "
+                "Users can find it by browsing the gallery or searching by name/tags.",
     }
 
 
@@ -2318,3 +2319,365 @@ def upload_cover_image(slug: str, file_path: str) -> dict[str, Any]:
         return {"ok": False, "error": f"GCS upload failed: {e}"}
 
     return {"ok": True, "public_url": public_url}
+
+
+# ════════════════════════════════════════════════════════════════════════
+# PROJECTS QUERY — browse, discover, and manage community projects.
+#
+# These replace the standalone `projects` tool (agent_projects_tools.py)
+# and consolidate all project/service discovery into this skill.
+#
+# Frontend presentation:
+#   Projects (free) → ProjectMarketplaceModal: card grid with cover image,
+#     name, description, tags, view count, favorite count.
+#     Also: AgentProfile → Projects tab, Landing page marquee.
+#   Services (paid) → MarketplaceModal: service cards with pricing, ratings.
+#     Also: AgentProfile → Services tab.
+#
+# Each project has a direct URL (path-based or subdomain).
+# /projects is the gallery browse page; /services is the marketplace page.
+# ════════════════════════════════════════════════════════════════════════
+
+
+def _format_project(p: dict, include_listing: bool = False) -> dict:
+    """Format a project for clean output, keeping only useful fields.
+
+    Args:
+        p: Raw project dict from gateway.
+        include_listing: If True, merge fields from the nested 'listing'
+            sub-object (used by my_projects where gateway returns listing
+            metadata separately).
+    """
+    result: dict = {
+        "name": p.get("name") or p.get("title") or "",
+        "slug": p.get("slug", ""),
+        "url": p.get("url", ""),
+        "description": p.get("description", ""),
+    }
+    tags = p.get("tags", [])
+    if tags:
+        result["tags"] = tags
+    owner_name = p.get("owner_agent_name") or p.get("owner_nickname", "")
+    if owner_name:
+        result["owner"] = owner_name
+    view_count = p.get("view_count", 0)
+    if view_count:
+        result["views"] = view_count
+    favorite_count = p.get("favorite_count", 0)
+    if favorite_count:
+        result["favorites"] = favorite_count
+    if "is_favorited" in p:
+        result["is_favorited"] = p["is_favorited"]
+    if "favorited_at" in p:
+        result["favorited_at"] = p["favorited_at"]
+
+    # For My Projects, merge listing sub-object fields
+    if include_listing and "listing" in p:
+        listing = p.get("listing")
+        if listing:
+            result["name"] = listing.get("name") or result["name"]
+            result["description"] = listing.get("description") or result["description"]
+            result["tags"] = listing.get("tags", [])
+            result["is_public"] = listing.get("is_public", False)
+            result["views"] = listing.get("view_count", 0)
+            result["favorites"] = listing.get("favorite_count", 0)
+        else:
+            result["is_public"] = False
+            result["listing_status"] = "not_listed"
+
+    return result
+
+
+def explore_projects(
+    search: str = "",
+    tag: str = "",
+    sort: str = "all",
+    limit: int = 10,
+    cursor: str = "",
+) -> dict[str, Any]:
+    """Browse public projects published by all users on the community.
+
+    Use when the user asks what projects are available, trending, or wants
+    to discover interesting projects/dashboards by keyword or tag.
+
+    Args:
+        search: Search keyword to filter by name, description, or tags.
+        tag: Filter by tag (comma-separated for multiple).
+        sort: 'all' (newest first) or 'trending' (by popularity).
+        limit: Max results (default 10, max 50).
+        cursor: Pagination cursor from previous response.
+
+    Returns:
+        {"ok": True, "total_count": N, "projects": [...], "next_cursor": ...}
+    """
+    user_id = os.environ.get("USER_ID", "")
+    try:
+        status, body = gateway.projects_explore(
+            user_id=user_id,
+            search=search.strip() if search else "",
+            tag=tag.strip().lower() if tag else "",
+            sort=sort if sort in ("all", "trending") else "all",
+            limit=min(int(limit), 50),
+            cursor=cursor,
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    projects = [_format_project(p) for p in body.get("projects", [])]
+    result: dict[str, Any] = {
+        "ok": True,
+        "total_count": body.get("total_count", 0),
+        "projects": projects,
+    }
+    if body.get("has_more") and body.get("next_cursor"):
+        result["next_cursor"] = body["next_cursor"]
+        result["has_more"] = True
+    return result
+
+
+def my_projects(tag: str = "") -> dict[str, Any]:
+    """Get the current user's published projects.
+
+    Use when the user asks about their own projects, what they've published,
+    or their project stats (views, favorites).
+
+    Args:
+        tag: Filter by tag (comma-separated for multiple).
+
+    Returns:
+        {"ok": True, "total_count": N, "projects": [...]}
+    """
+    user_id = os.environ.get("USER_ID", "")
+    if not user_id:
+        return {"ok": False, "error": "USER_ID not configured"}
+
+    try:
+        status, body = gateway.projects_mine(
+            user_id=user_id,
+            tag=tag.strip().lower() if tag else "",
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    projects = [_format_project(p, include_listing=True) for p in body.get("projects", [])]
+    return {
+        "ok": True,
+        "total_count": body.get("total_count", 0),
+        "projects": projects,
+    }
+
+
+def favorite_projects(
+    tag: str = "",
+    limit: int = 10,
+    cursor: str = "",
+) -> dict[str, Any]:
+    """Get the current user's favorited (bookmarked) projects.
+
+    Use when the user asks about their favorite or bookmarked projects.
+
+    Args:
+        tag: Filter by tag (comma-separated for multiple).
+        limit: Max results (default 10, max 50).
+        cursor: Pagination cursor from previous response.
+
+    Returns:
+        {"ok": True, "total_count": N, "projects": [...], "next_cursor": ...}
+    """
+    user_id = os.environ.get("USER_ID", "")
+    if not user_id:
+        return {"ok": False, "error": "USER_ID not configured"}
+
+    try:
+        status, body = gateway.projects_favorites(
+            user_id=user_id,
+            tag=tag.strip().lower() if tag else "",
+            limit=min(int(limit), 50),
+            cursor=cursor,
+        )
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    projects = [_format_project(p) for p in body.get("projects", [])]
+    result: dict[str, Any] = {
+        "ok": True,
+        "total_count": body.get("total_count", 0),
+        "projects": projects,
+    }
+    if body.get("has_more") and body.get("next_cursor"):
+        result["next_cursor"] = body["next_cursor"]
+        result["has_more"] = True
+    return result
+
+
+def get_tab_counts() -> dict[str, Any]:
+    """Get tab counts for the projects/services dashboard.
+
+    Returns counts for explore, mine, favorites, purchased tabs — used to
+    display badge numbers on the tab bar.
+
+    Returns:
+        {"ok": True, "explore": N, "mine": N, "favorites": N, "purchased": N,
+         "services_mine": N, "services_favorites": N} on success
+        {"ok": False, "error": ...} on failure
+    """
+    user_id = os.environ.get("USER_ID", "")
+    try:
+        status, body = gateway.projects_counts(user_id=user_id)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    return {"ok": True, **body}
+
+
+def get_popular_tags() -> dict[str, Any]:
+    """Get popular project tags for filtering.
+
+    Returns the list of tags used across published projects, sorted by
+    usage count. Used to populate tag filter dropdowns.
+
+    Returns:
+        {"ok": True, "tags": [{"name": "defi", "count": 42}, ...]} on success
+        {"ok": False, "error": ...} on failure
+    """
+    try:
+        status, body = gateway.projects_tags()
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    return {"ok": True, "tags": body.get("tags", [])}
+
+
+def get_user_projects(user_id: str, limit: int = 20) -> dict[str, Any]:
+    """Get public projects published by a specific user.
+
+    Used to display a user's published projects on their profile page.
+    No authentication required — only returns public projects.
+
+    Args:
+        user_id: The user ID to query.
+        limit: Max results (default 20).
+
+    Returns:
+        {"ok": True, "projects": [...], "total_count": N} on success
+        {"ok": False, "error": ...} on failure
+    """
+    try:
+        status, body = gateway.projects_user(user_id, limit=min(int(limit), 50))
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    projects = [_format_project(p) for p in body.get("projects", [])]
+    return {
+        "ok": True,
+        "projects": projects,
+        "total_count": body.get("total_count", 0),
+    }
+
+
+def favorite_project(slug: str) -> dict[str, Any]:
+    """Add a project to the current user's favorites.
+
+    Args:
+        slug: The project slug (e.g. '2004-my-dashboard').
+
+    Returns:
+        {"ok": True, "is_favorited": True} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.projects_favorite_add(uid, slug)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status == 404:
+        return {"ok": False, "error": "Project not found or not public"}
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "is_favorited": True}
+
+
+def unfavorite_project(slug: str) -> dict[str, Any]:
+    """Remove a project from the current user's favorites.
+
+    Args:
+        slug: The project slug (e.g. '2004-my-dashboard').
+
+    Returns:
+        {"ok": True, "is_favorited": False} on success
+        {"ok": False, "error": ...} on failure
+    """
+    uid = _user_id()
+    try:
+        status, body = gateway.projects_favorite_remove(uid, slug)
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned HTTP {status}"), "http_status": status}
+
+    return {"ok": True, "is_favorited": False}
+
+
+def get_service_tags() -> dict[str, Any]:
+    """Get predefined service tags with localized names.
+
+    Returns the list of predefined tags for the service marketplace,
+    with i18n-resolved names based on the request language. Used to
+    populate tag filter dropdowns on the marketplace page.
+
+    Returns:
+        {"ok": True, "tags": [{"id": "...", "slug": "defi", "name": "DeFi",
+         "service_count": 15}, ...]} on success
+        {"ok": False, "error": ...} on failure
+    """
+    try:
+        status, body = gateway.service_tags()
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    return {"ok": True, "tags": body.get("tags", [])}
+
+
+def get_featured_services() -> dict[str, Any]:
+    """Get featured services for homepage display.
+
+    Returns a curated list of featured services selected by admins,
+    displayed on the landing page and marketplace homepage.
+
+    Returns:
+        {"ok": True, "services": [...]} on success
+        {"ok": False, "error": ...} on failure
+    """
+    try:
+        status, body = gateway.service_featured()
+    except Exception as e:
+        return {"ok": False, "error": f"Failed to reach gateway: {e}"}
+
+    if status != 200:
+        return {"ok": False, "error": body.get("error", f"Gateway returned {status}")}
+
+    return {"ok": True, "services": body.get("services", [])}

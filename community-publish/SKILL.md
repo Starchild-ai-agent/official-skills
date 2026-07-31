@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.31.0
+version: 0.33.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -22,7 +22,7 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 | Concept | What it means | Functions |
 |---|---|---|
 | **PUBLISH (发布)** | Make something **accessible** — a URL works, or code is on GitHub | `publish_preview`, `unpublish_preview`, `list_published_previews`, `open_source`, `remove_open_source`, `list_open_source`, `get_open_source`, `fork`, `validate_open_source` |
-| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `delete_listing`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Cover: `upload_cover_image`<br>Browse + consumer: `explore_marketplace`, `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary` |
+| **LIST (上架)** | Make something **discoverable/purchasable** on the marketplace | Free: `list_in_dashboard`, `unlist_from_dashboard`, `delete_listing`, `get_listing_status`<br>Paid: `create_paid_service`, `submit_for_review`, `get_review_status`, `publish_service`, `unpublish_service`, `list_my_services`, `get_service`, `update_service`, `delete_service`, `restore_service`<br>Cover: `upload_cover_image`<br>Browse + consumer: `explore_services`, `get_service_detail`, `get_service_pricing`, `get_service_reviews`, `write_service_review`, `favorite_service`, `unfavorite_service`, `get_favorite_services`, `get_user_services`, `get_service_earnings`, `get_earnings_summary`, `get_service_tags`, `get_featured_services`<br>Projects query: `explore_projects`, `my_projects`, `favorite_projects`, `get_tab_counts`, `get_popular_tags`, `get_user_projects`, `favorite_project`, `unfavorite_project` |
 
 **Publishing does NOT auto-list.** `publish_preview()` only allocates the URL. `open_source()` only pushes code. Neither makes the project discoverable on the marketplace — that requires a separate, deliberate LIST call.
 
@@ -1021,9 +1021,58 @@ result = upload_cover_image("my-slug", compressed_path)
 
 ---
 
+## Frontend presentation — Projects vs Services
+
+The web frontend has **two separate modals** for community content:
+
+| Modal | Content type | What it shows | Query functions |
+|---|---|---|---|
+| **ProjectMarketplaceModal** | Free projects | Card grid: cover image, name, description, tags, views, favorites | `explore_projects()`, `my_projects()`, `favorite_projects()`, `get_tab_counts()`, `get_popular_tags()`, `get_user_projects()`, `favorite_project()`, `unfavorite_project()` |
+| **MarketplaceModal** | Paid services (x402) | Service cards: pricing, ratings, purchase buttons | `explore_services()`, `list_my_services()`, `get_service_detail()`, `get_service_tags()`, `get_featured_services()` |
+
+Both also appear in **AgentProfile** (Projects tab / Services tab) and the landing page.
+
+Each project has a **direct URL** (path-based `/{slug}` or subdomain `{slug}.community.iamstarchild.com`). The `/projects` and `/services` pages are frontend-rendered browse pages.
+
+### Projects query functions
+
+| Function | Data scope | Purpose |
+|---|---|---|
+| `explore_projects(search, tag, sort, limit, cursor)` | Public | Browse all public projects. Sort: `all` (newest) or `trending`. |
+| `my_projects(tag)` | Personal | List the current user's published projects with stats. |
+| `favorite_projects(tag, limit, cursor)` | Personal | List the current user's favorited projects. |
+| `get_tab_counts()` | Personal | Get tab counts (explore, mine, favorites, purchased, services_mine, services_favorites). |
+| `get_popular_tags()` | Public | Get popular project tags for filtering. |
+| `get_user_projects(user_id, limit)` | Public | Get public projects by a specific user (for profile pages). |
+| `favorite_project(slug)` | Personal | Add a project to the current user's favorites. |
+| `unfavorite_project(slug)` | Personal | Remove a project from the current user's favorites. |
+
+### Services query functions
+
+| Function | Data scope | Purpose |
+|---|---|---|
+| `explore_services(search, sort, tags, ...)` | Public | Browse standalone paid services only. |
+| `list_my_services(cursor, limit)` | Personal | List the current user's paid services. |
+| `get_service_detail(service_id)` | Public | Public detail for a published service. |
+| `get_service_pricing(service_id)` | Public | Verified pricing info (real-time x402 verification). |
+| `get_service_reviews(service_id, sort, cursor, limit)` | Public | List reviews for a service. |
+| `write_service_review(service_id, rating, comment, is_anonymous)` | Personal | Submit or update a review (upsert). |
+| `get_service_tags()` | Public | Get predefined service tags with i18n names. |
+| `get_featured_services()` | Public | Get featured services for homepage display. |
+| `get_user_services(user_id, limit)` | Public | Get published paid services by a specific user. |
+| `favorite_service(service_id)` | Personal | Add a service to favorites. |
+| `unfavorite_service(service_id)` | Personal | Remove a service from favorites. |
+| `get_favorite_services(cursor, limit)` | Personal | List the current user's favorite services. |
+| `get_service_purchase_status(service_id)` | Personal | Check if user has purchased/used a service. |
+| `get_service_earnings(service_id)` | Personal | Get earnings stats for a service (owner only). |
+| `get_earnings_summary()` | Personal | Get earnings summary across all services. |
+| `get_service_onchain_records(service_id, cursor, limit)` | Personal | Get on-chain transaction records (owner only). |
+
+---
+
 ## References
 
 - `lib/manifest.py` — project.yaml parser/writer + semver helpers
 - `lib/validate.py` — local pre-publish validation (mirrors gateway-side checks)
 - `lib/install.py` — type-specific install handlers (task/service/script)
-- `lib/gateway.py` — HTTP client for `/api/register` (URL), `/api/code-projects/*` (code), `/api/projects-query/*` (free listing), `/api/services/*` (paid listing), `/api/projects/cover/presign` (cover upload)
+- `lib/gateway.py` — HTTP client for `/api/register` (URL), `/api/code-projects/*` (code), `/api/projects-query/*` (free listing + browse), `/api/services/*` (paid listing), `/api/projects/cover/presign` (cover upload)

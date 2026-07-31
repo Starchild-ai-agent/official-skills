@@ -586,3 +586,99 @@ def service_onchain_records(
     if cursor:
         qs.append(f"cursor={quote(cursor)}")
     return _request("GET", f"/api/services/{service_id}/onchain-records?{'&'.join(qs)}", timeout=15)
+
+
+# ─── Projects Query (browse / discover / favorites) ────────────────
+
+def projects_explore(
+    user_id: str = "",
+    search: str = "",
+    tag: str = "",
+    sort: str = "all",
+    limit: int = 10,
+    cursor: str = "",
+) -> tuple[int, dict]:
+    """GET /api/projects-query/explore — browse public projects."""
+    from urllib.parse import quote
+    qs = []
+    if user_id: qs.append(f"user_id={quote(user_id)}")
+    if search: qs.append(f"search={quote(search)}")
+    if tag: qs.append(f"tag={quote(tag)}")
+    if sort and sort != "all": qs.append(f"sort={quote(sort)}")
+    qs.append(f"limit={min(limit, 50)}")
+    if cursor: qs.append(f"cursor={quote(cursor)}")
+    qstr = "?" + "&".join(qs) if qs else ""
+    return _request("GET", f"/api/projects-query/explore{qstr}", timeout=15)
+
+
+def projects_mine(
+    user_id: str,
+    tag: str = "",
+) -> tuple[int, dict]:
+    """GET /api/projects-query/mine — list own published projects."""
+    from urllib.parse import quote
+    qs = [f"user_id={quote(user_id)}"]
+    if tag: qs.append(f"tag={quote(tag)}")
+    qstr = "?" + "&".join(qs)
+    return _request("GET", f"/api/projects-query/mine{qstr}", timeout=15)
+
+
+def projects_favorites(
+    user_id: str,
+    tag: str = "",
+    limit: int = 10,
+    cursor: str = "",
+) -> tuple[int, dict]:
+    """GET /api/projects-query/favorites — list favorited projects."""
+    from urllib.parse import quote
+    qs = [f"user_id={quote(user_id)}"]
+    if tag: qs.append(f"tag={quote(tag)}")
+    qs.append(f"limit={min(limit, 50)}")
+    if cursor: qs.append(f"cursor={quote(cursor)}")
+    qstr = "?" + "&".join(qs)
+    return _request("GET", f"/api/projects-query/favorites{qstr}", timeout=15)
+
+
+def projects_counts(user_id: str = "") -> tuple[int, dict]:
+    """GET /api/projects-query/counts — tab counts (explore, mine, favorites, purchased)."""
+    from urllib.parse import quote
+    qs = []
+    if user_id:
+        qs.append(f"user_id={quote(user_id)}")
+    qstr = "?" + "&".join(qs) if qs else ""
+    return _request("GET", f"/api/projects-query/counts{qstr}", timeout=15)
+
+
+def projects_tags() -> tuple[int, dict]:
+    """GET /api/projects-query/tags — popular tags for filtering."""
+    return _request("GET", "/api/projects-query/tags", timeout=15)
+
+
+def projects_favorite_add(owner_user_id: str, slug: str) -> tuple[int, dict]:
+    """POST /api/projects/:slug/favorite — add a project to favorites."""
+    body = {"owner_user_id": owner_user_id}
+    return _request("POST", f"/api/projects/{slug}/favorite", body, timeout=15)
+
+
+def projects_favorite_remove(owner_user_id: str, slug: str) -> tuple[int, dict]:
+    """DELETE /api/projects/:slug/favorite — remove a project from favorites."""
+    body = {"owner_user_id": owner_user_id}
+    return _request("DELETE", f"/api/projects/{slug}/favorite", body, timeout=15)
+
+
+def projects_user(user_id: str, limit: int = 20) -> tuple[int, dict]:
+    """GET /api/projects/user/:userId — public projects by a specific user.
+
+    No auth required. Used to show a user's published projects on their profile.
+    """
+    return _request("GET", f"/api/projects/user/{user_id}?limit={limit}", timeout=15)
+
+
+def service_tags() -> tuple[int, dict]:
+    """GET /api/services/tags — predefined service tags with i18n names."""
+    return _request("GET", "/api/services/tags", timeout=15)
+
+
+def service_featured() -> tuple[int, dict]:
+    """GET /api/services/featured — featured services for homepage display."""
+    return _request("GET", "/api/services/featured", timeout=15)

@@ -37,7 +37,8 @@ The **one** operation that is NOT a script function is proposing a wallet policy
 
 | Function | Description |
 |----------|-------------|
-| `wallet_info()` | Get all wallet addresses |
+| `wallet_info()` | Get all AGENT wallet addresses |
+| `get_user_wallets()` | The USER'S OWN wallets (login + secondary) — read-only, from env |
 | `wallet_balance(chain, address="", asset="")` | EVM balance on a chain (DeBank). `chain` required |
 | `wallet_sol_balance(address="", asset="")` | Solana balance (Birdeye) |
 | `wallet_get_all_balances(evm_address="", sol_address="")` | All chains at once |
@@ -52,6 +53,35 @@ The **one** operation that is NOT a script function is proposing a wallet policy
 | `wallet_sol_transactions(chain="solana", asset="sol", limit=20)` | Solana tx history |
 | `wallet_get_policy(chain_type="ethereum")` | Check policy status |
 | `validate_and_clean_rules(rules, chain_type)` | Pre-validate policy rules before proposing |
+
+## The User's Own Wallets (login / secondary)
+
+The agent wallet is NOT the user's wallet. The platform injects the user's own
+wallet identities as env vars (synced from the control plane at container start
+and on user wallet actions):
+
+- `USER_LOGIN_WALLET_ADDRESS` / `USER_LOGIN_WALLET_TYPE` — the wallet the user
+  logs in with (or bound as primary).
+- `USER_SECONDARY_WALLET_ADDRESS` / `USER_SECONDARY_WALLET_TYPE` — the user's
+  other linked wallet (e.g. Solana when login is EVM).
+
+When asked "what's my wallet" / "my login wallet" / "check MY balance", read
+these — do NOT answer with the agent wallet or say you don't know:
+
+```bash
+python3 -c "from core.skill_tools import wallet; import json; print(json.dumps(wallet.get_user_wallets()))"
+```
+
+Empty/missing values mean the user has never bound a wallet in that slot
+(e.g. social login) — say so and point them to wallet binding in the web app.
+
+Rules:
+- **Read-only.** The agent holds no keys for these wallets. To check the user's
+  balances, pass the address into `wallet_balance(chain, address=...)` /
+  `wallet_sol_balance(address=...)`.
+- **Transactions from the user's wallet** never go through script functions —
+  use the native `frontend_action(action_type="user_wallet_tx", ...)` flow,
+  where the user signs in the UI and `expected_from` is enforced server-side.
 
 ## Key Facts
 

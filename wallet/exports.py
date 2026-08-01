@@ -105,6 +105,32 @@ def wallet_info():
     return _run(_wallet_request("GET", "/agent/wallet"))
 
 
+def get_user_wallets():
+    """The USER'S OWN wallets (login + secondary), distinct from the agent wallet.
+
+    Reads the platform-injected env vars (synced from the control plane at
+    container start / user wallet actions). Read-only identity info — the agent
+    can NEVER sign with these wallets; user-wallet transactions go through the
+    native `frontend_action(action_type="user_wallet_tx", ...)` flow where the
+    user signs in the UI.
+
+    Returns {"login": {...}|None, "secondary": {...}|None}. None = the user has
+    not bound a wallet in that slot (e.g. social login without a wallet).
+    """
+    import os
+
+    def _slot(addr_key, type_key):
+        addr = (os.environ.get(addr_key) or "").strip()
+        if not addr:
+            return None
+        return {"address": addr, "chain_type": (os.environ.get(type_key) or "").strip() or None}
+
+    return {
+        "login": _slot("USER_LOGIN_WALLET_ADDRESS", "USER_LOGIN_WALLET_TYPE"),
+        "secondary": _slot("USER_SECONDARY_WALLET_ADDRESS", "USER_SECONDARY_WALLET_TYPE"),
+    }
+
+
 # ── Balances ─────────────────────────────────────────────────────────────────
 
 def wallet_balance(chain: str, address: str = "", asset: str = ""):

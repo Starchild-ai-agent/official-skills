@@ -598,7 +598,7 @@
     {
       "name": "wallet",
       "path": "wallet/SKILL.md",
-      "version": "3.6.2",
+      "version": "3.7.0",
       "description": "Multi-chain wallet: EVM and Solana balances, transfers, signing, and policy.\n\nUse when checking balances, sending tokens, signing typed data, or proposing a wallet policy (e.g. send 10 USDC on Base, sign EIP-712, Solana balance)."
     },
     {

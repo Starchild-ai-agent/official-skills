@@ -20,11 +20,11 @@ This skill handles TWO distinct concepts — keep them separate:
       - unlist_from_dashboard()  → hide from gallery (soft, preserves stats)
       - delete_listing()         → permanently delete listing row
       - get_listing_status()     → check if listed
-    Paid listing (x402 charging; review is an optional advisory self-check):
+    Paid listing (x402 charging; review required before publishing):
       - create_paid_service()    → create a service record
-      - submit_for_review()      → run the 5-check self-report (advisory)
+      - submit_for_review()      → run the 6-check automated review (required for publishing)
       - get_review_status()      → poll review progress
-      - publish_service()        → go live (any pre-listed state; review never gates)
+      - publish_service()        → go live (requires approved status; use submit_for_review first)
       - unpublish_service()      → take down
       - list_my_services()       → list your services
       - get_service()            → fetch one service
@@ -758,8 +758,8 @@ def publish_preview(preview_id: str, slug: str = "",
             "x402 billing detected on this service — a public URL is NOT a "
             "paid listing. The marketplace will show nothing (or 'free') "
             "until you complete: create_paid_service(...) -> "
-            "publish_service(service_id). Optionally run submit_for_review() "
-            "for an advisory 5-check self-report."
+            "submit_for_review(service_id) -> publish_service(service_id). "
+            "Review must pass (approved) before the service can go live."
         )} if x402_detected else {}),
         "publisher": {"code_slug": binding_code_slug},
         "hint": (
@@ -1072,11 +1072,11 @@ def delete_listing(slug: str) -> dict[str, Any]:
 
 # ════════════════════════════════════════════════════════════════════════
 # PAID SERVICE LISTING — create paid services on the Service Marketplace.
-# These require x402 charging. Review is ADVISORY: an optional 5-check
-# self-report for the owner — it never gates publishing.
+# These require x402 charging. Review is REQUIRED: the automated 6-check
+# review must pass (approved) before the service can be published.
 # Completely different from the free listing flow above.
 #
-# Lifecycle: published → listed (publish any time; optional advisory self-check: pending → approved/rejected)
+# Lifecycle: published → submit-review → approved → publish → listed
 # ════════════════════════════════════════════════════════════════════════
 
 def create_paid_service(
@@ -1109,9 +1109,9 @@ def create_paid_service(
     NOT publish a URL or push code — use publish_preview() and open_source()
     first.
 
-    Required by service_type (validated here; the reviewer rejects if missing):
+    Required by service_type:
         - paid_project: service_description
-        - paid_api: api_documentation, example_request, example_response
+        - paid_api: api_documentation (examples are recommended but optional)
 
     Prerequisites:
         - The project must have a public URL (publish_preview() first).
@@ -1155,8 +1155,11 @@ def create_paid_service(
         free_trial_count: Optional, only for pay_per_use (N free calls).
         api_documentation: Required for paid_api (Markdown, with params +
             response format + example).
-        example_request: Required for paid_api (curl/HTTP example).
-        example_response: Required for paid_api (JSON example response).
+        example_request: Optional for paid_api (curl/HTTP example). Recommended
+            for better buyer experience — use set_service_examples() for
+            multi-example support.
+        example_response: Optional for paid_api (JSON example response).
+            Recommended for better buyer experience.
         service_description: Required for paid_project (what subscribers get).
         pricing_options: Optional multi-plan list (see SKILL.md "multiple
             pricing plans"): [{"pricing_model", "price", "is_default", "label"}].
@@ -1206,15 +1209,9 @@ def create_paid_service(
             _missing.append("api_documentation (markdown with a parameter "
                             "table, a non-empty Response/响应格式 section, "
                             "and an example)")
-        if not example_request:
-            _missing.append("example_request")
-        if not example_response:
-            _missing.append("example_response")
     if _missing:
         return {"ok": False, "error":
-                f"{service_type} requires: {', '.join(_missing)} — the "
-                "gateway and the self-check both treat them as required, so "
-                "they are enforced at call time."}
+                f"{service_type} requires: {', '.join(_missing)}"}
 
     # Multi-chain payment config (plans-280 Phase B3).
     # Default is "all" (follow platform mainnet set: Base + Monad + Robinhood + X Layer + Solana).
@@ -1321,10 +1318,9 @@ def create_paid_service(
         "review_status": service.get("review_status", "published"),
         "next_step": (
             "Service created in published state (URL accessible but not listed). "
-            "Call publish_service(service_id) to list it on the marketplace — "
-            "review is advisory and never blocks publishing. Recommended: also run "
-            "submit_for_review(service_id) and show the 5-check report to the user "
-            "so they can confirm buyers can actually pay."
+            "Call submit_for_review(service_id) to run the automated review — "
+            "the service must be approved before it can be published. Once approved, "
+            "call publish_service(service_id) to go live on the marketplace."
         ),
     }
     # Surface client-side warning (paid_api + project_slug passed)
@@ -1338,12 +1334,13 @@ def create_paid_service(
 
 
 def submit_for_review(service_id: str) -> dict[str, Any]:
-    """Run the automated 5-check self-report for a paid service (ADVISORY).
+    """Run the automated 6-check review for a paid service.
 
     Checks: api_reachable, pricing_consistency, x402_payment, response_match,
-    doc_completeness. The result is a report for the OWNER — it never gates
-    publish_service(), and a check run against a listed service never
-    delists it. Pre-listed services show 'pending' while the check runs.
+    doc_completeness, examples_provided. The service must pass all checks
+    (approved) before publish_service() will work. A check run against an
+    already-listed service never delists it. Pre-listed services show
+    'pending' while the check runs.
 
     Args:
         service_id: The UUID returned by create_paid_service().
@@ -1420,15 +1417,15 @@ def get_review_status(service_id: str) -> dict[str, Any]:
         return result
     if review_status == "approved":
         result["next_step"] = (
-            "Self-check passed all 5 checks. Call publish_service(service_id) "
+            "Review passed all checks. Call publish_service(service_id) "
             "to go live (if not already listed)."
         )
     elif review_status == "rejected":
         result["next_step"] = (
-            "Self-check found issues (ADVISORY — this does not block publishing "
-            "or delist the service). Show review_feedback and latest_task.checks "
-            "to the user; they decide whether to fix (update_service() + "
-            "submit_for_review() again) or publish as-is."
+            "Review found issues — the service cannot be published until "
+            "these are fixed. Show review_feedback and latest_task.checks "
+            "to the user, then fix with update_service() and re-run "
+            "submit_for_review()."
         )
     elif review_status == "listed":
         result["next_step"] = (
@@ -1443,8 +1440,9 @@ def get_review_status(service_id: str) -> dict[str, Any]:
 def publish_service(service_id: str) -> dict[str, Any]:
     """Publish a paid service — make it live on the marketplace.
 
-    Works from any pre-listed active state (published/approved/rejected/
-    pending/unlisted) — review is advisory and never blocks publishing.
+    Requires the service to be in 'approved' state (passed automated review)
+    or 'unlisted' state (re-listing a previously published service).
+    Use submit_for_review() first to get approved.
     Free projects use list_in_dashboard() instead, not this function.
 
     Args:
@@ -1661,9 +1659,9 @@ def set_service_examples(
     response. Buyers see these examples in the service detail page to
     understand what the API returns before purchasing.
 
-    The review check ``examples_provided`` REQUIRES at least one example —
-    services without examples will be rejected during review. Call this
-    BEFORE ``submit_for_review()``.
+    Examples are OPTIONAL but recommended — services without examples will
+    still pass review, but the review report will note that examples are
+    missing. Adding examples improves buyer confidence and conversion.
 
     Args:
         service_id: The service UUID.
@@ -1697,7 +1695,7 @@ def set_service_examples(
     if not isinstance(examples, list):
         return {"ok": False, "error": "examples must be a list"}
     if len(examples) == 0:
-        return {"ok": False, "error": "examples must be a non-empty list (at least one example is required for review)"}
+        return {"ok": False, "error": "examples must be a non-empty list — use clear_service_examples() to remove all examples"}
     if len(examples) > 10:
         return {"ok": False, "error": f"Max 10 examples, got {len(examples)}"}
 
@@ -1725,10 +1723,9 @@ def set_service_examples(
 def clear_service_examples(service_id: str) -> dict[str, Any]:
     """Remove all API call examples from a service.
 
-    .. warning::
-        Clearing examples will cause the review check ``examples_provided``
-        to fail. Only use this when replacing examples via
-        ``set_service_examples()`` (which does not require clearing first).
+    Examples are optional, so clearing them will not block review or
+    publishing. However, having examples improves buyer experience.
+    Use ``set_service_examples()`` to replace examples (no need to clear first).
 
     Args:
         service_id: The service UUID.

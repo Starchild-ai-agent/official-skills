@@ -259,17 +259,16 @@ def cover_presign(
 # PAID SERVICE LISTING — /api/services/* (Service Marketplace)
 # ════════════════════════════════════════════════════════════════════════
 # These endpoints create and manage PAID service listings on the Service
-# Marketplace. They require x402 charging; the automated self-check is
-# optional/advisory and publishing is owner-decided — completely different
-# from the free project listing flow above.
+# Marketplace. They require x402 charging; the automated review must pass
+# (approved) before the service can be published.
 #
 # Auth: these routes accept JWT OR X-Internal-Key (jwtOrInternalAuth
 # middleware on the gateway). We always use X-Internal-Key + owner_user_id
 # in the body/query, since clawd containers don't carry user JWTs.
 #
-# Lifecycle: published → listed (publish any time — review is ADVISORY:
-# an optional self-check report for the owner, never a gate). Free projects
-# skip this entirely — they use listing_publish() above, no service record.
+# Lifecycle: published → submit-review → approved → publish → listed.
+# Paid services must pass the automated 6-check review before publishing.
+# Free projects skip this entirely — they use listing_publish() above.
 
 def service_create(owner_user_id: str, payload: dict) -> tuple[int, dict]:
     """POST /api/services — create a paid service listing.
@@ -339,7 +338,7 @@ def service_list_mine(owner_user_id: str, cursor: str | None = None, limit: int 
 
 
 def service_submit_review(owner_user_id: str, service_id: str) -> tuple[int, dict]:
-    """POST /api/services/:id/submit-review — run the optional advisory self-check."""
+    """POST /api/services/:id/submit-review — run the automated review (required before publishing)."""
     body = {"owner_user_id": owner_user_id}
     return _request("POST", f"/api/services/{service_id}/submit-review", body, timeout=15)
 

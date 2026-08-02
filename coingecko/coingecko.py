@@ -62,9 +62,57 @@ try:
         get_coin_by_contract,
     )
     COINGECKO_AVAILABLE = True
-except ImportError as e:
-    logger.warning(f"CoinGecko tools not available: {e}")
-    COINGECKO_AVAILABLE = False
+except ImportError:
+    # Fallback: module was loaded WITHOUT package context (e.g. via
+    # spec_from_file_location with no parent package), so relative
+    # imports ("from .tools.x import y") fail with "attempted relative
+    # import with no known parent package". Bootstrap the tools/ dir
+    # onto sys.path and import the same names absolutely — mirrors the
+    # pattern exports.py already uses.
+    try:
+        import os as _os
+        import sys as _sys
+        import importlib as _importlib
+
+        _TOOLS_DIR = _os.path.join(
+            _os.path.dirname(_os.path.abspath(__file__)), "tools")
+        if _TOOLS_DIR not in _sys.path:
+            _sys.path.insert(0, _TOOLS_DIR)
+
+        _FALLBACK_IMPORTS = {
+            "coin_prices": ["get_coin_prices_at_timestamps"],
+            "coin_ohlc_range_by_id": ["get_coin_ohlc_range_by_id"],
+            "coin_historical_chart_range_by_id": [
+                "get_coin_historical_chart_range_by_id"],
+            "market_discovery": [
+                "get_trending", "get_top_gainers_losers", "get_new_coins"],
+            "global_data": ["get_global", "get_global_defi"],
+            "derivatives": [
+                "get_derivatives", "get_derivatives_exchanges",
+                "get_categories"],
+            "coins": [
+                "get_coins_list", "get_coins_markets", "get_coin_data",
+                "get_coin_tickers"],
+            "exchanges": [
+                "get_exchanges", "get_exchange", "get_exchange_tickers",
+                "get_exchange_volume_chart"],
+            "nfts": ["get_nfts_list", "get_nft", "get_nft_by_contract"],
+            "infrastructure": [
+                "get_asset_platforms", "get_exchange_rates",
+                "get_vs_currencies", "get_categories_list"],
+            "search": ["search"],
+            "contracts": ["get_token_price", "get_coin_by_contract"],
+        }
+        for _mod_name, _names in _FALLBACK_IMPORTS.items():
+            _mod = _importlib.import_module(_mod_name)
+            for _n in _names:
+                globals()[_n] = getattr(_mod, _n)
+        COINGECKO_AVAILABLE = True
+        logger.debug(
+            "CoinGecko tools loaded via sys.path fallback (no package context)")
+    except Exception as e:
+        logger.warning(f"CoinGecko tools not available: {e}")
+        COINGECKO_AVAILABLE = False
 
 
 class CoinPriceTool(BaseTool):

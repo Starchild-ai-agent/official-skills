@@ -62,24 +62,41 @@ try:
         get_coin_by_contract,
     )
     COINGECKO_AVAILABLE = True
-except ImportError:
+except ImportError as _imp_err:
     # Fallback: module was loaded WITHOUT package context (e.g. via
     # spec_from_file_location with no parent package), so relative
     # imports ("from .tools.x import y") fail with "attempted relative
-    # import with no known parent package". Bootstrap the tools/ dir
-    # onto sys.path and import the same names absolutely — mirrors the
-    # pattern exports.py already uses.
-    try:
+    # import with no known parent package".
+    #
+    # Only enter the fallback for THAT specific failure mode — any other
+    # ImportError (missing dependency, broken submodule) must surface
+    # as-is instead of being masked by a second import attempt.
+    #
+    # The fallback registers a synthetic PRIVATE package
+    # (`starchild_coingecko_tools`, __path__ = tools/) and imports
+    # submodules through it. It never touches sys.path and never claims
+    # generic top-level names like `coins` / `search`, so it cannot
+    # collide with other skills (LunarCrush ships coins.py, Polymarket
+    # ships search.py) in the long-lived agent process. Relative imports
+    # inside the tool modules (`from .utils import ...`) also resolve
+    # correctly through the package.
+
+    def _load_via_private_package(target_globals):
         import os as _os
         import sys as _sys
+        import types as _types
         import importlib as _importlib
 
-        _TOOLS_DIR = _os.path.join(
+        _tools_dir = _os.path.join(
             _os.path.dirname(_os.path.abspath(__file__)), "tools")
-        if _TOOLS_DIR not in _sys.path:
-            _sys.path.insert(0, _TOOLS_DIR)
+        _pkg = "starchild_coingecko_tools"
+        if _pkg not in _sys.modules:
+            _pkg_mod = _types.ModuleType(_pkg)
+            _pkg_mod.__path__ = [_tools_dir]
+            _pkg_mod.__package__ = _pkg
+            _sys.modules[_pkg] = _pkg_mod
 
-        _FALLBACK_IMPORTS = {
+        _fallback_imports = {
             "coin_prices": ["get_coin_prices_at_timestamps"],
             "coin_ohlc_range_by_id": ["get_coin_ohlc_range_by_id"],
             "coin_historical_chart_range_by_id": [
@@ -103,16 +120,28 @@ except ImportError:
             "search": ["search"],
             "contracts": ["get_token_price", "get_coin_by_contract"],
         }
-        for _mod_name, _names in _FALLBACK_IMPORTS.items():
-            _mod = _importlib.import_module(_mod_name)
+        for _mod_name, _names in _fallback_imports.items():
+            _mod = _importlib.import_module(f"{_pkg}.{_mod_name}")
             for _n in _names:
-                globals()[_n] = getattr(_mod, _n)
-        COINGECKO_AVAILABLE = True
-        logger.debug(
-            "CoinGecko tools loaded via sys.path fallback (no package context)")
-    except Exception as e:
-        logger.warning(f"CoinGecko tools not available: {e}")
+                target_globals[_n] = getattr(_mod, _n)
+
+    _no_pkg_ctx = (not __package__) or (
+        "attempted relative import" in str(_imp_err))
+    if not _no_pkg_ctx:
+        logger.warning(f"CoinGecko tools not available: {_imp_err}")
         COINGECKO_AVAILABLE = False
+    else:
+        try:
+            _load_via_private_package(globals())
+            COINGECKO_AVAILABLE = True
+            logger.debug(
+                "CoinGecko tools loaded via private package fallback "
+                "(no package context)")
+        except Exception as e:
+            logger.warning(
+                f"CoinGecko tools not available "
+                f"(original: {_imp_err}; fallback: {e})")
+            COINGECKO_AVAILABLE = False
 
 
 class CoinPriceTool(BaseTool):

@@ -400,8 +400,8 @@
     {
       "name": "orderly-onboarding",
       "path": "orderly-onboarding/SKILL.md",
-      "version": "1.0.2",
-      "description": "Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart.\n\nUse when starting on Orderly (e.g. install Orderly MCP, set up the DEX template, integrate the React SDK, use the orderly CLI)."
+      "version": "1.1.2",
+      "description": "Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart. Also indexes executed Orderly fills into Starchild trade analytics.\n\nUse when starting on Orderly (e.g. install Orderly MCP, set up the DEX template, integrate the React SDK, use the orderly CLI), and after executing any Orderly trade — report the fill so it is indexed."
     },
     {
       "name": "pancakeswap",

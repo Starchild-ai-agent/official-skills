@@ -172,7 +172,7 @@
     {
       "name": "coingecko",
       "path": "coingecko/SKILL.md",
-      "version": "2.0.4",
+      "version": "2.0.5",
       "description": "Crypto spot prices, OHLC charts, market discovery, and global stats.\n\nUse when looking up coin prices, market caps, trending coins, sector rankings, or comparing tokens (e.g. BTC price, ETH chart, top gainers)."
     },
     {

@@ -608,12 +608,6 @@
       "description": "WeChat binding: QR scan, bind, unbind, reconnect, status check.\n\nUse when setting up or repairing WeChat delivery (e.g. connect WeChat, scan QR, why isn't WeChat pushing, disconnect WeChat)."
     },
     {
-      "name": "woofi-swap",
-      "path": "woofi-swap/SKILL.md",
-      "version": "8.2.1",
-      "description": "Best-price meta-aggregator: same-chain swaps plus cross-chain bridging on 14 EVM chains.\n\nUse when swapping or bridging tokens by symbol on EVM (e.g. swap USDC to WETH on Arbitrum, bridge USDC Arbitrum to Base, best price ETH→ARB)."
-    },
-    {
       "name": "workroom",
       "path": "workroom/SKILL.md",
       "version": "0.5.2",

@@ -122,12 +122,11 @@
       "name": "CEX Account Tracking",
       "name_zh": "交易所账户追踪包",
       "name_ko": "거래소 계정 추적 패키지",
-      "description": "Unified read-only tracking across Binance, Bybit, and OKX — balances, positions, orders, fills, and risk scenarios.",
-      "description_zh": "币安、Bybit、OKX 多交易所统一只读追踪 — 余额、持仓、订单、成交与风险场景",
+      "description": "Unified read-only tracking across Binance, and OKX — balances, positions, orders, fills, and risk scenarios.",
+      "description_zh": "币安、OKX 多交易所统一只读追踪 — 余额、持仓、订单、成交与风险场景",
       "description_ko": "바이낸스, 바이빗, OKX 통합 읽기 전용 추적 — 잔고, 포지션, 주문, 체결 및 리스크 시나리오",
       "skills": [
         "binance-account",
-        "bybit-account",
         "okx-account",
         "wallet"
       ]

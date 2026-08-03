@@ -116,12 +116,6 @@
       "description": "Preview panel and iframe diagnostics: registry, ports, paths, blank screens.\n\nUse when a preview tab is broken or missing (e.g. white screen, tab disappeared, 404 on assets, preview not loading, list running services)."
     },
     {
-      "name": "bybit-account",
-      "path": "bybit-account/SKILL.md",
-      "version": "2.0.1",
-      "description": "Read-only Bybit tracking: UTA balance, derivatives positions, orders, fills, PnL.\n\nUse when monitoring Bybit without trading (e.g. account equity, open perp positions, today's fills, deposit history, risk level)."
-    },
-    {
       "name": "bybit-trading",
       "path": "bybit-trading/SKILL.md",
       "version": "1.4.1",

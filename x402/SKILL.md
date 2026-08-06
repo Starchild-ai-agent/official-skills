@@ -1,13 +1,15 @@
 ---
 name: x402
-version: 2.23.7
+version: 2.26.0
 description: |
   Monetize any user project/service with the x402 payment protocol on platform
   networks (Base + Monad + Robinhood + X Layer + Solana; Starchild platform billing: pay_per_use /
   lifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan
-  services), and pay other agents' x402 services.
+  services), limited-time free promotions (amount-0 verify, no settle/debit),
+  and pay other agents' x402 services.
 
-  Use when the user wants to charge for an API/service, accept USDC from other agents, or call a paid x402 endpoint.
+  Use when the user wants to charge for an API/service, run a free promo on a paid
+  listing, accept USDC from other agents, or call a paid x402 endpoint.
 author: starchild
 tags: [x402, payments, base, monad, robinhood, xlayer, usdc, usdg, monetization, api, subscription, metered, agent-commerce]
 delivery: script
@@ -44,8 +46,30 @@ skill. Do NOT guess or improvise what these files cover:
 | Before you… | MUST first `read_file` |
 |---|---|
 | deploy ANY selling mode beyond basic pay_per_use (full commands, prepaid & multi-plan contracts, admin tokens, templates, gateway lifecycle, always-on/update-mode) | `skills/x402/references/selling.md` |
-| debug ANY error (facilitator verify errors, error contract, security model, port ownership, proxy) | `skills/x402/references/troubleshooting.md` |
+| enable / debug / explain **limited-time free promotion** (amount=0, no settle, P1–P5 ACL, buyer free flow, resource isolation, verify matrix) | `skills/x402/references/selling.md` → **Limited-time free promotion** |
+| free-promo errors (still charged, upstream 401, amount not 0, wrong service unlocked) | `skills/x402/references/troubleshooting.md` → **Limited-time free promotion** |
+| debug ANY other error (facilitator verify errors, error contract, security model, port ownership, proxy) | `skills/x402/references/troubleshooting.md` |
 | use the session EOA signer, fund a buyer wallet, or pay on a non-Base-USDC chain/token | `skills/x402/references/buying-advanced.md` |
+
+## Limited-time free promotion (seller quick rules)
+
+For a **listed paid** marketplace service the owner can open a free window
+(max 90 days). Full playbook: `references/selling.md` → **Limited-time free promotion**.
+
+Agent MUST:
+
+1. **Not blind-PUT** free-promo from a UI prompt — run P1–P5 self-check first.
+2. Remember free = **wallet identity + amount 0 verify + no settle/debit**, not anonymous
+   and not a free lifetime subscription after the window.
+3. On **platform gateway**: amount-0 challenge and skip settle/debit are built-in.
+4. On **custom upstream keys (P3/P4)** or **self-built x402**: you MUST patch ACL /
+   force `amount="0"` / skip settle — see selling.md Step C.
+5. Use x402 **`resource` (path)** for access isolation — never invent `service_id` on the wire.
+6. After enable: verify free-status, 402 amount=0, free call without settlement, then
+   confirm paid path returns after cancel/expiry.
+
+Buyer tip: if unpaid 402 shows `accepts[].amount == "0"`, sign **0** (no USDC needed);
+do not force list-price signing during free.
 
 ## Sell — monetize a service (quick start)
 
@@ -457,32 +481,37 @@ implement the access control interceptor for Form 1.
 Given ONLY a service URL (no docs, no guidance), onboard and verify it with
 this sequence — everything needed is self-describing in the protocol:
 
-1. **Discover** (free): `GET <url>` with no payment headers. A 402 response
+1. **Discover** (no payment): `GET <url>` with no payment headers. A 402 response
    IS the price sheet: `accepts` is a **list** (multi-accepts, one entry per
    network) — each entry has `amount` (atomic USDC), `pricingModel`,
    `network`, `asset`, `payTo`. Pick one chain to pay on. On multi-plan
    services a `plans` map carries every option's accepts. Optionally
    `GET <base>/.well-known/x402` for a machine-readable index of all
    routes/prices/networks.
-2. **Probe plans** (free, multi-plan only): repeat the unpaid GET with
+   - If `amount == "0"` (or marketplace free-status is active), the service is in a
+     **limited-time free promo**: sign amount 0 for identity; expect **no settle**.
+     This is temporary — after `free_end` the same URL returns list price again.
+2. **Probe plans** (no payment, multi-plan only): repeat the unpaid GET with
    `X-Pricing-Model: <plan>` — each 402 quotes that plan's exact amount.
    An unknown plan returns HTTP 400 listing the valid ones.
 3. **Pay & call**: `client.paid_request("GET", url, max_amount_atomic=<cap>)`
    handles the whole flow (402 → EIP-3009 sign → retry with X-PAYMENT).
    Select a plan with `pricing_model="<plan>"`. Payer = the Privy wallet by
-   default (`signer_mode="auto"`); it must hold USDC on the service's network.
-   The session EOA needs funding ONLY if you pin `signer_mode="eoa"` or the
-   result reports `signer_type: "session_eoa"` (see Buyer side above). cap =
-   your spend guard. Confirm with the user before paying — this is real money.
-   Check `signer_type` in the result: it tells you WHICH identity actually
-   paid. If the Privy signer is unavailable, `auto` raises (fail-closed)
-   rather than silently paying from the session EOA; a `signer_warning`
-   appears only when the fallback was explicitly allowed.
+   default (`signer_mode="auto"`). For **paid** quotes the wallet must hold USDC
+   on the service's network; for **free-promo amount 0** a signing wallet is enough
+   (no list-price USDC required). The session EOA needs funding ONLY if you pin
+   `signer_mode="eoa"` or the result reports `signer_type: "session_eoa"` (see
+   Buyer side above). cap = your spend guard (may be 0 during free). Confirm with
+   the user before paying real money. Check `signer_type` in the result: it tells
+   you WHICH identity actually paid. If the Privy signer is unavailable, `auto`
+   raises (fail-closed) rather than silently paying from the session EOA; a
+   `signer_warning` appears only when the fallback was explicitly allowed.
 4. **Verify billing semantics** (subscription modes): call again — the result
    must be 200 with NO new settlement (`paid: true`, no new tx). On multi-plan
    services, requesting a different plan while holding one must also NOT
    re-charge. `settlement.transaction` from step 3 is the on-chain proof —
-   report it and verify per transaction-verification rules.
+   report it and verify per transaction-verification rules. During free promo,
+   step 3 should also show **no** new settlement even on first visit.
 
 The same sequence doubles as a smoke test of any x402 deployment: steps 1–2
 are free and validate the challenge contract; steps 3–4 validate settlement

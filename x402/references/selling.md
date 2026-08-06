@@ -81,6 +81,234 @@ admin token server-side — **no admin token needed in user containers**.
 Lifetime semantics: first call settles on-chain; repeat calls pass the
 already-paid check with NO second charge.
 
+## Limited-time free promotion (plans-280-35)
+
+Service-level free window on a **listed paid** marketplace service. **Not per-endpoint**:
+all API paths on that `service_listings` row share one `free_promo_start/end`.
+
+**One-line mental model:** Free = limited-time **identity-light access + no charge**.
+Buyer still proves a wallet (x402 verify with **amount 0**). Platform does **not** settle
+or debit list price. When the window ends, normal paid pricing resumes automatically.
+
+### What free is / is not
+
+| Free IS | Free is NOT |
+|---------|-------------|
+| A time window on one marketplace **service** (`service_id`) | Anonymous open internet (still need a signing wallet) |
+| Zero USDC charge during the window | A gift of lifetime/monthly entitlement after free ends |
+| Platform gateway path: amount-0 verify + free-call accounting | A reason to put `service_id` into the x402 wire protocol |
+| Compatible with all platform billing modes | Automatic unlock of your **custom** API keys (see P3) |
+
+### API
+
+```bash
+# Set free promo (owner JWT)
+curl -X PUT "$GATEWAY/api/services/$SERVICE_ID/free-promo" \
+  -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
+  -d '{"free_start":"now","free_end":"2026-09-01T00:00:00Z","note":"Launch week free"}'
+
+# Public status
+curl "$GATEWAY/api/services/$SERVICE_ID/free-status"
+
+# Cancel early
+curl -X DELETE "$GATEWAY/api/services/$SERVICE_ID/free-promo" \
+  -H "Authorization: Bearer $JWT"
+```
+
+Max duration: **90 days**. UI may hand you a chat prompt — still run the playbook below before PUT.
+
+---
+
+### Runtime contract (platform gateway + facilitator)
+
+#### Request flow (platform gateway)
+
+```
+request
+  → free-promo-check (community, by pay_to + optional resource)
+  → if FREE:
+       402 accepts.amount = "0"   # if no X-PAYMENT yet
+       verify(amount_override=0)  # identity only
+       NO settle / NO positive debit
+       inject X-Free-Promo / X-Free-Promo-End / X-Payment-Payer
+       proxy upstream
+       free-call-callback (call_type=free_promo)
+  → if NOT free:
+       normal paid path (list-price 402 → verify → settle/debit → already_paid)
+```
+
+**Order matters:** free is evaluated **before** “already paid”. During free, even a prior
+buyer is served on the free path (no new settle/debit).
+
+#### Hard rules
+
+1. **Identity, not full anonymous.** Buyer still sends `X-PAYMENT`. During free the
+   platform gateway challenges with **`accepts.amount = "0"`** so a wallet **without
+   list-price USDC** can still sign/verify. Gas for settle is irrelevant because settle
+   is skipped.
+2. **No charge during free.** Gateway must not settle or positive-debit. Facilitator L1
+   also rejects positive `/facilitator/debit` with `free_promo_active` (negative debit /
+   refunds still allowed). Direct `/settle` during free is blocked at facilitator when
+   free is active for that `pay_to`.
+3. **Resource isolation (x402 `resource`, usually the path).** Do **not** invent a
+   `service_id` field on the wire. `access-status?resource=/api/a` only unlocks path A;
+   payment for A must not unlock B on the same `pay_to`. Empty-resource legacy rows do
+   **not** unlock a resource-scoped check.
+4. **Two ledgers stay separate.**
+   - community: books by **service_id** (free_promo / settle / debit rows)
+   - facilitator access: books by **payer + pay_to + resource**
+5. **Upstream headers** (set only by platform gateway — clients cannot spoof trust):
+   - `X-Free-Promo: 1`
+   - `X-Free-Promo-End: <iso>`
+   - `X-Payment-Payer: <wallet>`
+   - Platform modes still forward buyer `X-Api-Key` when present (P3 hybrid).
+6. **After `free_end`:** 402 returns **list-price** amount again; unpaid visitors must pay;
+   already-paid subscribers keep their paid entitlement.
+
+#### Buyer agent behavior during free
+
+| Step | What to do |
+|------|------------|
+| Discover | Unpaid GET → 402. If `accepts[].amount == "0"` (or free-status true), this is a free window, not a $0 product forever. |
+| Sign | Sign the **quoted** amount (0 during free). Do **not** force list-price signing. |
+| Cap | `max_amount_atomic` may be 0 or tiny; free verify should not require funded USDC. |
+| Expectation | 200 with **no** new settlement / no debit. Optional upstream body may show free markers. |
+| After free | Same URL returns list-price 402; pay normally. Free history ≠ paid subscription. |
+
+---
+
+### Agent self-check playbook (MUST run before enabling free)
+
+When the user asks to enable free promo (including UI-filled prompts), **do not** blind-PUT.
+Detect pattern → adjust if needed → then enable → verify → report.
+
+#### Step A — Identify billing mode
+
+| `pricing_model` | Platform charge path | Free-period charge behavior |
+|-----------------|----------------------|-----------------------------|
+| `pay_per_use` | settle every call | skip settle; record `free_promo` call |
+| `lifetime` | settle once; later `already_paid` / access-status | skip settle; free access via free path / access-status |
+| `monthly` | settle once / natural month | same; **free ≠ gift N subscription days** |
+| `weekly` / `quarterly` / `yearly` | fixed-length pass | same as monthly |
+| `prepaid` | deposit-settle + debit | skip **positive** debit; refunds still ok |
+| multi-plan | plan via `X-Pricing-Model` | free is **service-level** (all plans on that listing) |
+| legacy `payperuse` / `subscription` / `metered` | local ledger / API keys | treat as **custom ACL** risk — Step B/C |
+
+#### Step B — Identify access-control pattern
+
+| Pattern | How to detect | Need code change for free? | What to do |
+|---------|---------------|----------------------------|------------|
+| **P1 Platform gateway only** | Upstream has no key/session ACL; all traffic via x402 gateway | **No** | PUT free-promo + verify |
+| **P2 access-status / already_paid** | Middleware only checks facilitator access-status or gateway already_paid | **No** (platform grants free) | PUT free-promo + verify |
+| **P3 Custom API keys / upstream ACL** | Upstream requires own monthly key, JWT, API key table, etc. | **Yes** | Patch ACL first, then PUT |
+| **P4 Hybrid** | Gateway bills + upstream also checks keys | **Yes** if upstream can 401 free users | Honor free headers **or** free-status |
+| **P5 Multi-endpoint one listing** | multiple paths on one service | Scope only | Free covers **all** paths on this listing; split listings if only some paths should be free |
+
+#### Step C — Required adjustments by pattern
+
+**P1 / P2:** none beyond API enable (platform gateway already does amount=0 + no settle).
+
+**P3 / P4 — minimal upstream patch (required):**
+
+```python
+# Pseudocode — run BEFORE enabling free if upstream has its own ACL
+def allow(request):
+    if request.headers.get("X-Free-Promo") == "1":
+        return True  # optional: stricter rate-limit for free users
+    if valid_own_api_key_or_session(request):
+        return True
+    return False  # 401
+```
+
+Do **not** trust a client-supplied `X-Free-Promo` unless the request already passed the
+**platform gateway** (gateway strips/spoof-guards payment headers and injects free headers
+itself). If your service is public without the gateway, poll free-status server-side instead.
+
+**Self-built charge path (NOT platform gateway) — mandatory checklist:**
+
+1. While free: 402 / payment requirements use **`amount = "0"`** (buyers may have **no USDC**).
+2. Verify identity only; **do not** settle or positive-debit list price during free.
+3. Record free usage via community free-call-callback **or** your own analytics; do not fake a paid settle.
+4. Honor `X-Free-Promo` **or** poll `GET /api/services/:id/free-status` / internal free-promo-check;
+   bind access to `free_end` (never mint a hardcoded “7-day key”).
+5. After free ends: restore list-price amount and normal settle/debit within cache TTL.
+6. Keep x402 `resource` = the real request path so access isolation stays correct.
+
+**Prepaid:** platform prepaid mode skips debit while free. Any **custom** debit client must
+call free-promo-check and refuse positive debits while free (refunds/negative debits OK).
+
+**Legacy subscription/metered local keys:** same as P3 — free will not auto-issue credits/keys.
+
+#### Step D — Enable + verify (minimum matrix)
+
+1. `PUT /api/services/:id/free-promo` with `free_start=now`, `free_end=<iso>`, optional `note`.
+2. `GET /api/services/:id/free-status` → `is_free=true`, check `remaining_seconds`.
+3. **Probe matrix (do these before telling the user “done”):**
+
+| # | Probe | Pass criteria |
+|---|-------|----------------|
+| D1 | Unpaid GET (no X-PAYMENT) | 402 and `accepts[0].amount == "0"` (platform gateway) |
+| D2 | Buyer with wallet, **no USDC** / amount-0 payment | 200; **no** settlement tx; optional `X-Free-Promo` upstream |
+| D3 | P3 upstream without own key during free | 200 if free headers honored; **401 means you missed Step C** |
+| D4 | Facilitator positive debit (prepaid) during free | rejected `free_promo_active` |
+| D5 | After DELETE free-promo (wait ~cache TTL) | 402 list-price amount again; unpaid 402; paid path works |
+
+4. Report to user: pattern (P1–P5), code changes (if any), `free_end`, service-level scope,
+   and that free does **not** equal a paid subscription after the window.
+
+#### Step E — Cancel / expiry
+
+- Owner cancel: `DELETE /api/services/:id/free-promo`.
+- Natural expiry: wall clock past `free_end` (no DELETE needed).
+- Caches: gateway/facilitator may cache free-status for a short TTL — allow ~30s before
+  insisting paid path is back. Positive free cache is sticky on facilitator errors; negative
+  cache is **not** trusted (so enabling free is not hidden by a stale “not free”).
+
+---
+
+### Resource, pay_to, and multi-service (read this)
+
+| Concept | Role |
+|---------|------|
+| `pay_to` | Provider wallet receiving funds / access key with facilitator |
+| `resource` | x402 path (e.g. `/api/hello`) — **access isolation key** |
+| `service_id` | Marketplace row — community accounting only, **not** an x402 protocol field |
+
+Rules agents must follow:
+
+- One listing ≈ one primary public URL/path family; free is **per listing**, all its paths.
+- Same `pay_to` with two listings/paths: paying A must not unlock B → always pass `resource`
+  into access-status / already_paid (platform gateway does this).
+- Do **not** add non-standard `service_id` into payment payloads to “fix” isolation.
+
+---
+
+### Common failure modes (seller)
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Free user gets 402 with **list price** | Gateway not on free path / free-status false / wrong service | Check free-status; confirm traffic hits **gateway** port not upstream |
+| Free user verify fails / needs USDC | Challenge still uses list-price amount | Platform: upgrade gateway; custom: force `amount="0"` while free |
+| Free user 200 at gateway but upstream 401 | P3/P4 custom ACL | Honor `X-Free-Promo` or free-status in upstream |
+| Free user charged on-chain | Custom path still settling | Disable settle/debit while free; rely on facilitator L1 as backstop |
+| After free, still amount 0 | Cache or free not cleared | DELETE free-promo; wait TTL; re-check free-status |
+| Service B unlocked after paying A | access-status without resource | Pass resource path; do not grant on pay_to alone |
+| Free counted on wrong listing | shared pay_to + weak resource match | Ensure api_endpoint paths differ; free-call prefers currently-free listing |
+
+---
+
+### Free promo vs monthly / custom keys (summary)
+
+| Seller setup | Code change? |
+|--------------|--------------|
+| Platform gateway only, no upstream ACL | No |
+| ACL via access-status / already_paid | No |
+| Own monthly/API keys in upstream | **Yes** — honor `X-Free-Promo` or free-status |
+| Self-built x402 middleware (no platform gateway) | **Yes** — amount 0 + no settle/debit + free-status |
+
+Free traffic does **not** create a paid monthly/lifetime settlement. After free ends, unpaid
+buyers must pay again. Already-paid buyers keep paid rights; free history alone does not.
+
 
 ## Legacy/extended modes (local-ledger billing — still supported)
 

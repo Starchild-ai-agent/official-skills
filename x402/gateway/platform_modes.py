@@ -347,15 +347,20 @@ class PlatformBilling:
         return [r for n in self.networks if (r := self.requirements_for(n, resource)) is not None]
 
     def challenge_body(self, resource: str = "", error: str = "X-PAYMENT header is required",
-                       deposit: bool = False) -> dict:
+                       deposit: bool = False, amount_override: str | None = None) -> dict:
         """402 body with accepts as a LIST (one entry per network). deposit=True
         (prepaid only) swaps each accept's amount to the deposit size — the
         client signs accepts.amount, so this is how the gateway asks for a
-        top-up instead of an auth signature."""
+        top-up instead of an auth signature.
+        amount_override: when set (e.g. "0" during free promo), replaces amount
+        on every accept so buyers can verify without holding the list price."""
         accepts = self.requirements(resource)
         if deposit and self.mode == "prepaid":
             for acc in accepts:
                 acc["amount"] = str(self.deposit_atomic)
+        if amount_override is not None:
+            for acc in accepts:
+                acc["amount"] = str(amount_override)
         return {"x402Version": 2, "error": error, "accepts": accepts}
 
     def _match_accept(self, payload: dict, resource: str) -> dict:
@@ -448,8 +453,11 @@ class PlatformBilling:
             h["X-Admin-Token"] = self.fac_admin_token
         return h
 
-    async def verify(self, payload: dict, resource: str) -> dict:
+    async def verify(self, payload: dict, resource: str,
+                     amount_override: str | None = None) -> dict:
         req = self._match_accept(payload, resource)
+        if amount_override is not None:
+            req = {**req, "amount": str(amount_override)}
         async with httpx.AsyncClient(timeout=20) as c:
             r = await c.post(f"{self.facilitator}/verify", headers=self._headers(),
                              json={"x402Version": 2, "paymentPayload": payload,
@@ -583,6 +591,126 @@ class PlatformBilling:
         except Exception as e:
             print(f"[x402-platform] prepaid refund failed: {e}", flush=True)
 
+    # -- free promo (plans-280-35) -------------------------------------------
+    async def free_promo_status(self, resource: str = "") -> tuple[bool, str | None]:
+        """Return (is_free, free_promo_end) from community-gateway.
+
+        Fail-open (False, None) when gateway is unreachable so normal paid path
+        works, unless a recent positive cache entry still applies (sticky).
+
+        Cache policy matches facilitator L1 guard:
+        - Positive (is_free=True) is cached (~30s) and sticky on outage.
+        - Negative (is_free=False) is NOT used for short-circuit so enabling
+          free takes effect on the next request (stale negatives would otherwise
+          skip free for up to ~8s after a paid probe).
+        """
+        if not self.community_gateway_url:
+            return False, None
+        now = time.time()
+        pay_key = (
+            self.pay_to.lower()
+            if str(self.pay_to).startswith(("0x", "0X"))
+            else str(self.pay_to)
+        )
+        cache_key = ("free_promo", pay_key, resource or "")
+        hit = _access_cache.get(cache_key)
+        if hit and hit[0] > now:
+            val = hit[1]
+            if isinstance(val, tuple):
+                is_free_c, free_end_c = bool(val[0]), val[1]
+            else:
+                is_free_c, free_end_c = bool(val), None
+            # Only trust positive free hits.
+            if is_free_c:
+                return True, free_end_c
+
+        headers: dict = {}
+        if self._community_gateway_key:
+            headers["X-Internal-Key"] = self._community_gateway_key
+            headers["X-INTERNAL-API-KEY"] = self._community_gateway_key
+        try:
+            async with httpx.AsyncClient(timeout=5) as c:
+                params = {"pay_to": self.pay_to}
+                if resource:
+                    params["resource"] = resource
+                r = await c.get(
+                    f"{self.community_gateway_url}/api/x402-facilitator/free-promo-check",
+                    params=params,
+                    headers=headers,
+                )
+                if r.status_code != 200:
+                    for k, (exp, val) in list(_access_cache.items()):
+                        if (
+                            isinstance(k, tuple)
+                            and len(k) >= 2
+                            and k[0] == "free_promo"
+                            and k[1] == pay_key
+                            and exp > now
+                        ):
+                            if isinstance(val, tuple) and val[0]:
+                                return True, val[1]
+                            if val is True:
+                                return True, None
+                    return False, None
+                data = r.json() if r.content else {}
+                is_free = bool(data.get("is_free"))
+                free_end = data.get("free_promo_end")
+                free_end_s = str(free_end) if free_end else None
+                # Cache positives only (sticky free window). Negatives revalidate.
+                if is_free:
+                    _access_cache[cache_key] = (now + 30.0, (True, free_end_s))
+                else:
+                    _access_cache.pop(cache_key, None)
+                if len(_access_cache) > 10000:
+                    _access_cache.clear()
+                return is_free, free_end_s
+        except Exception as e:
+            print(f"[x402-platform] free-promo-check failed: {e}", flush=True)
+            for k, (exp, val) in list(_access_cache.items()):
+                if (
+                    isinstance(k, tuple)
+                    and len(k) >= 2
+                    and k[0] == "free_promo"
+                    and k[1] == pay_key
+                    and exp > now
+                ):
+                    if isinstance(val, tuple) and val[0]:
+                        return True, val[1]
+                    if val is True:
+                        return True, None
+            return False, None
+
+    async def is_free_promo(self, resource: str = "") -> bool:
+        """Return True when community-gateway says this pay_to is in free promo."""
+        is_free, _end = await self.free_promo_status(resource=resource)
+        return is_free
+
+    async def record_free_call(self, payer: str, route: str = "",
+                               request_id: str = "") -> None:
+        """Best-effort free-promo call accounting to community-gateway."""
+        if not self.community_gateway_url:
+            return
+        headers = {"Content-Type": "application/json"}
+        if self._community_gateway_key:
+            headers["X-Internal-Key"] = self._community_gateway_key
+            headers["X-INTERNAL-API-KEY"] = self._community_gateway_key
+        body = {
+            "payer": payer,
+            "pay_to": self.pay_to,
+            "route": route or "",
+        }
+        if request_id:
+            body["request_id"] = request_id
+        try:
+            async with httpx.AsyncClient(timeout=10) as c:
+                await c.post(
+                    f"{self.community_gateway_url}/api/x402-facilitator/free-call-callback",
+                    headers=headers,
+                    json=body,
+                )
+        except Exception as e:
+            print(f"[x402-platform] free-call-callback failed: {e}", flush=True)
+
     # -- already-paid check (facilitator = source of truth) ------------------
     @staticmethod
     def _monthly_valid(confirmed_at: float) -> bool:
@@ -593,12 +721,13 @@ class PlatformBilling:
         expires = paid.replace(year=y, month=m, day=day)
         return datetime.now(tz=timezone.utc) < expires
 
-    async def already_paid(self, payer: str) -> bool:
+    async def already_paid(self, payer: str, resource: str = "") -> bool:
         if self.mode == "pay_per_use":
             return False
         payer = payer.lower()
         now = time.time()
-        hit = _access_cache.get((payer, self.mode))
+        cache_key = (payer, self.mode, resource or "")
+        hit = _access_cache.get(cache_key)
         if hit and hit[0] > now:
             return hit[1]
 
@@ -635,6 +764,10 @@ class PlatformBilling:
                                             else self.mode)}
                 if self.mode in PERIOD_DAYS:
                     params["period_days"] = PERIOD_DAYS[self.mode]
+                # x402 resource scopes access so payments for service A do not
+                # unlock service B on the same pay_to (protocol field, not service_id).
+                if resource:
+                    params["resource"] = resource
                 r = await c.get(access_url, params=params,
                                 headers=access_headers)
                 if r.status_code == 200:
@@ -687,14 +820,15 @@ class PlatformBilling:
 
         # only cache positives — negatives must re-check right after a settle
         if has:
-            _access_cache[(payer, self.mode)] = (now + _CACHE_TTL, True)
+            _access_cache[cache_key] = (now + _CACHE_TTL, True)
             if len(_access_cache) > 10000:
                 _access_cache.clear()
         return has
 
-    def grant_cache(self, payer: str) -> None:
+    def grant_cache(self, payer: str, resource: str = "") -> None:
         """Called right after a successful settle so the next request skips the lookup."""
-        _access_cache[(payer.lower(), self.mode)] = (time.time() + _CACHE_TTL, True)
+        _access_cache[(payer.lower(), self.mode, resource or "")] = (
+            time.time() + _CACHE_TTL, True)
 
 
 def decode_payment_header(raw: str) -> tuple[dict, str]:

@@ -406,6 +406,9 @@ async def proxy(path: str, request: Request):
     # ---- platform pricing modes (community-gateway contract) -------------
     prepaid_charge = None  # (pb, payer, request_id, units) — set when a prepaid debit applied
     _settlement_receipt = None  # dict — set after a successful on-chain settle (for PAYMENT-RESPONSE header)
+    free_promo_active = False
+    free_promo_end = None
+    free_promo_payer = ""
     if platform_billing is not None and units > 0:
         # plan selection (multi-plan): X-Pricing-Model header picks the plan;
         # no header (or single-plan service) -> default plan (MODE).
@@ -425,106 +428,138 @@ async def proxy(path: str, request: Request):
         # (e.g. lifetime holder must never be re-charged via a weekly 402).
         async def _any_subscription_access(payer_addr: str) -> bool:
             for _pb in (platform_plans.values() if platform_plans else (pb,)):
-                if _pb.mode in SUBSCRIPTION_MODES and await _pb.already_paid(payer_addr):
+                if _pb.mode in SUBSCRIPTION_MODES and await _pb.already_paid(
+                        payer_addr, resource=full):
                     return True
             return False
 
+        # Free promo first (plans-280-35): challenge with amount=0 so wallets
+        # without list-price USDC can still verify identity; no settle/debit.
+        try:
+            free_promo_active, free_promo_end = await pb.free_promo_status(resource=full)
+        except Exception as e:
+            print(f"[x402-gateway] free-promo check error: {e}", flush=True)
+            free_promo_active, free_promo_end = False, None
+
         raw = request.headers.get("X-PAYMENT") or request.headers.get("PAYMENT-SIGNATURE") or ""
-        if not raw:
+        if free_promo_active:
+            if not raw:
+                body402 = pb.challenge_body(full, amount_override="0")
+                if platform_plans:
+                    body402["plans"] = {m: p.requirements(full)
+                                        for m, p in sorted(platform_plans.items())}
+                    for accs in body402["plans"].values():
+                        for acc in accs:
+                            acc["amount"] = "0"
+                return JSONResponse(body402, status_code=402)
+            payload, payer = decode_payment_header(raw)
+            if not payer:
+                return JSONResponse(
+                    pb.challenge_body(full, error="malformed X-PAYMENT header",
+                                      amount_override="0"),
+                    status_code=402)
+            try:
+                v = await pb.verify(payload, full, amount_override="0")
+            except Exception as e:
+                return _err(502, "facilitator_error",
+                            f"payment facilitator unreachable: {e}")
+            if not v.get("isValid"):
+                return JSONResponse(pb.challenge_body(
+                    full, error=v.get("invalidReason", "payment verification failed"),
+                    amount_override="0"), status_code=402)
+            free_promo_payer = v.get("payer") or payer or ""
+            await pb.record_free_call(
+                free_promo_payer, route=full, request_id=uuid.uuid4().hex)
+            # Fall through to upstream without charging.
+        elif not raw:
             body402 = pb.challenge_body(full)
             if platform_plans:
                 body402["plans"] = {m: p.requirements(full)
                                     for m, p in sorted(platform_plans.items())}
             return JSONResponse(body402, status_code=402)
-        payload, payer = decode_payment_header(raw)
-        if not payer:
-            return JSONResponse(pb.challenge_body(full, error="malformed X-PAYMENT header"),
-                                status_code=402)
-        try:
-            v = await (pb.verify_cached(payload, full) if selected_mode == "prepaid"
-                       else pb.verify(payload, full))
-        except Exception as e:
-            return _err(502, "facilitator_error", f"payment facilitator unreachable: {e}")
-        if not v.get("isValid"):
-            return JSONResponse(pb.challenge_body(
-                full, error=v.get("invalidReason", "payment verification failed")),
-                status_code=402)
-        payer = v.get("payer") or payer
+        else:
+            payload, payer = decode_payment_header(raw)
+            if not payer:
+                return JSONResponse(pb.challenge_body(full, error="malformed X-PAYMENT header"),
+                                    status_code=402)
+            try:
+                v = await (pb.verify_cached(payload, full) if selected_mode == "prepaid"
+                           else pb.verify(payload, full))
+            except Exception as e:
+                return _err(502, "facilitator_error", f"payment facilitator unreachable: {e}")
+            if not v.get("isValid"):
+                return JSONResponse(pb.challenge_body(
+                    full, error=v.get("invalidReason", "payment verification failed")),
+                    status_code=402)
+            payer = v.get("payer") or payer
 
-        if selected_mode == "prepaid":
-            # signature = authentication; money moves off-chain via debit.
-            # Deposit happens only when the balance can't cover this call AND
-            # the signed value is an actual top-up (>= depositAtomic).
-            # combination rule: a buyer holding a subscription plan of this
-            # service is never billed per-call via prepaid.
-            covered = False
-            if platform_plans:
+            if selected_mode == "prepaid":
+                # signature = authentication; money moves off-chain via debit.
+                covered = False
+                if platform_plans:
+                    try:
+                        covered = await _any_subscription_access(payer)
+                    except AccessCheckError as e:
+                        return _err(502, "facilitator_error", f"access check failed: {e}")
+                if not covered:
+                    price = int(pb.amount_atomic) * units
+                    auth_value = int((payload.get("payload", {})
+                                      .get("authorization", {}) or {}).get("value", 0) or 0)
+                    try:
+                        bal = await pb.balance(payer)
+                    except Exception as e:
+                        return _err(502, "facilitator_error", f"balance check failed: {e}")
+                    if bal < price and auth_value >= pb.deposit_atomic:
+                        try:
+                            dep = await pb.deposit(payload, full)
+                        except Exception as e:
+                            return _err(502, "facilitator_error", f"deposit failed: {e}")
+                        if not dep.get("success"):
+                            return JSONResponse(pb.challenge_body(
+                                full, error=dep.get("errorReason", "deposit settlement failed"),
+                                deposit=True), status_code=402)
+                        bal = int(dep.get("balance_atomic", 0))
+                    if bal < price:
+                        return JSONResponse(pb.challenge_body(
+                            full, error=f"insufficient_balance: {bal} < {price} — "
+                                        "sign accepts.amount to top up your prepaid balance",
+                            deposit=True), status_code=402)
+                    request_id = uuid.uuid4().hex
+                    try:
+                        d = await pb.debit(payer, request_id, units=units, route=full)
+                    except Exception as e:
+                        return _err(502, "facilitator_error", f"debit failed: {e}")
+                    if not d.get("ok"):
+                        if d.get("error") == "insufficient_balance":
+                            return JSONResponse(pb.challenge_body(
+                                full, error="insufficient_balance — sign accepts.amount "
+                                            "to top up your prepaid balance", deposit=True),
+                                status_code=402)
+                        return _err(502, "facilitator_error", f"debit rejected: {d.get('error')}")
+                    prepaid_charge = (pb, payer, request_id, units)
+            else:
                 try:
-                    covered = await _any_subscription_access(payer)
+                    paid = (await _any_subscription_access(payer) if platform_plans
+                            else await pb.already_paid(payer, resource=full))
                 except AccessCheckError as e:
                     return _err(502, "facilitator_error", f"access check failed: {e}")
-            if not covered:
-                price = int(pb.amount_atomic) * units
-                auth_value = int((payload.get("payload", {})
-                                  .get("authorization", {}) or {}).get("value", 0) or 0)
-                try:
-                    bal = await pb.balance(payer)
-                except Exception as e:
-                    return _err(502, "facilitator_error", f"balance check failed: {e}")
-                if bal < price and auth_value >= pb.deposit_atomic:
+                if not paid:
                     try:
-                        dep = await pb.deposit(payload, full)
+                        s = await pb.settle(payload, full)
                     except Exception as e:
-                        return _err(502, "facilitator_error", f"deposit failed: {e}")
-                    if not dep.get("success"):
+                        return _err(502, "facilitator_error", f"settle failed: {e}")
+                    if not s.get("success"):
                         return JSONResponse(pb.challenge_body(
-                            full, error=dep.get("errorReason", "deposit settlement failed"),
-                            deposit=True), status_code=402)
-                    bal = int(dep.get("balance_atomic", 0))
-                if bal < price:
-                    return JSONResponse(pb.challenge_body(
-                        full, error=f"insufficient_balance: {bal} < {price} — "
-                                    "sign accepts.amount to top up your prepaid balance",
-                        deposit=True), status_code=402)
-                request_id = uuid.uuid4().hex
-                try:
-                    d = await pb.debit(payer, request_id, units=units, route=full)
-                except Exception as e:
-                    return _err(502, "facilitator_error", f"debit failed: {e}")
-                if not d.get("ok"):
-                    if d.get("error") == "insufficient_balance":
-                        return JSONResponse(pb.challenge_body(
-                            full, error="insufficient_balance — sign accepts.amount "
-                                        "to top up your prepaid balance", deposit=True),
+                            full, error=s.get("errorReason", "payment settlement failed")),
                             status_code=402)
-                    return _err(502, "facilitator_error", f"debit rejected: {d.get('error')}")
-                prepaid_charge = (pb, payer, request_id, units)
-        else:
-            try:
-                paid = (await _any_subscription_access(payer) if platform_plans
-                        else await pb.already_paid(payer))
-            except AccessCheckError as e:
-                # unknown != unpaid: settling on an auth/availability failure
-                # would re-charge an already-paid buyer on every request
-                return _err(502, "facilitator_error", f"access check failed: {e}")
-            if not paid:
-                try:
-                    s = await pb.settle(payload, full)
-                except Exception as e:
-                    return _err(502, "facilitator_error", f"settle failed: {e}")
-                if not s.get("success"):
-                    return JSONResponse(pb.challenge_body(
-                        full, error=s.get("errorReason", "payment settlement failed")),
-                        status_code=402)
-                # x402 protocol: build settlement receipt for PAYMENT-RESPONSE header
-                _settlement_receipt = {
-                    "success": True,
-                    "payer": s.get("payer", payer),
-                    "network": s.get("network", ""),
-                    "transaction": s.get("transaction", ""),
-                }
-                if selected_mode != "pay_per_use":
-                    pb.grant_cache(payer)
+                    _settlement_receipt = {
+                        "success": True,
+                        "payer": s.get("payer", payer),
+                        "network": s.get("network", ""),
+                        "transaction": s.get("transaction", ""),
+                    }
+                    if selected_mode != "pay_per_use":
+                        pb.grant_cache(payer, resource=full)
 
     if MODE == "timepass" and units > 0:
         if not key:
@@ -551,12 +586,27 @@ async def proxy(path: str, request: Request):
             return _err(401, "invalid_key", "unknown or revoked API key")
 
     body = await request.body()
-    # strip gateway-only headers before forwarding: the upstream service must
-    # never see API keys, payment signatures, or admin tokens (log-leak risk).
-    _GATEWAY_HEADERS = ("host", "content-length", "x-api-key", "x-admin-token")
+    # strip gateway-only headers before forwarding: payment signatures / admin
+    # tokens must never reach upstream (log-leak risk). Client-supplied
+    # free-promo headers are stripped too (only gateway may set them).
+    # X-Api-Key: for subscription/metered/timepass the key is gateway-owned and
+    # must NOT be forwarded. For platform modes, sellers may run custom key ACL
+    # on upstream — forward buyer-supplied X-Api-Key (P3 custom-key sidecar).
+    _GATEWAY_HEADERS = {
+        "host", "content-length", "x-admin-token",
+        "x-free-promo", "x-free-promo-end", "x-payment-payer",
+    }
+    if MODE not in PLATFORM_MODES:
+        _GATEWAY_HEADERS.add("x-api-key")
     fwd_headers = {k: v for k, v in request.headers.items()
                    if k.lower() not in _GATEWAY_HEADERS
                    and not k.lower().startswith("payment-")}
+    if free_promo_active:
+        fwd_headers["X-Free-Promo"] = "1"
+        if free_promo_end:
+            fwd_headers["X-Free-Promo-End"] = str(free_promo_end)
+        if free_promo_payer:
+            fwd_headers["X-Payment-Payer"] = str(free_promo_payer)
     try:
         async with httpx.AsyncClient(timeout=60) as c:
             r = await c.request(request.method, f"{UPSTREAM}{full}",

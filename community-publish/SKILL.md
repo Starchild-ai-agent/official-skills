@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.34.0
+version: 0.35.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -34,6 +34,22 @@ This skill handles two fundamentally different concepts. Mixing them up is the #
 | **Paid listing** | Charge for access via x402 | Required (6-check review, must pass before publishing) | Yes (USDC/USDG/USDC(Solana) on platform networks — default Base+Monad+Robinhood+X Layer+Solana, follows `all`) | `create_paid_service()` → `submit_for_review()` (required) → `publish_service()` |
 
 > **`POST /api/services` no longer accepts `service_type: "free_project"`.** Free listing is done by `list_in_dashboard()` (the project gallery flow). Paid listing uses `create_paid_service()` + review + publish (the service API flow).
+
+### Limited-time free promo ≠ this skill
+
+After a **paid** service is listed, the owner may run a **time-window free promotion**
+(`free_promo_start` / `free_promo_end`). That is **not** marketplace listing work and is
+**not** implemented here.
+
+| Concept | What it is | Where |
+|---------|------------|--------|
+| Free **listing** | Free project on `/projects` gallery | this skill → `list_in_dashboard()` |
+| `free_trial_count` | N free calls before charge (pay_per_use only) | this skill → `create_paid_service(..., free_trial_count=N)` |
+| **Limited-time free promo** | Calendar window: amount-0 verify, no settle/debit | **x402 skill** → `skills/x402/references/selling.md` section **Limited-time free promotion** |
+
+If the user asks to “开限时免费 / free promo / free for N days” on an already-paid listing:
+read the **x402** skill (self-check P1–P5, then PUT free-promo). Do **not** invent APIs in
+community-publish or confuse it with `free_trial_count`.
 
 ---
 
@@ -701,6 +717,8 @@ All paid services use the x402 `exact` payment scheme (on-chain USDC/USDG settle
 | `prepaid` | Prepaid balance | User deposits via `deposit-settle` (one on-chain tx), then each call debits balance off-chain (zero gas) | High-frequency micro-payments |
 
 > `free_trial_count` is only valid for `pay_per_use` — allows N free calls before charging.
+> It is **not** a calendar free promo. Time-window free (`free_promo_*`) → **x402** skill
+> (`selling.md` → Limited-time free promotion).
 
 #### Multi-plan (multiple pricing options)
 

@@ -33,9 +33,31 @@ but unauthenticated by design (discovery must be public).
 | 502 | `facilitator_error` | facilitator unreachable — check outbound proxy env, retry later |
 
 Common facilitator verify errors (2nd 402's `error` field):
-- `invalid_exact_evm_insufficient_balance` — buyer wallet lacks USDC (sig was VALID)
+- `invalid_exact_evm_insufficient_balance` — buyer wallet lacks USDC (sig was VALID).
+  **Exception during limited-time free promo:** platform gateway challenges with
+  `amount="0"`; if the buyer still signs list price, this error can appear even though
+  free should not need USDC — re-probe 402 and sign the **quoted** amount.
 - `invalid_signature` — wrong domain (name/version/chainId) or corrupted sig
 - expired `validBefore` — client clock skew; SDK uses `maxTimeoutSeconds` (default 300s)
+- `free_promo_active` (settle / positive debit) — service is in a free window; charging
+  is blocked on purpose. Wait until free ends or owner cancels free-promo. Refunds
+  (negative debit) are still allowed.
+
+## Limited-time free promotion
+
+Full seller/buyer contract: `references/selling.md` → **Limited-time free promotion**.
+
+| Symptom | Check | Fix |
+|---------|-------|-----|
+| Unpaid 402 still shows list-price amount during free | `GET /api/services/:id/free-status` → `is_free`? Traffic hitting gateway port? | Enable free-promo; expose **gateway** not upstream; wait short free-status cache TTL |
+| Buyer cannot complete free without USDC | 402 `accepts[].amount` still list price; client forces max amount | Platform gateway must quote `amount="0"`; client must sign quoted amount; custom sellers must implement amount-0 |
+| Gateway 200 but upstream 401 during free | Upstream custom API key / session ACL (P3/P4) | Honor `X-Free-Promo: 1` (from gateway) or poll free-status server-side before key check |
+| On-chain settle happened during free | Custom path still calling settle; or free-status false at settle time | Skip settle while free; facilitator should return `free_promo_active` — if not, free-status/pay_to mismatch |
+| Prepaid still debiting during free | Custom debit client ignores free | Check free-promo-check; positive debit must fail with `free_promo_active` |
+| After free ended, still amount 0 / still free | Stale positive free cache or free not cleared | `DELETE free-promo` or wait `free_end`; retry after ~30s cache TTL |
+| Paid service B after only paying A (same pay_to) | access-status without `resource` | Pass x402 resource path; do not grant on pay_to alone |
+| Free calls attributed to wrong listing | Shared pay_to, ambiguous resource | Distinct `api_endpoint` paths; free-call prefers currently-free listing |
+| Agent enabled free but users still blocked | Blind PUT without P3 patch | Run selling.md self-check P1–P5 before enable |
 
 ## Troubleshooting
 

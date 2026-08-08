@@ -1,6 +1,6 @@
 ---
 name: video
-version: 3.4.2
+version: 3.5.0
 description: |
   AI video generation: text-to-video, image-to-video, video-to-video, model selection.
 
@@ -173,17 +173,31 @@ If `preview(action='serve')` returns `No available ports in pool`, ask the user 
 | **balanced** | `alibaba/happy-horse/text-to-video` | $0.70 | Default; best lip-sync, most use cases |
 | **premium** | `bytedance/seedance-2.0/fast/text-to-video` | $1.20 | Best motion + camera direction |
 | **mini** | `bytedance/seedance-2.0/mini/text-to-video` | $0.36 (480p) / $0.77 (720p) | Cheapest Seedance; resolution-tiered, no 1080p. **Duration must be a string** (`"5"`, not `5` or `"5s"`) — see gotcha below |
+| **premium-25** | `bytedance/seedance-2.5/text-to-video` | token-based | Supports text-to-video, image-to-video, and reference-to-video. Requires `resolution` (`480p`/`720p`), `aspect_ratio` (six supported ratios), and integer `duration` from 4–30 seconds. Estimate with `estimate_cost(..., aspect_ratio=...)`. |
 | — | `xai/grok-imagine-video/v1.5/image-to-video` | $0.41 (480p) / $0.71 (720p) per 5s | **image-to-video ONLY** (single required `image_url`, no `image_urls`); +$0.01 input-image surcharge included in estimate. ⚠️ `resolution="1080p"` is schema-valid upstream but has NO published price — the proxy rejects it 400 fail-closed |
 | — | `fal-ai/kling-video/v3/turbo/standard/text-to-video` | $0.56 per 5s | Kling v3 Turbo Standard, flat $0.112/s; `.../turbo/pro/...` = $0.14/s ($0.70/5s); `.../v3/4k/...` = $0.42/s ($2.10/5s). i2v variants exist for all |
 | — | `alibaba/happy-horse/v1.1/text-to-video` | $0.70 (720p) / $0.90 (1080p) per 5s | v1.1 has its own 1080p tier **$0.18/s** (NOT the v1.0 2× rule); also `/image-to-video`, `/reference-to-video` |
+| — | `fal-ai/minimax_h3/text-to-video` | proxy pricing applies | Supports text-to-video, image-to-video, and reference-to-video. For reference-to-video pass `image_urls=[...]`; the payload is translated to upstream `reference_image_urls`. |
 
 ⚠️ **Happy Horse default resolution is 1080p upstream** (v1.0 and v1.1): omitting `resolution` bills the 1080p tier (v1.1 5s = $0.90; v1.0 ref2v 5s = $1.40). Pass `resolution="720p"` explicitly for the cheaper rate. Invalid resolution values are rejected 400 by the proxy.
 
-**Reference-to-video** (`alibaba/happy-horse/reference-to-video`, `.../v1.1/reference-to-video`): pass `image_urls=[...]` (list of 1–9 public HTTP(S) URLs) — NOT the single `image_url` param. `generate_video()` validates count and URL scheme and submits the `image_urls` payload field.
+**Reference-to-video**: pass `image_urls=[...]` (list of 1–9 public HTTP(S) URLs) — NOT the single `image_url` param. `generate_video()` validates count and URL scheme. Happy Horse and Seedance 2.5 submit the `image_urls` field; MiniMax H3 (`fal-ai/minimax_h3/reference-to-video`) submits upstream's `reference_image_urls` field.
+
+**Seedance 2.5 example**:
+```python
+result = generate_video(
+    prompt="A cinematic close-up of a paper crane unfolding",
+    model="bytedance/seedance-2.5/text-to-video",
+    duration=5,
+    resolution="720p",
+    aspect_ratio="16:9",
+)
+```
+Use an integer `duration` from 4–30 seconds. `resolution` must be `480p` or `720p`; `aspect_ratio` must be one of `21:9`, `16:9`, `4:3`, `1:1`, `3:4`, `9:16`. The proxy rejects `auto` values because they cannot be priced safely.
 
 Override by passing the full model id to `generate_video(model=...)`. Image-to-video variants are auto-derived by replacing `text-to-video` with `image-to-video`.
 
-Pricing details and model registry live in `generate_video.py::estimate_cost`.
+Pricing details and model registry live in `generate_video.py::estimate_cost`. For models not yet registered there, the legacy fallback is only a rough estimate and may differ from the proxy; do not use it for budgeting new endpoints.
 
 ---
 
@@ -217,6 +231,8 @@ Use this when an earlier `generate_video` call timed out or you only have a `req
 | `HTTP 403 endpoint_not_allowed` | sc-proxy only allows approved fal video endpoints; pick one from the model table |
 | Generation `FAILED` upstream | Shorten prompt, drop unusual tokens, retry once before changing model |
 | `HTTP 422 literal_error` on `duration` (Seedance Mini) | Mini requires `duration` as a **string** (`"5"`, `"10"`, `"auto"`), not an int and not `"5s"`. `generate_video()` encodes this automatically when `model` contains `seedance-2.0/mini` — only hit this if you hand-build the request body. Other Seedance variants accept int/`"5s"` as before. |
+| Seedance 2.5 rejects `auto` or returns `resolution_not_priceable` / `aspect_ratio_not_priceable` | Pass explicit `resolution="480p"` or `"720p"`, an explicit supported `aspect_ratio`, and integer `duration` from 4–30. Seedance 2.5 uses token-based pricing; call `estimate_cost(model, duration, resolution, aspect_ratio)` for a local estimate. |
+| MiniMax H3 reference request returns a parameter error | Use `image_urls=[...]` with the `fal-ai/minimax_h3/reference-to-video` model. `generate_video()` translates it to upstream `reference_image_urls`; do not hand-send `image_urls` to upstream. |
 | Job stuck `IN_PROGRESS` >15 min | Save `request_id`, resume later with `poll_status.py` |
 | User reports the fal.media link "shows nothing" / "blank page" | Expected — fal serves with `CSP: sandbox; default-src 'none'`. Deliver the local file at `result["local_path"]` instead of the raw URL (see §1). |
 

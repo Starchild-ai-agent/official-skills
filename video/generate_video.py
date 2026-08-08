@@ -33,12 +33,28 @@ from _cost_track import caller_headers, record_response  # noqa: E402
 PROXY_URL = 'http://sc-proxy.internal:8080'
 PROXIES = {'http': PROXY_URL, 'https': PROXY_URL}
 
-def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5, resolution="720p", image_url=None, image_urls=None):
+# Seedance 2.5 uses token-based billing in sc-proxy. Keep this contract local
+# so estimates shown by the skill match the proxy's pre-charge calculation.
+_SEEDANCE_25_TOKEN_RATE = 0.0000214  # USD per token ($0.0214 / 1K tokens)
+_SEEDANCE_25_FPS = 24
+_SEEDANCE_25_PIXELS = {
+    ("480p", "21:9"): (992, 432), ("480p", "16:9"): (864, 496),
+    ("480p", "4:3"): (752, 560), ("480p", "1:1"): (640, 640),
+    ("480p", "3:4"): (560, 752), ("480p", "9:16"): (496, 864),
+    ("720p", "21:9"): (1470, 630), ("720p", "16:9"): (1280, 720),
+    ("720p", "4:3"): (1112, 834), ("720p", "1:1"): (960, 960),
+    ("720p", "3:4"): (834, 1112), ("720p", "9:16"): (720, 1280),
+}
+_SEEDANCE_25_RESOLUTIONS = ("480p", "720p")
+_SEEDANCE_25_ASPECT_RATIOS = ("21:9", "16:9", "4:3", "1:1", "3:4", "9:16")
+
+def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5, resolution="720p", image_url=None, image_urls=None, aspect_ratio="16:9"):
     """Generate video end-to-end. Returns dict with success/error/paths.
 
     image_url:  single public HTTP(S) URL → image-to-video models.
-    image_urls: list of 1-9 public HTTP(S) URLs → happy-horse
-                reference-to-video models ONLY (payload field `image_urls`).
+    image_urls: list of 1-9 public HTTP(S) URLs → reference-to-video
+                models. MiniMax H3 uses `reference_image_urls`; other
+                registered reference-to-video models use `image_urls`.
     """
 
     headers = caller_headers({
@@ -46,9 +62,17 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
         'Content-Type': 'application/json',
     }, tool_default='video')
 
-    body = {'prompt': prompt, 'duration': duration, 'aspect_ratio': "16:9"}
+    if model.startswith('bytedance/seedance-2.5/'):
+        if not isinstance(duration, int) or isinstance(duration, bool) or not (4 <= duration <= 30):
+            return {"success": False, "error": "Seedance 2.5 requires an integer duration from 4 to 30 seconds; duration=auto is not priceable."}
+        if resolution not in _SEEDANCE_25_RESOLUTIONS:
+            return {"success": False, "error": f"Seedance 2.5 only supports resolution 480p or 720p (got {resolution!r})."}
+        if aspect_ratio not in _SEEDANCE_25_ASPECT_RATIOS:
+            return {"success": False, "error": f"Seedance 2.5 only supports aspect_ratio {', '.join(_SEEDANCE_25_ASPECT_RATIOS)} (got {aspect_ratio!r})."}
+
+    body = {'prompt': prompt, 'duration': duration, 'aspect_ratio': aspect_ratio}
     if ('happy-horse' in model or 'kling' in model or 'seedance-2.0/mini' in model
-            or 'grok-imagine-video' in model):
+            or 'seedance-2.5' in model or 'grok-imagine-video' in model):
         # Grok v1.5: proxy rejects (400) any resolution without a published
         # price — fail fast here instead of burning a pointless proxy request.
         if 'grok-imagine-video' in model and resolution not in ("480p", "720p"):
@@ -72,18 +96,19 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
             model = model.replace('/text-to-video', '/image-to-video')
         body['image_url'] = image_url
 
-    # Reference-to-video (happy-horse only): upstream requires `image_urls`
-    # (a list of 1-9 public HTTP(S) URLs), NOT the single `image_url` field.
+    # Reference-to-video endpoints accept 1-9 public HTTP(S) URLs. MiniMax H3
+    # uses fal's distinct `reference_image_urls` field; other registered r2v
+    # endpoints use `image_urls`.
     if image_urls is not None:
         if 'reference-to-video' not in model:
-            return {"success": False, "error": "image_urls is only supported by happy-horse reference-to-video models (e.g. alibaba/happy-horse/reference-to-video)."}
+            return {"success": False, "error": "image_urls is only supported by reference-to-video models."}
         if not isinstance(image_urls, (list, tuple)) or not (1 <= len(image_urls) <= 9):
             return {"success": False, "error": "image_urls must be a list of 1-9 public HTTP(S) URLs."}
         for u in image_urls:
             if not isinstance(u, str) or u.startswith('data:') or not u.startswith(('http://', 'https://')):
                 return {"success": False, "error": f"Invalid reference image URL (must be public HTTP(S), no data: URIs): {str(u)[:80]}"}
         body.pop('image_url', None)
-        body['image_urls'] = list(image_urls)
+        body['reference_image_urls' if 'minimax_h3' in model else 'image_urls'] = list(image_urls)
     elif 'reference-to-video' in model:
         return {"success": False, "error": "reference-to-video models require image_urls (list of 1-9 public HTTP(S) URLs)."}
     
@@ -107,7 +132,9 @@ def generate_video(prompt, model="alibaba/happy-horse/text-to-video", duration=5
     
     # Poll
     deadline = time.time() + 900  # 15min timeout
+    poll_count = 0
     while time.time() < deadline:
+        poll_count += 1
         poll_resp = requests.get(status_url, headers={'Authorization': 'Key fake-falai-key-12345'}, proxies=PROXIES, verify=False, timeout=60)
         status = poll_resp.json().get('status')
         
@@ -196,8 +223,19 @@ def _extract_video_url(result_json):
     return None
 
 
-def estimate_cost(model, duration, resolution="720p"):
-    """Estimate generation cost in USD"""
+def estimate_cost(model, duration, resolution="720p", aspect_ratio="16:9"):
+    """Estimate generation cost in USD using the proxy's pricing contract."""
+    if model.startswith('bytedance/seedance-2.5/'):
+        if not isinstance(duration, int) or isinstance(duration, bool) or not (4 <= duration <= 30):
+            raise ValueError("Seedance 2.5 requires an integer duration from 4 to 30 seconds; duration=auto is not priceable.")
+        if resolution not in _SEEDANCE_25_RESOLUTIONS:
+            raise ValueError(f"Seedance 2.5 only supports resolution 480p or 720p (got {resolution!r}).")
+        dims = _SEEDANCE_25_PIXELS.get((resolution, aspect_ratio))
+        if dims is None:
+            raise ValueError(f"Seedance 2.5 does not support resolution/aspect_ratio={resolution!r}/{aspect_ratio!r}.")
+        width, height = dims
+        tokens = (width * height * float(duration) * _SEEDANCE_25_FPS) / 1024
+        return round(tokens * _SEEDANCE_25_TOKEN_RATE, 4)
     prices = {
         "alibaba/happy-horse/text-to-video": 0.14,
         "fal-ai/wan/v2.5/text-to-video": 0.05,
@@ -258,6 +296,7 @@ QUICK_MODELS = {
     "budget": "alibaba/happy-horse/text-to-video",
     "balanced": "alibaba/happy-horse/text-to-video",
     "premium": "bytedance/seedance-2.0/fast/text-to-video",
+    "premium-25": "bytedance/seedance-2.5/text-to-video",
     "mini": "bytedance/seedance-2.0/mini/text-to-video",  # 480p $0.0721/s, 720p $0.1547/s
 }
 

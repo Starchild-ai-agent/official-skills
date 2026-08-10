@@ -346,7 +346,7 @@ the loop, but it's needless overhead) — and an LLM hook that calls `/chat` mus
 
 ## Ready-made scripts (each has ONE clear job)
 
-Five **production-grade guards** ship in this skill under `templates/`
+Six **production-grade guards** ship in this skill under `templates/`
 (copy + approve as-is). Four **single-purpose examples** ship with the host under
 `extensions/shell_hooks/examples/` (copy + adapt). No two overlap — pick by the
 job, not by trial.
@@ -377,6 +377,7 @@ reordered). If a self-test exists (`templates/<name>_selftest.py`), run it first
 | `verify_publish_claims.py` | `on_stop` (chat redo) / `on_completion_claim` (`/goal` redo) / `on_response_end` (rewrite fallback) | **Anti-hallucination.** Catch fabricated "published / posted to AgentX / scheduled" claims by checking the reply against ground truth (previews registry, AgentX ledger, scheduler registry). |
 | `verify_code_changes.py` | `pre_tool_call` (recorder) + `on_stop` (decider) | **Anti-"false done" for code.** When you change a source file but run no test/build/lint to check it, blocks the stop once and steers you to verify (or say plainly there's nothing to run) before finishing. Counts both `edit_file`/`write_file` AND code written via bash (heredoc, `>`/`>>` redirect, `tee`, in-place `sed -i`/`perl -i`). Docs/data edits (`.md`/`.json`/`.yaml`/…) are exempt; one nudge per edit-set, self-disarms, fails open. Wire BOTH events to the same script path. |
 | `verify_commitments.py` | `on_stop` (chat redo) | **Anti-broken-promise.** When the reply makes a future notify-promise ("I'll let you know when the build finishes", "明早提醒你") but registers nothing to make it happen, blocks the stop once and steers you to actually register it — `scheduled_task(once)` for time-bound, `sessions_spawn` (bash poll + `announce=followup`) for completion-bound. Fires only when a notify verb AND a time/condition cue both appear; immediate-delivery framing ("here's", "下面就是") and cross-round registration (recent active job / recent spawn) suppress it. Capped, self-disarms, fails open. |
+| `cjk_punctuation.py` | `on_response_end` (+ optional `pre_tool_call`) | **Chinese full-width punctuation.** Rewrites CJK-adjacent ASCII `,;:?!` to `，；：？！` in the final reply — the thing a prompt instruction reliably fails to enforce. Optionally also normalizes Chinese copy written into `.md`/`.txt` files. See below. |
 | `runtime_footer.py` | `on_response_end` (+ optional `pre_llm_call`) | **Model/cost footer.** On `on_response_end` (once/turn) it strips any model-typed footer at the reply end and appends the ONE true footer from the runtime's real `model` + cost. Optionally wire `pre_llm_call` too for a "don't type a footer" nudge (fires per model-request). See below. |
 
 ### Single-purpose examples (host repo, `extensions/shell_hooks/examples/`)
@@ -593,6 +594,70 @@ payload; an unknown event is a no-op. Fail-open on any error. Self-test:
 `templates/runtime_footer_selftest.py` (35 cases — both handlers, strip +
 false-positive guards for mid-body prose and shell `$VAR`, credit balance +
 fail-open, in-file CONFIG constants + env-override precedence, dispatch safety).
+
+## Chinese full-width punctuation (`templates/cjk_punctuation.py`)
+
+Chinese typography wants 全角 punctuation (`，；：？！`), but models emit the ASCII
+half-width forms constantly — worst of all in a context saturated with English
+(code, logs, identifiers, tool output). **Putting the rule in the prompt does not
+fix this**; it has been tried and the reply still comes back with half-width
+commas. The model knows the rule — punctuation is chosen at token level, where a
+single line of instruction thousands of tokens away loses to the local
+distribution. So it is done deterministically, after the text exists.
+
+```bash
+cp /data/workspace/skills/agent-hooks/templates/cjk_punctuation.py /data/workspace/hooks/
+chmod +x /data/workspace/hooks/cjk_punctuation.py
+```
+
+```yaml
+hooks:
+  - event: on_response_end
+    matcher: "[\u4e00-\u9fff]"        # perf gate — only spawns when the reply has CJK
+    command: /data/workspace/hooks/cjk_punctuation.py
+    timeout: 10
+  # optional — also normalize Chinese copy written into files:
+  # - event: pre_tool_call
+  #   matcher: "write_file|edit_file"
+  #   command: /data/workspace/hooks/cjk_punctuation.py
+  #   timeout: 10
+```
+
+The `matcher` is what keeps this free: the bridge tests it against the reply
+body and never spawns the process when it misses, so an English-only user pays
+nothing.
+
+**Converted** — and only when a CJK character sits immediately before, or is the
+next non-space character after, the mark: `,;:?!` → `，；：？！`. Spaces following a
+converted mark are dropped (`中文, foo` → `中文，foo`), since the full-width form
+carries its own width.
+
+**Not converted:** `.` → `。` (indistinguishable from a decimal point, version
+number, file extension or domain without real parsing), and parentheses (off by
+default via `PAREN_PAIRS` — they need matched-pair conversion, which markdown
+link syntax makes unsafe). Never touched: fenced code blocks, inline code spans,
+URLs, markdown link targets, HTML tags. `1,000` and `foo(a, b)` have no CJK
+neighbour, so they are not candidates at all.
+
+**`pre_tool_call` is extension-gated.** A colon is load-bearing syntax in YAML
+and JSON and a comma is in CSV, so only `PROSE_EXTENSIONS` (`.md`, `.markdown`,
+`.txt`, `.rst`) are rewritten — code and data files are never candidates. Wire
+this event if you ask the agent to draft Chinese copy (READMEs, posts, slide
+text), where the chat-side hook cannot reach.
+
+> ⚠️ **The live web stream is the one gap.** `on_response_end` rewrites the
+> STORED and FORWARDED reply; characters already streamed to an open web client
+> cannot be unsent. On web you may see half-width punctuation live and
+> full-width after a refresh. Telegram / WeChat pushes are rewritten before
+> delivery and are correct immediately. If the live view matters more to you than
+> the per-turn token cost, pair this with a prompt line — but the hook is what
+> makes the stored copy reliable.
+
+**Safety:** never blocks, and returns the text unchanged on any error — a broken
+hook can never break a turn or corrupt a file. Self-test:
+`templates/cjk_punctuation_selftest.py` (32 cases — conversion, the
+neighbour rule, protected spans, config + env precedence, prose-extension
+gating, dispatch safety).
 
 ## Claude Code compatibility
 

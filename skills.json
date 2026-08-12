@@ -100,8 +100,8 @@
     {
       "name": "blockfill-agent-execution",
       "path": "blockfill-agent-execution/SKILL.md",
-      "version": "1.0.2",
-      "description": "AI-agent-ready Python SDK and local execution engine for crypto perpetual futures order execution. Work large orders through TWAP and maker-style strategies on Binance Futures and OKX Swap while exchange API keys stay on your own machine — self-custodial, no third-party order routing. Declare a target position and BlockFill executes it; place, query, and cancel execution tickets from one Python API."
+      "version": "2.1.1",
+      "description": "AI agent execution skill for crypto order execution — TWAP, maker execution, transaction cost analysis and slippage reduction. Supports 11 CEX and DEX venues on both perpetual futures and spot: Binance, OKX, Bybit, Bitget, Gate.io, KuCoin, Kraken, Deribit, Hyperliquid, Aster and Orderly. Exchange API keys stay on the user's own machine — no third-party order routing. Install and full docs: https://pypi.org/project/blockfill/"
     },
     {
       "name": "bnbagent",
@@ -118,7 +118,7 @@
     {
       "name": "bybit-trading",
       "path": "bybit-trading/SKILL.md",
-      "version": "1.4.1",
+      "version": "1.5.7",
       "description": "Bybit AI Trading Skill — Trade on Bybit using natural language. Covers spot, derivatives, earn, and more. Works with Claude, ChatGPT, OpenClaw, and any AI assistant."
     },
     {
@@ -580,7 +580,7 @@
     {
       "name": "video",
       "path": "video/SKILL.md",
-      "version": "3.4.2",
+      "version": "3.5.0",
       "description": "AI video generation: text-to-video, image-to-video, video-to-video, model selection.\n\nUse when generating a short video clip from a prompt or reference (e.g. 5s clip of a cat in rain, animate this photo, restyle this video)."
     },
     {
@@ -635,7 +635,7 @@
       "name": "x402",
       "path": "x402/SKILL.md",
       "version": "2.26.0",
-      "description": "Monetize any user project/service with the x402 payment protocol on platform\nnetworks (Base + Monad + Robinhood + X Layer + Solana; Starchild platform billing: pay_per_use /\nlifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan\nservices), limited-time free promotions (amount-0 verify, no settle/debit), and pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, run a free promo on a paid listing, accept USDC from other agents, or call a paid x402 endpoint."
+      "description": "Monetize any user project/service with the x402 payment protocol on platform\nnetworks (Base + Monad + Robinhood + X Layer + Solana; Starchild platform billing: pay_per_use /\nlifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan\nservices), limited-time free promotions (amount-0 verify, no settle/debit),\nand pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, run a free promo on a paid\nlisting, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {
       "name": "xai-grok-onboarding",

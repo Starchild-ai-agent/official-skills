@@ -1,10 +1,10 @@
 ---
 name: cli-bridge
-version: 0.3.3
+version: 0.4.0
 description: |
-  Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel.
+  Manage short-code bundles that authorize the local starchild CLI to talk to this agent, including the agent-shell local-exec channel and the local MCP proxy (stdio MCP servers on the user's machine).
 
-  Use when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, or let the agent run shell commands on the user's own machine).
+  Use when connecting or disconnecting the starchild CLI (e.g. mint a CLI bridge code, list my CLI bundles, revoke an old CLI session, let the agent run shell commands on the user's own machine, or drive a local app via a stdio MCP server — Blender, Figma, Godot, computer-use, etc.).
 delivery: script
 metadata:
   starchild:
@@ -363,6 +363,169 @@ streamed in chunks so large files don't blow the WS frame limit.
 > daemon's self-update verifies an **Ed25519 signature** before swapping
 > binaries. Widen deliberately.
 
+## Local MCP servers via `agent-shell` (CLI ≥ v0.5.32)
+
+`agent-shell` **is** the MCP Host for the user's machine. The same daemon
+that runs `local_shell` and file transfer also reads
+`~/.config/starchild/mcp-servers.toml`, spawns each enabled stdio MCP
+server as a long-lived child process, runs the MCP `initialize` →
+`tools/list` handshake, and proxies `tools/call` over the existing
+WebSocket to clawd. clawd then registers each remote tool as
+`mcp__<server>__<tool>` and injects them into the **current** conversation
+— no new session is required.
+
+This is the path for driving a LOCAL app (Blender, Godot, a local
+Figma-bridge, computer-use, browser-use, the filesystem server, …) from
+the cloud agent. The agent can't reach `localhost` on the user's
+machine any other way; clawd's own (direct) MCP support is for
+REMOTE/HTTP/SSE servers hosted elsewhere, not for processes that must
+run on the user's laptop.
+
+### How it works (the control channel is the same WS as local_shell)
+
+```
+clawd (cloud agent)
+  │  mcp_list / mcp_call frames
+  │  (over the existing /ws/cli-shell WebSocket)
+  ▼
+agent-shell daemon (laptop) ── MCPProxy
+  │  stdio JSON-RPC (newline-delimited)
+  ▼
+blender-mcp / figma-mcp / server-everything / … (one process per server)
+```
+
+The laptop side owns the MCP session state (initialize → initialized →
+tools/list, cached). clawd only sends high-level `mcp_call`s; it never
+speaks raw JSON-RPC. A `tools/list_changed` notification from a server
+re-fetches and re-registers that server's tools.
+
+### Configuring a server
+
+Edit `~/.config/starchild/mcp-servers.toml` (YAML, despite the `.toml`
+extension — same convention as exec/file-policy). Each entry:
+
+```yaml
+servers:
+  - id: blender
+    command: uv
+    args:
+      - "--directory"
+      - "/Users/aladdin/Workspace/StarChild/blender_mcp/mcp"
+      - "run"
+      - "blender-mcp"
+    env:
+      - "SOME_KEY=value"
+    enabled: true
+```
+
+**Absolute paths only.** `$HOME` and `~` are NOT expanded — MCP clients
+spawn the command directly, not through a shell. Use
+`/Users/<name>/...`, never `~/...` or `$HOME/...`.
+
+`enabled` defaults to `true` (an entry without `enabled:` runs). The
+file is hot-reloadable, but **running sessions only change when the
+daemon restarts** — a reload updates the parsed config, it does not
+spawn/kill server processes mid-session. The app's Settings panel writes
+this file and restarts `agent-shell` for you.
+
+### Restarting agent-shell does NOT cut the chat
+
+The chat stream (your reply to the user) runs over clawd's HTTP/SSE
+path, NOT over `agent-shell`. Restarting `agent-shell` only interrupts
+`local_shell` / file-transfer / `mcp_call` for the ~2s it takes to
+reconnect — the conversation itself stays alive. So you CAN tell the
+user (or do it yourself via `local_shell`) to restart the daemon after a
+config change; you won't kill the conversation.
+
+After restart, the daemon sends a fresh `hello` with an `mcp_manifest`
+listing the enabled servers + each one's runtime status
+(`ready`/`failed`/`not_started`). clawd eagerly `mcp_list`s each ready
+one and registers the tools. A per-turn `maybe_resync_local_mcp` catch-up
+also covers servers that failed to fetch at hello (e.g. a slow-to-start
+server) on subsequent turns.
+
+### Dynamic injection — `local_mcp_status` + `local_mcp_reload`
+
+You don't have to restart agent-shell to pick up a config edit. Two
+agent-facing tools drive the local MCP runtime live:
+
+- **`local_mcp_status`** — returns every configured server's runtime
+  state (`ready` with tool count, `failed` with the error, or
+  `not_started`). Call this when an expected `mcp__<server>__*` tool is
+  missing — the server may have failed to start.
+- **`local_mcp_reload`** — asks agent-shell to re-read
+  `mcp-servers.toml` at runtime, start newly-added servers, stop removed
+  ones. **No daemon restart, no chat interruption.** After a reload, the
+  added servers' `mcp__<server>__*` tools appear in the **next turn**
+  (the tool list is rebuilt per request). Use this after editing the
+  config to make a new server available without asking the user to
+  restart anything.
+
+Typical flow when a server the user just configured isn't showing tools:
+1. Call `local_mcp_status` → see `blender: not_started` or `failed: …`.
+2. (Fix the config if `failed` — bad path, missing dep, etc.)
+3. Call `local_mcp_reload` → agent-shell starts the new server.
+4. Next turn, `mcp__blender__*` tools are registered.
+
+### What the agent sees
+
+- **Tools** appear as `mcp__<server>__<tool>` (e.g.
+  `mcp__blender__get_scene`, `mcp__everything__echo`). Their
+  `description` and `input_schema` come from the server's own
+  `tools/list` — call them like any native tool.
+- **The prompt manifest** (`build_mcp_manifest_section`, in the volatile
+  tail) lists which local MCP servers are connected and a roster of
+  their tool names. If a server is configured but failed to start, that
+  is noted here too (config present, not loaded).
+- If you don't see an `mcp__<server>__*` tool you expected, the server
+  didn't come up. Diagnose in this order:
+  1. Is it in `~/.config/starchild/mcp-servers.toml` with `enabled: true`?
+  2. Did `agent-shell` restart AFTER the edit? (config is read at start)
+  3. The daemon log (`~/.starchild/sc-chatroom[-dev]/cli-shell/agent.log`)
+     has a line per server: `agent-shell: mcp: <id> ready (N tools)` on
+     success, or `agent-shell: mcp: failed to start <id>: <reason>` on
+     failure. Read it via `local_shell`.
+  4. For servers that need a LOCAL app bridge (Blender's addon on
+     `127.0.0.1:9876`, a Figma plugin, …) confirm that bridge is
+     running too — the MCP server process can start but its tools will
+     error until the backend app is reachable.
+
+### Don't bypass MCP to talk to the local app
+
+When a server like Blender's is slow to register, it's tempting to open
+a raw socket to the app's own bridge (`127.0.0.1:9876`) and send Python
+directly. Don't — that sidesteps the MCP tool layer (no schema, no
+policy, no per-call validation) and the agent loses the structured
+`mcp__blender__*` interface. Fix the MCP server's startup instead
+(check the log, confirm the bridge, restart `agent-shell`). The raw
+bridge is a last-resort fallback only.
+
+### Server caveats (per-backend)
+
+- **Blender MCP** (`blender-mcp`): two parts — the stdio MCP server
+  (`uv run`) AND the Blender addon's bridge (listen on
+  `127.0.0.1:9876`). Both must be running. The MCP server starts even
+  if Blender is closed, but every tool call errors until the addon
+  bridge is up. `which blender` often fails even when Blender.app is
+  open — that's fine, the bridge is what matters.
+- **Figma**: there are TWO different Figma MCPs. `figma-mcp-server`
+  (REST-wrapper, read-only canvas) runs locally via `bunx`; the official
+  Figma remote MCP (write canvas, SSE) is a REMOTE server — configure
+  it on the clawd side (`mcp_servers:` in agent.yaml), NOT here. This
+  file is only for servers that run on the laptop.
+- **computer-use / browser-use**: inherently local (they drive the
+  user's screen/browser). Configure them here.
+
+### Security
+
+A local MCP server can execute arbitrary code on the user's machine
+(Blender's `execute_code`, a shell server, …). Treat adding an entry to
+`mcp-servers.toml` with the same gravity as widening the exec policy:
+only add servers the user asked for, prefer read-only servers, and
+never put a secret (API key) in chat — use the `env:` field. The
+`mcp-servers.toml` path is NOT in the file-policy allow-list by default;
+add it there if the user wants the agent to write configs directly.
+
 ## End-to-end smoke test
 
 ```bash
@@ -450,4 +613,39 @@ or `( echo "review:"; git diff ) | starchild`. Stdout is the reply
 (pipe-safe), stderr is diagnostics. Note the gotcha: passing a
 positional prompt makes stdin get ignored, so context + question
 should be concatenated upstream.
+
+## Driving a local app via MCP (agent-shell ≥ v0.5.32)
+
+Once `--enable-shell` is granted and `agent-shell` is running, you can
+also drive LOCAL apps (Blender, Godot, a local Figma-bridge,
+computer-use, …) through stdio MCP servers. The agent-shell daemon IS
+the MCP Host: it reads `~/.config/starchild/mcp-servers.toml`, spawns
+the servers, and registers their tools as `mcp__<server>__<tool>` into
+this conversation. No separate MCP client (Cursor/Claude Desktop) is
+needed.
+
+When the user asks "control Blender" / "use the local figma plugin" /
+"drive my local <app> via MCP":
+- Confirm `agent-shell` is connected (a `local_shell` call works).
+- Add the server to `~/.config/starchild/mcp-servers.toml` (ABSOLUTE
+  paths only — no `$HOME`, no `~`). The app's Settings → Local MCP
+  Servers panel can do this too.
+- Restart `agent-shell` (`starchild agent-shell-stop && starchild
+  agent-shell`, or via the app's RestartBanner). This does NOT cut the
+  chat — only `local_shell`/file-transfer pause for ~2s.
+- After restart the `mcp__<server>__*` tools appear. If they don't,
+  read the daemon log (`~/.starchild/sc-chatroom[-dev]/cli-shell/
+  agent.log` — look for `mcp: <id> ready` or `mcp: failed to start
+  <id>: <reason>`) via `local_shell`.
+- For servers with a local app bridge (Blender's addon on
+  127.0.0.1:9876), confirm that bridge is running too — the MCP server
+  process can start but its tools error until the backend app is up.
+- Prefer the `mcp__<server>__*` tools over opening a raw socket to the
+  app's bridge. The MCP layer gives you schemas + validation; the raw
+  bridge is a last-resort fallback.
+
+Don't add a server the user didn't ask for — a local MCP server can
+execute arbitrary code on their machine. See the "Local MCP servers via
+agent-shell" section above for the full config format and per-backend
+caveats (Blender two-part, Figma local-vs-remote, etc.).
 ```

@@ -1,6 +1,6 @@
 ---
 name: image-edit
-version: 1.0.5
+version: 1.0.6
 description: |
   Image editing and enhancement of an existing image. Covers background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.
 
@@ -504,7 +504,11 @@ FAL_KEY=your-fal-key python3 skills/image-edit/edit_image.py photo.jpg "make it 
 
 | Model | Edit endpoint |
 |-------|--------------|
-| nanopro | `fal-ai/nano-banana-pro/edit` |
+| nano2 | `fal-ai/gemini-3.1-flash-image-preview/edit` |
+| nanopro | `fal-ai/gemini-3-pro-image-preview/edit` |
 | gpt | `openai/gpt-image-2/edit` |
+
+The `nano2` / `nanopro` aliases are fal's Nano Banana 2 / Nano Banana Pro models,
+served through their `gemini-*-image-preview` endpoint IDs — use the IDs above.
 
 ---

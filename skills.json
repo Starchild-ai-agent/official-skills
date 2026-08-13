@@ -404,6 +404,12 @@
       "description": "PancakeSwap DeFi operations — token swaps, liquidity provision, yield farming, fee collection, reward harvesting, and PCS Hub integration. Use when the user mentions PancakeSwap, CAKE, swapping on BSC/BNB Chain, LP positions, farming, staking, syrup pools, or any PancakeSwap-related DeFi action."
     },
     {
+      "name": "pear-protocol",
+      "path": "pear-protocol/SKILL.md",
+      "version": "2.3.0",
+      "description": "Pear Protocol pair/basket trading on Hyperliquid — headless agent-wallet\nauth (SIWE), V3 gateway REST + Orchard MCP server: markets, pair ratios,\npositions, orders, and trade execution.\n\nUse when the user wants to pair trade (long one asset / short another),\ncheck pair ratios, correlation or funding, or manage Pear positions\n(e.g. long BTC short ETH, check my Pear positions, find trending pairs)."
+    },
+    {
       "name": "polymarket",
       "path": "polymarket/SKILL.md",
       "version": "6.1.0",

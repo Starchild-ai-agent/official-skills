@@ -1,6 +1,6 @@
 ---
 name: starchild-auth
-version: 1.9.0
+version: 1.10.0
 description: |
   Starchild Auth SDK: add OAuth login to any web app with one SDK.
 
@@ -22,8 +22,8 @@ Integrate Starchild OAuth login into any web application. The SDK handles OAuth 
 
 | 产物 | 当前版本 | 何时 bump |
 |------|---------|-----------|
-| npm `starchild-auth-sdk` | **0.4.0** | 代码 / 公开 API 变更 |
-| 本 Skill `starchild-auth` | **1.9.0** | 集成指南 / 场景文档变更（可与 package 独立） |
+| npm `starchild-auth-sdk` | **0.4.1** | 代码 / 公开 API 变更 |
+| 本 Skill `starchild-auth` | **1.10.0** | 集成指南 / 场景文档变更（可与 package 独立） |
 
 两套 semver **互不绑定**：只改文档可只升 skill；只改实现必须升 package（skill 通常同步升 minor/patch 说明新能力）。
 
@@ -201,6 +201,8 @@ const headers = {
   'Content-Type': 'application/json',
 }
 ```
+
+> **clawd 端点必须带 `fly-force-instance-id`**：clawd（`preview.iamstarchild.com`）每个 Fly Machine 是单用户容器，容器归属（IDOR）检查要求请求落到当前用户容器，否则返回 403「Access denied: you do not own this resource」。OAuth access token 不含 `containerId`，SDK 会自动通过 `GET /api/cloud/containers` 解析并注入 `fly-force-instance-id: <container_id>` header；手动 curl 测 clawd 端点时需显式带该 header，否则会 403。
 
 **端点地址**：
 - REST API: `https://ai-api.iamstarchild.com`（clawd/ai-agent）

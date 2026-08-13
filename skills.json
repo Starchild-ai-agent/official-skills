@@ -496,8 +496,8 @@
     {
       "name": "tg-bot-binding",
       "path": "tg-bot-binding/SKILL.md",
-      "version": "1.0.1",
-      "description": "Telegram bot binding: create the bot, connect to Starchild, verify, troubleshoot.\n\nUse when setting up Telegram delivery (e.g. add my TG bot, bot binding code, fix \"telegram not pushing\", whitelist a TG username)."
+      "version": "1.1.0",
+      "description": "Telegram bot binding: create the bot, connect to Starchild, verify, troubleshoot.\n\nTwo ways to bind: (1) scan-to-create (recommended, auto-bind) or (2) manual BotFather + token + verify.\n\nUse when setting up Telegram delivery (e.g. add my TG bot, bot binding code, fix \"telegram not pushing\", whitelist a TG username)."
     },
     {
       "name": "tiger",

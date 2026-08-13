@@ -1,8 +1,10 @@
 ---
 name: tg-bot-binding
-version: 1.0.1
+version: 1.1.0
 description: |
   Telegram bot binding: create the bot, connect to Starchild, verify, troubleshoot.
+
+  Two ways to bind: (1) scan-to-create (recommended, auto-bind) or (2) manual BotFather + token + verify.
 
   Use when setting up Telegram delivery (e.g. add my TG bot, bot binding code, fix "telegram not pushing", whitelist a TG username).
 
@@ -22,15 +24,48 @@ When the user asks about Telegram Bot binding, setup, connection, verification, 
 
 ## Overview
 
-Starchild allows you to connect your own Telegram Bot so you can interact with your AI agent directly in Telegram. The binding process involves 3 main steps:
+Starchild lets you connect your own Telegram Bot so you can chat with your AI agent directly in Telegram. There are **two ways** to bind a bot:
 
-1. Create a Bot on Telegram
-2. Add the Bot Token in Starchild Dashboard
-3. Verify ownership in Telegram
+1. **Scan to create bot (Recommended)** — scan a QR code, confirm creation in Telegram, and Starchild completes the binding automatically. No token to copy, no verification code.
+2. **Manual binding** — create a bot via @BotFather, paste the token in the Dashboard, then verify ownership with a code.
+
+> **Prefer the scan-to-create method** whenever possible — it's faster and has fewer steps.
 
 ---
 
-## Step-by-Step Binding Process
+## Method A: Scan to Create Bot (Recommended)
+
+This method creates a new bot for you and binds it in a single flow — no token and no verification code.
+
+### Step 1: Open the Telegram Bot section
+
+1. Go to the **Starchild Dashboard** (web interface).
+2. Click your **avatar** at the **bottom-left corner** of the page.
+3. In the **Account Management** popup, find the **Telegram Bot** section.
+4. Click **"Scan to create bot"**.
+
+### Step 2: Scan the QR code
+
+A QR code appears together with a link. Do either of the following:
+
+- **Scan the QR code** with your Telegram app (camera → scan), or
+- Click **"Open in Telegram"** to jump straight to the creation page.
+
+### Step 3: Confirm creation in Telegram
+
+Telegram opens a bot-creation page. **Confirm** that you want to create the bot.
+
+### Step 4: Done!
+
+Starchild detects the new bot and **completes the binding automatically**. The bot goes straight to **"running"** — no verification code needed. Send `/start` in Telegram to begin chatting with your AI agent.
+
+> **Note:** A bot created this way is managed by Starchild's bot infrastructure. To remove it later, use the **Delete Bot** action in the Dashboard (not @BotFather).
+
+---
+
+## Method B: Manual Binding (BotFather + Token)
+
+Use this flow if you prefer to create and own the bot token yourself via @BotFather.
 
 ### Step 1: Create a Telegram Bot via BotFather
 
@@ -51,7 +86,7 @@ Starchild allows you to connect your own Telegram Bot so you can interact with y
    - Verify the token with Telegram's API (calling `getMe`).
    - Generate a **6-digit verification code** (valid for 5 minutes).
    - Set the bot status to **"pending"**.
-5. You will see the verification code displayed on the dashboard. **Copy this code.**
+6. You will see the verification code displayed on the dashboard. **Copy this code.**
 
 ### Step 3: Verify Bot Ownership in Telegram
 
@@ -81,7 +116,7 @@ Once verified, the bot status changes to **"active"** briefly, then automaticall
 
 | Status | Meaning |
 |--------|---------|
-| `pending` | Bot token added, awaiting ownership verification |
+| `pending` | Bot token added, awaiting ownership verification (manual flow only) |
 | `active` | Ownership verified, transitioning to running |
 | `running` | Bot is live and ready to use |
 | `deleted` | Bot has been removed by the user |
@@ -117,10 +152,19 @@ Each account can only have **one active bot** at a time:
 
 After deleting a bot, you must wait **1 hour** before adding a new one. The dashboard will show the cooldown expiration time.
 
+### "Too many attempts. Please wait a moment and try again."
+
+The scan-to-create flow is rate-limited. If you see this message, wait a short while before clicking **"Scan to create bot"** again.
+
+### "Authorization expired. Please try again."
+
+The scan-to-create QR code / link is only valid for a limited time. If it expires:
+- Cancel the current pairing, then click **"Scan to create bot"** again to get a fresh QR code.
+
 ### Bot is not responding in Telegram
 
 - Check the bot status on the Dashboard — it should be **"running"**.
-- If the status is **"pending"**, complete the verification step.
+- If the status is **"pending"**, complete the verification step (manual flow).
 - Try sending `/start` to the bot.
 - If the issue persists, try deleting and re-adding the bot (after the 1-hour cooldown).
 
@@ -130,7 +174,8 @@ After deleting a bot, you must wait **1 hour** before adding a new one. The dash
 
 | Action | Where |
 |--------|-------|
-| Create a new Telegram bot | Telegram → @BotFather → `/newbot` |
+| Create + bind a bot (fastest) | Starchild Dashboard → bottom-left avatar → Account Management → Telegram Bot → "Scan to create bot" → scan QR code → confirm in Telegram |
+| Create a new Telegram bot manually | Telegram → @BotFather → `/newbot` |
 | Add bot token | Starchild Dashboard → bottom-left avatar → Account Management → Telegram Bot |
 | Verify ownership | Telegram → Your bot → enter verification code |
 | Refresh verification code | Starchild Dashboard → Account Management → Telegram Bot → "Refresh Code" |
@@ -141,7 +186,9 @@ After deleting a bot, you must wait **1 hour** before adding a new one. The dash
 
 ## Important Notes
 
-- **Security**: Your Bot Token is encrypted (AES-256) before storage. It is never exposed in API responses.
+- **Recommended flow**: Use **"Scan to create bot"** — it creates and binds the bot automatically with no token or verification code.
+- **Scan-created bots are managed by Starchild**: They are created through Starchild's bot infrastructure. Delete them from the Dashboard, not from @BotFather.
+- **Security**: In the manual flow, your Bot Token is encrypted (AES-256) before storage. It is never exposed in API responses.
 - **One bot per account**: You can only have one active Telegram bot at a time.
 - **Cooldown**: After deleting a bot, wait 1 hour before adding a new one.
 - **Rate limits**: Adding a bot and refreshing codes are limited to 3 requests per minute.

@@ -1,6 +1,6 @@
 ---
 name: starchild-auth
-version: 1.10.0
+version: 1.10.1
 description: |
   Starchild Auth SDK: add OAuth login to any web app with one SDK.
 
@@ -23,7 +23,7 @@ Integrate Starchild OAuth login into any web application. The SDK handles OAuth 
 | 产物 | 当前版本 | 何时 bump |
 |------|---------|-----------|
 | npm `starchild-auth-sdk` | **0.4.1** | 代码 / 公开 API 变更 |
-| 本 Skill `starchild-auth` | **1.10.0** | 集成指南 / 场景文档变更（可与 package 独立） |
+| 本 Skill `starchild-auth` | **1.10.1** | 集成指南 / 场景文档变更（可与 package 独立） |
 
 两套 semver **互不绑定**：只改文档可只升 skill；只改实现必须升 package（skill 通常同步升 minor/patch 说明新能力）。
 
@@ -205,7 +205,8 @@ const headers = {
 > **clawd 端点必须带 `fly-force-instance-id`**：clawd（`preview.iamstarchild.com`）每个 Fly Machine 是单用户容器，容器归属（IDOR）检查要求请求落到当前用户容器，否则返回 403「Access denied: you do not own this resource」。OAuth access token 不含 `containerId`，SDK 会自动通过 `GET /api/cloud/containers` 解析并注入 `fly-force-instance-id: <container_id>` header；手动 curl 测 clawd 端点时需显式带该 header，否则会 403。
 
 **端点地址**：
-- REST API: `https://ai-api.iamstarchild.com`（clawd/ai-agent）
+- ai-agent REST API: `https://ai-api.iamstarchild.com`（线程/消息/容器/技能等）
+- clawd HTTP API: `https://preview.iamstarchild.com`（chat/stream、scheduled-jobs、models）
 - Token 端点: `https://go-api.iamstarchild.com/v1`（go-api）
 
 ---
@@ -279,8 +280,8 @@ while (true) {
 ### 原生 fetch 方式（不使用 SDK）
 
 ```typescript
-// POST /chat/stream — SSE 流式聊天
-const response = await fetch('https://ai-api.iamstarchild.com/chat/stream', {
+// POST /chat/stream — SSE 流式聊天（clawd 端点）
+const response = await fetch('https://preview.iamstarchild.com/chat/stream', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${accessToken}`,
@@ -289,7 +290,6 @@ const response = await fetch('https://ai-api.iamstarchild.com/chat/stream', {
   body: JSON.stringify({
     message: 'Hello, analyze this data',
     thread_id: threadId,    // 可选，不传则创建新 thread
-    source: 'oauth',        // 标记来源
   }),
 })
 
@@ -1268,7 +1268,7 @@ TOKEN='<access_token from browser login>'
 curl -s -H "Authorization: Bearer $TOKEN" https://ai-api.iamstarchild.com/v1/oauth/userinfo
 # chat（无 chat scope 应 403）
 curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $TOKEN" \
-  https://ai-api.iamstarchild.com/v1/threads
+  https://ai-api.iamstarchild.com/api/clawd/threads
 # credits（需 credit:read）
 curl -s -H "Authorization: Bearer $TOKEN" https://credit.iamstarchild.com/api/credits
 ```

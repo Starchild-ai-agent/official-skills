@@ -1,6 +1,39 @@
 ---
 name: control-browser
-description: "Control the user's Chrome browser via mcp__browser__ tools when a task needs real browser state (logged-in sessions, open tabs, visible UI). Prefer web_fetch/web_search for plain reading and research."
+version: 1.0.0
+description: |
+  Control the user's Chrome browser via mcp__browser__ tools: snapshots, clicks, typing, batch list operations, multi-step flows, and tab lifecycle.
+
+  Use when a task needs real browser state — logged-in sessions, open tabs, visible UI (e.g. "click every chat in my list", "fill this checkout form", "open this in my browser and check it", "continue the tab I handed off"). Prefer web_fetch/web_search for plain reading.
+
+author: starchild
+tags: [browser, automation, tabs, forms, ui, mcp]
+
+tools:
+  - tabs_list
+  - tab_open
+  - tab_navigate
+  - tab_close
+  - tab_claim
+  - tab_handoff
+  - tab_release
+  - page_snapshot
+  - page_flow
+  - page_screenshot
+  - element_click
+  - element_input
+  - elements_click_many
+  - wait_for
+  - web_status
+
+metadata:
+  starchild:
+    emoji: "🖱️"
+    skillKey: control-browser
+    requires:
+      bins: []
+
+user-invocable: true
 ---
 
 # Browser Control

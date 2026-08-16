@@ -36,7 +36,8 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 # The gateway checks access-status automatically:
 #   - With --facilitator-admin-token: calls facilitator directly
 #   - Without it: proxies through community-gateway (COMMUNITY_PUBLIC_URL env,
-#     already set in user containers) which holds the admin token server-side
+#     already set in user containers) with CONTAINER_JWT Bearer auth; gateway
+#     holds the admin token server-side (no COMMUNITY_GATEWAY_KEY)
 python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
     --mode lifetime --price 5.00 --facilitator $FAC
 
@@ -78,6 +79,8 @@ automatically: with `--facilitator-admin-token` it calls the facilitator
 directly; without it, it proxies through community-gateway
 (`COMMUNITY_PUBLIC_URL`, already set in user containers) which holds the
 admin token server-side — **no admin token needed in user containers**.
+The proxy call authenticates with the machine `CONTAINER_JWT` (Bearer);
+do **not** use `COMMUNITY_GATEWAY_KEY` / `X-Internal-Key`.
 Lifetime semantics: first call settles on-chain; repeat calls pass the
 already-paid check with NO second charge.
 

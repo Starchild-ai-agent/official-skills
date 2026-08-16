@@ -277,13 +277,17 @@ class PlatformBilling:
             cfg.get("community_gateway_url")
             or os.environ.get("COMMUNITY_PUBLIC_URL", "")
         ).rstrip("/")
-        # Auth for community-gateway proxy (access-status, settlements).
-        # Clawd containers use COMMUNITY_GATEWAY_KEY to authenticate with
-        # community-gateway via X-Internal-Key header.
-        self._community_gateway_key = (
+        # Auth for community-gateway proxy (access-status, free-promo, etc.).
+        # Prefer container JWT (per-user identity). Optional service key only
+        # for non-agent callers (cfg.internal_api_key / X-INTERNAL-API-KEY).
+        self._container_jwt = (
+            cfg.get("container_jwt")
+            or os.environ.get("CONTAINER_JWT", "")
+        ).strip()
+        self._service_api_key = (
             cfg.get("internal_api_key")
-            or os.environ.get("COMMUNITY_GATEWAY_KEY", "")
-        )
+            or os.environ.get("INTERNAL_API_KEY", "")
+        ).strip()
         if self.mode in SUBSCRIPTION_MODES and not self.fac_admin_token and not self.community_gateway_url:
             # fail-closed at STARTUP: without either the admin token (direct)
             # or a community-gateway URL (proxy), every already_paid() lookup
@@ -451,6 +455,22 @@ class PlatformBilling:
             h["Authorization"] = f"Bearer {self.fac_token}"
         if admin and self.fac_admin_token:
             h["X-Admin-Token"] = self.fac_admin_token
+        return h
+
+    def _community_auth_headers(self, json_body: bool = False) -> dict:
+        """Auth headers for community-gateway proxy endpoints.
+
+        Prefer container JWT (agent identity). Fall back to service API key
+        for non-agent callers. Never send legacy X-Internal-Key /
+        COMMUNITY_GATEWAY_KEY (impersonation vector).
+        """
+        h: dict = {}
+        if json_body:
+            h["Content-Type"] = "application/json"
+        if self._container_jwt:
+            h["Authorization"] = f"Bearer {self._container_jwt}"
+        elif self._service_api_key:
+            h["X-INTERNAL-API-KEY"] = self._service_api_key
         return h
 
     async def verify(self, payload: dict, resource: str,
@@ -624,10 +644,7 @@ class PlatformBilling:
             if is_free_c:
                 return True, free_end_c
 
-        headers: dict = {}
-        if self._community_gateway_key:
-            headers["X-Internal-Key"] = self._community_gateway_key
-            headers["X-INTERNAL-API-KEY"] = self._community_gateway_key
+        headers = self._community_auth_headers()
         try:
             async with httpx.AsyncClient(timeout=5) as c:
                 params = {"pay_to": self.pay_to}
@@ -690,10 +707,7 @@ class PlatformBilling:
         """Best-effort free-promo call accounting to community-gateway."""
         if not self.community_gateway_url:
             return
-        headers = {"Content-Type": "application/json"}
-        if self._community_gateway_key:
-            headers["X-Internal-Key"] = self._community_gateway_key
-            headers["X-INTERNAL-API-KEY"] = self._community_gateway_key
+        headers = self._community_auth_headers(json_body=True)
         body = {
             "payer": payer,
             "pay_to": self.pay_to,
@@ -734,13 +748,11 @@ class PlatformBilling:
         # Choose the access-status endpoint:
         # 1. Direct facilitator (has admin token) — fastest, no extra hop
         # 2. Community-gateway proxy (no admin token) — gateway holds the
-        #    token server-side, user containers call it with INTERNAL_API_KEY
+        #    token server-side; agent containers auth with container JWT
         use_proxy = not self.fac_admin_token and self.community_gateway_url
         if use_proxy:
             access_url = f"{self.community_gateway_url}/api/x402-facilitator/access-status"
-            access_headers: dict = {}
-            if self._community_gateway_key:
-                access_headers["X-Internal-Key"] = self._community_gateway_key
+            access_headers = self._community_auth_headers()
         else:
             access_url = f"{self.facilitator}/facilitator/access-status"
             access_headers = self._headers(admin=True)

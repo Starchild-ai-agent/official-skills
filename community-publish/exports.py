@@ -1751,7 +1751,7 @@ def clear_service_examples(service_id: str) -> dict[str, Any]:
 # ════════════════════════════════════════════════════════════════════════
 # These are consumer-facing functions for browsing the marketplace,
 # writing reviews, managing favorites, and checking earnings.
-# They use the same internal-key auth as the provider functions above.
+# They use the same container JWT auth as the provider functions above.
 
 
 def explore_services(

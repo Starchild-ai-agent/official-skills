@@ -14,17 +14,18 @@ def _gateway_url() -> str:
     ).rstrip("/")
 
 
-def _gateway_key() -> str:
-    key = os.environ.get("COMMUNITY_GATEWAY_KEY", "")
-    if not key:
-        raise RuntimeError("COMMUNITY_GATEWAY_KEY not set in environment")
-    return key
+def _container_jwt() -> str:
+    """Per-container JWT — required for community-gateway agent APIs."""
+    token = os.environ.get("CONTAINER_JWT", "").strip()
+    if not token:
+        raise RuntimeError("CONTAINER_JWT not set in environment")
+    return token
 
 
 def _request(method: str, path: str, body: dict | None = None, timeout: int = 60) -> tuple[int, dict]:
     url = f"{_gateway_url()}{path}"
     data = json.dumps(body).encode("utf-8") if body is not None else None
-    headers = {"X-Internal-Key": _gateway_key()}
+    headers = {"Authorization": f"Bearer {_container_jwt()}"}
     if data is not None:
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
@@ -146,7 +147,7 @@ def preview_list(owner_user_id: str) -> tuple[int, dict]:
 
 
 # ─── Listing CRUD (preview-side dashboard visibility) ──────────────
-# These talk to /api/projects-query/listing — the internal-key version
+# These talk to /api/projects-query/listing — agent path (container JWT)
 # of the JWT-protected /api/projects/listing routes used by the web
 # frontend. Same DB row, same ownership checks; the gateway exposes
 # both surfaces because clawd containers don't carry user JWTs.
@@ -233,9 +234,8 @@ def cover_presign(
 ) -> tuple[int, dict]:
     """POST /api/projects/cover/presign — get a GCS V4 signed URL.
 
-    Uses X-Internal-Key auth (same as other internal endpoints).
-    The gateway's jwtOrInternalAuth middleware resolves owner_user_id
-    from the request body.
+    Auth: Authorization Bearer CONTAINER_JWT. owner_user_id in body must
+    match the token subject (gateway enforces).
 
     Returns {"signed_url": "...", "public_url": "..."} on success.
     The caller PUTs the raw image bytes to signed_url (with the matching
@@ -262,9 +262,9 @@ def cover_presign(
 # Marketplace. They require x402 charging; the automated review must pass
 # (approved) before the service can be published.
 #
-# Auth: these routes accept JWT OR X-Internal-Key (jwtOrInternalAuth
-# middleware on the gateway). We always use X-Internal-Key + owner_user_id
-# in the body/query, since clawd containers don't carry user JWTs.
+# Auth: jwtOrInternalAuth — access JWT (web), container JWT (agents), or
+# service X-INTERNAL-API-KEY. This skill always sends Authorization:
+# Bearer CONTAINER_JWT; owner_user_id in body/query must match token.
 #
 # Lifecycle: published → submit-review → approved → publish → listed.
 # Paid services must pass the automated 6-check review before publishing.
@@ -275,7 +275,8 @@ def service_create(owner_user_id: str, payload: dict) -> tuple[int, dict]:
 
     payload is the full service body (name, description,
     service_type, api_endpoint, provider_wallet, pricing_model, price,
-    etc.). owner_user_id is injected into the body for internal-key auth.
+    etc.). owner_user_id is injected into the body and must match the
+    CONTAINER_JWT subject (gateway enforces).
 
     Multi-chain payment config (plans-280 Phase B3):
       - networks_mode: "all" (default) = accept payment on all platform
@@ -373,9 +374,9 @@ def service_restore(owner_user_id: str, service_id: str) -> tuple[int, dict]:
 # ════════════════════════════════════════════════════════════════════════
 # SERVICE MARKETPLACE — public query + consumer actions
 # ════════════════════════════════════════════════════════════════════════
-# These endpoints are either public (no auth) or accept JWT OR internal
-# key (jwtOrInternalAuth). The skill always uses X-Internal-Key +
-# owner_user_id in the body/query, same as the provider CRUD above.
+# These endpoints are either public (no auth) or jwtOrInternalAuth.
+# The skill always uses Authorization: Bearer CONTAINER_JWT +
+# owner_user_id in the body/query (must match token subject).
 
 
 def service_explore(

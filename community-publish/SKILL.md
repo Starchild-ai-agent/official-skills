@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.35.0
+version: 0.36.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -996,7 +996,7 @@ update_service(service_id, cover_url=result["public_url"])
 
 ### What `upload_cover_image()` does internally
 
-1. **Presign** — calls `POST /api/projects/cover/presign` (JWT auth) with `slug`, `content_type`, `file_size`
+1. **Presign** — calls `POST /api/projects/cover/presign` (container JWT via `Authorization: Bearer $CONTAINER_JWT`) with `slug`, `content_type`, `file_size`
 2. **Upload** — PUTs the raw image bytes to the GCS V4 signed URL
 3. **Returns** — the `public_url` on `storage.googleapis.com`
 

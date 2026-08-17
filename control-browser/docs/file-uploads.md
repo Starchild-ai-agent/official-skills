@@ -19,13 +19,15 @@ what to do instead.
 
 ## What to do instead
 
-0. **Do not search the user's machine.** `local_shell`, `bash`, `read_file` and
-   similar tools run **in the agent's remote container, not on the user's
-   computer** — `ls ~/Downloads` lists the *container's* filesystem, which is
-   empty of the user's files. Running shell commands to locate or read the
-   user's local files (Downloads, Desktop, Documents, etc.) is always wrong:
-   it cannot work and burns turns. The only path to a user-local file is the
-   browser's native file picker, which only the user can operate.
+0. **Do not search the user's machine.** `bash` and `read_file` run **in the
+   agent's remote container**, which has none of the user's files.
+   `local_shell` runs on the user's machine only if they have the
+   `starchild agent-shell` daemon installed and authorized — most users do
+   not, so it is usually unavailable or denied. Either way, running shell
+   commands to locate or read the user's local files (Downloads, Desktop,
+   Documents, etc.) is wrong: it cannot reliably work and burns turns. The
+   only dependable path to a user-local file is the browser's native file
+   picker, which only the user can operate.
 
 1. **Hand off to the user, precisely.** State what to upload and where:
    "The form needs your passport scan — the file chooser only works for you

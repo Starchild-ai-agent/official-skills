@@ -1,6 +1,6 @@
 ---
 name: control-browser
-version: 1.1.0
+version: 1.2.0
 description: |
   Control the user's Chrome browser via mcp__browser__ tools: snapshots, clicks, typing, batch list operations, multi-step flows, and tab lifecycle.
 
@@ -38,16 +38,19 @@ user-invocable: true
 
 # Browser Control
 
-## Stop: the agent runs in a remote container, not on the user's machine
+## Stop: local_shell is not a reliable path to user-local files
 
-`local_shell`, `bash`, `read_file` and all clawd tools execute **in the agent's
-remote container**. They CANNOT see the user's Downloads, Desktop, or any local
-file — `ls ~/Downloads` lists the *container's* empty filesystem, not the
-user's. When a task involves a file on the user's computer (upload, attach,
-open), do not run shell commands to find or read it. The only path to a
-user-local file is the browser's native file picker, which only the user can
-operate — hand off precisely (see `docs/file-uploads.md`). Burning turns on
-shell commands that list the container's filesystem is always wrong.
+`local_shell` runs on the user's machine **only if they have the
+`starchild agent-shell` daemon installed, running, and authorized** — most users
+do not, so the tool is usually unavailable or denied. `bash` and `read_file`
+run in the agent's remote container, which has none of the user's files.
+Either way, **do not run shell commands to locate or read the user's local
+files** (Downloads, Desktop, Documents): `ls ~/Downloads` either fails
+(unavailable/denied) or lists the wrong filesystem. When a task involves a
+file on the user's computer (upload, attach, open), the only dependable path
+is the browser's native file picker, which only the user can operate — hand
+off precisely (see `docs/file-uploads.md`). Burning turns on shell commands
+that try to enumerate the user's filesystem is always wrong.
 
 ## Stop: decide the surface before any browser action
 

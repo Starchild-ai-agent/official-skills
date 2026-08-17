@@ -1,6 +1,6 @@
 ---
 name: control-browser
-version: 1.0.0
+version: 1.1.0
 description: |
   Control the user's Chrome browser via mcp__browser__ tools: snapshots, clicks, typing, batch list operations, multi-step flows, and tab lifecycle.
 
@@ -37,6 +37,17 @@ user-invocable: true
 ---
 
 # Browser Control
+
+## Stop: the agent runs in a remote container, not on the user's machine
+
+`local_shell`, `bash`, `read_file` and all clawd tools execute **in the agent's
+remote container**. They CANNOT see the user's Downloads, Desktop, or any local
+file — `ls ~/Downloads` lists the *container's* empty filesystem, not the
+user's. When a task involves a file on the user's computer (upload, attach,
+open), do not run shell commands to find or read it. The only path to a
+user-local file is the browser's native file picker, which only the user can
+operate — hand off precisely (see `docs/file-uploads.md`). Burning turns on
+shell commands that list the container's filesystem is always wrong.
 
 ## Stop: decide the surface before any browser action
 

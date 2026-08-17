@@ -19,11 +19,22 @@ what to do instead.
 
 ## What to do instead
 
+0. **Do not search the user's machine.** `local_shell`, `bash`, `read_file` and
+   similar tools run **in the agent's remote container, not on the user's
+   computer** — `ls ~/Downloads` lists the *container's* filesystem, which is
+   empty of the user's files. Running shell commands to locate or read the
+   user's local files (Downloads, Desktop, Documents, etc.) is always wrong:
+   it cannot work and burns turns. The only path to a user-local file is the
+   browser's native file picker, which only the user can operate.
+
 1. **Hand off to the user, precisely.** State what to upload and where:
    "The form needs your passport scan — the file chooser only works for you
    directly. Could you attach it in the tab I have open, then tell me when
    it's done?" Leave the tab open at the right step (a handoff tab — see
    `tab-cleanup-chrome.md`).
+   - If the user named a file by description ("the Meituan earnings report"),
+     do **not** try to resolve it to a path yourself. Tell them to pick the
+     matching file in the chooser; they know which one it is.
 2. **Continue after the user uploads.** When they confirm, `page_snapshot`
    to verify the file registered (the input usually changes to the file
    name, or a file chip/thumbnail appears), then continue the flow. Verify

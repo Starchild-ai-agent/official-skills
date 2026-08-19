@@ -194,6 +194,12 @@
       "description": "Composio gateway: act on 1000+ connected apps like Gmail, Slack, GitHub, Calendar.\n\nUse when the user wants to act in a connected SaaS app (e.g. send Gmail, create Notion page, add Calendar event, open a GitHub issue)."
     },
     {
+      "name": "control-browser",
+      "path": "control-browser/SKILL.md",
+      "version": "1.2.0",
+      "description": "Control the user's Chrome browser via mcp__browser__ tools: snapshots, clicks, typing, batch list operations, multi-step flows, and tab lifecycle.\n\nUse when a task needs real browser state — logged-in sessions, open tabs, visible UI (e.g. \"click every chat in my list\", \"fill this checkout form\", \"open this in my browser and check it\", \"continue the tab I handed off\"). Prefer web_fetch/web_search for plain reading."
+    },
+    {
       "name": "creator-insights",
       "path": "creator-insights/SKILL.md",
       "version": "1.0.2",

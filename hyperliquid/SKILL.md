@@ -6,28 +6,6 @@ description: |
 
   Use when placing perp or spot orders, setting TP/SL, or moving funds on Hyperliquid (e.g. long BTC 5x, sell ETH, deposit USDC, set stop).
 delivery: script
-tools:
-  - hl_account
-  - hl_balances
-  - hl_total_balance
-  - hl_open_orders
-  - hl_market
-  - hl_orderbook
-  - hl_fills
-  - hl_candles
-  - hl_funding
-  - hl_order
-  - hl_spot_order
-  - hl_tpsl_order
-  - hl_cancel
-  - hl_cancel_all
-  - hl_modify
-  - hl_leverage
-  - hl_transfer_usd
-  - hl_withdraw
-  - hl_deposit
-  - hl_approve_builder
-  - hl_builder_status
 metadata:
   starchild:
     emoji: "📈"
@@ -47,58 +25,62 @@ Trade perpetual futures and spot tokens on Hyperliquid, a fully on-chain decentr
 
 Before trading, the wallet policy must be active. Load the **wallet-policy** skill and propose the standard wildcard policy (deny key export + allow `*`). This covers all Hyperliquid operations — USDC deposits, EIP-712 order signing, and withdrawals.
 
-## Runtime Model: Agent Tools vs Service Scripts (Important)
+## Runtime Model: How to Call Hyperliquid (Read This First)
 
-Hyperliquid has **two execution modes**. Use the right one for your workflow:
+This skill is **script-delivery**. It registers **no** `hl_*` agent tools — calling
+`hl_deposit`, `hl_order`, or any other `hl_*` name as a tool will always fail with
+"not found in registry". That is by design, not a bug or a missing install.
 
-### 1) Agent tool mode (chat/task runtime)
+There are exactly two working lanes:
 
-Use `hl_*` tools directly in agent conversations and task scripts that run inside the Starchild tool runtime.
+### Lane 1 — Read-only queries (`exports.py`)
 
-- Best for: human-in-the-loop operations, ad-hoc trades, monitoring flows, orchestration across multiple skills
-- Strength: fastest integration with built-in verification workflow (`check → execute → verify`)
-- Limitation: `hl_*` tools are tool-runtime capabilities, **not normal Python imports**
+```python
+from core.skill_tools import hyperliquid
 
-### 2) Service script mode (FastAPI/worker/bot process)
+account = hyperliquid.hl_account()
+mids    = hyperliquid.hl_market()
+candles = hyperliquid.hl_candles(coin="BTC", interval="1h", hours_back=24)
+```
 
-For standalone services (FastAPI bots, daemons, web backends), call Hyperliquid directly via the bundled client:
+Available: `hl_account`, `hl_balances`, `hl_total_balance`, `hl_open_orders`,
+`hl_market`, `hl_orderbook`, `hl_fills`, `hl_candles`, `hl_funding`,
+`hl_order_status`, `hl_predicted_funding`, `hl_user_fees`.
 
-- Use `skills/hyperliquid/client.py` (`HyperliquidClient`)
-- This is the recommended path for always-on bots (grid/maker/rebalancer) that should not depend on localhost agent-chat bridging
-- `hl_*` tools are not importable as `from ... import hl_order` in plain Python services
+Read-only only — no writes on this lane.
 
-### Service Integration Pattern (recommended)
+### Lane 2 — Writes: orders, cancels, transfers, deposits (`client.py`)
 
-1. Keep strategy/state machine in your own service process (FastAPI, worker loop, queue consumer)
-2. Use `HyperliquidClient` for `order`, `cancel`, `open orders`, `fills`, `account`
-3. Persist bot state locally (orders, fills cursor, grid map, PnL)
-4. Build admin APIs (`/start`, `/stop`, `/status`, `/history`) around that state
-
-### Minimal service example (direct client)
+Every write goes through `HyperliquidClient`, which owns the EIP-712 signing
+pipeline. It is an **async** class — `await` every call.
 
 ```python
 from skills.hyperliquid.client import HyperliquidClient
 
 client = HyperliquidClient()
-address = await client._get_address()  # wallet address used for read endpoints
 
-# Query
-account = await client.get_account_state(address)
-opens = await client.get_open_orders(address)
-fills = await client.get_user_fills(address)
+# Deposit USDC to the Hyperliquid bridge (minimum 5 USDC)
+res = await client.deposit_usdc(amount=500)
 
-# Place order (example)
+# Place an order
 res = await client.place_order(
-    coin="BTC",
-    is_buy=True,
-    size=0.001,
-    price=95000,
-    order_type="limit",
+    coin="BTC", is_buy=True, size=0.001, price=95000, order_type="limit",
 )
 
-# Cancel all BTC orders
+# Cancel / leverage / transfer / withdraw
 await client.cancel_all("BTC")
+await client.update_leverage(coin="BTC", leverage=5, is_cross=True)
+await client.transfer_usd(amount=100, to_perp=True)
+await client.withdraw_from_bridge(amount=50)
 ```
+
+Prerequisite for Lane 2: the wallet policy must be active — load the
+**wallet-policy** skill and propose the standard wildcard policy (deny key
+export + allow `*`). That covers deposits, EIP-712 order signing, and withdrawals.
+
+**Naming note:** the rest of this document refers to operations by their
+historical `hl_*` names (e.g. "`hl_deposit`"). Those are *labels for the
+operation*, not callable tools — always reach them via Lane 1 or Lane 2 above.
 
 ## Available Tools
 

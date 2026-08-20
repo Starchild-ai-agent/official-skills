@@ -1,6 +1,6 @@
 ---
 name: control-browser
-version: 1.2.0
+version: 1.3.0
 description: |
   Control the user's Chrome browser via mcp__browser__ tools: snapshots, clicks, typing, batch list operations, multi-step flows, and tab lifecycle.
 
@@ -87,7 +87,27 @@ Core loop:
 
 **Refs are invalidated by navigation.** After any navigation, reload, or
 observed page change, take a fresh `page_snapshot` before clicking or typing.
-Never reuse a `ref` across a navigation boundary.
+
+## Stop: `mcp__browser__*` "not found in registry" ≠ browser is gone
+
+Right after the extension (re)connects, tool registration can lag a turn —
+the call fails with "not found" while the browser IS connected. Never
+conclude "no browser is connected" or "I can't see your screen" from this
+error alone, and NEVER tell the user to run `starchild agent-shell` — the
+laptop/agent-shell channel has nothing to do with browser tools. The
+recovery path is exactly one step: call `web_status` (or retry the same
+tool once on the next turn — registration self-heals via the per-turn
+resync). Only if `web_status` says the bridge is down do you tell the
+user to open/enable the extension.
+
+## Identifying "what page is this?" — tabs_list is enough
+
+When the user asks what page/site they (or a tab) are on, do NOT take a
+snapshot: `tabs_list` already returns every tab's `title` and `url`, and
+`activeTabId` marks the one they're looking at. Answer from that — one
+tool call, no snapshot, and it works even for internal pages
+(`chrome://…`) that cannot be snapshotted. Only snapshot when the user
+needs page CONTENT (text, elements), not page identity.
 
 ## Tool quick reference
 

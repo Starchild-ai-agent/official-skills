@@ -1,6 +1,6 @@
 ---
 name: hyperliquid
-version: 1.8.0
+version: 1.8.1
 description: |
   Hyperliquid DEX — the largest perp DEX by volume. Query any wallet's PnL, positions and trade history, read live market data, and trade perps, spot and RWA with up to asset max leverage.
 

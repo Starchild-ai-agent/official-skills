@@ -262,8 +262,8 @@
     {
       "name": "hyperliquid",
       "path": "hyperliquid/SKILL.md",
-      "version": "1.8.0",
-      "description": "Trade perp futures, spot, and RWA on Hyperliquid DEX with up to asset max leverage.\n\nUse when placing perp or spot orders, setting TP/SL, or moving funds on Hyperliquid (e.g. long BTC 5x, sell ETH, deposit USDC, set stop)."
+      "version": "1.8.1",
+      "description": "Hyperliquid DEX — the largest perp DEX by volume. Query any wallet's PnL, positions and trade history, read live market data, and trade perps, spot and RWA with up to asset max leverage.\n\nReads work on ANY 0x address, not just this agent's: all-time or windowed PnL, open positions, unrealized and realized profit, fills, deposits and withdrawals, funding paid, order history, live prices, funding rates, open interest. Hyperliquid runs its own L1 with an off-chain order book, so none of this appears in DeBank or any EVM chain scan — check here before concluding a wallet has no DEX exposure.\n\nWrites: place perp or spot orders, set TP/SL, move funds (e.g. long BTC 5x, sell ETH, deposit USDC, set stop)."
     },
     {
       "name": "ibkr",

@@ -1,6 +1,6 @@
 ---
 name: starchild-auth
-version: 1.10.1
+version: 1.11.0
 description: |
   Starchild Auth SDK: add OAuth login to any web app with one SDK.
 
@@ -23,7 +23,7 @@ Integrate Starchild OAuth login into any web application. The SDK handles OAuth 
 | 产物 | 当前版本 | 何时 bump |
 |------|---------|-----------|
 | npm `starchild-auth-sdk` | **0.4.1** | 代码 / 公开 API 变更 |
-| 本 Skill `starchild-auth` | **1.10.1** | 集成指南 / 场景文档变更（可与 package 独立） |
+| 本 Skill `starchild-auth` | **1.11.0** | 集成指南 / 场景文档变更（可与 package 独立） |
 
 两套 semver **互不绑定**：只改文档可只升 skill；只改实现必须升 package（skill 通常同步升 minor/patch 说明新能力）。
 
@@ -1014,6 +1014,566 @@ const auth = new StarchildAuth({
 const threads = await auth.listThreads()
 const message = await auth.sendMessage('Summarize my threads')
 ```
+
+---
+
+## 场景十一：推荐 Chat UI 组件集成
+
+> Auth SDK 是纯 API 层（无 UI 组件）。以下推荐两个开源 React Chat 组件库，并给出与 SDK SSE 流对接的完整适配器代码，帮助第三方应用快速搭建 ChatGPT 风格的对话界面。
+>
+> 官方文档：
+> - assistant-ui: https://www.assistant-ui.com/docs/runtimes/custom/local-runtime
+> - MUI X Chat: https://mui.com/x/react-chat/backend/adapters/
+
+### 选型对比
+
+| 维度 | assistant-ui | MUI X Chat |
+|------|-------------|------------|
+| 包名 | `@assistant-ui/react` | `@mui/x-chat` |
+| 集成难度 | **低** — 一个 `async *run()` generator 即可 | 中 — 需将 SSE 转为 `ReadableStream<ChatMessageChunk>` |
+| UI 依赖 | 框架无关（shadcn / Tailwind 风格，无主题绑定） | **强绑 MUI Material 主题**（带入 `@mui/material` + `@emotion/*`） |
+| React Native | 支持（`@assistant-ui/react-native`） | 不支持 |
+| 流式协议 | yield 累积内容（每次替换上一次） | chunk 协议（`start` → `text-delta` → `finish`） |
+| 工具调用 | `yield { type: 'tool-call', ... }` 直观 | `tool-call-*` chunk 序列 |
+| 多会话 | `RemoteThreadListAdapter` 或 AssistantCloud | `listConversations` + 内置侧边栏 |
+| 许可证 | MIT | MIT（全功能免费，无 Pro/Premium） |
+| 社区规模 | 1.4M+ 周下载量，YC 背书，Anthropic / LangChain 在用 | 较新，MUI 生态背书 |
+| **推荐** | **首选** — 适合大多数第三方应用 | 备选 — 仅推荐已在用 MUI Material 的项目 |
+
+### 共享：SSE 流解析 helper
+
+两个适配器都需要解析 SDK `sendMessage()` 返回的 SSE `Response`。提取为共享函数：
+
+```typescript
+// lib/starchild-sse.ts
+import type { SSEEvent } from 'starchild-auth-sdk'
+
+/**
+ * Parse Starchild SSE Response into an async iterable of events.
+ * Stops early if the abort signal fires.
+ *
+ * SDK sendMessage() returns a raw Response whose body is an SSE stream.
+ * Each line starting with "data: " contains a JSON event:
+ *   agent_start | text_delta | tool_use | tool_output | agent_end | error
+ */
+export async function* parseStarchildSSE(
+  response: Response,
+  signal?: AbortSignal,
+): AsyncGenerator<SSEEvent> {
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(`Chat API ${response.status}: ${body.slice(0, 200)}`)
+  }
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    if (signal?.aborted) {
+      reader.cancel()
+      break
+    }
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue
+      try {
+        yield JSON.parse(line.slice(6)) as SSEEvent
+      } catch {
+        // Skip malformed JSON lines
+      }
+    }
+  }
+}
+```
+
+### 方案 A：assistant-ui（推荐）
+
+#### 安装
+
+```bash
+# 推荐使用 pnpm（更快、磁盘占用更小）；yarn / bun 亦可
+pnpm add @assistant-ui/react
+# 或: yarn add @assistant-ui/react
+# 或: npm install @assistant-ui/react
+
+# 脚手架生成 Thread 组件（shadcn / Tailwind 风格）
+npx assistant-ui init
+npx assistant-ui add thread
+```
+
+#### ChatModelAdapter 实现
+
+assistant-ui 的 `LocalRuntime` 只需实现一个 `ChatModelAdapter.run()` 函数（`async *` generator）。在循环中 yield **累积内容**（每次替换上一次，不是 delta）：
+
+```tsx
+// runtime/starchild-adapter.ts
+import type { ChatModelAdapter } from '@assistant-ui/react'
+import { StarchildAuth } from 'starchild-auth-sdk'
+import { parseStarchildSSE } from '@/lib/starchild-sse'
+
+/**
+ * Create an assistant-ui ChatModelAdapter backed by Starchild Auth SDK.
+ * The auth instance is initialized in the Provider and passed in.
+ */
+export function createStarchildAdapter(auth: StarchildAuth): ChatModelAdapter {
+  return {
+    async *run({ messages, abortSignal, unstable_threadId }) {
+      // 1. Extract last user message text
+      const lastUser = [...messages].reverse().find(m => m.role === 'user')
+      const text = lastUser?.content
+        .filter(c => c.type === 'text')
+        .map(c => c.text)
+        .join('\n') ?? ''
+
+      if (!text) {
+        yield { content: [{ type: 'text', text: '' }] }
+        return
+      }
+
+      // 2. Call SDK sendMessage — returns SSE Response
+      //    threadId: continue existing thread, or omit to create new
+      const response = await auth.sendMessage(text, {
+        threadId: unstable_threadId,
+      })
+
+      // 3. Parse SSE stream and yield cumulative content
+      let fullText = ''
+      const toolCalls = new Map<string, any>()
+
+      for await (const event of parseStarchildSSE(response, abortSignal)) {
+        switch (event.type) {
+          case 'agent_start':
+            // event.session_key — save for reconnect if needed
+            break
+
+          case 'text_delta':
+            fullText += event.text
+            yield {
+              content: [
+                ...(fullText ? [{ type: 'text' as const, text: fullText }] : []),
+                ...Array.from(toolCalls.values()),
+              ],
+            }
+            break
+
+          case 'tool_use': {
+            // Accumulate tool calls outside the loop (per assistant-ui best practice)
+            const id = event.tool_use_id || crypto.randomUUID()
+            toolCalls.set(id, {
+              type: 'tool-call' as const,
+              toolCallId: id,
+              toolName: event.tool_name,
+              args: event.tool_input,
+              argsText: JSON.stringify(event.tool_input),
+            })
+            yield {
+              content: [
+                ...(fullText ? [{ type: 'text' as const, text: fullText }] : []),
+                ...Array.from(toolCalls.values()),
+              ],
+            }
+            break
+          }
+
+          case 'tool_output': {
+            // Update the matching tool call with its result.
+            // IMPORTANT: create a new object (not mutate) so React detects the change.
+            const id = event.tool_use_id
+            if (id && toolCalls.has(id)) {
+              const existing = toolCalls.get(id)
+              toolCalls.set(id, { ...existing, result: event.tool_output })
+              yield {
+                content: [
+                  ...(fullText ? [{ type: 'text' as const, text: fullText }] : []),
+                  ...Array.from(toolCalls.values()),
+                ],
+              }
+            }
+            break
+          }
+
+          case 'agent_end':
+            // Stream complete — final yield already done above
+            break
+
+          case 'error':
+            throw new Error(event.message)
+
+          case 'agent:interrupted':
+            // User cancelled or timeout — stop yielding
+            break
+        }
+      }
+
+      // Ensure at least one yield with content
+      if (!fullText && toolCalls.size === 0) {
+        yield { content: [{ type: 'text', text: '' }] }
+      }
+    },
+  }
+}
+```
+
+#### RuntimeProvider 组装
+
+```tsx
+// runtime/StarchildRuntimeProvider.tsx
+'use client'
+import type { ReactNode } from 'react'
+import {
+  AssistantRuntimeProvider,
+  useLocalRuntime,
+} from '@assistant-ui/react'
+import { StarchildAuth } from 'starchild-auth-sdk'
+import { createStarchildAdapter } from './starchild-adapter'
+
+// Singleton auth instance — SDK handles token refresh internally
+const auth = new StarchildAuth({
+  clientId: process.env.NEXT_PUBLIC_STARCHILD_CLIENT_ID!,
+  scope: 'profile chat',
+  onLogin: ({ userInfo }) => console.log('Logged in:', userInfo.agentName),
+  onTokenRefreshFailed: () => {
+    // Session expired — redirect to login or show login button
+    window.location.reload()
+  },
+})
+
+export function StarchildRuntimeProvider({
+  children,
+}: Readonly<{ children: ReactNode }>) {
+  const runtime = useLocalRuntime(createStarchildAdapter(auth))
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      {children}
+    </AssistantRuntimeProvider>
+  )
+}
+```
+
+#### 多线程列表（可选）
+
+如需左侧线程列表（类似 ChatGPT 侧边栏），实现 `RemoteThreadListAdapter` 并传入 `useLocalRuntime` 的 `adapters.threadList`。
+
+> ⚠️ **接口验证提醒**：`RemoteThreadListAdapter` 的方法签名可能随 assistant-ui 版本变化。以下示例基于公开文档的常见模式，**集成前请务必查阅最新文档**：https://www.assistant-ui.com/docs/runtimes/concepts/threads
+
+```tsx
+import { useLocalRuntime } from '@assistant-ui/react'
+import type { RemoteThreadListAdapter } from '@assistant-ui/react'
+
+// Thread list adapter — bridges SDK thread API to assistant-ui sidebar
+const threadListAdapter: RemoteThreadListAdapter = {
+  // Called on mount — load thread list from SDK
+  async getThreads() {
+    const { threads } = await auth.listThreads()
+    return threads.map(t => ({
+      id: t.thread_id,
+      title: t.title || 'New Chat',
+      createdAt: t.created_at ? new Date(t.created_at) : new Date(),
+    }))
+  },
+
+  // Called when user clicks a thread in the sidebar
+  async switchToThread(threadId: string) {
+    // assistant-ui will call this to switch the active thread.
+    // Messages are loaded separately via the adapter's run() or initialMessages.
+    // If you need to pre-load history, use auth.listMessages(threadId)
+    // and pass them as initialMessages to the runtime.
+  },
+
+  // Called when user creates a new thread
+  async createThread() {
+    const thread = await auth.createThread()
+    return { id: thread.thread_id }
+  },
+
+  // Called when user deletes a thread
+  async deleteThread(threadId: string) {
+    await auth.deleteThread(threadId)
+  },
+}
+
+// In provider:
+const runtime = useLocalRuntime(createStarchildAdapter(auth), {
+  adapters: { threadList: threadListAdapter },
+})
+```
+
+#### 页面中使用
+
+```tsx
+// app/chat/page.tsx
+import { Thread } from '@/components/assistant-ui/thread'
+import { StarchildRuntimeProvider } from '@/runtime/StarchildRuntimeProvider'
+
+export default function ChatPage() {
+  return (
+    <StarchildRuntimeProvider>
+      <Thread />
+    </StarchildRuntimeProvider>
+  )
+}
+```
+
+### 方案 B：MUI X Chat
+
+> 仅推荐给已在用 MUI Material 主题的项目。`@mui/x-chat` 会强制带入 `@mui/material` + `@emotion/*` 依赖树，非 MUI 项目引入成本高。
+
+#### 安装
+
+```bash
+# 推荐使用 pnpm（更快、磁盘占用更小）；yarn / bun 亦可
+pnpm add @mui/x-chat @mui/material @emotion/react @emotion/styled
+# 或: yarn add @mui/x-chat @mui/material @emotion/react @emotion/styled
+# 或: npm install @mui/x-chat @mui/material @emotion/react @emotion/styled
+```
+
+#### ChatAdapter 实现
+
+MUI X Chat 的 `ChatAdapter.sendMessage()` 必须返回 `Promise<ReadableStream<ChatMessageChunk>>`。需要将 SDK 的 SSE 流转换为 MUI 的 chunk 协议（`start` → `text-start` → `text-delta` → `text-end` → `finish`）：
+
+```tsx
+// adapters/starchild-mui-adapter.ts
+import type { ChatAdapter, ChatMessageChunk } from '@mui/x-chat/headless'
+import { StarchildAuth } from 'starchild-auth-sdk'
+import { parseStarchildSSE } from '@/lib/starchild-sse'
+
+// Module-level state for reconnect / cancel
+let lastSessionKey = ''
+let currentThreadId = ''
+
+export function createStarchildMuiAdapter(auth: StarchildAuth): ChatAdapter {
+  return {
+    async sendMessage({ message, signal }) {
+      // Extract text from user message.
+      // ChatMessage.content type varies by MUI version — handle both
+      // string and structured content arrays defensively.
+      const text = typeof message.content === 'string'
+        ? message.content
+        : Array.isArray(message.content)
+            ? (message.content as Array<{ type: string; text?: string }>)
+                .filter(c => c.type === 'text' && c.text)
+                .map(c => c.text!)
+                .join('\n')
+            : String(message.content ?? '')
+
+      // Call SDK sendMessage — returns SSE Response
+      const response = await auth.sendMessage(text, {
+        threadId: currentThreadId || undefined,
+      })
+
+      const messageId = crypto.randomUUID()
+      const textId = crypto.randomUUID()
+
+      // Transform SSE → MUI ReadableStream<ChatMessageChunk>
+      return new ReadableStream<ChatMessageChunk>({
+        async start(controller) {
+          controller.enqueue({ type: 'start', messageId })
+
+          let textStarted = false
+          try {
+            for await (const event of parseStarchildSSE(response, signal)) {
+              switch (event.type) {
+                case 'agent_start':
+                  lastSessionKey = event.session_key
+                  if (event.thread_id) currentThreadId = event.thread_id
+                  break
+
+                case 'text_delta':
+                  if (!textStarted) {
+                    controller.enqueue({ type: 'text-start', id: textId })
+                    textStarted = true
+                  }
+                  controller.enqueue({
+                    type: 'text-delta',
+                    id: textId,
+                    delta: event.text,
+                  })
+                  break
+
+                case 'tool_use': {
+                  // ⚠️ Tool-call chunk types are MUI-version-specific.
+                  // The names below follow the MUI X Chat streaming protocol
+                  // convention but may differ — always verify against:
+                  // https://mui.com/x/react-chat/behavior/streaming/
+                  const toolId = event.tool_use_id || crypto.randomUUID()
+                  controller.enqueue({
+                    type: 'tool-call-start',
+                    id: toolId,
+                    toolName: event.tool_name,
+                  } as ChatMessageChunk)
+                  controller.enqueue({
+                    type: 'tool-call-input-available',
+                    id: toolId,
+                    input: JSON.stringify(event.tool_input),
+                  } as ChatMessageChunk)
+                  break
+                }
+
+                case 'tool_output':
+                  // ⚠️ Same caveat as tool_use — verify chunk type name.
+                  controller.enqueue({
+                    type: 'tool-result',
+                    id: event.tool_use_id || '',
+                    result: event.tool_output,
+                  } as ChatMessageChunk)
+                  break
+
+                case 'agent_end':
+                  if (textStarted) {
+                    controller.enqueue({ type: 'text-end', id: textId })
+                    textStarted = false
+                  }
+                  break
+
+                case 'error':
+                  // Error chunks: the runtime wraps thrown errors into
+                  // ChatError automatically. Throwing here is also valid
+                  // and may be cleaner — see MUI error handling docs.
+                  controller.enqueue({
+                    type: 'error',
+                    message: event.message,
+                  } as ChatMessageChunk)
+                  break
+              }
+            }
+            // Close any open text stream
+            if (textStarted) {
+              controller.enqueue({ type: 'text-end', id: textId })
+            }
+            controller.enqueue({ type: 'finish', messageId })
+          } catch (e) {
+            // On error/abort, emit abort chunk and let runtime handle cleanup.
+            // The 'abort' chunk type ends the stream per MUI protocol.
+            controller.enqueue({ type: 'abort', messageId })
+          } finally {
+            controller.close()
+          }
+        },
+      })
+    },
+
+    // Optional: conversation list — powers the built-in sidebar
+    async listConversations() {
+      const { threads } = await auth.listThreads()
+      return {
+        conversations: threads.map(t => ({
+          id: t.thread_id,
+          title: t.title || 'Untitled',
+          createdAt: t.created_at ? new Date(t.created_at) : new Date(),
+          updatedAt: t.updated_at ? new Date(t.updated_at) : new Date(),
+        })),
+        hasMore: false,
+      }
+    },
+
+    // Optional: message history on conversation switch
+    async listMessages({ conversationId }) {
+      const { messages } = await auth.listMessages(conversationId)
+      return {
+        messages: messages.map(m => ({
+          id: m.message_id,
+          role: m.role,
+          content: (m.content_blocks || [])
+            .filter(b => b.type === 'text')
+            .map(b => b.text)
+            .join('\n'),
+          createdAt: m.created_at ? new Date(m.created_at) : new Date(),
+        })),
+        hasMore: false,
+      }
+    },
+
+    // Optional: reconnect interrupted stream
+    async reconnectToStream({ messageId, signal }) {
+      if (!lastSessionKey) return null
+      const response = await auth.reconnectStream(lastSessionKey)
+      if (!response.ok) return null
+      // Reuse the same SSE → chunk transform logic as sendMessage
+      // (extract to a shared helper for production use)
+      return new ReadableStream<ChatMessageChunk>({
+        async start(controller) {
+          controller.enqueue({ type: 'start', messageId })
+          let textStarted = false
+          const textId = crypto.randomUUID()
+          for await (const event of parseStarchildSSE(response, signal)) {
+            if (event.type === 'text_delta') {
+              if (!textStarted) {
+                controller.enqueue({ type: 'text-start', id: textId })
+                textStarted = true
+              }
+              controller.enqueue({ type: 'text-delta', id: textId, delta: event.text })
+            } else if (event.type === 'agent_end' && textStarted) {
+              controller.enqueue({ type: 'text-end', id: textId })
+              textStarted = false
+            }
+          }
+          if (textStarted) controller.enqueue({ type: 'text-end', id: textId })
+          controller.enqueue({ type: 'finish', messageId })
+          controller.close()
+        },
+      })
+    },
+
+    // Optional: server-side cancel (when abort signal is not enough)
+    stop() {
+      if (currentThreadId) {
+        auth.cancelRun(currentThreadId)
+      }
+    },
+  }
+}
+```
+
+#### ChatBox 使用
+
+```tsx
+// pages/chat.tsx
+import { ChatBox } from '@mui/x-chat'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
+import CssBaseline from '@mui/material/CssBaseline'
+import { StarchildAuth } from 'starchild-auth-sdk'
+import { createStarchildMuiAdapter } from '@/adapters/starchild-mui-adapter'
+
+const auth = new StarchildAuth({
+  clientId: process.env.NEXT_PUBLIC_STARCHILD_CLIENT_ID!,
+  scope: 'profile chat',
+})
+
+const theme = createTheme() // 或你的自定义 MUI 主题
+const adapter = createStarchildMuiAdapter(auth)
+
+export default function ChatPage() {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <ChatBox
+        adapter={adapter}
+        features={{ conversationList: true }} // 启用内置会话侧边栏
+        sx={{ height: 600 }}
+      />
+    </ThemeProvider>
+  )
+}
+```
+
+### 集成注意事项
+
+| 要点 | 说明 |
+|------|------|
+| **Thread 管理** | SDK `sendMessage` 不传 `threadId` 时自动创建新线程；传 `threadId` 续接已有对话。`agent_start` 事件会返回 `thread_id`，适配器应保存用于后续请求。 |
+| **取消 / 中断** | SDK `sendMessage` **不接受** `AbortSignal` 参数（`SendMessageOptions` 无 `signal` 字段）。两个适配器都在 `parseStarchildSSE` 循环中检查 `abortSignal.aborted` 后 `reader.cancel()` 停止读取流；MUI 额外用 `stop()` 调 `auth.cancelRun(threadId)` 做服务端取消。注意：fetch 请求本身不会被 abort，只是停止消费响应流。 |
+| **断线重连** | 保存 `agent_start` 事件的 `session_key`，断线后调 `auth.reconnectStream(sessionKey)` 获取新的 SSE 流。 |
+| **消息历史** | `auth.listMessages(threadId)` 返回 `content_blocks[]`，需映射为各库的消息格式：`text` block → string / text part，`tool_use` block → tool-call part。 |
+| **图片 / 文件** | SDK `sendMessage` 支持 `images` / `files` / `quote` 参数。在适配器中从 `messages` 的 attachments 提取后传入 `SendMessageOptions`。 |
+| **Scope** | Chat 集成需要 `scope: 'profile chat'`。如需在 Chat 界面中显示 Credits 余额，加 `credit:read`。 |
+| **Token 刷新** | SDK 自动每 12 分钟刷新 token，适配器无需关心 token 过期。`onTokenRefreshFailed` 触发时引导用户重新 `login()`。 |
+| **工具调用 chunk 类型** | MUI X Chat 的完整 tool-call chunk 协议参考官方文档：https://mui.com/x/react-chat/behavior/streaming/ 。上述代码使用 `tool-call-start` / `tool-call-input-available` / `tool-result`，以最新文档为准。 |
 
 ---
 

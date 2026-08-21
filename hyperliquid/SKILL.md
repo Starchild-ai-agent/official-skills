@@ -1,6 +1,6 @@
 ---
 name: hyperliquid
-version: 1.7.0
+version: 1.8.0
 description: |
   Trade perp futures, spot, and RWA on Hyperliquid DEX with up to asset max leverage.
 
@@ -43,11 +43,47 @@ mids    = hyperliquid.hl_market()
 candles = hyperliquid.hl_candles(coin="BTC", interval="1h", hours_back=24)
 ```
 
-Available: `hl_account`, `hl_balances`, `hl_total_balance`, `hl_open_orders`,
-`hl_market`, `hl_orderbook`, `hl_fills`, `hl_candles`, `hl_funding`,
-`hl_order_status`, `hl_predicted_funding`, `hl_user_fees`.
+**Any wallet, not just your own.** Every user-scoped function takes an optional
+`address`. Omit it for the agent's own wallet; pass a 0x address to inspect a
+third party. This is what makes "analyse this wallet's Hyperliquid PnL"
+answerable — Hyperliquid is an off-chain order book, so a DeBank-style
+chain scan cannot see any of it.
+
+```python
+hyperliquid.hl_portfolio(address="0x1f16...")   # PnL time series
+hyperliquid.hl_account(address="0x1f16...")     # their open positions
+```
+
+32 functions, grouped:
+
+| Group | Functions |
+|-------|-----------|
+| Account | `hl_account` `hl_balances` `hl_total_balance` `hl_user_role` `hl_user_fees` `hl_rate_limit` `hl_sub_accounts` `hl_referral` `hl_extra_agents` |
+| PnL & history | `hl_portfolio` `hl_fills` `hl_fills_by_time` `hl_historical_orders` `hl_ledger` `hl_funding_payments` `hl_twap_fills` `hl_vault_equities` |
+| Orders | `hl_open_orders` `hl_open_orders_full` `hl_order_status` |
+| Market | `hl_market` `hl_orderbook` `hl_candles` `hl_funding` `hl_predicted_funding` `hl_meta` `hl_meta_ctxs` `hl_spot_meta` `hl_spot_meta_ctxs` `hl_perp_dexs` |
+| Staking | `hl_staking` `hl_staking_delegations` `hl_staking_rewards` |
 
 Read-only only — no writes on this lane.
+
+### Answering "what is this wallet's PnL?"
+
+`hl_portfolio` returns 8 windows — `day`, `week`, `month`, `allTime` and the
+`perp*` equivalents — each with `accountValueHistory` and `pnlHistory` as
+`[epoch_ms, value]` pairs. `pnlHistory` restarts at 0 at the start of each
+window, so read `allTime` for lifetime PnL.
+
+```python
+pf = dict(hyperliquid.hl_portfolio(address=addr))
+pnl = float(pf["allTime"]["pnlHistory"][-1][1])
+```
+
+For a cost-basis reconstruction, combine three sources: `hl_ledger` (capital
+in/out — deposits, withdrawals, vault moves), `hl_fills_by_time` (realized
+`closedPnl` per fill, 2000 max per call — page by passing the last fill's
+`time` as the next `start`), and `hl_funding_payments` (funding paid/received).
+Check `hl_user_role` first: role `"missing"` means the address never traded
+here, which is not the same as "no positions".
 
 ### Lane 2 — Writes: orders, cancels, transfers, deposits (`client.py`)
 
@@ -89,14 +125,22 @@ operation*, not callable tools — always reach them via Lane 1 or Lane 2 above.
 | Tool | What it does |
 |------|--------------|
 | `hl_total_balance` | Check how much you can trade with (use this for balance checks!) |
-| `hl_account` | See your open positions and PnL |
-| `hl_balances` | See your token holdings (USDC, HYPE, etc.) |
+| `hl_account` | Open positions and unrealized PnL |
+| `hl_balances` | Token holdings (USDC, HYPE, etc.) |
+| `hl_portfolio` | **PnL and account value over time** — day/week/month/allTime |
+| `hl_ledger` | Deposits, withdrawals, transfers — the capital in/out record |
+| `hl_fills_by_time` | Fills within a date range, for cost-basis work |
 | `hl_market` | Get current prices for crypto or stocks |
+| `hl_meta_ctxs` | Market-wide scan: markPx, funding, OI, volume per asset |
 | `hl_orderbook` | Check order book depth and liquidity |
 | `hl_fills` | See recent trade fills and execution prices |
 | `hl_candles` | Get price charts (1m, 5m, 1h, 4h, 1d) |
 | `hl_funding` | Check funding rates for perps |
 | `hl_open_orders` | See pending orders |
+| `hl_open_orders_full` | Pending orders **with** stop-loss / take-profit detail |
+
+All of the above accept `address="0x..."` to inspect any wallet, not just
+the agent's own.
 
 ### Trading
 

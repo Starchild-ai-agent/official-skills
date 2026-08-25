@@ -386,6 +386,12 @@
       "description": "Read-only OKX tracking: unified-account equity, perp positions, orders, fills, bills.\n\nUse when monitoring OKX without trading (e.g. account equity, current PnL, recent fills, withdrawal history, margin level)."
     },
     {
+      "name": "office-document",
+      "path": "office-document/SKILL.md",
+      "version": "1.0.0",
+      "description": "Route editable PDF, DOCX, XLSX, and PPTX creation or modification tasks to the appropriate official Hermes document skill. Use when the user asks to create, edit, format, convert, fill, annotate, review, or otherwise produce an editable office document. Do not activate for simple read-only extraction or summarization. For presentation-only output where the user does not need an editable PowerPoint file, use Starchild's official slide-creator skill."
+    },
+    {
       "name": "openocean",
       "path": "openocean/SKILL.md",
       "version": "1.2.0",

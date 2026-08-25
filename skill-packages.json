@@ -166,6 +166,7 @@
       "description_zh": "云文档管理、演示文稿制作、外部应用集成与用户引导",
       "description_ko": "클라우드 문서 관리, 프레젠테이션 제작, 외부 앱 통합 및 사용자 온보딩 가이드",
       "skills": [
+        "office-document",
         "wps",
         "slide-creator",
         "composio",

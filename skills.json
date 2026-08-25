@@ -374,6 +374,12 @@
       "description": "Set of skills for developing and building apps on Monad.\n\nUse as the entry point when working with Monad — guides you to the right sub-skill (scaffold, wallet, contracts, gas, indexer, etc.) for any Monad development task."
     },
     {
+      "name": "office-document",
+      "path": "office-document/SKILL.md",
+      "version": "1.0.0",
+      "description": "Route editable PDF, DOCX, XLSX, and PPTX creation or modification tasks to the\nappropriate official Hermes document skill. Use when the user asks to create,\nedit, format, convert, fill, annotate, review, or otherwise produce an\neditable office document. Do not activate for simple read-only extraction or\nsummarization. For presentation-only output where the user does not need an\neditable PowerPoint file, use Starchild's official slide-creator skill."
+    },
+    {
       "name": "okx",
       "path": "okx/SKILL.md",
       "version": "1.1.0",
@@ -384,12 +390,6 @@
       "path": "okx-account/SKILL.md",
       "version": "2.0.1",
       "description": "Read-only OKX tracking: unified-account equity, perp positions, orders, fills, bills.\n\nUse when monitoring OKX without trading (e.g. account equity, current PnL, recent fills, withdrawal history, margin level)."
-    },
-    {
-      "name": "office-document",
-      "path": "office-document/SKILL.md",
-      "version": "1.0.0",
-      "description": "Route editable PDF, DOCX, XLSX, and PPTX creation or modification tasks to the appropriate official Hermes document skill. Use when the user asks to create, edit, format, convert, fill, annotate, review, or otherwise produce an editable office document. Do not activate for simple read-only extraction or summarization. For presentation-only output where the user does not need an editable PowerPoint file, use Starchild's official slide-creator skill."
     },
     {
       "name": "openocean",

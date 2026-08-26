@@ -136,7 +136,7 @@
     {
       "name": "chart",
       "path": "chart/SKILL.md",
-      "version": "3.1.0",
+      "version": "3.1.1",
       "description": "Interactive web charts: line, bar, candle, scatter, with HTML and screenshot output.\n\nUse when visualizing data for analysis or BI (e.g. plot BTC vs gold last year, bar chart of revenue by quarter, compare two return series)."
     },
     {
@@ -376,7 +376,7 @@
     {
       "name": "office-document",
       "path": "office-document/SKILL.md",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Route editable PDF, DOCX, XLSX, and PPTX creation or modification tasks to the\nappropriate official Hermes document skill. Use when the user asks to create,\nedit, format, convert, fill, annotate, review, or otherwise produce an\neditable office document. Do not activate for simple read-only extraction or\nsummarization. For presentation-only output where the user does not need an\neditable PowerPoint file, use Starchild's official slide-creator skill."
     },
     {
@@ -460,7 +460,7 @@
     {
       "name": "slide-creator",
       "path": "slide-creator/SKILL.md",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "description": "Build 16:9 slide decks as HTML, exported to PDF (not PowerPoint format).\n\nUse when making a deck, presentation, or pitch (e.g. 10-slide pitch deck for X, training course on Y, quarterly results presentation)."
     },
     {
@@ -556,7 +556,7 @@
     {
       "name": "ui-design",
       "path": "ui-design/SKILL.md",
-      "version": "1.3.0",
+      "version": "1.3.1",
       "description": "UI/UX quality gate and build guide for every visual output — landing pages, dashboards,\nweb apps, portfolios, and tools. ui-design remains the main entry point.\n\nIntegration model: ui-design main trunk + taste-skill overlay.\n- ui-design owns engineering quality (track selection, component-library strategy,\n  accessibility, responsiveness, theming, performance, preview delivery)\n- taste-skill is invoked inside the ui-design workflow for style decisions\n  (Brief Inference, Design Dials, Anti-slop hard rules)\n\nMUST USE together with project-builder whenever a project produces visual HTML/CSS/JS."
     },
     {

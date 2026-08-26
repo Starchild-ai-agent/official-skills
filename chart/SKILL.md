@@ -1,6 +1,6 @@
 ---
 name: chart
-version: 3.1.0
+version: 3.1.1
 description: |
   Interactive web charts: line, bar, candle, scatter, with HTML and screenshot output.
 
@@ -119,7 +119,7 @@ The runtime tool is `vision_analyze(image_url=<workspace image path or public UR
 
 It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — re-run once, and if it stays unparseable report the gate as not run.
 
-**Resolution matters.** Tick labels and legend text are exactly what a small PNG loses first. Export `screenshot.png` at 1280px wide or more before review; a thumbnail can only answer coarse questions (empty panel, unreadable palette, collapsed axes).
+**Resolution matters, and what counts is the ENCODED width the model receives.** The tool caps the long edge at 1600px and reports `input.resolution_warning` when width fell to the 900px floor. Tick labels and legend text are the first thing a small PNG loses. Export `screenshot.png` at 1280px wide or more; if the chart is unusually tall (long category axis), export it in vertical slices rather than as one tall image. Below ~900px encoded width, limit conclusions to coarse questions (empty panel, unreadable palette, collapsed axes) and say so.
 
 After `screenshot.png` exists in the project folder:
 

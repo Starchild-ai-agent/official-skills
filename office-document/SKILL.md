@@ -1,6 +1,6 @@
 ---
 name: office-document
-version: 1.1.0
+version: 1.1.1
 description: |
   Route editable PDF, DOCX, XLSX, and PPTX creation or modification tasks to the
   appropriate official Hermes document skill. Use when the user asks to create,
@@ -88,7 +88,7 @@ The runtime tool is `vision_analyze(image_url=<workspace image path or public UR
 
 It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — re-run once, and if it stays unparseable report the gate as not run.
 
-**Resolution matters.** Column truncation, header-footer collision, and small-print defects need pixels. Render pages at 1280px wide or more (≈150 DPI on Letter/A4); a low-res page image can only answer coarse questions (blank page, broken layout, missing table).
+**Resolution matters, and what counts is the ENCODED width the model receives.** The tool caps the long edge at 1600px and reports `input.resolution_warning` when width fell to the 900px floor. Column truncation, header-footer collision, and small-print defects need pixels. Render **one page per image** at 1280px wide or more (≈150 DPI on Letter/A4) — never stitch pages into a single tall strip, and for very long spreadsheet exports slice by row range. Below ~900px encoded width, limit conclusions to coarse questions (blank page, broken layout, missing table) and say so.
 
 Scope rule:
 

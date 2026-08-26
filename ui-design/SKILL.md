@@ -1,6 +1,6 @@
 ---
 name: ui-design
-version: 1.3.0
+version: 1.3.1
 description: |
   UI/UX quality gate and build guide for every visual output — landing pages, dashboards,
   web apps, portfolios, and tools. ui-design remains the main entry point.
@@ -118,7 +118,12 @@ The runtime tool is `vision_analyze(image_url=<workspace image path or public UR
 
 It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — treat that pass as inconclusive and re-run once; if it stays unparseable, report the gate as not run.
 
-**Resolution matters.** The reviewer only sees the PNG you hand it. Below ~1000px wide it reliably catches coarse defects (collapsed layout, broken grid, color/contrast disasters, blank regions) but NOT small-text, alignment, or overflow detail. Capture desktop screenshots at 1280px wide or more so typography issues are actually visible; do not ask a 640px thumbnail about font sizes.
+**Resolution matters, and what counts is the ENCODED width the model receives** — not your capture width. The tool caps the long edge at 1600px, so a tall full-page capture gets scaled down; it keeps width at 900px minimum and returns `input.resolution_warning` when detail was at risk. Below ~900px encoded width the reviewer reliably catches only coarse defects (collapsed layout, broken grid, contrast disasters, blank regions), NOT font size, alignment, or overflow.
+
+- **Desktop:** capture at 1280–1440px wide.
+- **Long pages:** do not send one 1280×5000 full-page shot — slice it into vertical sections of roughly 1280×1600 and review each. A single tall capture loses horizontal detail to the long-edge cap.
+- **Mobile:** capture the ~390px breakpoint at 2× DPR (≈780px of real pixels). A 390px-wide PNG is a coarse-defect check only — never ask it about typography.
+- If `input.resolution_warning` is present, either re-capture at a usable size or scope your conclusions to coarse defects and say so.
 
 After Steps 1–5 pass and the preview is healthy:
 

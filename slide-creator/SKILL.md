@@ -1,6 +1,6 @@
 ---
 name: slide-creator
-version: 2.2.0
+version: 2.2.1
 description: |
   Build 16:9 slide decks as HTML, exported to PDF (not PowerPoint format).
 
@@ -263,7 +263,7 @@ The runtime tool is `vision_analyze(image_url=<workspace image path or public UR
 
 It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — re-run once, and if it stays unparseable report the gate as not run.
 
-**Resolution matters.** Tiny-text and overflow defects are invisible in a small PNG. Render individual slides at 1280px wide or more (2× scale on a 16:9 page is enough); reserve the montage for coarse consistency checks only — never ask the montage about font sizes.
+**Resolution matters, and what counts is the ENCODED width the model receives.** The tool caps the long edge at 1600px and reports `input.resolution_warning` when width fell to the 900px floor. Tiny-text and overflow defects vanish in a small PNG. Render individual slides at 1280px wide or more (2× scale on a 16:9 page is enough) and review them one at a time. A multi-slide montage is a coarse consistency check only — it is exactly the tall-image case the long-edge cap punishes, so never ask a montage about font sizes or alignment.
 
 After the PDF exports cleanly:
 

@@ -454,8 +454,8 @@
     {
       "name": "skill-manager",
       "path": "skill-manager/SKILL.md",
-      "version": "4.2.0",
-      "description": "Search, install, publish, and delete skills across official, community, and global registries.\n\nUse when finding, sharing, or removing skills (e.g. install a \"funding rate\" skill, list installed skills, publish my custom skill to the registry, delete a published skill)."
+      "version": "4.3.0",
+      "description": "Search, install, and manage skills across official and global registries.\n\nUse when finding or installing skills (e.g. install a \"funding rate\" skill, list installed skills)."
     },
     {
       "name": "slide-creator",

@@ -1,10 +1,10 @@
 ---
 name: skill-manager
-version: 4.2.0
+version: 4.3.0
 description: |
-  Search, install, publish, and delete skills across official, community, and global registries.
+  Search, install, and manage skills across official and global registries.
 
-  Use when finding, sharing, or removing skills (e.g. install a "funding rate" skill, list installed skills, publish my custom skill to the registry, delete a published skill).
+  Use when finding or installing skills (e.g. install a "funding rate" skill, list installed skills).
 
 metadata:
   starchild:
@@ -24,7 +24,7 @@ user-invocable: true
 `search_skills` does everything automatically:
 
 1. **Local** — checks installed skills first
-2. **Starchild community** — searches community-skills index
+2. **Official** — searches Starchild official-skills index
 3. **skills.sh** — searches the global skills ecosystem (OpenClaw, Vercel, Anthropic, etc.)
 4. **Auto-install** — installs the best match via `npx skills add` (default: `auto_install=true`)
 
@@ -45,141 +45,7 @@ After `search_skills` installs a skill, it's immediately available. Call `skill_
 - Do NOT `mkdir -p skills/<name>` and manually write SKILL.md
 - Do NOT use `web_fetch` to download skill files
 - Do NOT use the old gateway search/install endpoints (they no longer exist)
-
----
-
-## Publishing (Starchild Only)
-
-Publishing still uses the gateway. Only Starchild-authored skills can be published.
-
-### SKILL.md Requirements
-
-```yaml
----
-name: my-skill
-version: 1.0.0
-description: What this skill does
-author: your-name
-tags: [tag1, tag2]
----
-```
-
-| Field | Required | Rules |
-|-------|----------|-------|
-| `name` | Yes | Lowercase, alphanumeric + hyphens, 2-64 chars |
-| `version` | Yes | Semver (e.g. `1.0.0`) — immutable once published |
-| `description` | Recommended | Short summary for search |
-| `author` | Recommended | Author name |
-| `tags` | Recommended | Array of tags for discoverability |
-
-### Publish Workflow
-
-**Step 1: Validate the skill directory**
-
-```bash
-SKILL_DIR="./skills/my-skill"
-head -20 "$SKILL_DIR/SKILL.md"
-```
-
-**Step 2: Get OIDC token**
-
-```bash
-TOKEN=$(curl -s --unix-socket /.fly/api \
-  -X POST -H "Content-Type: application/json" \
-  "http://localhost/v1/tokens/oidc" \
-  -d '{"aud": "skills-market-gateway"}')
-```
-
-**Step 3: Build and send publish request**
-
-```bash
-SKILL_DIR="./skills/my-skill"
-GATEWAY="https://skills-market-gateway.fly.dev"
-
-PAYLOAD=$(python3 -c "
-import os, json
-files = {}
-for root, dirs, fnames in os.walk('$SKILL_DIR'):
-    for f in fnames:
-        full = os.path.join(root, f)
-        rel = os.path.relpath(full, '$SKILL_DIR')
-        with open(full) as fh:
-            files[rel] = fh.read()
-print(json.dumps({'files': files}))
-")
-
-curl -s -X POST "$GATEWAY/skills/publish" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "$PAYLOAD" | python3 -m json.tool
-```
-
-### Response (201)
-
-```json
-{
-  "namespace": "@554",
-  "name": "my-skill",
-  "version": "1.0.0",
-  "tag": "@554/my-skill@1.0.0",
-  "download_url": "https://github.com/.../bundle.zip",
-  "release_url": "https://github.com/.../releases/tag/..."
-}
-```
-
-### Version Rules
-
-- Each version is **immutable** — once published, it cannot be overwritten.
-- To update, bump the version and publish again.
-
----
-
-## Deleting a Published Skill
-
-Delete a skill you previously published to the Starchild community registry. This removes all files, tags, releases, and the skills.json index entry from the community repo.
-
-**You can only delete skills in your own namespace** (`@{user_id}`).
-
-### Delete Workflow
-
-**Step 1: Get OIDC token**
-
-```bash
-TOKEN=$(curl -s --unix-socket /.fly/api \
-  -X POST -H "Content-Type: application/json" \
-  "http://localhost/v1/tokens/oidc" \
-  -d '{"aud": "skills-market-gateway"}')
-```
-
-**Step 2: Send delete request**
-
-```bash
-GATEWAY="https://skills-market-gateway.fly.dev"
-NAMESPACE="YOUR_USER_ID"   # without @ prefix
-SKILLNAME="my-skill"
-
-curl -s -X DELETE "$GATEWAY/skills/$NAMESPACE/$SKILLNAME" \
-  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
-```
-
-### Response (200)
-
-```json
-{
-  "namespace": "@554",
-  "name": "my-skill",
-  "commit_sha": "abc123...",
-  "deleted_tags": ["@554/my-skill@1.0.0", "@554/my-skill@1.1.0"],
-  "deleted_releases": [42, 43]
-}
-```
-
-Returns **404** if the skill doesn't exist, **403** if you're not the owner.
-
-### After Deletion
-
-- The skill is removed from the community registry (skills.json, GitHub releases, tags, and source files).
-- If the skill is still installed locally, the local copy remains. Use `skill_manage(action="delete", name="my-skill")` to also remove the local copy.
+- Do NOT publish skills to the community-skills registry (product offline)
 
 ---
 
@@ -193,16 +59,9 @@ User wants to find/install a skill
 User wants to list installed skills
   → Use search_skills() with no query
 
-User wants to publish a skill
-  → Validate SKILL.md frontmatter
-  → Get OIDC token (audience: skills-market-gateway)
-  → POST to /skills/publish
-
-User wants to delete a published skill
-  → Get OIDC token (audience: skills-market-gateway)
-  → DELETE /skills/:namespace/:name
-  → Optionally remove local copy with skill_manage(action="delete")
-
 User wants to create a new skill
   → Read the skill-creator skill first
+
+User wants to publish a skill to community registry
+  → Community Skill product is offline — do not publish
 ```

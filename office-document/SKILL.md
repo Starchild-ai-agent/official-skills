@@ -79,3 +79,26 @@ The Hermes `docx` skill uses `python-docx` helpers and package health checks;
 `xlsx` uses `openpyxl`; `powerpoint` uses `python-pptx`; and `pdf` uses
 `pypdf`, `reportlab`, and `pdfplumber`. These implementation details describe
 the official skills and should not be replaced with guessed local commands.
+
+---
+
+## Final visual QA — where layout matters
+
+The runtime tool is `vision_analyze(image_url=<workspace image path or public URL>, question=<specific QA rubric>)`. It analyzes an existing image only — it does NOT render documents.
+
+Scope rule:
+
+- **Read-only extraction** (text dump, summarization, table-to-CSV) is out of scope for this skill and out of scope for visual QA. No render needed.
+- **Anything that produces a layout the user will see** — DOCX, XLSX, PPTX, PDF — must pass visual QA before delivery.
+
+For a layout-relevant task, after the format-specific Hermes skill has produced its output:
+
+1. **Render representative pages/slides/sheets to PNG.** At minimum: first page, a content-dense page, a table/chart page, last page. For spreadsheets, also render the active sheet at a couple of zoom levels if the sheet is wide. Save under a `qa/` folder in the project so the artifacts are reproducible.
+2. **Run vision review.** Call `vision_analyze(image_url=<workspace-relative PNG path>, question=<rubric>)` with a rubric appropriate to the format:
+   - **DOCX / PDF (flowing layout)** — text overflow / clipping, header-footer collision, page-break placement, image wrapping, table column widths, contrast on watermarks or color blocks.
+   - **PPTX** — slide overflow, tiny text, alignment consistency, image cropping, chart legibility, transition-safe positioning of placeholders.
+   - **XLSX** — header row visibility, frozen panes respected, column widths not truncating data, conditional formatting legible, number formatting consistent, merged cells not hiding content.
+3. **Triage & fix.** Fix every Critical / Major finding in the format-specific skill's source (template, layout code, or content). Re-render the PNG(s) and re-run `vision_analyze` until the new pass returns no Critical or Major findings.
+4. **Honest reporting.** If the format-specific skill cannot produce a renderable artifact (missing converter, locked/encrypted input, image-only PDF without OCR), state plainly: "Final visual QA was not run — <reason>." Do not claim fidelity from the binary alone.
+
+Pure OCR pipelines (`ocr-and-documents`) are text-extraction work; visual QA applies to the downstream edited document, not the OCR step itself.

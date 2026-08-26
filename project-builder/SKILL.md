@@ -264,6 +264,22 @@ CHECK LOGS → REPRODUCE → ISOLATE → DIAGNOSE → FIX → VERIFY → REGRESS
 
 ---
 
+## Phase 3.5: FINAL VISUAL QA (mandatory for visual projects)
+
+The runtime tool is `vision_analyze(image_url=<workspace image path or public URL>, question=<specific QA rubric>)`. It analyzes an existing image only — it does NOT render webpages or documents.
+
+Scope rule: this gate applies to projects that produce visual UI or other rendered artifacts the user will see (web app, dashboard, landing page, generated chart/figure, slide deck, poster, image). It does NOT apply to headless / backend-only projects (CLI tools, scheduled jobs that emit JSON, APIs without a UI, batch scripts). For those, the engineering checks in Phase 3 are the gate.
+
+For visual projects:
+
+1. **Delegate to the domain skill.** Visual QA is owned by the domain skill that produces the artifact — `ui-design` for HTML/CSS/JS, `chart` for ECharts pages, `slide-creator` for decks, `office-document` for editable office docs. That skill defines the capture → review → fix protocol and the rubric; project-builder does not redefine it.
+2. **Require evidence.** Before declaring the project done, the project's final deliverable list must include the vision-review output (a list of Critical / Major / Minor findings per screenshot, and the result of the fix-and-re-review pass). If the domain skill's gate is skipped, the build is incomplete.
+3. **Do not invent screenshots.** If the environment cannot render the artifact (no headless browser, no preview server, missing export script), state plainly: "Final visual QA was not run — <reason>." A blank or fabricated screenshot is not evidence.
+
+For headless / backend / script-only projects: skip this phase; Phase 3 verification (run, log inspection, output format check) is sufficient.
+
+---
+
 ## Quick Checklists
 **Kickoff:** ☐ Clarified intent ☐ Proposed architecture ☐ Estimated cost ☐ User confirmed (**required before Phase 2**)
 

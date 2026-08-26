@@ -1,12 +1,12 @@
 ---
 name: web-crawler
 version: 2.7.0
-description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
+description: 'Web scraping + web-page fallback: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads.
 
 
-  Also covers Facebook, Pinterest, Bluesky, Twitch, Snapchat, Truth Social, TikTok Shop,
-  Google search and ad-library data, plus robust web-page fallback extraction. A first-class
+  Social data also covers Facebook, Pinterest, Bluesky, Twitch, Snapchat, Truth Social,
+  TikTok Shop, Google search and ad-library data, with robust extraction. A first-class
   research source for these platforms, not only a recovery path: use PROACTIVELY whenever
   a question names or implies them, because web_search only indexes public pages, so
   transcripts, threads and posts are invisible to it and silently drop out of a "multi-source"

@@ -1,6 +1,6 @@
 ---
 name: slide-creator
-version: 2.1.7
+version: 2.1.8
 description: |
   Build 16:9 slide decks as HTML, exported to PDF (not PowerPoint format).
 

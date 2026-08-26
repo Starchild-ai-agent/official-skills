@@ -1,6 +1,6 @@
 ---
 name: chart
-version: 3.0.2
+version: 3.0.3
 description: |
   Interactive web charts: line, bar, candle, scatter, with HTML and screenshot output.
 

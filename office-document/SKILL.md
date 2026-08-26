@@ -1,6 +1,6 @@
 ---
 name: office-document
-version: 1.0.0
+version: 1.0.1
 description: |
   Route editable PDF, DOCX, XLSX, and PPTX creation or modification tasks to the
   appropriate official Hermes document skill. Use when the user asks to create,

@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.6.2
+version: 1.6.3
 description: |
   End-to-end project engineering: design, incremental build, verify, debug systematically.
 

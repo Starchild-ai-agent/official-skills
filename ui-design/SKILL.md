@@ -1,6 +1,6 @@
 ---
 name: ui-design
-version: 1.2.1
+version: 1.3.0
 description: |
   UI/UX quality gate and build guide for every visual output — landing pages, dashboards,
   web apps, portfolios, and tools. ui-design remains the main entry point.

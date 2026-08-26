@@ -261,6 +261,10 @@ Only restart art direction if user wants a completely different style.
 
 The runtime tool is `vision_analyze(image_url=<workspace image path or public URL>, question=<specific QA rubric>)`. It analyzes an existing image only — it does NOT render slides or PDFs. Render to images first, then pass them in.
 
+It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — re-run once, and if it stays unparseable report the gate as not run.
+
+**Resolution matters.** Tiny-text and overflow defects are invisible in a small PNG. Render individual slides at 1280px wide or more (2× scale on a 16:9 page is enough); reserve the montage for coarse consistency checks only — never ask the montage about font sizes.
+
 After the PDF exports cleanly:
 
 1. **Render the deck to images.** Convert the PDF to per-slide PNGs (one PNG per slide, e.g. via `pymupdf`'s `Page.get_pixmap()` at 2× scale). Also produce a montage (e.g. all slides tiled into a single grid PNG) for an at-a-glance consistency check.
@@ -270,7 +274,7 @@ After the PDF exports cleanly:
    - **Contrast & readability** — text against backgrounds, accent on dark/light surfaces, low-contrast icons.
    - **Visual consistency** — same font/weight/size for the same role across slides, consistent margin and safe-area usage, footer alignment.
    - **State-specific issues** — chart slides show actual data, image slides don't have broken/missing images.
-3. **Triage & fix.** Mark findings Critical / Major / Minor. Fix every Critical and Major in `styles.css` or slide markup, re-export PDF, re-render PNGs, re-run `vision_analyze`. Repeat until the new pass returns no Critical or Major findings.
+3. **Triage & fix.** Fix every Critical and Major finding in `styles.css` or slide markup, re-export PDF, re-render PNGs, re-run `vision_analyze`. Repeat until `blocking` is `false`, **capped at 2 re-review rounds** — if Critical/Major findings survive round 2, deliver the deck with the remaining findings listed verbatim to the user rather than looping further.
 4. **Honest reporting.** If Chromium/Playwright is unavailable, PDF rendering fails, or `pymupdf` cannot produce PNGs, state plainly: "Final visual QA was not run — <reason>." Do not claim deck fidelity from HTML preview alone.
 
 The QA is the gate, not a suggestion. The deck is not complete until vision review passes on the montage plus representative slides or the absence is documented.

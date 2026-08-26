@@ -86,6 +86,10 @@ the official skills and should not be replaced with guessed local commands.
 
 The runtime tool is `vision_analyze(image_url=<workspace image path or public URL>, question=<specific QA rubric>)`. It analyzes an existing image only — it does NOT render documents.
 
+It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — re-run once, and if it stays unparseable report the gate as not run.
+
+**Resolution matters.** Column truncation, header-footer collision, and small-print defects need pixels. Render pages at 1280px wide or more (≈150 DPI on Letter/A4); a low-res page image can only answer coarse questions (blank page, broken layout, missing table).
+
 Scope rule:
 
 - **Read-only extraction** (text dump, summarization, table-to-CSV) is out of scope for this skill and out of scope for visual QA. No render needed.
@@ -98,7 +102,7 @@ For a layout-relevant task, after the format-specific Hermes skill has produced 
    - **DOCX / PDF (flowing layout)** — text overflow / clipping, header-footer collision, page-break placement, image wrapping, table column widths, contrast on watermarks or color blocks.
    - **PPTX** — slide overflow, tiny text, alignment consistency, image cropping, chart legibility, transition-safe positioning of placeholders.
    - **XLSX** — header row visibility, frozen panes respected, column widths not truncating data, conditional formatting legible, number formatting consistent, merged cells not hiding content.
-3. **Triage & fix.** Fix every Critical / Major finding in the format-specific skill's source (template, layout code, or content). Re-render the PNG(s) and re-run `vision_analyze` until the new pass returns no Critical or Major findings.
+3. **Triage & fix.** Fix every Critical / Major finding in the format-specific skill's source (template, layout code, or content). Re-render the PNG(s) and re-run `vision_analyze` until `blocking` is `false`, **capped at 2 re-review rounds** — if Critical/Major findings survive round 2, deliver with the remaining findings listed verbatim to the user rather than looping further.
 4. **Honest reporting.** If the format-specific skill cannot produce a renderable artifact (missing converter, locked/encrypted input, image-only PDF without OCR), state plainly: "Final visual QA was not run — <reason>." Do not claim fidelity from the binary alone.
 
 Pure OCR pipelines (`ocr-and-documents`) are text-extraction work; visual QA applies to the downstream edited document, not the OCR step itself.

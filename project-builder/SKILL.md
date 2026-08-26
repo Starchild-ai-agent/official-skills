@@ -273,7 +273,8 @@ Scope rule: this gate applies to projects that produce visual UI or other render
 For visual projects:
 
 1. **Delegate to the domain skill.** Visual QA is owned by the domain skill that produces the artifact — `ui-design` for HTML/CSS/JS, `chart` for ECharts pages, `slide-creator` for decks, `office-document` for editable office docs. That skill defines the capture → review → fix protocol and the rubric; project-builder does not redefine it.
-2. **Require evidence.** Before declaring the project done, the project's final deliverable list must include the vision-review output (a list of Critical / Major / Minor findings per screenshot, and the result of the fix-and-re-review pass). If the domain skill's gate is skipped, the build is incomplete.
+2. **Require evidence.** Before declaring the project done, the project's final deliverable list must include the vision-review output — the structured `findings` (severity + evidence) per screenshot, the final `blocking` value, and the result of the fix-and-re-review pass. If the domain skill's gate is skipped, the build is incomplete.
+3. **Respect the loop cap.** The domain skills cap re-review at 2 rounds. If Critical/Major findings survive that cap, the project still ships — but the remaining findings must be listed verbatim in the handover, not quietly dropped.
 3. **Do not invent screenshots.** If the environment cannot render the artifact (no headless browser, no preview server, missing export script), state plainly: "Final visual QA was not run — <reason>." A blank or fabricated screenshot is not evidence.
 
 For headless / backend / script-only projects: skip this phase; Phase 3 verification (run, log inspection, output format check) is sufficient.

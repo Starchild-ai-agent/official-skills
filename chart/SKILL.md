@@ -117,6 +117,10 @@ Two modes:
 
 The runtime tool is `vision_analyze(image_url=<workspace image path or public URL>, question=<specific QA rubric>)`. It analyzes an existing image only — it does NOT render charts. Export the PNG first, then pass it in.
 
+It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — re-run once, and if it stays unparseable report the gate as not run.
+
+**Resolution matters.** Tick labels and legend text are exactly what a small PNG loses first. Export `screenshot.png` at 1280px wide or more before review; a thumbnail can only answer coarse questions (empty panel, unreadable palette, collapsed axes).
+
 After `screenshot.png` exists in the project folder:
 
 1. **Run vision review.** Call `vision_analyze(image_url=<absolute path to screenshot.png>, question=<rubric>)`. The rubric must target, at minimum:
@@ -124,7 +128,7 @@ After `screenshot.png` exists in the project folder:
    - **Legend** — present when needed, distinguishable from series colors, not occluding data.
    - **Color contrast & scale** — series colors distinguishable (including common color-vision deficiencies), zero/gridline visibility, axis scale (linear vs log) appropriate for the data, no misleading truncation.
    - **Data-story clarity** — title states the takeaway, axis units labeled, anomalies/callouts visible, no dead pixels or empty panels.
-2. **Triage & fix.** Mark findings Critical / Major / Minor. Fix every Critical and Major (template choice, series options, axis min/max, label formatter, padding, color token). Re-export `screenshot.png` and re-run `vision_analyze` until no Critical or Major findings remain.
+2. **Triage & fix.** Fix every Critical and Major finding (template choice, series options, axis min/max, label formatter, padding, color token). Re-export `screenshot.png` and re-run `vision_analyze` until `blocking` is `false`. **Cap the loop at 2 re-review rounds** — if Critical/Major findings survive round 2, ship with the remaining findings listed verbatim to the user instead of looping further.
 3. **Honest reporting.** If Playwright is unavailable, the chart fails to render, or `screenshot_chart()` errors, state plainly: "Final visual QA was not run — <reason>." Do not declare the chart done based on HTML alone.
 
 Skip this gate only for purely textual / non-visual output (e.g. CSV export with no rendered chart). Multi-panel pages must review each panel and the overall layout together.

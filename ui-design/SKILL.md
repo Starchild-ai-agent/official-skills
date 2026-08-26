@@ -116,6 +116,10 @@ When taste-skill updates, re-check the GitHub source directly and apply needed c
 
 The runtime tool is `vision_analyze(image_url=<workspace image path or public URL>, question=<specific QA rubric>)`. It analyzes an existing image only — it does NOT render webpages or documents. Capture the screenshots yourself first, then pass them in.
 
+It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — treat that pass as inconclusive and re-run once; if it stays unparseable, report the gate as not run.
+
+**Resolution matters.** The reviewer only sees the PNG you hand it. Below ~1000px wide it reliably catches coarse defects (collapsed layout, broken grid, color/contrast disasters, blank regions) but NOT small-text, alignment, or overflow detail. Capture desktop screenshots at 1280px wide or more so typography issues are actually visible; do not ask a 640px thumbnail about font sizes.
+
 After Steps 1–5 pass and the preview is healthy:
 
 1. **Capture screenshots.** Produce representative screenshots of the final preview: desktop width (1280–1440px) and a mobile breakpoint (~390px). Cover each major view (above-the-fold, primary flow, any state-heavy page). Save under the project as `qa/desktop-<view>.png`, `qa/mobile-<view>.png` (or the existing screenshot path).
@@ -125,7 +129,7 @@ After Steps 1–5 pass and the preview is healthy:
    - **Contrast & readability** — text/background ratio, body font size, line-height, link distinguishability.
    - **State coverage** — loading, empty, error, hover/focus affordances look intentional (not broken).
    - **Brief fidelity** — does the rendered output match the brief and taste Design Dials (accent, surface, typography, density)?
-3. **Triage & fix.** Mark findings Critical / Major / Minor. Fix every Critical and Major; Minors are optional. After each fix, re-render and re-run `vision_analyze` on the affected screenshot(s) until the new pass returns no Critical or Major findings.
+3. **Triage & fix.** Fix every Critical and Major finding; Minors are optional. After each fix, re-render and re-run `vision_analyze` on the affected screenshot(s) until `blocking` is `false`. **Cap the loop at 2 re-review rounds.** If Critical/Major findings survive round 2, stop looping — deliver with the remaining findings listed verbatim to the user (issue + evidence + why you did not fix it). Re-running a wobbling reviewer indefinitely burns cost without converging.
 4. **Honest reporting.** If screenshot rendering is unavailable in the current environment (no Playwright/headless browser, preview not serving, etc.), state plainly: "Final visual QA was not run — screenshots could not be captured in this environment." Do not claim the visual gate passed when no screenshot was actually reviewed.
 
 The QA is the gate, not a suggestion. The task is not complete until vision review passes on representative screenshots or the absence is documented.

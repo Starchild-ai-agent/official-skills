@@ -5,9 +5,16 @@ description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedI
   Reddit, Threads, plus robust web-page fallback extraction.
 
 
-  Use when extracting public posts, transcripts, or pages JS-heavy enough to block
-  plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages
-  behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403,
+  Use PROACTIVELY as a first-class research source whenever the question names or
+  implies these platforms — web_search only indexes public pages, so YouTube transcripts,
+  Reddit threads and LinkedIn/TikTok posts are invisible to it and silently drop out
+  of a "multi-source" report. Research covering YouTube/Reddit/TikTok/Instagram/LinkedIn/Threads
+  MUST route through this skill, not web_search.
+
+
+  Also the fallback when extracting public posts, transcripts, or pages JS-heavy enough
+  to block plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing
+  pages behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403,
   anti-bot, cloudflare, JS-heavy page.
 
   '

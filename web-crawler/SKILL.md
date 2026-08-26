@@ -1,14 +1,14 @@
 ---
 name: web-crawler
 version: 2.7.0
-description: 'Research source for YouTube/Reddit/TikTok/LinkedIn — web_search cannot
+description: 'Scrape YouTube/Reddit/TikTok/Instagram/LinkedIn/Threads — web_search cannot
   see these.
 
 
-  Also covers Instagram, Threads and robust web-page fallback extraction. Use PROACTIVELY
-  whenever a question names or implies these platforms: web_search only indexes public
-  pages, so YouTube transcripts, Reddit threads and LinkedIn/TikTok posts are invisible
-  to it and silently drop out of a "multi-source" report.
+  A first-class research source for these platforms, not only a recovery path. Use PROACTIVELY
+  whenever a question names or implies them: web_search only indexes public pages, so
+  transcripts, threads and posts are invisible to it and silently drop out of a "multi-source"
+  report.
 
 
   Also the fallback when extracting public posts, transcripts, or pages JS-heavy enough

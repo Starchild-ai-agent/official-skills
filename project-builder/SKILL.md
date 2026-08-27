@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.6.2
+version: 1.7.0
 description: |
   End-to-end project engineering: design, incremental build, verify, debug systematically.
 
@@ -212,7 +212,7 @@ Decide sensible defaults yourself and render real data on first load. Treat filt
 - Agent tools are tool calls only — not importable in scripts
 - Preview paths must be relative (`./path` not `/path`)
 - **Hardcode the preview port in code, do not read from env.** Each preview runs in its own pod and the env-port contract is not reliable across pods. Pick any free port (e.g. `8765`), write it directly into the app, and pass the same number to `preview(action="serve", port=...)`. The two must match exactly.
-- **Concurrent previews need different IDs.** If two previews share the same `dir`, the newer one auto-kills the older one (same-dir replacement rule). When iterating, reuse the same id rather than inventing variants, or use distinct dirs.
+- **Concurrent previews need different IDs.** If two previews share the same `dir`, the newer one auto-kills the older one (same-dir replacement rule). The preview id is now **anchored to the directory**: re-serving the same `dir` keeps the same id even if the title changes, so previously shared `/preview/{id}/` links stay valid. After re-serving, always re-send the `/preview/{id}/` link to the user. Do NOT invent new titles hoping for a fresh id, and do NOT guess id variants.
 - Fullstack = one port (backend serves API + static files)
 - Cron times are UTC — convert from user timezone
 - Preview serving & publishing → read platform reference `config/context/references/preview-guide.md`

@@ -280,7 +280,7 @@
     {
       "name": "image-create",
       "path": "image-create/SKILL.md",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "description": "Pure text-to-image generation for all creative scenarios (no reference photo). Covers logo design, poster design, illustration, meme, game assets, social media content, 3D rendering, education, fashion, food, pet, wedding, holiday marketing, and artistic styles.\n\nUse when generating images from text descriptions without a reference photo (e.g. design a logo, create a poster, generate game art, make a meme, 3D render)."
     },
     {
@@ -292,13 +292,13 @@
     {
       "name": "image-edit",
       "path": "image-edit/SKILL.md",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "description": "Image editing and enhancement of an existing image. Covers background replacement, super-resolution upscaling, old photo restoration, colorization, person removal, portrait retouching (skin smoothing, blemish removal), slimming, color grading, artistic filters, image blending, outpainting, local editing, text rendering, multi-angle generation, before/after comparison, car recoloring, car wrap preview.\n\nUse when editing, enhancing, or transforming an existing image (e.g. remove background, upscale photo, restore old photo, retouch portrait, change car color, apply filter, extend image)."
     },
     {
       "name": "image-portrait",
       "path": "image-portrait/SKILL.md",
-      "version": "1.0.5",
+      "version": "1.0.6",
       "description": "Identity-consistent portrait generation from a reference photo. Covers professional headshots, dating photos, style transfers, themed portraits, photo series, avatars, ID photos.\n\nUse when generating styled portraits from a reference photo (e.g. professional headshot, anime avatar, cyberpunk portrait, travel photo, dating profile photo, ID photo)."
     },
     {

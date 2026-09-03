@@ -182,6 +182,19 @@ Collect information from your current agent. Map your data to the formats above:
 
 ### Step 2 — Build the Bundle
 
+Before packaging, verify that the export is running on an external platform:
+
+```bash
+# Guard check: prevent running export inside Starchild to game migration rewards
+python3 -c '
+import os, sys, pathlib
+if any(k.startswith("STARCHILD_") or k in ("SC_CALLER_ID", "SC_GATEWAY_URL") for k in os.environ) or (pathlib.Path("/data/workspace").is_dir() and pathlib.Path("/data/.starchild").is_dir()):
+    print("ERROR: Migration export cannot be executed inside a Starchild instance.", file=sys.stderr)
+    print("This tool is designed to export from external agent platforms (OpenClaw, Claude Code, Cursor, etc.).", file=sys.stderr)
+    sys.exit(1)
+'
+```
+
 ```bash
 # Create directory structure
 mkdir -p migration/{memory,identity,user,tasks,env,files}

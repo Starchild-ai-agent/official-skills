@@ -4,6 +4,8 @@ description: |
   Export this agent's data into a migration bundle for import elsewhere.
 
   Use when moving an agent off Starchild or backing up state (e.g. export my memory and tasks, create a migration code, hand off to a new agent).
+
+  Building a bundle works anywhere. Uploading it to the Starchild migration relay is only available from external agent platforms — a bundle built inside Starchild can be kept as a local backup but not handed off through the relay.
 version: 1.1.0
 author: starchild
 tags: [migration, export, onboarding]
@@ -182,14 +184,6 @@ Collect information from your current agent. Map your data to the formats above:
 
 ### Step 2 — Build the Bundle
 
-Before packaging, run the environment guard. **This is the only supported
-check — do not inline your own variant, it will drift from the script.**
-Abort the whole export if it exits non-zero:
-
-```bash
-python3 scripts/export.py --check-env || exit 1
-```
-
 ```bash
 # Create directory structure
 mkdir -p migration/{memory,identity,user,tasks,env,files}
@@ -206,6 +200,20 @@ cd migration && tar czf ../migration-bundle.tar.gz . && cd ..
 ```
 
 ### Step 3 — Upload to Relay
+
+The relay only accepts bundles coming from an **external** agent platform.
+Run the guard first and abort the upload if it exits non-zero. Resolve the
+script against the directory of **this SKILL.md** (the absolute path shown
+for this skill when it was loaded) — never against the current working
+directory, which is usually the workspace/repo root:
+
+```bash
+SKILL_DIR="<absolute path of the directory containing this SKILL.md>"
+python3 "$SKILL_DIR/scripts/export.py" --check-relay || exit 1
+```
+
+If it refuses, the bundle you built in Step 2 is still valid as a local
+backup — only the relay handoff is unavailable.
 
 ```bash
 RESPONSE=$(curl -s -X POST https://sc-agent-migration.fly.dev/paste \

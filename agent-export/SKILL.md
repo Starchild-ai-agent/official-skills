@@ -4,7 +4,7 @@ description: |
   Export this agent's data into a migration bundle for import elsewhere.
 
   Use when moving an agent off Starchild or backing up state (e.g. export my memory and tasks, create a migration code, hand off to a new agent).
-version: 1.0.1
+version: 1.1.0
 author: starchild
 tags: [migration, export, onboarding]
 

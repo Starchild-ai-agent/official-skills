@@ -36,6 +36,12 @@ def is_running_inside_starchild() -> bool:
 
 
 def main():
+    # `--check-env` is the documented entry point used by SKILL.md. Any other
+    # argument set is rejected so the guard can never be silently skipped.
+    if sys.argv[1:] not in ([], ["--check-env"]):
+        print(f"usage: {sys.argv[0]} [--check-env]", file=sys.stderr)
+        sys.exit(2)
+
     if is_running_inside_starchild():
         print(
             "ERROR: Migration export cannot be executed inside a Starchild instance.\n"

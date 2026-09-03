@@ -47,7 +47,7 @@
       "name": "agent-export",
       "path": "agent-export/SKILL.md",
       "version": "1.1.0",
-      "description": "Export this agent's data into a migration bundle for import elsewhere.\n\nUse when moving an agent off Starchild or backing up state (e.g. export my memory and tasks, create a migration code, hand off to a new agent)."
+      "description": "Export this agent's data into a migration bundle for import elsewhere.\n\nUse when moving an agent off Starchild or backing up state (e.g. export my memory and tasks, create a migration code, hand off to a new agent).\n\nBuilding a bundle works anywhere. Uploading it to the Starchild migration relay is only available from external agent platforms — a bundle built inside Starchild can be kept as a local backup but not handed off through the relay."
     },
     {
       "name": "agent-hooks",

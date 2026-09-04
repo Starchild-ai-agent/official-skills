@@ -241,7 +241,12 @@ Fork the **[DEX Template](https://github.com/OrderlyNetwork/dex-template)** to g
 1. Fork the repository `OrderlyNetwork/dex-template` to your GitHub account (or user's GitHub via Composio/gh)
 2. Configure `.env` with your broker ID (`VITE_ORDERLY_BROKER_ID`) and name (`VITE_ORDERLY_BROKER_NAME`)
 3. Customize your theme in `app/styles/theme.css` with **orderly-sdk-theming** (pure CSS custom properties, no build step needed)
-4. Enable GitHub Pages (`build_type="workflow"`) — GitHub Actions builds in CI (7GB runner) and publishes to `https://<user>.github.io/<repo>/`
+4. Complete the required **one-time GitHub settings** after forking (see template README / AGENTS.md):
+   - **Enable Actions**: `gh api repos/$REPO/actions/permissions -X PUT -f enabled=true -f allowed_actions=all`
+   - **Grant workflow write permissions**: `gh api repos/$REPO/actions/permissions/workflow -X PUT -f default_workflow_permissions=write -F can_approve_pull_request_reviews=true`
+   - **Enable GitHub Pages with Actions**: `gh api repos/$REPO/pages -X POST -f build_type=workflow`
+   *(Without these permissions, GitHub Actions will not run and auto-deployment will fail.)*
+5. Push to `main` — GitHub Actions builds via GitHub-hosted runner and publishes to `https://<user>.github.io/<repo>/`
 
 This template uses the **components SDK** — pre-built page components that work out of the box with less customization. For full control over individual components, use the MCP server and load SDK skills (especially **orderly-sdk-react-hooks** and **orderly-sdk-ui-components**) for hooks-level development.
 

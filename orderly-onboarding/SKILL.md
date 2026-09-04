@@ -252,20 +252,22 @@ This template uses the **components SDK** — pre-built page components that wor
 
 **Core SDK Packages:**
 
+> **Package Manager**: Prefer `pnpm add` (or `yarn add`) over `npm install` — `pnpm` uses ~⅓ the peak memory during dependency resolution, avoiding memory pressure in resource-constrained container environments.
+
 ```bash
-# Full DEX setup
-npm install @orderly.network/react-app \
-            @orderly.network/trading \
-            @orderly.network/portfolio \
-            @orderly.network/markets \
-            @orderly.network/wallet-connector \
-            @orderly.network/i18n
+# Full DEX setup (prefer pnpm)
+pnpm add @orderly.network/react-app \
+         @orderly.network/trading \
+         @orderly.network/portfolio \
+         @orderly.network/markets \
+         @orderly.network/wallet-connector \
+         @orderly.network/i18n
 
 # Required: EVM wallet support
-npm install @web3-onboard/injected-wallets @web3-onboard/walletconnect
+pnpm add @web3-onboard/injected-wallets @web3-onboard/walletconnect
 
 # Required: Solana wallet support
-npm install @solana/wallet-adapter-base @solana/wallet-adapter-wallets
+pnpm add @solana/wallet-adapter-base @solana/wallet-adapter-wallets
 ```
 
 **Key Components Available:**

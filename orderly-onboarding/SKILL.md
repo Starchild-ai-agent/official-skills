@@ -230,14 +230,18 @@ npx skills add OrderlyNetwork/skills --all --agent claude-code -g
 
 Build custom trading interfaces using Orderly's React SDK v2.
 
-### Fastest Way to Get Started
+### Fastest Way to Get Started (Default for DEX Creation)
 
 Fork the **[DEX Template](https://github.com/OrderlyNetwork/dex-template)** to get a working DEX in minutes.
 
-1. Fork the repository to your GitHub account
-2. Configure `.env` with your broker ID and name
-3. Customize your theme with **orderly-sdk-theming** (CSS variables and color tokens)
-4. Deploy to your preferred hosting platform
+> ⚠️ **CRITICAL FOR AGENTS — NEVER try to build a DEX by installing `@orderly.network/cli`**:
+> - `@orderly.network/cli` is a terminal trading tool for placing perp orders, NOT a DEX builder or scaffolding CLI. Installing it pulls `keytar` (native C++ build via `node-gyp`), which will OOM-kill (SIGKILL / 137) 1GB sandboxes.
+> - **Zero-install DEX deployment**: The official DEX template requires NO heavy installs on the agent box. Fork `OrderlyNetwork/dex-template` to the user's GitHub, configure `.env`, and let GitHub Actions build and deploy it directly to GitHub Pages for free (or deploy to Vercel/Netlify).
+
+1. Fork the repository `OrderlyNetwork/dex-template` to your GitHub account (or user's GitHub via Composio/gh)
+2. Configure `.env` with your broker ID (`VITE_ORDERLY_BROKER_ID`) and name (`VITE_ORDERLY_BROKER_NAME`)
+3. Customize your theme in `app/styles/theme.css` with **orderly-sdk-theming** (pure CSS custom properties, no build step needed)
+4. Enable GitHub Pages (`build_type="workflow"`) — GitHub Actions builds in CI (7GB runner) and publishes to `https://<user>.github.io/<repo>/`
 
 This template uses the **components SDK** — pre-built page components that work out of the box with less customization. For full control over individual components, use the MCP server and load SDK skills (especially **orderly-sdk-react-hooks** and **orderly-sdk-ui-components**) for hooks-level development.
 
@@ -332,11 +336,13 @@ Examples: `PERP_ETH_USDC`, `PERP_BTC_USDC`, `PERP_SOL_USDC`
 - **orderly-positions-tpsl** - Position management
 - **orderly-websocket-streaming** - Real-time data
 
-## Orderly CLI
+## Orderly CLI (Terminal Trading Only — NOT for DEX Building)
 
-A terminal trading tool (`@orderly.network/cli`) wrapping the full Orderly REST API. **AI-safe**: keys in OS keychain, signing internal, agents only see results. `orderly --help` covers everything.
+A terminal trading tool (`@orderly.network/cli`) wrapping the Orderly REST API for CLI-based trading.
 
-**Install & Quick Start (Testnet):**
+> ⚠️ **Memory Warning**: Do NOT install `@orderly.network/cli` in resource-constrained environments (≤1GB RAM). It depends on `keytar` which triggers native C++ compilation (`node-gyp`) and will OOM-kill the container. For trading or onboarding via agent, prefer Orderly REST API or the hosted MCP server (`https://mcp.orderly.network`).
+
+**Install & Quick Start (Testnet, local machines with >2GB RAM only):**
 
 ```bash
 npm install -g @orderly.network/cli

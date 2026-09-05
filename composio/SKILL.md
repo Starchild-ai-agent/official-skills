@@ -1,6 +1,6 @@
 ---
 name: composio
-version: 1.3.1
+version: 1.4.0
 description: |
   Composio gateway: act on 1000+ connected apps like Gmail, Slack, GitHub, Calendar.
 
@@ -161,21 +161,24 @@ is **not** connected yet.
 **Do not** trigger for pure Q&A / explanations ("what is Gmail?", "how does Calendar work?").
 
 1. **Do not** narrate connection checks, empty lists, OAuth mechanics, or ask "want me to connect?".
-2. Immediately initiate connect for the **one primary** toolkit the ask needs (not a bundle of "related" apps):
+2. On **Web** (active SSE session): call the built-in tool for the **one primary** toolkit:
+   ```
+   frontend_action(action_type="composio_connect", toolkit="gmail")
+   ```
+   Optional: `display_name="Gmail"`, `title=...`, `description=...`.
+   Use the correct lowercase toolkit slug. **Do not** paste `connect_url` markdown links —
+   the frontend renders a Connect card from the action_request.
+3. Visible reply: **one short line** about what you will do after they connect (no emoji chrome, no authorize URLs).
+4. **Stop and wait** for the user to finish OAuth / Done, then continue the original task.
+5. Never send the user to dig through the Connections page first.
+6. **Fallback** (no SSE / non-Web channel, or `frontend_action` fails): 
    ```bash
    curl -s -X POST $GATEWAY/api/connect \
      -H "Content-Type: application/json" \
      -d '{"toolkit": "gmail"}'
    ```
-   Use the correct lowercase toolkit slug.
-3. Visible reply: **one short line** + the bare `connect_url` as a markdown link, e.g.
-   ```
-   Connect Gmail so I can check your mail: [Connect Gmail](https://connect.composio.dev/link/...)
-   ```
-   On Web the client renders that link as an Authorize card. Do not wrap it in code fences.
-4. **Stop and wait** for the user to finish OAuth, then continue the original task.
-5. Never send the user to dig through the Connections page first when you can emit the connect link yourself.
-6. If `/api/connect` fails, say so in one short line and stop — do not invent alternate setup flows.
+   Then give the bare `connect_url` as plain text (still no markdown card soft-match required).
+   If that also fails, say so in one short line and stop — do not invent alternate setup flows.
 
 ### 6. Disconnect
 

@@ -1,6 +1,6 @@
 ---
 name: composio
-version: 1.2.3
+version: 1.3.1
 description: |
   Composio gateway: act on 1000+ connected apps like Gmail, Slack, GitHub, Calendar.
 
@@ -151,6 +151,31 @@ curl -s -X POST $GATEWAY/api/connect \
 ```
 
 Returns `connect_url` for the user to complete OAuth.
+
+### Zero-friction connect (MANDATORY when acting)
+
+Trigger **only** when the user wants to **perform an action** in an external app
+(send/read mail, create calendar event, open GitHub issue, post, …) and that app
+is **not** connected yet.
+
+**Do not** trigger for pure Q&A / explanations ("what is Gmail?", "how does Calendar work?").
+
+1. **Do not** narrate connection checks, empty lists, OAuth mechanics, or ask "want me to connect?".
+2. Immediately initiate connect for the **one primary** toolkit the ask needs (not a bundle of "related" apps):
+   ```bash
+   curl -s -X POST $GATEWAY/api/connect \
+     -H "Content-Type: application/json" \
+     -d '{"toolkit": "gmail"}'
+   ```
+   Use the correct lowercase toolkit slug.
+3. Visible reply: **one short line** + the bare `connect_url` as a markdown link, e.g.
+   ```
+   Connect Gmail so I can check your mail: [Connect Gmail](https://connect.composio.dev/link/...)
+   ```
+   On Web the client renders that link as an Authorize card. Do not wrap it in code fences.
+4. **Stop and wait** for the user to finish OAuth, then continue the original task.
+5. Never send the user to dig through the Connections page first when you can emit the connect link yourself.
+6. If `/api/connect` fails, say so in one short line and stop — do not invent alternate setup flows.
 
 ### 6. Disconnect
 

@@ -1,6 +1,6 @@
 ---
 name: composio
-version: 1.4.0
+version: 1.4.1
 description: |
   Composio gateway: act on 1000+ connected apps like Gmail, Slack, GitHub, Calendar.
 
@@ -41,6 +41,12 @@ GATEWAY = "http://composio-gateway.flycast"
 ```
 
 All requests use **plain HTTP over Fly internal network** (flycast). No JWT needed.
+
+**CRITICAL — never route the gateway through sc-proxy:**
+- Use **curl** (as in the examples below) or plain `requests` / `http.client` with **no proxy**.
+- Do **not** use `proxied_get` / `proxied_post` for this host (even though PROTOCOL says “always proxied” for external APIs — flycast is the documented exception; `core.http_client` also auto-bypasses `*.flycast`).
+- Do **not** set `HTTP_PROXY` / `HTTPS_PROXY` or `curl -x` toward the gateway.
+- Proxying rewrites the caller identity so the gateway sees the wrong user and connections/execute fail or hit another locker.
 
 ## API Reference
 

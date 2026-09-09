@@ -1,6 +1,6 @@
 ---
 name: slide-creator
-version: 2.1.7
+version: 2.2.1
 description: |
   Build 16:9 slide decks as HTML, exported to PDF (not PowerPoint format).
 
@@ -254,3 +254,27 @@ Only restart art direction if user wants a completely different style.
   .bg-glow { position: absolute; z-index: 0; pointer-events: none; }
   ```
   Failure mode: PDF exports show content pushed to the bottom or invisible, even though browser preview looks fine (browser compositing handles z-order more forgivingly than Chromium's print path).
+
+---
+
+## Final visual QA (mandatory, render → review → fix)
+
+The runtime tool is `vision_analyze(image_url=<workspace image path or public URL>, question=<specific QA rubric>)`. It analyzes an existing image only — it does NOT render slides or PDFs. Render to images first, then pass them in.
+
+It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — re-run once, and if it stays unparseable report the gate as not run.
+
+**Resolution matters, and what counts is the ENCODED width the model receives.** The tool caps the long edge at 1600px and reports `input.resolution_warning` when width fell to the 900px floor. Tiny-text and overflow defects vanish in a small PNG. Render individual slides at 1280px wide or more (2× scale on a 16:9 page is enough) and review them one at a time. A multi-slide montage is a coarse consistency check only — it is exactly the tall-image case the long-edge cap punishes, so never ask a montage about font sizes or alignment.
+
+After the PDF exports cleanly:
+
+1. **Render the deck to images.** Convert the PDF to per-slide PNGs (one PNG per slide, e.g. via `pymupdf`'s `Page.get_pixmap()` at 2× scale). Also produce a montage (e.g. all slides tiled into a single grid PNG) for an at-a-glance consistency check.
+2. **Run vision review on both the montage and representative individual slides.** Call `vision_analyze(image_url=<workspace-relative PNG path>, question=<rubric>)` for at least: the cover, a content-dense slide, a chart/data slide, and the final slide. The rubric must target:
+   - **Overflow / clipping** — text or shapes running outside the 16:9 canvas, items cut by the page edge, headers overlapping footers.
+   - **Tiny text** — body copy smaller than ~14px at export scale, footnote/source lines that disappear at typical viewing distance.
+   - **Contrast & readability** — text against backgrounds, accent on dark/light surfaces, low-contrast icons.
+   - **Visual consistency** — same font/weight/size for the same role across slides, consistent margin and safe-area usage, footer alignment.
+   - **State-specific issues** — chart slides show actual data, image slides don't have broken/missing images.
+3. **Triage & fix.** Fix every Critical and Major finding in `styles.css` or slide markup, re-export PDF, re-render PNGs, re-run `vision_analyze`. Repeat until `blocking` is `false`, **capped at 2 re-review rounds** — if Critical/Major findings survive round 2, deliver the deck with the remaining findings listed verbatim to the user rather than looping further.
+4. **Honest reporting.** If Chromium/Playwright is unavailable, PDF rendering fails, or `pymupdf` cannot produce PNGs, state plainly: "Final visual QA was not run — <reason>." Do not claim deck fidelity from HTML preview alone.
+
+The QA is the gate, not a suggestion. The deck is not complete until vision review passes on the montage plus representative slides or the absence is documented.

@@ -1,6 +1,6 @@
 ---
 name: office-document
-version: 1.0.0
+version: 1.1.1
 description: |
   Route editable PDF, DOCX, XLSX, and PPTX creation or modification tasks to the
   appropriate official Hermes document skill. Use when the user asks to create,
@@ -79,3 +79,30 @@ The Hermes `docx` skill uses `python-docx` helpers and package health checks;
 `xlsx` uses `openpyxl`; `powerpoint` uses `python-pptx`; and `pdf` uses
 `pypdf`, `reportlab`, and `pdfplumber`. These implementation details describe
 the official skills and should not be replaced with guessed local commands.
+
+---
+
+## Final visual QA — where layout matters
+
+The runtime tool is `vision_analyze(image_url=<workspace image path or public URL>, question=<specific QA rubric>)`. It analyzes an existing image only — it does NOT render documents.
+
+It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — re-run once, and if it stays unparseable report the gate as not run.
+
+**Resolution matters, and what counts is the ENCODED width the model receives.** The tool caps the long edge at 1600px and reports `input.resolution_warning` when width fell to the 900px floor. Column truncation, header-footer collision, and small-print defects need pixels. Render **one page per image** at 1280px wide or more (≈150 DPI on Letter/A4) — never stitch pages into a single tall strip, and for very long spreadsheet exports slice by row range. Below ~900px encoded width, limit conclusions to coarse questions (blank page, broken layout, missing table) and say so.
+
+Scope rule:
+
+- **Read-only extraction** (text dump, summarization, table-to-CSV) is out of scope for this skill and out of scope for visual QA. No render needed.
+- **Anything that produces a layout the user will see** — DOCX, XLSX, PPTX, PDF — must pass visual QA before delivery.
+
+For a layout-relevant task, after the format-specific Hermes skill has produced its output:
+
+1. **Render representative pages/slides/sheets to PNG.** At minimum: first page, a content-dense page, a table/chart page, last page. For spreadsheets, also render the active sheet at a couple of zoom levels if the sheet is wide. Save under a `qa/` folder in the project so the artifacts are reproducible.
+2. **Run vision review.** Call `vision_analyze(image_url=<workspace-relative PNG path>, question=<rubric>)` with a rubric appropriate to the format:
+   - **DOCX / PDF (flowing layout)** — text overflow / clipping, header-footer collision, page-break placement, image wrapping, table column widths, contrast on watermarks or color blocks.
+   - **PPTX** — slide overflow, tiny text, alignment consistency, image cropping, chart legibility, transition-safe positioning of placeholders.
+   - **XLSX** — header row visibility, frozen panes respected, column widths not truncating data, conditional formatting legible, number formatting consistent, merged cells not hiding content.
+3. **Triage & fix.** Fix every Critical / Major finding in the format-specific skill's source (template, layout code, or content). Re-render the PNG(s) and re-run `vision_analyze` until `blocking` is `false`, **capped at 2 re-review rounds** — if Critical/Major findings survive round 2, deliver with the remaining findings listed verbatim to the user rather than looping further.
+4. **Honest reporting.** If the format-specific skill cannot produce a renderable artifact (missing converter, locked/encrypted input, image-only PDF without OCR), state plainly: "Final visual QA was not run — <reason>." Do not claim fidelity from the binary alone.
+
+Pure OCR pipelines (`ocr-and-documents`) are text-extraction work; visual QA applies to the downstream edited document, not the OCR step itself.

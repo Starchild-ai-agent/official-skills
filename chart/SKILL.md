@@ -1,6 +1,6 @@
 ---
 name: chart
-version: 3.0.2
+version: 3.1.1
 description: |
   Interactive web charts: line, bar, candle, scatter, with HTML and screenshot output.
 
@@ -112,6 +112,26 @@ Important behavior in v3.0.1:
 Two modes:
 1. **User wants web page + image**: click "💾 Save Image" in page toolbar, saves to current project as `screenshot.png`
 2. **User wants image only**: call `screenshot_chart(project_dir)` (Playwright) and send `screenshot.png` directly
+
+### Step 7: Final visual QA (mandatory, render → review → fix)
+
+The runtime tool is `vision_analyze(image_url=<workspace image path or public URL>, question=<specific QA rubric>)`. It analyzes an existing image only — it does NOT render charts. Export the PNG first, then pass it in.
+
+It returns structured `findings` (each with `severity` = critical / major / minor plus `evidence`), a `severity_counts` map, and a `blocking` boolean. **Use `blocking` as the gate signal, not your reading of the prose.** When `structured` is `false` the model did not return parseable findings — re-run once, and if it stays unparseable report the gate as not run.
+
+**Resolution matters, and what counts is the ENCODED width the model receives.** The tool caps the long edge at 1600px and reports `input.resolution_warning` when width fell to the 900px floor. Tick labels and legend text are the first thing a small PNG loses. Export `screenshot.png` at 1280px wide or more; if the chart is unusually tall (long category axis), export it in vertical slices rather than as one tall image. Below ~900px encoded width, limit conclusions to coarse questions (empty panel, unreadable palette, collapsed axes) and say so.
+
+After `screenshot.png` exists in the project folder:
+
+1. **Run vision review.** Call `vision_analyze(image_url=<absolute path to screenshot.png>, question=<rubric>)`. The rubric must target, at minimum:
+   - **Label clipping / overlap** — axis tick labels, data labels, legend entries, title/subtitle not running into chart area or off-canvas.
+   - **Legend** — present when needed, distinguishable from series colors, not occluding data.
+   - **Color contrast & scale** — series colors distinguishable (including common color-vision deficiencies), zero/gridline visibility, axis scale (linear vs log) appropriate for the data, no misleading truncation.
+   - **Data-story clarity** — title states the takeaway, axis units labeled, anomalies/callouts visible, no dead pixels or empty panels.
+2. **Triage & fix.** Fix every Critical and Major finding (template choice, series options, axis min/max, label formatter, padding, color token). Re-export `screenshot.png` and re-run `vision_analyze` until `blocking` is `false`. **Cap the loop at 2 re-review rounds** — if Critical/Major findings survive round 2, ship with the remaining findings listed verbatim to the user instead of looping further.
+3. **Honest reporting.** If Playwright is unavailable, the chart fails to render, or `screenshot_chart()` errors, state plainly: "Final visual QA was not run — <reason>." Do not declare the chart done based on HTML alone.
+
+Skip this gate only for purely textual / non-visual output (e.g. CSV export with no rendered chart). Multi-panel pages must review each panel and the overall layout together.
 
 ## Toolbar Requirements
 

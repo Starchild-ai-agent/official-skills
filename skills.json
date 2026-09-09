@@ -268,50 +268,8 @@
     {
       "name": "image",
       "path": "image/SKILL.md",
-      "version": "2.0.0",
-      "description": "Generate, edit, cut out, and inspect images with the best hosted image models (Nano Banana 2 / Pro, GPT Image 2, Seedream, Bria). Use for ANY image request — create from text, edit or retouch a photo, swap a logo/text, change background, upscale, product shots, portraits, try-on, 3D renders. Replaces image-create / image-edit / image-3d / image-ecommerce / image-portrait / image-tryon / image-bg-remove."
-    },
-    {
-      "name": "image-3d",
-      "path": "image-3d/SKILL.md",
-      "version": "1.1.0",
-      "description": "Deprecated alias → use the `image` skill for generate()/edit() with a 3D-render prompt. Kept for backward compatibility."
-    },
-    {
-      "name": "image-bg-remove",
-      "path": "image-bg-remove/SKILL.md",
-      "version": "1.1.0",
-      "description": "Deprecated alias → use the `image` skill for remove_background(image_path). Kept for backward compatibility."
-    },
-    {
-      "name": "image-create",
-      "path": "image-create/SKILL.md",
-      "version": "1.1.0",
-      "description": "Deprecated alias → use the `image` skill for generate(prompt, ...). Kept for backward compatibility."
-    },
-    {
-      "name": "image-ecommerce",
-      "path": "image-ecommerce/SKILL.md",
-      "version": "1.1.0",
-      "description": "Deprecated alias → use the `image` skill for edit() with the product photo as base. Kept for backward compatibility."
-    },
-    {
-      "name": "image-edit",
-      "path": "image-edit/SKILL.md",
-      "version": "1.1.0",
-      "description": "Deprecated alias → use the `image` skill for edit(prompt, [base, *refs], keep=, mask_path=). Kept for backward compatibility."
-    },
-    {
-      "name": "image-portrait",
-      "path": "image-portrait/SKILL.md",
-      "version": "1.1.0",
-      "description": "Deprecated alias → use the `image` skill for edit() with the reference face as image 1. Kept for backward compatibility."
-    },
-    {
-      "name": "image-tryon",
-      "path": "image-tryon/SKILL.md",
-      "version": "1.1.0",
-      "description": "Deprecated alias → use the `image` skill for edit() with person as image 1, garment as image 2. Kept for backward compatibility."
+      "version": "2.1.0",
+      "description": "Generate, edit, cut out, and inspect images with the best hosted image models (Nano Banana 2 / Pro, GPT Image 2, Seedream, Bria). Use for ANY image request — create from text, edit or retouch a photo, swap a logo/text, change background, upscale, product shots, portraits, try-on, 3D renders. This is THE image skill on Starchild — the former image-create / image-edit / image-3d / image-ecommerce / image-portrait / image-tryon / image-bg-remove skills are retired and folded in here."
     },
     {
       "name": "jupiter",

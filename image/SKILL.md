@@ -1,8 +1,8 @@
 ---
 name: image
-version: 2.0.0
+version: 2.1.0
 description: |
-  Generate, edit, cut out, and inspect images with the best hosted image models (Nano Banana 2 / Pro, GPT Image 2, Seedream, Bria). Use for ANY image request — create from text, edit or retouch a photo, swap a logo/text, change background, upscale, product shots, portraits, try-on, 3D renders. Replaces image-create / image-edit / image-3d / image-ecommerce / image-portrait / image-tryon / image-bg-remove.
+  Generate, edit, cut out, and inspect images with the best hosted image models (Nano Banana 2 / Pro, GPT Image 2, Seedream, Bria). Use for ANY image request — create from text, edit or retouch a photo, swap a logo/text, change background, upscale, product shots, portraits, try-on, 3D renders. This is THE image skill on Starchild — the former image-create / image-edit / image-3d / image-ecommerce / image-portrait / image-tryon / image-bg-remove skills are retired and folded in here.
 metadata:
   starchild:
     emoji: "🎨"
@@ -60,6 +60,10 @@ Unknown model, unsupported parameter, too many references, mask on a model witho
 6. **One automatic retry, then ask.** For multi-step edits open a transaction (`start_transaction(goal, base_path, keep=, logo=..., end_frame=...)`), pass `tx_id=` to each `edit`, mark `auto_fix=True` on your own retries. The budget is one; after that show candidates with a one-line diff each and let the user choose (`approve(tx_id, rev)`). Rejected outputs never become the next base.
 7. **Deterministic ops stay deterministic.** Colour grading, blur, crop, resize, shadow, perspective — PIL/OpenCV, not a paid regeneration. Real upscaling = target pixel size with `resolution`/`image_size`, not the word "upscale" in a prompt.
 8. **Video frames**: a start/end frame pair must be two *approved* revisions. If the video model takes one image, say so instead of hoping.
+
+## Domain know-how
+
+Product shots for Amazon/Xiaohongshu, ID photos, try-on wording, 3D render levers, the 20 old edit actions and where they went — `references/domain-guides.md` (read once when the request is in one of those domains).
 
 ## Recovery & cost
 

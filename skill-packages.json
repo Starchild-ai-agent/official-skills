@@ -52,14 +52,8 @@
       "description_zh": "端到端多媒体内容创作 — 视频生成、AI 图像生成与编辑、人像写真、背景移除、3D 风格、电商产品图、虚拟试穿、演示文稿、交互式图表与数据可视化",
       "description_ko": "엔드투엔드 멀티미디어 콘텐츠 제작 — 비디오 생성, AI 이미지 생성 및 편집, 초상화, 배경 제거, 3D, 이커머스 제품 사진, 가상 피팅, 프레젠테이션 슬라이드, 인터랙티브 차트 및 데이터 시각화",
       "skills": [
+        "image",
         "video",
-        "image-create",
-        "image-edit",
-        "image-portrait",
-        "image-bg-remove",
-        "image-3d",
-        "image-ecommerce",
-        "image-tryon",
         "slide-creator",
         "chart",
         "venice"

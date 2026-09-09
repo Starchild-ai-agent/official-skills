@@ -337,7 +337,7 @@ results, and the installed-skills panel.
   curl -sL "https://across.to/favicon.svg" -o logo.svg
   ```
 - **seeklogo / cdnlogo** — community-hosted SVGs for major brands
-- **Generate one** — as a last resort, use the `image-create` skill to make a
+- **Generate one** — as a last resort, use the `image` skill to make a
   256×256 icon that matches the skill's domain
 
 ### 6.3 Verify

@@ -1,6 +1,6 @@
 ---
 name: image-3d
-version: 1.0.4
+version: 1.1.0
 description: |
   Deprecated alias → use the `image` skill for 3D-style renders. Kept for backward compatibility; new work should call `skills/image`.
 metadata:

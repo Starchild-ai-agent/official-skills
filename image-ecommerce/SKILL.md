@@ -1,6 +1,6 @@
 ---
 name: image-ecommerce
-version: 1.0.4
+version: 1.1.0
 description: |
   Deprecated alias → use the `image` skill for product photography. Kept for backward compatibility; new work should call `skills/image`.
 metadata:

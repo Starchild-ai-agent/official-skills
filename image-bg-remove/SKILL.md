@@ -1,6 +1,6 @@
 ---
 name: image-bg-remove
-version: 1.0.3
+version: 1.1.0
 description: |
   Deprecated alias → use the `image` skill for background removal. Kept for backward compatibility; new work should call `skills/image`.
 metadata:

@@ -1,6 +1,6 @@
 ---
 name: image-tryon
-version: 1.0.3
+version: 1.1.0
 description: |
   Deprecated alias → use the `image` skill for virtual try-on. Kept for backward compatibility; new work should call `skills/image`.
 metadata:

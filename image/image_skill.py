@@ -118,15 +118,12 @@ def edit(prompt: str, image_paths: Optional[List[str]] = None, image_urls: Optio
 
     ctx = None
     if tx_id:
-        # Reserve budget + capture submit-time parent under lock. No snapshot is
-        # held across the paid call, so a user approve/reject meanwhile survives.
-        try:
-            ctx = tx.reserve(tx_id, auto_fix=auto_fix)
-        except ValueError as e:
-            return {"success": False, "tx_id": tx_id, "error": str(e)}
+        # Read-only peek: default base + keep for validation. The budget is NOT
+        # touched here — local validation must pass first (see reserve() below).
+        peek = tx.load(tx_id)
         if not image_paths and not image_urls:
-            image_paths = [ctx["base"]]
-        keep = keep or ctx["keep"]
+            image_paths = [tx.current_base(peek)]
+        keep = keep or peek.get("keep")
 
     refs = _resolve_many(image_paths, image_urls)
     if not refs:
@@ -148,6 +145,18 @@ def edit(prompt: str, image_paths: Optional[List[str]] = None, image_urls: Optio
         if err:
             raise ValueError(f"mask: {err}")
         body["mask_url"] = mv
+
+    if tx_id:
+        # All local validation passed → atomically reserve the auto-fix budget and
+        # capture the submit-time parent. reserve() re-reads the latest state, so if
+        # the approved base moved since the peek, the default base follows it.
+        try:
+            ctx = tx.reserve(tx_id, auto_fix=auto_fix)
+        except ValueError as e:
+            return {"success": False, "tx_id": tx_id, "error": str(e)}
+        if image_paths == [tx.current_base(peek)] and ctx["base"] != image_paths[0]:
+            image_paths = [ctx["base"]]
+            body["image_urls"][0] = _resolve_many(image_paths, None)[0]
 
     res = client.run_job(m["edit_id"], body, tool=TOOL, label=f"edit_{alias}",
                          timeout_s=m["timeout_s"], poll_s=m["poll_s"], fmt=_fmt(clean))

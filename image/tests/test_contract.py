@@ -160,3 +160,18 @@ def test_qa_verdict_is_strict():
                 'looks fine to me']:
         v, e = s._parse_verdict(bad)
         assert v is None and e, bad
+
+
+def test_validation_failure_does_not_consume_auto_fix(tmp_path, monkeypatch):
+    """P2: bad params must fail BEFORE the budget is reserved."""
+    import image_skill as s, client
+    calls = []
+    monkeypatch.setattr(client, "run_job", lambda e, b, **k: calls.append(1) or {"success": True, "job_id": "j",
+                        "images": [{"local_path": _png(tmp_path, "o.png")}], "cost_usd": 0.1})
+    tid = s.start_transaction("g", _png(tmp_path, "base.png"))["tx_id"]
+    for bad in (dict(quality="high"), dict(mask_path=_png(tmp_path, "m.png")), dict(resolution="8K")):
+        with pytest.raises(ValueError):
+            s.edit("x", tx_id=tid, auto_fix=True, model="nanopro", **bad)
+    assert s.transaction(tid)["auto_fix_used"] == "0/1" and calls == []
+    r = s.edit("x", tx_id=tid, auto_fix=True, model="nanopro", resolution="2K")   # corrected call still allowed
+    assert r["success"] and r["auto_fix_left"] == 0 and len(calls) == 1

@@ -116,17 +116,17 @@ def edit(prompt: str, image_paths: Optional[List[str]] = None, image_urls: Optio
         raise ValueError(f"'{alias}' cannot edit images; models with edit: "
                          f"{', '.join(a for a, e in cat['models'].items() if e.get('edit_id'))}")
 
-    t = None
+    ctx = None
     if tx_id:
-        t = tx.load(tx_id)
-        if auto_fix:
-            if not tx.can_auto_fix(t):
-                return {"success": False, "tx_id": tx_id,
-                        "error": (f"auto-fix budget exhausted ({t['auto_fix']}/{tx.MAX_AUTO_FIX}). "
-                                  "Show the candidates to the user and let them choose or give new instructions.")}
+        # Reserve budget + capture submit-time parent under lock. No snapshot is
+        # held across the paid call, so a user approve/reject meanwhile survives.
+        try:
+            ctx = tx.reserve(tx_id, auto_fix=auto_fix)
+        except ValueError as e:
+            return {"success": False, "tx_id": tx_id, "error": str(e)}
         if not image_paths and not image_urls:
-            image_paths = [tx.current_base(t)]
-        keep = keep or t.get("keep")
+            image_paths = [ctx["base"]]
+        keep = keep or ctx["keep"]
 
     refs = _resolve_many(image_paths, image_urls)
     if not refs:
@@ -149,19 +149,17 @@ def edit(prompt: str, image_paths: Optional[List[str]] = None, image_urls: Optio
             raise ValueError(f"mask: {err}")
         body["mask_url"] = mv
 
-    if t is not None and auto_fix:
-        tx.consume_auto_fix(t)
-
     res = client.run_job(m["edit_id"], body, tool=TOOL, label=f"edit_{alias}",
                          timeout_s=m["timeout_s"], poll_s=m["poll_s"], fmt=_fmt(clean))
     res.update({"model": alias, "prompt": body["prompt"], "params": clean,
                 "inputs": len(refs), "mask": bool(mask_path)})
     if image_paths:
         res["source_dims"] = client.image_dims(image_paths[0])
-    if t is not None:
-        rev = tx.record(t, model=alias, endpoint=m["edit_id"], prompt=body["prompt"], params=clean, result=res)
-        res["tx_id"], res["rev"] = t["tx_id"], rev["rev"]
-        res["auto_fix_left"] = tx.MAX_AUTO_FIX - t["auto_fix"]
+    if ctx is not None:
+        rev = tx.record(tx_id, parent=ctx["parent"], model=alias, endpoint=m["edit_id"],
+                        prompt=body["prompt"], params=clean, result=res)
+        res["tx_id"], res["rev"], res["parent"] = tx_id, rev["rev"], ctx["parent"]
+        res["auto_fix_left"] = ctx["auto_fix_left"]
     return res
 
 
@@ -223,6 +221,33 @@ _MODE_HINTS = {
            "\"confidence\": 0-1}. An intermediate step is judged by its own stated goal, not by "
            "final-deliverable standards."),
 }
+
+
+def _parse_verdict(answer: str):
+    """Strict qa parser → (verdict, None) or (None, reason). Valid only if `pass` is a
+    real bool, `issues` is a list of {what, where, severity in major|minor} and pass is
+    consistent with issues (pass=true + major issue, or pass=false + no issue → invalid)."""
+    try:
+        v = json.loads(answer[answer.index("{"): answer.rindex("}") + 1])
+    except (ValueError, json.JSONDecodeError):
+        return None, "no JSON object in answer"
+    if not isinstance(v, dict) or not isinstance(v.get("pass"), bool):
+        return None, "'pass' missing or not a boolean"
+    issues = v.get("issues", [])
+    if not isinstance(issues, list):
+        return None, "'issues' is not a list"
+    for i in issues:
+        if not (isinstance(i, dict) and isinstance(i.get("what"), str)
+                and isinstance(i.get("where"), str) and i.get("severity") in ("major", "minor")):
+            return None, f"malformed issue entry: {i!r}"
+    if v["pass"] and any(i["severity"] == "major" for i in issues):
+        return None, "pass=true but major issues reported"
+    if not v["pass"] and not issues:
+        return None, "pass=false without any issue"
+    conf = v.get("confidence")
+    if conf is not None and not (isinstance(conf, (int, float)) and 0 <= conf <= 1):
+        return None, "'confidence' outside [0,1]"
+    return {"pass": v["pass"], "issues": issues, "confidence": conf}, None
 
 
 def _vision_chain(cat: Dict[str, Any]) -> List[str]:
@@ -289,11 +314,8 @@ def inspect(images: List[str] | str, question: str, mode: str = "inspect",
         out: Dict[str, Any] = {"success": True, "mode": mode, "model": cand, "answer": answer,
                                "cost_usd": float(r.headers.get("X-Credits-Used", 0) or 0)}
         if mode == "qa":
-            try:
-                s = answer[answer.index("{"): answer.rindex("}") + 1]
-                out["verdict"] = json.loads(s)
-            except (ValueError, json.JSONDecodeError):
-                out["verdict"] = None
+            out["verdict"], out["verdict_error"] = _parse_verdict(answer)
+            out["undeterminable"] = out["verdict"] is None   # never treat as pass
         return out
     return {"success": False, "error": "all vision models failed: " + "; ".join(attempts)}
 

@@ -93,3 +93,70 @@ def test_inspect_mode_validation(tmp_path):
     import image_skill as s
     with pytest.raises(ValueError, match="mode"): s.inspect(_png(tmp_path), "q", mode="judge")
     with pytest.raises(ValueError, match="at least one"): s.inspect([], "q")
+
+
+def test_approve_during_inflight_edit_is_not_overwritten(tmp_path, monkeypatch):
+    """P1: user approves rev 1 while rev 2 is rendering → approval must survive."""
+    import image_skill as s, client
+    base = _png(tmp_path, "base.png")
+    tid = s.start_transaction("g", base)["tx_id"]
+    monkeypatch.setattr(client, "run_job", lambda e, b, **k: {"success": True, "job_id": "j",
+                        "images": [{"local_path": _png(tmp_path, "r1.png")}], "cost_usd": 0.1})
+    s.edit("rev1", tx_id=tid)
+    def slow_job(e, b, **k):
+        s.approve(tid, 1)   # user acts while the model is running
+        return {"success": True, "job_id": "j2", "images": [{"local_path": _png(tmp_path, "r2.png")}], "cost_usd": 0.1}
+    monkeypatch.setattr(client, "run_job", slow_job)
+    r2 = s.edit("rev2", tx_id=tid)
+    st = s.transaction(tid)
+    assert st["approved_rev"] == 1 and st["current_base"].endswith("r1.png")
+    assert r2["parent"] == 0   # parent = approved at submit time
+    assert [r["status"] for r in st["revisions"]] == ["approved", "candidate"]
+
+
+def test_reject_approved_rev_rolls_base_back(tmp_path, monkeypatch):
+    """P1: rejecting the approved revision must never leave it as the next base."""
+    import image_skill as s, client
+    base = _png(tmp_path, "base.png")
+    tid = s.start_transaction("g", base)["tx_id"]
+    for n in (1, 2):
+        monkeypatch.setattr(client, "run_job", lambda e, b, n=n, **k: {"success": True, "job_id": "j",
+                            "images": [{"local_path": _png(tmp_path, f"r{n}.png")}], "cost_usd": 0.1})
+        s.edit(f"rev{n}", tx_id=tid)
+        s.approve(tid, n)   # rev2.parent == 1
+    assert s.transaction(tid)["current_base"].endswith("r2.png")
+    s.reject(tid, 2, "worse")
+    st = s.transaction(tid)
+    assert st["approved_rev"] == 1 and st["current_base"].endswith("r1.png")
+    s.reject(tid, 1)
+    st = s.transaction(tid)
+    assert st["approved_rev"] == 0 and st["current_base"] == base
+    r3 = s.edit("rev3", tx_id=tid)   # next edit starts from original, not a rejected image
+    assert r3["parent"] == 0
+
+
+def test_budget_reserved_before_paid_call_and_released_never(tmp_path, monkeypatch):
+    import image_skill as s, client
+    base = _png(tmp_path, "base.png")
+    tid = s.start_transaction("g", base)["tx_id"]
+    calls = []
+    monkeypatch.setattr(client, "run_job", lambda e, b, **k: calls.append(1) or {"success": False, "job_id": "j", "error": "boom"})
+    r = s.edit("x", tx_id=tid, auto_fix=True)
+    assert r["success"] is False and r["auto_fix_left"] == 0 and len(calls) == 1
+    r = s.edit("x", tx_id=tid, auto_fix=True)
+    assert "budget exhausted" in r["error"] and len(calls) == 1   # refused before charge
+    assert s.transaction(tid)["revisions"][0]["status"] == "failed"
+
+
+def test_qa_verdict_is_strict():
+    import image_skill as s
+    ok, err = s._parse_verdict('{"pass": true, "issues": [], "confidence": 0.9}')
+    assert ok["pass"] is True and err is None
+    for bad in ['{"pass": "false", "issues": []}',
+                '{"pass": true, "issues": [{"what":"x","where":"y","severity":"major"}]}',
+                '{"pass": false, "issues": []}',
+                '{"pass": true, "issues": [{"what":"x"}]}',
+                '{"pass": true, "issues": [], "confidence": 3}',
+                'looks fine to me']:
+        v, e = s._parse_verdict(bad)
+        assert v is None and e, bad

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Starchild · GPT-Live 语音 Demo</title>
+<style>
+:root{--bg:#0b1512;--panel:#101d19;--line:#1d332c;--tx:#d7e8e1;--dim:#6b8a80;--acc:#4ade80;--err:#f87171;--warn:#fbbf24}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--tx);font:14px/1.5 -apple-system,"PingFang SC",sans-serif;padding:16px;max-width:760px;margin:0 auto}
+h1{font-size:17px;margin-bottom:4px}
+.sub{color:var(--dim);font-size:12px;margin-bottom:12px}
+#status{font-size:12px;color:var(--dim);min-height:18px;margin-bottom:8px}
+#status.err{color:var(--err)}
+button{background:#152822;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer}
+#connect{background:var(--acc);color:#052e2b;font-weight:600;border-color:var(--acc)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;gap:8px;margin-bottom:12px}
+#chat{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.bubble{max-width:82%;padding:8px 12px;border-radius:12px;font-size:13px}
+.bubble.user{align-self:flex-end;background:#1b3a2f}
+.bubble.agent{align-self:flex-start;background:var(--panel);border:1px solid var(--line)}
+#log{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;height:300px;overflow-y:auto;font:11px/1.6 ui-monospace,monospace}
+.ev{margin-bottom:2px;white-space:pre-wrap;word-break:break-all}
+.ev.sys{color:var(--dim)}.ev.deleg{color:var(--warn)}.ev.tool{color:#7dd3fc}
+.ev.result{color:var(--acc)}.ev.err{color:var(--err)}.ev.raw{color:#a78bfa}
+footer{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:12px;margin-top:10px}
+.dot{width:8px;height:8px;border-radius:50%;background:#3a4f48}
+.dot.live{background:var(--acc)}
+</style>
+</head>
+<body>
+<h1>🐶 Starchild 语音</h1>
+<div class="sub">GPT-Live 语音层 · Starchild 大脑 · 五工具路由（memory_lookup / ask_starchild / check_task / cancel_task / list_tasks）</div>
+<div id="status">未连接</div>
+<div class="row">
+  <button id="connect">开始通话</button>
+  <button id="close" disabled>挂断</button>
+</div>
+<div id="chat"></div>
+<div id="log"></div>
+<footer><span class="dot" id="micdot"></span><span id="mic">麦克风未开启</span></footer>
+
+<script>
+const $=id=>document.getElementById(id);
+const chat=$("chat"),log=$("log"),status=$("status");
+let pc,dc,stream,connected=false;
+let liveSessionId=null,utterBuf="";
+const base=location.pathname.replace(/\/?$/,"/");
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+async function api(path,body){
+  const r=await fetch(base+path,{method:body?"POST":"GET",headers:body?{"Content-Type":"application/json"}:{},body:body?JSON.stringify(body):undefined});
+  if(!r.ok){const e=await r.json().catch(()=>({error:"HTTP "+r.status}));throw new Error(e.error||("HTTP "+r.status));}
+  return r.json();
+}
+const ts=()=>new Date().toLocaleTimeString("zh-CN",{hour12:false});
+function addEv(cls,tag,body){
+  const d=document.createElement("div");d.className="ev "+cls;
+  d.textContent=`[${ts()}] ${tag}: ${body}`;log.appendChild(d);log.scrollTop=log.scrollHeight;
+}
+function addBubble(role,text){
+  const d=document.createElement("div");d.className="bubble "+role;d.textContent=text;
+  chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
+}
+function setStatus(t,err){status.textContent=t;status.classList.toggle("err",!!err);}
+
+// ---- tool dispatch: route delegation to the right executor ----
+// Client delegation has no tools field in session config, so the model names
+// the tool inside its delegation request; we route on the request text.
+function routeTool(text){
+  const t=(text||"").trim();
+  if(/^(查询|查看|列出|显示)?\s*(当前)?(所有|全部)?\s*(后台)?任务列表?$|list[_ ]?tasks/i.test(t)&&t.length<30)return{name:"list_tasks",fn:doListTasks};
+  if(/^(取消|终止|停止|别查了)\b|cancel[_ ]?task/i.test(t))return{name:"cancel_task",fn:doCancelTask};
+  if(/^(怎么样了|好了吗|进度|进展|查.*进度|任务状态)|check[_ ]?task/i.test(t)&&t.length<40)return{name:"check_task",fn:doCheckTask};
+  if(/(之前|上次|记得|我们说过|历史|记忆)|memory[_ ]?lookup/i.test(t)&&t.length<60)return{name:"memory_lookup",fn:doMemoryLookup};
+  return{name:"ask_starchild",fn:doAskStarchild}; // default: the brain
+}
+
+// ---- tool implementations ----
+async function doMemoryLookup(text,taskId){
+  const q=text.replace(/^(查(询|一下)?|看看?|帮我?查|记忆|之前|我们)?(说过|聊过)?(什么)?[?？。！!]*/g,"").trim()||text;
+  const out=await api("api/memory?q="+encodeURIComponent(q.slice(0,80)));
+  const items=out.results||[];
+  const summary=items.length
+    ?`找到 ${items.length} 条相关记忆：\n`+items.slice(-3).map(m=>`${m.role==="user"?"用户":"你"}说过: ${m.text.slice(0,80)}`).join("\n")
+    :"没有找到相关历史记忆。";
+  addEv("result","memory_lookup",summary);
+  returnCommentary(taskId,summary);
+}
+async function doListTasks(_text,taskId){
+  const out=await api("api/tasks");
+  const ts=out.tasks||[];
+  const summary=ts.length?`当前 ${ts.length} 个任务：\n`+ts.map(t=>`${t.id.slice(-6)} [${t.status}] ${t.userText.slice(0,40)}`).join("\n"):"当前没有后台任务。";
+  addEv("result","list_tasks",summary);
+  returnCommentary(taskId,summary);
+}
+async function doCheckTask(text,taskId){
+  // check latest running/done task
+  const out=await api("api/tasks");
+  const running=(out.tasks||[]).filter(t=>t.status==="running");
+  const target=running[0]||(out.tasks||[]).sort((a,b)=>b.createdAt-a.createdAt)[0];
+  if(!target){returnCommentary(taskId,"当前没有后台任务。");return;}
+  const prog=(target.progress||[]).slice(-2).map(p=>p.detail).join("；")||"等待中";
+  const summary=target.status==="running"?`任务「${target.userText.slice(0,40)}」进行中：${prog}`:
+    target.status==="done"?`任务已完成：${target.reply.slice(0,150)}`:`任务${target.status}${target.error?": "+target.error:""}`;
+  addEv("result","check_task",summary);
+  returnCommentary(taskId,summary);
+}
+async function doCancelTask(text,taskId){
+  const out=await api("api/tasks");
+  const running=(out.tasks||[]).filter(t=>t.status==="running");
+  if(!running.length){returnCommentary(taskId,"没有正在运行的任务。");return;}
+  for(const t of running){await api("api/tasks/"+t.id+"/cancel",{});}
+  addEv("result","cancel_task",`已终止 ${running.length} 个任务`);
+  returnCommentary(taskId,`已终止 ${running.length} 个后台任务。`);
+}
+let lastTaskId=null; // most recent brain task, for progress polling
+async function doAskStarchild(text,taskId){
+  addEv("tool","Starchild",`调用大脑 → session=${liveSessionId||"?"} 文本: ${text.slice(0,120)}`);
+  addBubble("user",text);
+  const sub=await api("api/agent",{session_id:liveSessionId,text});
+  lastTaskId=sub.task_id;
+  let reply=null,errMsg=null,tries=0,seenProg=0;
+  for(;;){
+    await new Promise(r=>setTimeout(r,2000));
+    const st=await fetch(base+"api/agent/"+sub.task_id).then(r=>r.json());
+    if(st.progress&&st.progress.length>seenProg){
+      for(const p of st.progress.slice(seenProg)){
+        addEv("tool","进展",p.detail);
+        dc.send(JSON.stringify({type:"session.thinking.append",event_id:"prog_"+Date.now(),
+          delegation_id:taskId||null,content:p.detail}));
+      }
+      seenProg=st.progress.length;
+    }
+    if(st.status==="done"){reply=st.reply;break;}
+    if(st.status==="error"){errMsg=st.error;break;}
+    if(st.status==="cancelled"){errMsg="任务已取消";break;}
+    if(++tries%15===0)addEv("tool","Starchild",`大脑思考中…(${(tries*2)|0}s)`);
+    if(tries>150){errMsg="等待大脑超时（5分钟）";break;}
+  }
+  if(errMsg)throw new Error(errMsg);
+  reply=(reply||"").trim();
+  if(!reply)throw new Error("大脑返回为空");
+  addEv("result","Starchild",`大脑返回 → ${reply.slice(0,300)}`);
+  returnCommentary(taskId,reply.slice(0,2000));
+  addBubble("agent",reply);
+}
+function returnCommentary(delegationId,content){
+  dc.send(JSON.stringify({
+    type:"session.commentary.append",event_id:"starchild_"+Date.now(),
+    delegation_id:delegationId||null,content:String(content).slice(0,2000)
+  }));
+  addEv("raw","回传","结果已送入语音播报");
+}
+
+function renderEvent(ev){
+  const t=ev.type||"(unknown)";
+  if(t==="session.delegation.created"){
+    const d=ev.delegation||{};
+    const did=d.id||ev.delegation_id||"";
+    addEv("deleg","委派",`请求 → delegation_id=${did} target=${d.target||"client"}`);
+    const text=(utterBuf||"").trim();
+    utterBuf="";
+    if(!text){addEv("deleg","委派","未采集到用户文本，跳过");return;}
+    const route=routeTool(text);
+    addEv("deleg","路由",`判定工具: ${route.name}`);
+    route.fn(text,did).catch(err=>{addEv("err","工具失败",esc(err.message));});
+    return;
+  }
+  if(t==="session.started"){
+    if(ev.session_id)liveSessionId=ev.session_id;
+    addEv("result","会话",`session.started — 语音链路已建立${liveSessionId?(" ("+liveSessionId+")"):""}`);
+    return;
+  }
+  if(t==="session.closed"){
+    const u=ev.usage?` 用量: ${JSON.stringify(ev.usage)}`:"";
+    addEv("result","会话","session.closed — 会话结束。"+u);return;
+  }
+  if(/input.*(transcript|transcription)/.test(t)){
+    if(ev.delta){utterBuf+=ev.delta;addEv("sys","转写",`你: ${ev.delta}`);}
+    return;
+  }
+  if(/output.*(transcript|transcription)/.test(t)){
+    if(ev.delta)addEv("speech","说话",`Starchild 说: ${ev.delta}`);
+    return;
+  }
+  if(/error|failed/i.test(t)){
+    addEv("err","事件",JSON.stringify(ev).slice(0,300));return;
+  }
+  addEv("raw",t,JSON.stringify(ev).slice(0,150));
+}
+
+$("connect").onclick=async()=>{
+  $("connect").disabled=true;chat.textContent="";log.textContent="";
+  try{
+    setStatus("请求麦克风…");
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
+    $("mic").textContent="麦克风已开启";$("micdot").classList.add("live");
+    setStatus("建立连接…");
+    pc=new RTCPeerConnection();
+    stream.getTracks().forEach(t=>pc.addTrack(t,stream));
+    pc.ontrack=e=>{$("audio")?.remove();const a=document.createElement("audio");a.id="audio";a.srcObject=e.streams[0];a.play();};
+    dc=pc.createDataChannel("oai-events");
+    dc.onmessage=e=>{try{renderEvent(JSON.parse(e.data));}catch(_){}};
+    await pc.setLocalDescription(await pc.createOffer());
+    setStatus("创建会话…");
+    const data=await api("api/session",{sdp:pc.localDescription.sdp});
+    await pc.setRemoteDescription(data.transport?.sdp?{type:"answer",sdp:data.transport.sdp}:data.answer??data);
+    connected=true;$("close").disabled=false;
+    setStatus("已连接，开始说话");
+  }catch(err){
+    setStatus("失败: "+err.message,true);addEv("deleg","失败",esc(err.message));
+    $("connect").disabled=false;
+  }
+};
+$("close").onclick=()=>{
+  try{dc&&dc.send(JSON.stringify({type:"session.close",event_id:"close_"+Date.now()}));}catch(_){}
+  setTimeout(()=>{pc&&pc.close();},800);
+  connected=false;$("close").disabled=true;$("connect").disabled=false;
+  setStatus("已挂断（后台任务继续）");
+  if(stream){stream.getTracks().forEach(t=>t.stop());$("mic").textContent="麦克风未开启";$("micdot").classList.remove("live");}
+};
+</script>
+</body>
+</html>

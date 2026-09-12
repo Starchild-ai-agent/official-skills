@@ -250,7 +250,7 @@
     {
       "name": "gpt-live-demo",
       "path": "gpt-live-demo/SKILL.md",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "GPT-Live 语音接线员 Demo — WebRTC 语音通话前端 + Express 中继服务器 + Starchild brain 桥接。 五工具路由（ask_starchild / check_task / cancel_task / list_tasks / memory_lookup）、 跨重启持久化（data/tasks.json + voice-history.json）与会话记忆回灌。 用户通过浏览器直接与 GPT-Live 语音模型对话，对话内容由 Starchild agent 作为后端大脑处理。 适用于：语音 Demo 演示、GPT-Live 中继服务开发、实时语音 + AI 代理集成原型。"
     },
     {

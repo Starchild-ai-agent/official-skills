@@ -1,6 +1,6 @@
 import express from "express";
 import OpenAI from "openai";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -10,23 +10,38 @@ const port = process.env.PORT || 3000;
 const indexPath = resolve("index.html");
 const DATA_DIR = resolve("data");
 
-const LIVE_PROMPT = `你是 Starchild 的语音界面。用户通过语音和你对话，你就是 Starchild 本身——不要把自己描述成"接线员"或"转接员"，也不要说"让我帮你问问后台"。
+const LIVE_PROMPT = `You are Starchild's voice interface. The user talks to you by voice; you ARE Starchild itself. Never describe yourself as an "operator", "relay", or say you will "ask the backend" — you are the agent.
 
-说话风格：简洁、自然、口语化，像打电话给一位懂技术的助理。每次回答一两句话就好，除非用户要求展开。用用户的语言（默认简体中文）回答。
+LANGUAGE: Always reply in the same language the user is currently speaking. Detect it from their speech every turn (they speak Chinese, you reply in Chinese; they switch to English, you switch too). If genuinely unclear, default to Simplified Chinese.
 
-你可以使用这些工具（后台会按你的请求自动路由）：
-- memory_lookup：查询与用户的过往对话记忆和上下文。当用户提到"之前/上次/记得吗/我们说过"或需要历史信息时使用。
-- ask_starchild：把复杂推理、多步任务、执行类请求或需要实时信息的问题交给后台大脑处理（异步，需要等待）。这是最常用的工具。
-- check_task：查询已交给后台的任务进展。用户问"怎么样了/好了吗/进度"时使用。
-- cancel_task：终止某个后台任务。用户说"别查了/取消那个任务"时使用。
-- list_tasks：列出当前所有后台任务。
+SPEAKING STYLE: concise, natural, conversational — like phoning a knowledgeable assistant. One or two sentences per answer unless the user asks you to expand.
 
-策略：
-- 打招呼闲聊直接答；需要动脑、查资料、执行的事交给 ask_starchild。
-- 等待大脑结果期间不要猜答案；用户催问进展时用 check_task。
-- 用户中途改变话题不需要取消旧任务，除非明确要求。`;
+You have these tools (the backend routes them automatically from your request):
+- memory_lookup: recall past conversations and context with the user. Use when they say "before / last time / remember / we talked about".
+- ask_starchild: hand complex reasoning, multi-step work, execution requests, or anything needing real-time information to the background brain (async — you must wait for it). Your most-used tool.
+- check_task: report progress of a task already sent to the brain. Use when the user asks "how is it going / is it done yet".
+- cancel_task: abort a background task. Use when the user says "never mind / cancel it".
+- list_tasks: list all background tasks currently tracked.
+
+POLICY:
+- Greetings and small talk: answer directly. Anything that needs thinking, looking up, or doing: hand to ask_starchild.
+- memory_lookup is ONLY for recalling past conversations. Never use it to answer real-time questions — news, prices, tweets, or any live lookup belongs to ask_starchild.
+- Once a request is handed to ask_starchild: say "Sure, Starchild is on it — one moment", then stop talking and wait for the result. Do not add anything else.
+- Before the brain has returned, it is FORBIDDEN to say "nothing found", "couldn't find it", "no results" or similar. You have no answer until the brain replies — only wait. If the user presses for progress, use check_task and relay what it says.
+- Only tell the user something failed when the brain explicitly returned an error or the task was cancelled.
+- If the user changes topic mid-task, leave the old task running unless they explicitly ask to cancel it.`;
 
 app.use(express.json({ limit: "256kb" }));
+
+// Preview reverse-proxy tolerance: if the proxy forwards the full
+// /preview/<id>/... path instead of stripping the prefix, normalize it
+// back to a root-relative URL so /api/* routes keep working.
+app.use((req, _res, next) => {
+  if (req.url.startsWith("/preview/")) {
+    req.url = req.url.replace(/^\/preview\/[^/?#]+\/?/, "/") || "/";
+  }
+  next();
+});
 
 // ---------------- persistence ----------------
 if (!existsSync(DATA_DIR)) await mkdir(DATA_DIR, { recursive: true });
@@ -61,6 +76,10 @@ const saveHistory = (() => {
 
 // tasks: id -> {status, reply?, error?, progress[], createdAt, userText, controller?}
 const tasks = new Map(Object.entries(await loadJson(TASKS_FILE, {})));
+// tasks restored from disk have no live process — a "running" status here is stale
+for (const t of tasks.values()) {
+  if (t.status === "running") t.status = "cancelled";
+}
 // voiceHistory: sessionKey -> [{role:'user'|'agent', text, t}]  (global "voice" key shared)
 const voiceHistory = new Map(Object.entries(await loadJson(HISTORY_FILE, {})));
 const VOICE_KEY = "voice"; // all voice sessions share one short-term memory stream
@@ -171,22 +190,22 @@ app.post("/api/agent", async (req, res) => {
           try {
             const ev = JSON.parse(line.slice(6));
             if (ev.type === "text_delta") reply += ev.data?.text || "";
-            else if (ev.type === "turn_start") push("turn", `开始第 ${ev.data?.turn ?? "?"} 轮思考`);
-            else if (ev.type === "tool_start") push("tool", `调用工具 ${ev.data?.tool_name || ""}`);
-            else if (ev.type === "tool_complete") push("tool_done", `工具 ${ev.data?.tool_name || ""} 返回`);
+            else if (ev.type === "turn_start") push("turn", `Turn ${ev.data?.turn ?? "?"} thinking started`);
+            else if (ev.type === "tool_start") push("tool", `Calling tool ${ev.data?.tool_name || ""}`);
+            else if (ev.type === "tool_complete") push("tool_done", `Tool ${ev.data?.tool_name || ""} returned`);
             else if (ev.type === "agent_complete") { buf = ""; break; }
           } catch (_) {}
         }
       }
       if (tasks.get(taskId)?.status === "cancelled") return;
-      reply = reply.trim() || "（大脑暂时没有返回）";
+      reply = reply.trim() || "(brain returned nothing yet)";
       histArr().push({ role: "agent", text: reply, t: Date.now() });
       saveHistory();
       tasks.set(taskId, { ...tasks.get(taskId), status: "done", reply });
     } catch (err) {
       if (err.name === "AbortError" || tasks.get(taskId)?.status === "cancelled") return;
       console.error("agent call failed", err.message);
-      tasks.set(taskId, { ...tasks.get(taskId), status: "error", error: `大脑调用失败: ${err.message}` });
+      tasks.set(taskId, { ...tasks.get(taskId), status: "error", error: `Brain call failed: ${err.message}` });
     }
     delete tasks.get(taskId)?.controller;
     saveTasks();
@@ -213,36 +232,159 @@ app.get("/api/tasks", (_req, res) => {
   res.json({ tasks: list });
 });
 
+// cancel all running tasks (used when the page closes without hanging up)
+// NOTE: must be registered BEFORE "/api/tasks/:id/cancel" or Express matches "all" as an id
+function abortTask(t) {
+  if (t.controller && typeof t.controller.abort === "function") t.controller.abort();
+  delete t.controller;
+}
+app.post("/api/tasks/all/cancel", (_req, res) => {
+  let n = 0;
+  for (const t of tasks.values()) {
+    if (t.status === "running") { t.status = "cancelled"; abortTask(t); n++; }
+  }
+  if (n) saveTasks();
+  res.json({ ok: true, cancelled: n });
+});
+
 app.post("/api/tasks/:id/cancel", (req, res) => {
   const t = tasks.get(req.params.id);
   if (!t) return res.status(404).json({ error: "task not found" });
   if (t.status !== "running") return res.json({ ok: false, status: t.status });
   t.status = "cancelled";
-  t.controller?.abort();
+  abortTask(t);
   saveTasks();
   res.json({ ok: true, status: "cancelled" });
 });
 
-// ---- memory_lookup: search persisted voice history + task results ----
-app.get("/api/memory", (req, res) => {
-  const q = String(req.query.q || "").trim();
-  const entries = histArr();
-  let results;
-  if (!q) {
-    results = entries.slice(-10);
-  } else {
-    const kw = q.toLowerCase();
-    results = entries.filter((m) => m.text.toLowerCase().includes(kw)).slice(-10);
+
+// ---- memory_lookup: search Starchild's REAL persistent memory files ----
+// Reads the same store the main agent uses: memory/MEMORY.md, PROFILE.md,
+// prompt/USER.md and memory/topics/*.md — not just the local voice history.
+const WS_ROOT = resolve(DATA_DIR, "..", "..", "..", ".."); // scripts/data -> scripts -> gpt-live-demo -> skills -> workspace
+const MEMORY_FILES = [
+  resolve(WS_ROOT, "memory", "MEMORY.md"),
+  resolve(WS_ROOT, "memory", "PROFILE.md"),
+  resolve(WS_ROOT, "prompt", "USER.md"),
+];
+async function memoryFiles() {
+  const chunks = [];
+  for (const f of MEMORY_FILES) {
+    try { chunks.push({ src: f.split("/").pop(), text: await readFile(f, "utf8") }); } catch (_) {}
   }
-  res.json({
-    query: q,
-    total_entries: entries.length,
-    results: results.map((m) => ({ role: m.role, text: m.text, t: m.t })),
-  });
+  // Recursively read memory/topics/**/*.md — topic bodies live in subdirectories.
+  try {
+    const dir = resolve(WS_ROOT, "memory", "topics");
+    const walk = async (d) => {
+      for (const e of await readdir(d, { withFileTypes: true })) {
+        const p = resolve(d, e.name);
+        if (e.isDirectory()) await walk(p);
+        else if (e.name.endsWith(".md")) chunks.push({ src: `topics/${p.slice(dir.length + 1)}`, text: await readFile(p, "utf8") });
+      }
+    };
+    await walk(dir);
+  } catch (_) {}
+  return chunks;
+}
+function extractMatches(text, kw) {
+  // return lines containing the keyword, with one line of context after
+  const lines = text.split("\n");
+  const hits = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].toLowerCase().includes(kw)) {
+      hits.push(lines[i].trim() + (lines[i + 1] && lines[i + 1].trim() ? "\n  " + lines[i + 1].trim() : ""));
+      if (hits.length >= 5) break;
+    }
+  }
+  return hits;
+}
+// Split a Chinese/English question into searchable keywords (drop stopwords).
+function tokenize(q) {
+  const spaced = q.toLowerCase()
+    .replace(/([a-z0-9])([\u4e00-\u9fff])/g, "$1 $2")
+    .replace(/([\u4e00-\u9fff])([a-z0-9])/g, "$1 $2");
+  const cleaned = spaced.replace(/(请|帮我|你|我|他|她|它|有|什么|哪些|那个|这个|一下|能否|是否|可以|看看|查询|告诉我|说说|讲讲|聊聊|回顾|之前|上次|记得吗|我们说过|历史|记忆|内容|事情|对话|聊天|记录|关于|有关|方面|情况|最近|现在|怎么|怎样|如何|是|的|了|着|过|和|跟|与|在|吗|呢|吧|啊|呀|what|which|the|about|memory|memories|history|remember|recall|tell|show|list|all|any)/g, " ");
+  return [...new Set(cleaned.split(/[\s,，。？?！!；;：:、…—\-_\/\\|()（）\[\]【】"'“”‘’·]+/).filter((w) => w.length >= 2))];
+}
+// "你有什么记忆 / 有哪些历史" style questions want an overview, not a keyword hit.
+const OVERVIEW_RE = /(有什么|有哪些|有啥|所有|全部|列出|总结|概览|盘点).*(记忆|历史|记得)|^(记忆|历史|memory)/i;
+function overviewChunks(files) {
+  const out = [];
+  for (const { src, text } of files) {
+    if (src === "_index.md") continue;
+    const t = text.trim();
+    if (!t) continue;
+    const head = t.split("\n").filter((l) => l.trim()).slice(0, 6).join("\n").slice(0, 400);
+    if (head) out.push({ source: src, text: head });
+    if (out.length >= 8) break;
+  }
+  out.push({ source: "voice-history", text: `Local voice history holds ${histArr().length} message(s) from recent calls.` });
+  return out;
+}
+app.get("/api/memory", async (req, res) => {
+  const q = String(req.query.q || "").trim();
+  const files = await memoryFiles();
+  const kws = tokenize(q);
+  if (!kws.length || OVERVIEW_RE.test(q)) {
+    const results = overviewChunks(files);
+    return res.json({ query: q, mode: "overview", total_results: results.length, results: results.slice(0, 12) });
+  }
+  const scored = [];
+  for (const { src, text } of files) {
+    const hits = [];
+    for (const kw of kws) {
+      for (const h of extractMatches(text, kw)) hits.push({ kw, h });
+    }
+    if (hits.length) scored.push({ src, hits });
+  }
+  // rank chunks by number of distinct keywords matched
+  scored.sort((a, b) => new Set(b.hits.map((h) => h.kw)).size - new Set(a.hits.map((h) => h.kw)).size);
+  let results = [];
+  for (const { src, hits } of scored) {
+    for (const { h } of hits) {
+      results.push({ source: src, text: h.slice(0, 400) });
+      if (results.length >= 12) break;
+    }
+    if (results.length >= 12) break;
+  }
+  if (!results.length) {
+    // fall back to local voice conversation history (keyword OR-match)
+    results = histArr()
+      .filter((m) => kws.some((kw) => m.text.toLowerCase().includes(kw)))
+      .slice(-10)
+      .map((m) => ({ source: "voice-history", text: `${m.role === "user" ? "User" : "You"} said: ${m.text}` }));
+  }
+  res.json({ query: q, mode: "search", total_results: results.length, results: results.slice(0, 12) });
 });
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, key: !!process.env.OPENAI_API_KEY, tasks: tasks.size, history: histArr().length });
+});
+
+// Expose the live voice agent's system prompt + tool list for the UI panel.
+app.get("/api/config", (_req, res) => {
+  res.json({
+    system_prompt: LIVE_PROMPT,
+    tools: [
+      { name: "memory_lookup", desc: "Recall past conversations and context (Starchild memory files + local voice history). Asking what is remembered returns an overview; specific words do a keyword search." },
+      { name: "ask_starchild", desc: "Hand complex reasoning, multi-step work, or real-time lookups to the background brain (async task)." },
+      { name: "check_task", desc: "Report progress of a background task." },
+      { name: "cancel_task", desc: "Abort a background task." },
+      { name: "list_tasks", desc: "List all tracked background tasks." },
+    ],
+  });
+});
+
+// Unknown /api/* routes must return JSON (not Express HTML) so the
+// frontend api() helper never throws "Unexpected token '<'".
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "not found" });
+});
+
+// Global error handler: always JSON.
+app.use((err, _req, res, _next) => {
+  console.error("unhandled", err?.message || err);
+  res.status(500).json({ error: "internal error" });
 });
 
 app.listen(port, "0.0.0.0", () => {

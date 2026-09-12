@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Starchild · GPT-Live 语音 Demo</title>
+<title>Starchild · GPT-Live Voice Demo</title>
 <style>
 :root{--bg:#0b1512;--panel:#101d19;--line:#1d332c;--tx:#d7e8e1;--dim:#6b8a80;--acc:#4ade80;--err:#f87171;--warn:#fbbf24}
 *{box-sizing:border-box;margin:0}
@@ -27,19 +27,26 @@ button:disabled{opacity:.4;cursor:not-allowed}
 footer{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:12px;margin-top:10px}
 .dot{width:8px;height:8px;border-radius:50%;background:#3a4f48}
 .dot.live{background:var(--acc)}
+details.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:12px 0}
+details.panel summary{cursor:pointer;font-size:13px;color:var(--acc)}
+#promptTools pre{white-space:pre-wrap;font:11px/1.6 ui-monospace,monospace;background:#0d1714;border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0}
+#promptTools h3{font-size:12px;margin:10px 0 4px;color:var(--dim)}
+#promptTools li{font-size:12px;margin:4px 0 4px 18px}
+#promptTools code{color:#7dd3fc}
 </style>
 </head>
 <body>
-<h1>🐶 Starchild 语音</h1>
-<div class="sub">GPT-Live 语音层 · Starchild 大脑 · 五工具路由（memory_lookup / ask_starchild / check_task / cancel_task / list_tasks）</div>
-<div id="status">未连接</div>
+<h1>🐶 Starchild Voice</h1>
+<div class="sub">GPT-Live voice layer · Starchild brain · five-tool routing (memory_lookup / ask_starchild / check_task / cancel_task / list_tasks)</div>
+<div id="status">Not connected</div>
 <div class="row">
-  <button id="connect">开始通话</button>
-  <button id="close" disabled>挂断</button>
+  <button id="connect">Start Call</button>
+  <button id="close" disabled>Hang Up</button>
 </div>
 <div id="chat"></div>
+<details class="panel" id="promptPanel"><summary>System Prompt &amp; Tools</summary><div id="promptTools">Loading…</div></details>
 <div id="log"></div>
-<footer><span class="dot" id="micdot"></span><span id="mic">麦克风未开启</span></footer>
+<footer><span class="dot" id="micdot"></span><span id="mic">Microphone off</span></footer>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -53,7 +60,17 @@ async function api(path,body){
   if(!r.ok){const e=await r.json().catch(()=>({error:"HTTP "+r.status}));throw new Error(e.error||("HTTP "+r.status));}
   return r.json();
 }
-const ts=()=>new Date().toLocaleTimeString("zh-CN",{hour12:false});
+const ts=()=>new Date().toLocaleTimeString("en-US",{hour12:false});
+// ---- System Prompt & Tools panel ----
+(async()=>{
+  try{
+    const cfg=await api("api/config");
+    const tools=cfg.tools.map(t=>`<li><code>${esc(t.name)}</code> — ${esc(t.desc)}</li>`).join("");
+    $("promptTools").innerHTML=
+      `<h3>System Prompt (English — replies in the user's spoken language)</h3><pre>${esc(cfg.system_prompt)}</pre>`+
+      `<h3>Tools (${cfg.tools.length})</h3><ul>${tools}</ul>`;
+  }catch(e){$("promptTools").textContent="Failed to load: "+e.message;}
+})();
 function addEv(cls,tag,body){
   const d=document.createElement("div");d.className="ev "+cls;
   d.textContent=`[${ts()}] ${tag}: ${body}`;log.appendChild(d);log.scrollTop=log.scrollHeight;
@@ -82,15 +99,15 @@ async function doMemoryLookup(text,taskId){
   const out=await api("api/memory?q="+encodeURIComponent(q.slice(0,80)));
   const items=out.results||[];
   const summary=items.length
-    ?`找到 ${items.length} 条相关记忆：\n`+items.slice(-3).map(m=>`${m.role==="user"?"用户":"你"}说过: ${m.text.slice(0,80)}`).join("\n")
-    :"没有找到相关历史记忆。";
+    ?`Found ${items.length} matching memories:\n`+items.slice(0,5).map(m=>`[${m.source||"history"}] ${String(m.text).slice(0,120)}`).join("\n")
+    :"No matching memories found.";
   addEv("result","memory_lookup",summary);
   returnCommentary(taskId,summary);
 }
 async function doListTasks(_text,taskId){
   const out=await api("api/tasks");
   const ts=out.tasks||[];
-  const summary=ts.length?`当前 ${ts.length} 个任务：\n`+ts.map(t=>`${t.id.slice(-6)} [${t.status}] ${t.userText.slice(0,40)}`).join("\n"):"当前没有后台任务。";
+  const summary=ts.length?`Currently ${ts.length} task(s):\n`+ts.map(t=>`${t.id.slice(-6)} [${t.status}] ${t.userText.slice(0,40)}`).join("\n"):"No background tasks.";
   addEv("result","list_tasks",summary);
   returnCommentary(taskId,summary);
 }
@@ -99,34 +116,34 @@ async function doCheckTask(text,taskId){
   const out=await api("api/tasks");
   const running=(out.tasks||[]).filter(t=>t.status==="running");
   const target=running[0]||(out.tasks||[]).sort((a,b)=>b.createdAt-a.createdAt)[0];
-  if(!target){returnCommentary(taskId,"当前没有后台任务。");return;}
-  const prog=(target.progress||[]).slice(-2).map(p=>p.detail).join("；")||"等待中";
-  const summary=target.status==="running"?`任务「${target.userText.slice(0,40)}」进行中：${prog}`:
-    target.status==="done"?`任务已完成：${target.reply.slice(0,150)}`:`任务${target.status}${target.error?": "+target.error:""}`;
+  if(!target){returnCommentary(taskId,"No background tasks.");return;}
+  const prog=(target.progress||[]).slice(-2).map(p=>p.detail).join("; ")||"Waiting";
+  const summary=target.status==="running"?`Task "${target.userText.slice(0,40)}" in progress: ${prog}`:
+    target.status==="done"?`Task done: ${target.reply.slice(0,150)}`:`Task ${target.status}${target.error?": "+target.error:""}`;
   addEv("result","check_task",summary);
   returnCommentary(taskId,summary);
 }
 async function doCancelTask(text,taskId){
   const out=await api("api/tasks");
   const running=(out.tasks||[]).filter(t=>t.status==="running");
-  if(!running.length){returnCommentary(taskId,"没有正在运行的任务。");return;}
+  if(!running.length){returnCommentary(taskId,"No running tasks.");return;}
   for(const t of running){await api("api/tasks/"+t.id+"/cancel",{});}
-  addEv("result","cancel_task",`已终止 ${running.length} 个任务`);
-  returnCommentary(taskId,`已终止 ${running.length} 个后台任务。`);
+  addEv("result","cancel_task",`Cancelled ${running.length} task(s)`);
+  returnCommentary(taskId,`Cancelled ${running.length} background task(s).`);
 }
 let lastTaskId=null; // most recent brain task, for progress polling
 async function doAskStarchild(text,taskId){
-  addEv("tool","Starchild",`调用大脑 → session=${liveSessionId||"?"} 文本: ${text.slice(0,120)}`);
+  addEv("tool","Starchild",`Calling brain → session=${liveSessionId||"?"} text: ${text.slice(0,120)}`);
   addBubble("user",text);
   const sub=await api("api/agent",{session_id:liveSessionId,text});
   lastTaskId=sub.task_id;
   let reply=null,errMsg=null,tries=0,seenProg=0;
   for(;;){
     await new Promise(r=>setTimeout(r,2000));
-    const st=await fetch(base+"api/agent/"+sub.task_id).then(r=>r.json());
+    const st=await api("api/agent/"+sub.task_id);
     if(st.progress&&st.progress.length>seenProg){
       for(const p of st.progress.slice(seenProg)){
-        addEv("tool","进展",p.detail);
+        addEv("tool","Progress",p.detail);
         dc.send(JSON.stringify({type:"session.thinking.append",event_id:"prog_"+Date.now(),
           delegation_id:taskId||null,content:p.detail}));
       }
@@ -134,14 +151,14 @@ async function doAskStarchild(text,taskId){
     }
     if(st.status==="done"){reply=st.reply;break;}
     if(st.status==="error"){errMsg=st.error;break;}
-    if(st.status==="cancelled"){errMsg="任务已取消";break;}
-    if(++tries%15===0)addEv("tool","Starchild",`大脑思考中…(${(tries*2)|0}s)`);
-    if(tries>150){errMsg="等待大脑超时（5分钟）";break;}
+    if(st.status==="cancelled"){errMsg="Task cancelled";break;}
+    if(++tries%15===0)addEv("tool","Starchild",`Brain thinking…(${(tries*2)|0}s)`);
+    if(tries>150){errMsg="Timed out waiting for the brain (5 min)";break;}
   }
   if(errMsg)throw new Error(errMsg);
   reply=(reply||"").trim();
-  if(!reply)throw new Error("大脑返回为空");
-  addEv("result","Starchild",`大脑返回 → ${reply.slice(0,300)}`);
+  if(!reply)throw new Error("Brain returned empty");
+  addEv("result","Starchild",`Brain returned → ${reply.slice(0,300)}`);
   returnCommentary(taskId,reply.slice(0,2000));
   addBubble("agent",reply);
 }
@@ -150,7 +167,7 @@ function returnCommentary(delegationId,content){
     type:"session.commentary.append",event_id:"starchild_"+Date.now(),
     delegation_id:delegationId||null,content:String(content).slice(0,2000)
   }));
-  addEv("raw","回传","结果已送入语音播报");
+  addEv("raw","Return","Result sent to voice playback");
 }
 
 function renderEvent(ev){
@@ -158,34 +175,34 @@ function renderEvent(ev){
   if(t==="session.delegation.created"){
     const d=ev.delegation||{};
     const did=d.id||ev.delegation_id||"";
-    addEv("deleg","委派",`请求 → delegation_id=${did} target=${d.target||"client"}`);
+    addEv("deleg","Delegation",`Request → delegation_id=${did} target=${d.target||"client"}`);
     const text=(utterBuf||"").trim();
     utterBuf="";
-    if(!text){addEv("deleg","委派","未采集到用户文本，跳过");return;}
+    if(!text){addEv("deleg","Delegation","No user text captured, skipping");return;}
     const route=routeTool(text);
-    addEv("deleg","路由",`判定工具: ${route.name}`);
-    route.fn(text,did).catch(err=>{addEv("err","工具失败",esc(err.message));});
+    addEv("deleg","Routing",`Tool: ${route.name}`);
+    route.fn(text,did).catch(err=>{addEv("err","Tool failed",esc(err.message));});
     return;
   }
   if(t==="session.started"){
     if(ev.session_id)liveSessionId=ev.session_id;
-    addEv("result","会话",`session.started — 语音链路已建立${liveSessionId?(" ("+liveSessionId+")"):""}`);
+    addEv("result","Session",`session.started — voice link established${liveSessionId?(" ("+liveSessionId+")"):""}`);
     return;
   }
   if(t==="session.closed"){
-    const u=ev.usage?` 用量: ${JSON.stringify(ev.usage)}`:"";
-    addEv("result","会话","session.closed — 会话结束。"+u);return;
+    const u=ev.usage?` Usage: ${JSON.stringify(ev.usage)}`:"";
+    addEv("result","Session","session.closed — session ended."+u);return;
   }
   if(/input.*(transcript|transcription)/.test(t)){
-    if(ev.delta){utterBuf+=ev.delta;addEv("sys","转写",`你: ${ev.delta}`);}
+    if(ev.delta){utterBuf+=ev.delta;addEv("sys","Transcript",`You: ${ev.delta}`);}
     return;
   }
   if(/output.*(transcript|transcription)/.test(t)){
-    if(ev.delta)addEv("speech","说话",`Starchild 说: ${ev.delta}`);
+    if(ev.delta)addEv("speech","Speech",`Starchild said: ${ev.delta}`);
     return;
   }
   if(/error|failed/i.test(t)){
-    addEv("err","事件",JSON.stringify(ev).slice(0,300));return;
+    addEv("err","Event",JSON.stringify(ev).slice(0,300));return;
   }
   addEv("raw",t,JSON.stringify(ev).slice(0,150));
 }
@@ -193,33 +210,47 @@ function renderEvent(ev){
 $("connect").onclick=async()=>{
   $("connect").disabled=true;chat.textContent="";log.textContent="";
   try{
-    setStatus("请求麦克风…");
+    setStatus("Requesting microphone…");
     stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
-    $("mic").textContent="麦克风已开启";$("micdot").classList.add("live");
-    setStatus("建立连接…");
+    $("mic").textContent="Microphone on";$("micdot").classList.add("live");
+    setStatus("Establishing connection…");
     pc=new RTCPeerConnection();
     stream.getTracks().forEach(t=>pc.addTrack(t,stream));
     pc.ontrack=e=>{$("audio")?.remove();const a=document.createElement("audio");a.id="audio";a.srcObject=e.streams[0];a.play();};
     dc=pc.createDataChannel("oai-events");
     dc.onmessage=e=>{try{renderEvent(JSON.parse(e.data));}catch(_){}};
     await pc.setLocalDescription(await pc.createOffer());
-    setStatus("创建会话…");
+    setStatus("Creating session…");
     const data=await api("api/session",{sdp:pc.localDescription.sdp});
     await pc.setRemoteDescription(data.transport?.sdp?{type:"answer",sdp:data.transport.sdp}:data.answer??data);
     connected=true;$("close").disabled=false;
-    setStatus("已连接，开始说话");
+    setStatus("Connected, start talking");
   }catch(err){
-    setStatus("失败: "+err.message,true);addEv("deleg","失败",esc(err.message));
+    setStatus("Failed: "+err.message,true);addEv("deleg","Failed",esc(err.message));
     $("connect").disabled=false;
   }
 };
+// ---- teardown: stop the OpenAI live session + cancel running brain tasks ----
+// Connection loss makes OpenAI end the billed session, so closing the page
+// without hanging up must kill the WebRTC link immediately.
+function teardownAll(keepMic,cancelTasks){
+  try{if(dc){dc.onmessage=null;dc.close();}}catch(_){}
+  try{pc&&pc.close();}catch(_){}
+  dc=null;pc=null;connected=false;
+  // design doc §6: hang-up keeps background tasks running (results stored);
+  // only closing/refreshing the page cancels them, so they stop burning credits
+  if(cancelTasks){try{fetch("api/tasks/all/cancel",{method:"POST",keepalive:true});}catch(_){}}
+  lastTaskId=null;
+  if(!keepMic&&stream){stream.getTracks().forEach(t=>t.stop());$("mic").textContent="Microphone off";$("micdot").classList.remove("live");}
+}
 $("close").onclick=()=>{
-  try{dc&&dc.send(JSON.stringify({type:"session.close",event_id:"close_"+Date.now()}));}catch(_){}
-  setTimeout(()=>{pc&&pc.close();},800);
-  connected=false;$("close").disabled=true;$("connect").disabled=false;
-  setStatus("已挂断（后台任务继续）");
-  if(stream){stream.getTracks().forEach(t=>t.stop());$("mic").textContent="麦克风未开启";$("micdot").classList.remove("live");}
+  teardownAll(false,false);
+  $("close").disabled=true;$("connect").disabled=false;
+  setStatus("Hung up (background tasks keep running)");
 };
+// closing/refreshing the page without hanging up: kill session + tasks
+window.addEventListener("pagehide",()=>{if(connected||pc||dc)teardownAll(true,true);});
+window.addEventListener("beforeunload",()=>{if(connected||pc||dc)teardownAll(true,true);});
 </script>
 </body>
 </html>

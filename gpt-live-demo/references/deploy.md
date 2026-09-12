@@ -46,6 +46,21 @@ node skills/gpt-live-demo/scripts/server.mjs &
 
 ---
 
+## 公网发布（Starchild 内）
+
+预览跑起来后，用 community-publish skill 的 `publish_preview` 一键发到公网：
+
+```python
+from core.skill_tools import community_publish as cp
+cp.publish_preview("7120-gpt-live-demo", slug="gpt-live-demo", title="GPT-Live 语音 Demo")
+# → https://7120-gpt-live-demo.community.iamstarchild.com/
+```
+
+注意：公网开放后 `/api/session` 无鉴权，任何访客都会消耗你的 OpenAI quota；
+长期公开建议加 Bearer token。容器休眠时公网访客会看到 offline 页面。
+
+---
+
 ## Fly.io 生产部署
 
 ### 1. 创建 Dockerfile

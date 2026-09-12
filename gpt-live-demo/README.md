@@ -4,11 +4,9 @@
 
 WebRTC 语音通话前端 + Express 中继服务器，让用户通过浏览器与 GPT-Live（gpt-live-1）语音模型对话，后端大脑由 Starchild agent 提供。
 
-## 一行安装（任意 Starchild agent）
+## 安装（任意 Starchild agent）
 
-```bash
-npx skills@latest add jotaro-ora/gpt-live-demo-skill --agent openclaw
-```
+Install from wherever this skill is distributed (skill manager / `npx skills@latest add <owner>/<repo> --agent openclaw`), then start the server from `scripts/`.
 
 ## 快速启动
 

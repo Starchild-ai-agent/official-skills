@@ -55,11 +55,11 @@ If `upbit` is not found after installation, the user may need to update their PA
 
 - **macOS/Linux (npm global bin not in PATH)**:
   ```bash
-  export PATH="$(npm bin -g):$PATH"
+  export PATH="$(npm prefix -g)/bin:$PATH"
   ```
-  Add to `~/.zshrc` or `~/.bashrc` to persist.
+  On the user's laptop, persist through shell configuration. In a Starchild container, use workspace `setup.sh`, not home-directory shell files.
 
-- **Windows**: Restart the terminal or check `npm config get prefix` and add the `\bin` subdirectory to the system PATH.
+- **Windows**: Restart the terminal or check `npm config get prefix` and add that prefix directory itself to the system PATH (Windows npm shims are placed directly in the prefix).
 
 ---
 
@@ -73,7 +73,7 @@ curl -s https://api.ipify.org
 
 Show the result to the user and advise them to add this IP when configuring allowed IPs on the API management page.
 
-> If the user is on a dynamic IP or plans to use the CLI from multiple machines, they may want to add multiple IPs or leave the IP restriction empty (less secure).
+> Use the supported IP allowlist for the selected Upbit region. For a hosted Starchild CLI, allowlist the agent's actual outbound IP, not the user's laptop IP. Do not recommend disabling the allowlist; consult the current regional authentication guide for IP requirements.
 
 ---
 
@@ -95,6 +95,12 @@ Public endpoints (`tickers`, `orderbooks`, `candles`, etc.) do not require API k
 ---
 
 ## Step 5 — Configure Credentials
+
+### Starchild-hosted agent
+
+Use `request_env_input` for `UPBIT_ACCESS_KEY` and `UPBIT_SECRET_KEY`. Never ask for these in chat, put them in command-line flags, or tell a user to edit `.env`. The CLI reads these environment variables directly. After submission, use the region-specific read-only account command to verify. The separate-terminal instructions below are only for a CLI running on the user's own laptop, not for configuring the hosted Starchild agent.
+
+### User's own terminal
 
 `upbit config set` requires an interactive terminal (TTY) — it cannot be run by Claude or via the `!` prefix in Claude Code. The user must run it directly in a separate terminal.
 

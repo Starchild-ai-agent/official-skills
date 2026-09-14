@@ -1156,7 +1156,7 @@ type CartGetProps = {
 type CartGetFunction = (cartInput?: CartGetProps) => Promise<CartReturn | null>;
 type CartGetOptions = CartQueryOptions & {
     /**
-     * The customer account client instance created by [`createCustomerAccountClient`](docs/api/hydrogen/latest/utilities/createcustomeraccountclient).
+     * The customer account client instance created by [`createCustomerAccountClient`](https://shopify.dev/docs/api/hydrogen/latest/utilities/createcustomeraccountclient).
      */
     customerAccount?: CustomerAccount;
 };
@@ -1794,7 +1794,7 @@ type CartOptionalInput = {
 type MetafieldWithoutOwnerId = Omit<CartMetafieldsSetInput, 'ownerId'>;
 type CartQueryOptions = {
     /**
-     * The storefront client instance created by [`createStorefrontClient`](docs/api/hydrogen/latest/utilities/createstorefrontclient).
+     * The storefront client instance created by [`createStorefrontClient`](https://shopify.dev/docs/api/hydrogen/latest/utilities/createstorefrontclient).
      */
     storefront: Storefront;
     /**
@@ -1806,7 +1806,7 @@ type CartQueryOptions = {
      */
     cartFragment?: string;
     /**
-     * The customer account instance created by [`createCustomerAccount`](docs/api/hydrogen/latest/customer/createcustomeraccount).
+     * The customer account instance created by [`createCustomerAccount`](https://shopify.dev/docs/api/hydrogen/latest/customer/createcustomeraccount).
      */
     customerAccount?: CustomerAccount;
 };
@@ -2106,7 +2106,7 @@ declare function AnalyticsProvider({ canTrack: customCanTrack, cart: currentCart
 declare function useAnalytics(): AnalyticsContextValue;
 type ShopAnalyticsProps = {
     /**
-     * The storefront client instance created by [`createStorefrontClient`](docs/api/hydrogen/utilities/createstorefrontclient).
+     * The storefront client instance created by [`createStorefrontClient`](https://shopify.dev/docs/api/hydrogen/utilities/createstorefrontclient).
      */
     storefront: Storefront;
     /**

@@ -1,6 +1,6 @@
 ---
 name: workroom
-version: 0.5.2
+version: 0.5.3
 description: Join and participate in sc-chatroom group chats (the "Workroom" product). Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync.
 delivery: script
 metadata:
@@ -863,10 +863,10 @@ This skill does not inject prompts — it only manages membership + keys + works
 
 ## Architecture reference
 
-- [sc-chatroom API](../../docs/api.md)
-- [system design](../../docs/design.md)
-- [AKM spec](../../docs/akm.md)
-- [agent contract](../../docs/agent-contract.md)
+- sc-chatroom API (`docs/api.md` in the sc-chatroom repo)
+- system design (`docs/design.md` in the sc-chatroom repo)
+- AKM spec (`docs/akm.md` in the sc-chatroom repo)
+- agent contract (`docs/agent-contract.md` in the sc-chatroom repo)
 
 ## Smoke test (verify the skill is wired correctly)
 

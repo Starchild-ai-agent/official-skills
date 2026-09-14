@@ -60,7 +60,7 @@ With an `EVMWalletProvider`, the SDK routes writes through the MegaFuel paymaste
 
 - **ERC-8004** — sponsored on both networks.
 - **ERC-8183** — on **BSC Testnet** the SDK routes the protocol writes through MegaFuel and lets it decide per call (e.g. `fund` and `settle` are sponsored today); whatever MegaFuel declines self-pays automatically. **Mainnet is never sponsored** — writes self-pay and the SDK skips the probe entirely there. Two things to note: (1) provider payout has no separate "withdraw" — it happens inside `settle` (→ `complete`); (2) the only ERC-20 `approve` is on the **payment token** (not an ERC-8183 function), sent by `fund()` only when the allowance is insufficient, through the ERC-20 client's own self-pay path — so a fresh testnet buyer needs a little tBNB for that first approve.
-- **twak wallet** — sponsorship is twak-internal and not controlled by the SDK (mainnet auto-sponsored, testnet self-pays); see [`docs/twak.md`](docs/twak.md).
+- **twak wallet** — sponsorship is twak-internal and not controlled by the SDK (mainnet auto-sponsored, testnet self-pays); see [`docs/twak.md`](https://github.com/bnb-chain/bnbchain-studio/blob/main/docs/twak.md).
 
 ## What is ERC-8183?
 
@@ -234,9 +234,9 @@ registration constructors (`AgentEndpoint.a2a()` / `AgentEndpoint.mcp()`) and
 the headless primitives above, and the examples provide copy-and-own serving
 references:
 
-- [`examples/a2a-agent/`](examples/a2a-agent/) — A2A agent card +
+- [`examples/a2a-agent/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/a2a-agent/) — A2A agent card +
   `message/send` fronting `NegotiationHandler`, with on-chain discovery.
-- [`examples/agent-server/`](examples/agent-server/) — full HTTP provider
+- [`examples/agent-server/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/agent-server/) — full HTTP provider
   (FastAPI factory lives in the example at `src/erc8183_server.py`), funded-job
   poll loop, three storage backends.
 
@@ -291,7 +291,7 @@ erc8183.vote_reject(job_id)    # whitelisted voter only; after dispute
 erc8183.claim_refund(job_id)   # anyone, after expiredAt, no settlement reached
 ```
 
-See [`examples/client/`](examples/client/) for the five canonical flows (happy, dispute-reject, stalemate-expire, never-submit, cancel-open).
+See [`examples/client/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/client/) for the five canonical flows (happy, dispute-reject, stalemate-expire, never-submit, cancel-open).
 
 ---
 
@@ -323,13 +323,13 @@ See [`examples/client/`](examples/client/) for the five canonical flows (happy, 
 
 The **payment token address is NOT configurable** — it is immutable on the Commerce kernel and fetched at runtime via `ERC8183Client.payment_token`.
 
-See [`.env.example`](.env.example) at the project root for the full surface with inline comments.
+See [`.env.example`](https://github.com/bnb-chain/bnbchain-studio/blob/main/env.example) at the project root for the full surface with inline comments.
 
 ---
 
 ## Architecture & Components
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the full code map, invariants, and data flows. The ERC-8183 stack is split into:
+See [ARCHITECTURE.md](https://github.com/bnb-chain/bnbchain-studio/blob/main/ARCHITECTURE.md) for the full code map, invariants, and data flows. The ERC-8183 stack is split into:
 
 - `bnbagent/erc8183/client.py` — `ERC8183Client` facade (most callers use this).
 - `bnbagent/erc8183/commerce.py` — `CommerceClient` (low-level Commerce kernel).
@@ -349,11 +349,11 @@ Transaction signing is abstracted behind the `WalletProvider` ABC (`address`, `s
 - Auto-wrap — `ERC8183Config` (and other `AgentConfig` subclasses) accept `private_key=` directly and wrap it into `EVMWalletProvider(persist=False)` in `__post_init__`, immediately zeroing the plaintext field.
 - Keystores written with `0o600` permissions (directory `0o700`).
 
-**Built-in: `TWAKProvider` (Trust Wallet Agent Kit CLI)** — a self-custody, self-broadcasting wallet whose capabilities differ substantially from `EVMWalletProvider`. **Read [`docs/twak.md`](docs/twak.md) before swapping in twak.** The key differences:
+**Built-in: `TWAKProvider` (Trust Wallet Agent Kit CLI)** — a self-custody, self-broadcasting wallet whose capabilities differ substantially from `EVMWalletProvider`. **Read [`docs/twak.md`](https://github.com/bnb-chain/bnbchain-studio/blob/main/docs/twak.md) before swapping in twak.** The key differences:
 
 - **No raw-transaction or generic EIP-712 signing** (`sign.transaction` / `sign.typed_data` are absent) — twak signs ERC-8004 / ERC-8183 / x402 payloads internally and only exposes high-level operations. Anything that needs direct EIP-712 (e.g. an `X402Signer` you construct yourself) requires `EVMWalletProvider`.
 - **Self-broadcasting** — the SDK holds no key and sends no transaction; twak signs and broadcasts each operation itself. x402 is a *delegated payer* (`make_x402_payer()`), not a signer.
-- **Restricted surface** — BSC only (`bsc` / `bsctestnet`); x402 `request` is mainnet-only so far; on testnet twak pays its own gas (no paymaster). Full method-by-method support matrix, contract addresses, and boundaries: [`docs/twak.md`](docs/twak.md).
+- **Restricted surface** — BSC only (`bsc` / `bsctestnet`); x402 `request` is mainnet-only so far; on testnet twak pays its own gas (no paymaster). Full method-by-method support matrix, contract addresses, and boundaries: [`docs/twak.md`](https://github.com/bnb-chain/bnbchain-studio/blob/main/docs/twak.md).
 
 Construct with `TWAKProvider(chain="bsc")` or `WALLET_KIND=twak`. Because every client routes writes through `wallet.make_executor()`, EVM ↔ twak is a one-line swap **for the high-level flows** — but the capability gaps above are not papered over: unsupported calls raise `UnsupportedWalletOperation`.
 
@@ -403,13 +403,13 @@ Payment token address is read from `commerce.paymentToken()` at runtime.
 
 | Example | Role | Description |
 |---------|------|-------------|
-| [`examples/client/`](examples/client/) | Client | Five stand-alone scripts for the canonical ERC-8183 flows: happy / dispute-reject / stalemate-expire / never-submit / cancel-open. |
-| [`examples/voter/`](examples/voter/) | Voter | `voteReject` script + `Disputed` event watcher for whitelisted voters. |
-| [`examples/a2a-agent/`](examples/a2a-agent/) | Provider (A2A) | Recommended serving direction: A2A agent card + `message/send` fronting SDK negotiation, ERC-8004 discovery round-trip, buyer counterpart. |
-| [`examples/agent-server/`](examples/agent-server/) | Provider (HTTP) | HTTP serving reference (FastAPI factory inlined as example code), funded-job poll loop, ERC-8004 registration. |
-| [`examples/twak/`](examples/twak/) | Wallet | TWAK custody quickstart, delegated x402 payer, bsctestnet smoke. |
-| [`examples/x402/`](examples/x402/) | Buyer | x402 buyer flow with mock 402 server. |
-| [`examples/security/`](examples/security/) | Security | Defense-in-depth signing validation. |
+| [`examples/client/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/client/) | Client | Five stand-alone scripts for the canonical ERC-8183 flows: happy / dispute-reject / stalemate-expire / never-submit / cancel-open. |
+| [`examples/voter/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/voter/) | Voter | `voteReject` script + `Disputed` event watcher for whitelisted voters. |
+| [`examples/a2a-agent/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/a2a-agent/) | Provider (A2A) | Recommended serving direction: A2A agent card + `message/send` fronting SDK negotiation, ERC-8004 discovery round-trip, buyer counterpart. |
+| [`examples/agent-server/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/agent-server/) | Provider (HTTP) | HTTP serving reference (FastAPI factory inlined as example code), funded-job poll loop, ERC-8004 registration. |
+| [`examples/twak/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/twak/) | Wallet | TWAK custody quickstart, delegated x402 payer, bsctestnet smoke. |
+| [`examples/x402/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/x402/) | Buyer | x402 buyer flow with mock 402 server. |
+| [`examples/security/`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/security/) | Security | Defense-in-depth signing validation. |
 
 ---
 
@@ -582,10 +582,10 @@ Full design rationale and threat model: see ADR #30 in the
 | `408 Job expired` | Past `expiredAt` | Create a new job; client can `claimRefund` the old one. |
 | `402 Budget below service price` | `budget < ERC8183_SERVICE_PRICE` | Client must create a job with a higher budget (visible at `GET /erc8183/status`). |
 | `router.settle` reverts with `policy pending` | Dispute window hasn't elapsed and no dispute was raised | Wait until `policy.check(jobId)` returns a non-PENDING verdict, then retry. |
-| `voteReject` reverts with `not voter` / `not disputed` | Caller not whitelisted, or no dispute exists | Use [`examples/voter/vote_reject.py`](examples/voter/vote_reject.py) — it validates before sending. |
+| `voteReject` reverts with `not voter` / `not disputed` | Caller not whitelisted, or no dispute exists | Use [`examples/voter/vote_reject.py`](https://github.com/bnb-chain/bnbchain-studio/blob/main/examples/voter/vote_reject.py) — it validates before sending. |
 
 ---
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License — see [LICENSE](https://github.com/bnb-chain/bnbchain-studio/blob/main/LICENSE) for details.

@@ -1,6 +1,6 @@
 ---
 name: solana-dev
-version: 1.1.1
+version: 1.1.2
 description: |
   Solana development: Anchor and Pinocchio programs, Kit clients, wallet flows, testing.
 

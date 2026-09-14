@@ -1,6 +1,6 @@
 ---
 name: abstract
-version: 1.0.3
+version: 1.0.4
 description: |
   Abstract L2 hub: wallets, contracts, multisig, prediction markets, agent identity.
 

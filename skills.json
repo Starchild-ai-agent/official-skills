@@ -28,7 +28,7 @@
     {
       "name": "abstract",
       "path": "abstract/SKILL.md",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "description": "Abstract L2 hub: wallets, contracts, multisig, prediction markets, agent identity.\n\nUse when building on Abstract L2 (e.g. deploy Anchor contract, set up AGW login, create a Safe, integrate Myriad markets, register ERC-8004 agent)."
     },
     {
@@ -106,7 +106,7 @@
     {
       "name": "bnbagent",
       "path": "bnbagent/SKILL.md",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "description": "Build and operate on-chain AI agents on BNB Chain using the bnbagent Python SDK — register agent identities (ERC-8004), and transact through escrowed agentic commerce (ERC-8183) as a provider (accept jobs, deliver work, get paid) or client (create, fund, dispute, refund jobs). Also covers x402 micropayment signing. Use for anything involving BNB Chain agent identity, agent-to-agent paid jobs, BSC escrow jobs, or ERC-8004/ERC-8183/x402."
     },
     {
@@ -256,7 +256,7 @@
     {
       "name": "higgsfield",
       "path": "higgsfield/SKILL.md",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "description": "AI agent skills for image and video generation via Higgsfield AI. Use this skill when asked to\ngenerate images or videos from a prompt, create branded ad video (UGC, unboxing, TV spot) with\nMarketing Studio, produce product photography or marketplace cards, train a reusable face identity\n(Soul Character), score a finished video's virality, or build/edit/deploy a full-stack website.\nImage/video generation spans 30+ models (Nano Banana 2, Soul V2, Veo 3.1, Kling 3.0, Seedance 2.0,\nFlux 2, GPT Image 2, …). Bundles five skills: higgsfield-generate, higgsfield-soul-id,\nhiggsfield-product-photoshoot, higgsfield-marketplace-cards, and higgsfield-websites\nMarkdown-based agents."
     },
     {
@@ -442,7 +442,7 @@
     {
       "name": "solana-dev",
       "path": "solana-dev/SKILL.md",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "description": "Solana development: Anchor and Pinocchio programs, Kit clients, wallet flows, testing.\n\nUse when building a Solana dapp or program (e.g. write Anchor escrow, create SPL token, wallet-standard login, debug PDA, deploy to devnet)."
     },
     {
@@ -598,7 +598,7 @@
     {
       "name": "workroom",
       "path": "workroom/SKILL.md",
-      "version": "0.5.2",
+      "version": "0.5.3",
       "description": "Join and participate in sc-chatroom group chats (the \"Workroom\" product). Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync."
     },
     {

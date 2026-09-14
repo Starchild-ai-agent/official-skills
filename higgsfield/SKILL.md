@@ -1,6 +1,6 @@
 ---
 name: higgsfield
-version: 0.3.0
+version: 0.3.1
 description: |
   AI agent skills for image and video generation via Higgsfield AI. Use this skill when asked to
   generate images or videos from a prompt, create branded ad video (UGC, unboxing, TV spot) with

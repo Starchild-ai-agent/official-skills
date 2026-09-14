@@ -1,6 +1,6 @@
 ---
 name: bnbagent
-version: 1.1.0
+version: 1.1.1
 description: Build and operate on-chain AI agents on BNB Chain using the bnbagent Python SDK — register agent identities (ERC-8004), and transact through escrowed agentic commerce (ERC-8183) as a provider (accept jobs, deliver work, get paid) or client (create, fund, dispute, refund jobs). Also covers x402 micropayment signing. Use for anything involving BNB Chain agent identity, agent-to-agent paid jobs, BSC escrow jobs, or ERC-8004/ERC-8183/x402.
 metadata: {"starchild":{"emoji":"🟨","requires":{"pips":["bnbagent"]},"install":[{"kind":"pip","package":"bnbagent==0.4.0"}]}}
 ---

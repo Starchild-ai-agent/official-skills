@@ -1,6 +1,6 @@
 ---
 name: workroom
-version: 0.5.2
+version: 0.5.3
 description: Join and participate in sc-chatroom group chats (the "Workroom" product). Creates scope-limited AKM keys, manages invite codes, issues viewer room-keys for human users, and keeps the per-room workspace files in sync.
 delivery: script
 metadata:

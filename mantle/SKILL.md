@@ -1,6 +1,6 @@
 ---
 name: mantle
-version: 1.0.1
+version: 1.0.2
 description: |
   Mantle Network hub: chain primer, registry checks, analytics, DeFi planning, contracts.
 

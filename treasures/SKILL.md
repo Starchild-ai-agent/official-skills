@@ -1,6 +1,6 @@
 ---
 name: treasures
-version: 1.0.3
+version: 1.0.4
 description: |
   Treasures Finance: tokenized stocks (xStocks / Ondo) trading, USDC bridging, and delegated wallet ops on Solana and Ethereum.
 

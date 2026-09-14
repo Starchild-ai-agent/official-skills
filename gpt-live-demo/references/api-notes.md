@@ -48,9 +48,9 @@ Demo 用正则 `/second(s)?$/i` 防御性解析，找到第一个数字型 `*sec
 截至 2026 年，`gpt-live-1` 仍需申请 Beta 访问权限。
 错误表现：POST `/api/session` 返回 403 或 404。
 
-## Thread 绑定模式（v0.3）—— Starchild thread 为唯一事实源
+## Thread 绑定模式 —— Starchild thread 为唯一事实源
 
-前端 URL 加 `?thread_id=<thread uuid 或完整 session id>` 即进入 thread 模式：
+URL `?binding=thread&thread_id=<thread uuid 或完整 session id>`（0.4.0 起 binding 为必选概念，默认 thread）。实现位于 `bindings/thread.mjs`，协议层在 `core/`：
 
 | 环节 | 实现 | 说明 |
 |---|---|---|
@@ -64,27 +64,13 @@ Demo 用正则 `/second(s)?$/i` 防御性解析，找到第一个数字型 `*sec
 
 未在 P0 核实、需实测：`session.input` 的 token 上限；转写 completed 事件的精确类型名（前端按 `/input.*transcri/` + `/completed|done|final/` 宽匹配）。
 
-## 会话历史与持久化设计（无 thread_id 的 legacy 模式）
+## runtime 侧待补接口（R1–R3，均为加法）
 
-服务器维护全局语音历史（`voiceHistory`，所有语音会话共享一个 `voice` 流，最多 40 条）。
-每次建会话时把最近 12 条历史以 developer message 回灌进 GPT-Live session（记忆回灌），
-每次 delegation 触发时再把最近 10 条拼接到 brain 的 prompt 前缀。
+| # | 接口 | 解锁 |
+|---|---|---|
+| R1 | `GET /push/events` 事件带 `{type, thread_id, summary, run_id?}`，type ∈ message_added · run_started · run_done · job_done · cross_thread | 回流不再猜字段；orchestrator 汇入 |
+| R2 | `POST /session/{id}/messages {role, content, meta:{source:'voice'}}` | 即时写回，删 voice-log 缓冲 |
+| R3 | `POST /chat/stream` 先发 `run_id`；接受 `queue_if_busy` | 真正的打断取消；thread 忙时不静默并入 |
 
-持久化：任务（`data/tasks.json`，完成后保留 1 小时）与语音历史（`data/voice-history.json`）
-均防抖落盘，重启不丢失。`data/` 目录不入库（见 .gitignore）。
-
-## 异步任务轮询模式
-
-`/api/agent` 路由采用异步模式（防止 Fly.io / Nginx 504）：
-1. 前端 POST `/api/agent`，立即返回 `{task_id}`
-2. 后台开始流式调用 `localhost:8000/chat/stream`
-3. 前端每 2 秒 GET `/api/agent/:id` 轮询状态
-4. 每解析到一条进展事件就通过 DataChannel 推送 `session.thinking.append`
-5. 任务完成后前端读取 `reply`，推送 `session.commentary.append`
-6. 任务结果落盘 `data/tasks.json`，完成后保留 1 小时，可查询/取消（`/api/tasks`、`/api/tasks/:id/cancel`）
-
-## 内建后台工具
-
-服务器为 GPT-Live 提供五个工具端点：`ask_starchild`（委派大脑）、`check_task`、
-`cancel_task`、`list_tasks`（以上走 `/api/agent*` 与 `/api/tasks*`）、
-`memory_lookup`（`/api/memory`，按关键词检索持久化语音历史）。
+## 已移除（0.4.0）
+Realtime 时代的五个 Live 端工具（ask_starchild / check_task / cancel_task / list_tasks / memory_lookup）、独立 voice-history 记忆回灌、`/api/agent` 轮询接口。GPT-Live client delegation 下 Live 端无工具通道，这些逻辑全部由 Binding 承担。

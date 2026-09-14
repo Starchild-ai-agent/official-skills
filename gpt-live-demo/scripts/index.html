@@ -37,7 +37,7 @@ details.panel summary{cursor:pointer;font-size:13px;color:var(--acc)}
 </head>
 <body>
 <h1>🐶 Starchild Voice</h1>
-<div class="sub">GPT-Live voice layer · Starchild brain · five-tool routing (memory_lookup / ask_starchild / check_task / cancel_task / list_tasks)</div>
+<div class="sub">GPT-Live voice layer · Starchild brain · client delegation · thread binding · zero tools on the Live side</div>
 <div id="status">Not connected</div>
 <div class="row">
   <button id="connect">Start Call</button>
@@ -49,250 +49,90 @@ details.panel summary{cursor:pointer;font-size:13px;color:var(--acc)}
 <footer><span class="dot" id="micdot"></span><span id="mic">Microphone off</span></footer>
 
 <script>
+// WebRTC only. Every DataChannel event goes to the bridge; everything the bridge wants said or known comes back over SSE.
 const $=id=>document.getElementById(id);
 const chat=$("chat"),log=$("log"),status=$("status");
-let pc,dc,stream,connected=false;
-let liveSessionId=null,utterBuf="",utterFinal="",speechBuf="";
-// Thread binding (v0.3): ?thread_id=<uuid or full session id>. When bound, the
-// Starchild thread is the single source of truth: Live is seeded from it, every
-// delegation goes to it, and thread events flow back as silent thinking.
-const THREAD=new URLSearchParams(location.search).get("thread_id")||"";
-let evCursor=0,evTimer=null,lastThinkAt=0;
+const Q=new URLSearchParams(location.search);
+const BINDING=Q.get("binding")||"thread", THREAD=Q.get("thread_id")||"";
 const base=location.pathname.replace(/\/?$/,"/");
-const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-async function api(path,body){
-  const r=await fetch(base+path,{method:body?"POST":"GET",headers:body?{"Content-Type":"application/json"}:{},body:body?JSON.stringify(body):undefined});
+let pc,dc,stream,connected=false,bridgeId=null,out=null;
+if(THREAD)document.querySelector(".sub").textContent=`Bound to thread …${THREAD.slice(-12)} — open in a full tab (mic permission)`;
+
+async function api(path,body,method){
+  const r=await fetch(base+path,{method:method||(body?"POST":"GET"),headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
   if(!r.ok){const e=await r.json().catch(()=>({error:"HTTP "+r.status}));throw new Error(e.error||("HTTP "+r.status));}
   return r.json();
 }
-const ts=()=>new Date().toLocaleTimeString("en-US",{hour12:false});
-// ---- System Prompt & Tools panel ----
-(async()=>{
-  try{
-    const cfg=await api("api/config");
-    const tools=cfg.tools.map(t=>`<li><code>${esc(t.name)}</code> — ${esc(t.desc)}</li>`).join("");
-    $("promptTools").innerHTML=
-      `<h3>System Prompt (English — replies in the user's spoken language)</h3><pre>${esc(cfg.system_prompt)}</pre>`+
-      `<h3>Tools (${cfg.tools.length})</h3><ul>${tools}</ul>`;
-  }catch(e){$("promptTools").textContent="Failed to load: "+e.message;}
-})();
-function addEv(cls,tag,body){
-  const d=document.createElement("div");d.className="ev "+cls;
-  d.textContent=`[${ts()}] ${tag}: ${body}`;log.appendChild(d);log.scrollTop=log.scrollHeight;
-}
-function addBubble(role,text){
-  const d=document.createElement("div");d.className="bubble "+role;d.textContent=text;
-  chat.appendChild(d);chat.scrollTop=chat.scrollHeight;
-}
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function addEv(cls,tag,body){const d=document.createElement("div");d.className="ev "+cls;d.innerHTML=`<span class="t">${new Date().toLocaleTimeString()}</span><span class="tag">${tag}</span>${body}`;log.prepend(d);}
+function addBubble(role,text){const d=document.createElement("div");d.className="msg "+role;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
 function setStatus(t,err){status.textContent=t;status.classList.toggle("err",!!err);}
 
-// ---- tool dispatch: route delegation to the right executor ----
-// Client delegation has no tools field in session config, so the model names
-// the tool inside its delegation request; we route on the request text.
-function routeTool(text){
-  const t=(text||"").trim();
-  if(/^(查询|查看|列出|显示)?\s*(当前)?(所有|全部)?\s*(后台)?任务列表?$|list[_ ]?tasks/i.test(t)&&t.length<30)return{name:"list_tasks",fn:doListTasks};
-  if(/^(取消|终止|停止|别查了)\b|cancel[_ ]?task/i.test(t))return{name:"cancel_task",fn:doCancelTask};
-  if(/^(怎么样了|好了吗|进度|进展|查.*进度|任务状态)|check[_ ]?task/i.test(t)&&t.length<40)return{name:"check_task",fn:doCheckTask};
-  if(/(之前|上次|记得|我们说过|历史|记忆)|memory[_ ]?lookup/i.test(t)&&t.length<60)return{name:"memory_lookup",fn:doMemoryLookup};
-  return{name:"ask_starchild",fn:doAskStarchild}; // default: the brain
-}
-
-// ---- tool implementations ----
-async function doMemoryLookup(text,taskId){
-  const q=text.replace(/^(查(询|一下)?|看看?|帮我?查|记忆|之前|我们)?(说过|聊过)?(什么)?[?？。！!]*/g,"").trim()||text;
-  const out=await api("api/memory?q="+encodeURIComponent(q.slice(0,80)));
-  const items=out.results||[];
-  const summary=items.length
-    ?`Found ${items.length} matching memories:\n`+items.slice(0,5).map(m=>`[${m.source||"history"}] ${String(m.text).slice(0,120)}`).join("\n")
-    :"No matching memories found.";
-  addEv("result","memory_lookup",summary);
-  returnCommentary(taskId,summary);
-}
-async function doListTasks(_text,taskId){
-  const out=await api("api/tasks");
-  const ts=out.tasks||[];
-  const summary=ts.length?`Currently ${ts.length} task(s):\n`+ts.map(t=>`${t.id.slice(-6)} [${t.status}] ${t.userText.slice(0,40)}`).join("\n"):"No background tasks.";
-  addEv("result","list_tasks",summary);
-  returnCommentary(taskId,summary);
-}
-async function doCheckTask(text,taskId){
-  // check latest running/done task
-  const out=await api("api/tasks");
-  const running=(out.tasks||[]).filter(t=>t.status==="running");
-  const target=running[0]||(out.tasks||[]).sort((a,b)=>b.createdAt-a.createdAt)[0];
-  if(!target){returnCommentary(taskId,"No background tasks.");return;}
-  const prog=(target.progress||[]).slice(-2).map(p=>p.detail).join("; ")||"Waiting";
-  const summary=target.status==="running"?`Task "${target.userText.slice(0,40)}" in progress: ${prog}`:
-    target.status==="done"?`Task done: ${target.reply.slice(0,150)}`:`Task ${target.status}${target.error?": "+target.error:""}`;
-  addEv("result","check_task",summary);
-  returnCommentary(taskId,summary);
-}
-async function doCancelTask(text,taskId){
-  const out=await api("api/tasks");
-  const running=(out.tasks||[]).filter(t=>t.status==="running");
-  if(!running.length){returnCommentary(taskId,"No running tasks.");return;}
-  for(const t of running){await api("api/tasks/"+t.id+"/cancel",{});}
-  addEv("result","cancel_task",`Cancelled ${running.length} task(s)`);
-  returnCommentary(taskId,`Cancelled ${running.length} background task(s).`);
-}
-let lastTaskId=null; // most recent brain task, for progress polling
-async function doAskStarchild(text,taskId){
-  addEv("tool","Starchild",`Calling brain → session=${liveSessionId||"?"} text: ${text.slice(0,120)}`);
-  addBubble("user",text);
-  const sub=await api("api/agent",{session_id:liveSessionId,text,thread_id:THREAD||undefined});
-  lastTaskId=sub.task_id;
-  let reply=null,errMsg=null,tries=0,seenProg=0;
-  for(;;){
-    await new Promise(r=>setTimeout(r,2000));
-    const st=await api("api/agent/"+sub.task_id);
-    if(st.progress&&st.progress.length>seenProg){
-      for(const p of st.progress.slice(seenProg)){
-        addEv("tool","Progress",p.detail);
-        dc.send(JSON.stringify({type:"session.thinking.append",event_id:"prog_"+Date.now(),
-          delegation_id:taskId||null,content:p.detail}));
-      }
-      seenProg=st.progress.length;
-    }
-    if(st.status==="done"){reply=st.reply;break;}
-    if(st.status==="error"){errMsg=st.error;break;}
-    if(st.status==="cancelled"){errMsg="Task cancelled";break;}
-    if(++tries%15===0)addEv("tool","Starchild",`Brain thinking…(${(tries*2)|0}s)`);
-    if(tries>150){errMsg="Timed out waiting for the brain (5 min)";break;}
-  }
-  if(errMsg)throw new Error(errMsg);
-  reply=(reply||"").trim();
-  if(!reply)throw new Error("Brain returned empty");
-  addEv("result","Starchild",`Brain returned → ${reply.slice(0,300)}`);
-  returnCommentary(taskId,reply.slice(0,2000));
-  addBubble("agent",reply);
-}
-function returnCommentary(delegationId,content){
-  dc.send(JSON.stringify({
-    type:"session.commentary.append",event_id:"starchild_"+Date.now(),
-    delegation_id:delegationId||null,content:String(content).slice(0,2000)
-  }));
-  addEv("raw","Return","Result sent to voice playback");
-}
-
-// ---- thread mode: writeback + event inflow ----
-function voiceLog(role,text){
-  api("api/voice-log",{thread_id:THREAD,role,text}).then(r=>addEv("raw","Thread",`voice-only ${role} turn logged (pending ${r.pending})`)).catch(e=>addEv("err","Thread",esc(e.message)));
-}
-// Poll thread events and forward to Live as silent context, throttled ≤1 per 1.5s, merged.
-async function pumpThreadEvents(){
-  if(!THREAD||!dc||dc.readyState!=="open")return;
-  try{
-    const r=await api(`api/thread-events?thread_id=${encodeURIComponent(THREAD)}&since=${evCursor}`);
-    if(r.events&&r.events.length){
-      evCursor=r.seq;
-      const merged=r.events.map(e=>`[${e.kind}] ${e.text}`).join("\n").slice(0,1500);
-      const wait=Math.max(0,1500-(Date.now()-lastThinkAt));
-      setTimeout(()=>{if(!dc||dc.readyState!=="open")return;lastThinkAt=Date.now();
-        dc.send(JSON.stringify({type:"session.thinking.append",event_id:"thr_"+Date.now(),delegation_id:null,
-          content:`[Update from the conversation thread — for your awareness, do not read aloud unless relevant]\n${merged}`}));
-        addEv("raw","Thread",`${r.events.length} thread event(s) → Live`);},wait);
-    }
-  }catch(e){addEv("err","Thread",esc(e.message));}
-}
+let userLine=null,liveLine=null;
 function renderEvent(ev){
   const t=ev.type||"(unknown)";
-  if(t==="session.delegation.created"){
-    const d=ev.delegation||{};
-    const did=d.id||ev.delegation_id||"";
-    addEv("deleg","Delegation",`Request → delegation_id=${did} target=${d.target||"client"}`);
-    // Prefer the completed transcript (api-notes §1: deltas may be partial); fall back to the delta buffer.
-    const text=(utterFinal||utterBuf||"").trim();
-    utterBuf="";utterFinal="";
-    if(!text){addEv("deleg","Delegation","No user text captured, skipping");return;}
-    const route=routeTool(text);
-    addEv("deleg","Routing",`Tool: ${route.name}`);
-    route.fn(text,did).catch(err=>{addEv("err","Tool failed",esc(err.message));});
-    return;
-  }
-  if(t==="session.started"){
-    if(ev.session_id)liveSessionId=ev.session_id;
-    addEv("result","Session",`session.started — voice link established${liveSessionId?(" ("+liveSessionId+")"):""}`);
-    return;
-  }
-  if(t==="session.closed"){
-    const u=ev.usage?` Usage: ${JSON.stringify(ev.usage)}`:"";
-    addEv("result","Session","session.closed — session ended."+u);return;
-  }
   if(/input.*(transcript|transcription)/.test(t)){
-    if(ev.delta){utterBuf+=ev.delta;addEv("sys","Transcript",`You: ${ev.delta}`);}
-    const full=ev.transcript||ev.text;
-    if(/completed|done|final/.test(t)&&typeof full==="string"&&full.trim()){
-      utterFinal=full.trim();addEv("sys","Transcript",`You (final): ${utterFinal}`);
-      // Voice-only writeback: if no delegation follows within 1.5s, Live answered itself → log it for the thread.
-      if(THREAD){const snap=utterFinal;setTimeout(()=>{if(utterFinal===snap){utterFinal="";utterBuf="";voiceLog("user",snap);}},1500);}
-    }
+    if(ev.delta){if(!userLine){userLine=document.createElement("div");userLine.className="msg user";chat.appendChild(userLine);}userLine.textContent+=ev.delta;chat.scrollTop=chat.scrollHeight;}
+    if(/completed|done|final/.test(t)){if(userLine&&ev.transcript)userLine.textContent=ev.transcript;userLine=null;}
     return;
   }
   if(/output.*(transcript|transcription)/.test(t)){
-    if(ev.delta){speechBuf+=ev.delta;addEv("speech","Speech",`Starchild said: ${ev.delta}`);}
-    const full=ev.transcript||ev.text;
-    if(/completed|done|final/.test(t)){const said=(typeof full==="string"&&full.trim())||speechBuf.trim();speechBuf="";if(said&&THREAD)voiceLog("live",said);}
+    if(ev.delta){if(!liveLine){liveLine=document.createElement("div");liveLine.className="msg agent";chat.appendChild(liveLine);}liveLine.textContent+=ev.delta;chat.scrollTop=chat.scrollHeight;}
+    if(/completed|done|final/.test(t))liveLine=null;
     return;
   }
-  if(/error|failed/i.test(t)){
-    addEv("err","Event",JSON.stringify(ev).slice(0,300));return;
-  }
-  addEv("raw",t,JSON.stringify(ev).slice(0,150));
+  if(t==="session.delegation.created"){addEv("deleg","Delegation",`→ bridge (${BINDING})`);return;}
+  if(/error/.test(t)){addEv("err","Error",esc(JSON.stringify(ev.error||ev)));return;}
+  if(/speech_started/.test(t)){addEv("sys","VAD","user speaking");return;}
+  if(!/delta|audio/.test(t))addEv("raw",t,"");
+}
+function renderOut(msg){
+  const k=msg.type.split(".")[1];
+  addEv(k==="commentary"?"result":"tool",k,`${msg.delegation_id?`[${msg.delegation_id.slice(-6)}] `:""}${esc(msg.content.slice(0,200))}`);
 }
 
-$("connect").onclick=async()=>{
-  $("connect").disabled=true;chat.textContent="";log.textContent="";
+async function connect(){
+  $("connect").disabled=true;
   try{
     setStatus("Requesting microphone…");
-    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
-    $("mic").textContent="Microphone on";$("micdot").classList.add("live");
-    setStatus("Establishing connection…");
+    if(!navigator.mediaDevices?.getUserMedia)throw new Error("getUserMedia unavailable — open this page in a full browser tab over HTTPS (not inside an iframe)");
+    stream=await Promise.race([
+      navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error("Microphone request timed out (10s): the permission prompt may be hidden — open in a full tab, allow the mic in the address bar, close other Live tabs, then retry")),10000))
+    ]);
+    $("micdot").classList.add("on");$("mic").textContent="Microphone on";
     pc=new RTCPeerConnection();
+    pc.ontrack=e=>{const a=$("remote");a.srcObject=e.streams[0];a.play().catch(()=>{});};
     stream.getTracks().forEach(t=>pc.addTrack(t,stream));
-    pc.ontrack=e=>{$("audio")?.remove();const a=document.createElement("audio");a.id="audio";a.srcObject=e.streams[0];a.play();};
     dc=pc.createDataChannel("oai-events");
-    dc.onmessage=e=>{try{renderEvent(JSON.parse(e.data));}catch(_){}};
-    await pc.setLocalDescription(await pc.createOffer());
-    setStatus("Creating session…");
-    const data=await api("api/session",{sdp:pc.localDescription.sdp,thread_id:THREAD||undefined});
+    dc.onmessage=e=>{let ev;try{ev=JSON.parse(e.data);}catch{return;}renderEvent(ev);if(bridgeId)fetch(base+`api/bridge/${bridgeId}/event`,{method:"POST",headers:{"Content-Type":"application/json"},body:e.data}).catch(()=>{});};
+    dc.onopen=()=>addEv("sys","DataChannel","open");
+    const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+    await new Promise(r=>{if(pc.iceGatheringState==="complete")return r();pc.onicegatheringstatechange=()=>pc.iceGatheringState==="complete"&&r();setTimeout(r,2000);});
+    setStatus("Creating Live session…");
+    const data=await api("api/session",{sdp:pc.localDescription.sdp,binding:BINDING,thread_id:THREAD||undefined});
     await pc.setRemoteDescription(data.transport?.sdp?{type:"answer",sdp:data.transport.sdp}:data.answer??data);
+    bridgeId=data.bridge_id;
+    out=new EventSource(base+`api/bridge/${bridgeId}/out`);
+    out.onmessage=e=>{if(!dc||dc.readyState!=="open")return;dc.send(e.data);renderOut(JSON.parse(e.data));};
+    const b=data.binding||{};
+    if(b.session_id)addEv("result","Thread",`Bound to …${b.session_id.slice(-12)} — seeded ${b.snapshot_turns}/${b.thread_messages} msgs (${b.snapshot_chars} chars)`);
     connected=true;$("close").disabled=false;
-    if(data.binding){
-      const b=data.binding;
-      addEv("result","Thread",`Bound to …${b.session_id.slice(-12)} — seeded ${b.snapshot_turns}/${b.thread_messages} msgs (${b.snapshot_chars} chars)`);
-      const snap=await api(`api/thread-events?thread_id=${encodeURIComponent(THREAD)}&since=0`).catch(()=>null);
-      if(snap)evCursor=snap.seq; // skip events that predate this session
-      clearInterval(evTimer);evTimer=setInterval(pumpThreadEvents,2000);
-    }
     setStatus(THREAD?"Connected to thread, start talking":"Connected, start talking");
-  }catch(err){
-    setStatus("Failed: "+err.message,true);addEv("deleg","Failed",esc(err.message));
-    $("connect").disabled=false;
-  }
-};
-// ---- teardown: stop the OpenAI live session + cancel running brain tasks ----
-// Connection loss makes OpenAI end the billed session, so closing the page
-// without hanging up must kill the WebRTC link immediately.
-function teardownAll(keepMic,cancelTasks){
-  try{if(dc){dc.onmessage=null;dc.close();}}catch(_){}
-  try{pc&&pc.close();}catch(_){}
-  dc=null;pc=null;connected=false;
-  clearInterval(evTimer);evTimer=null;
-  // design doc §6: hang-up keeps background tasks running (results stored);
-  // only closing/refreshing the page cancels them, so they stop burning credits
-  if(cancelTasks){try{fetch("api/tasks/all/cancel",{method:"POST",keepalive:true});}catch(_){}}
-  lastTaskId=null;
-  if(!keepMic&&stream){stream.getTracks().forEach(t=>t.stop());$("mic").textContent="Microphone off";$("micdot").classList.remove("live");}
+  }catch(e){setStatus("Error: "+e.message,true);addEv("err","Error",esc(e.message));teardown();$("connect").disabled=false;}
 }
-$("close").onclick=()=>{
-  teardownAll(false,false);
+function teardown(){
+  try{out?.close();}catch{}
+  if(bridgeId){fetch(base+`api/bridge/${bridgeId}`,{method:"DELETE",keepalive:true}).catch(()=>{});}
+  try{dc?.close();}catch{}try{pc?.close();}catch{}
+  stream?.getTracks().forEach(t=>t.stop());
+  dc=null;pc=null;out=null;bridgeId=null;connected=false;
+  $("micdot").classList.remove("on");$("mic").textContent="Microphone off";
   $("close").disabled=true;$("connect").disabled=false;
-  setStatus("Hung up (background tasks keep running)");
-};
-// closing/refreshing the page without hanging up: kill session + tasks
-window.addEventListener("pagehide",()=>{if(connected||pc||dc)teardownAll(true,true);});
-window.addEventListener("beforeunload",()=>{if(connected||pc||dc)teardownAll(true,true);});
+}
+$("connect").onclick=connect;
+$("close").onclick=()=>{teardown();setStatus("Hung up");};
+window.addEventListener("pagehide",()=>{if(connected||pc||dc)teardown();});
 </script>
 </body>
 </html>

@@ -1,11 +1,10 @@
 ---
 name: gpt-live-demo
-version: 0.3.0
+version: 0.4.0
 description: >
   GPT-Live 语音接线员 Demo — WebRTC 语音通话前端 + Express 中继服务器 + Starchild brain 桥接。
-  五工具路由（ask_starchild / check_task / cancel_task / list_tasks / memory_lookup）、
-  跨重启持久化（data/tasks.json + voice-history.json）与会话记忆回灌。
-  v0.3 起支持 ?thread_id= 绑定 Starchild thread：以 thread 为唯一上下文源——启动灌快照、委托写回 thread、thread 事件回流 Live。
+  客户端委托（Live 端零工具）+ Binding 抽象：core（三通道封装/转写/委托器）· bindings（thread，可扩 onboarding/orchestrator）· adapters（Starchild runtime）。
+  ?binding=thread&thread_id= 绑定 Starchild thread：以 thread 为唯一上下文源——启动灌快照、委托进 thread、语音专属轮写回、thread 事件回流 Live。
   用户通过浏览器直接与 GPT-Live 语音模型对话，对话内容由 Starchild agent 作为后端大脑处理。
   适用于：语音 Demo 演示、GPT-Live 中继服务开发、实时语音 + AI 代理集成原型。
 tags: [voice, gpt-live, webrtc, demo, relay-server]
@@ -25,21 +24,16 @@ author: Starchild
 ## 架构
 
 ```
-浏览器 (index.html)
-  │  WebRTC audio
-  │  DataChannel (oai-events)
-  ▼
-OpenAI GPT-Live (gpt-live-1)
-  │  client delegation 事件
-  ▼
-server.mjs (/api/agent)
-  │  HTTP SSE stream
-  ▼
-Starchild agent (localhost:8000/chat/stream)
-  │  结果回传
-  ▼
-GPT-Live → 语音播报
+浏览器 index.html      仅 WebRTC：DataChannel 事件 → POST /api/bridge/:id/event；SSE /api/bridge/:id/out → dc.send()
+server.mjs             薄壳：POST /api/session {sdp, binding, ...params} 选 binding → seed → OpenAI live.create
+core/live-session.mjs  三通道封装 think(text,id) / say(text,id) / instruct(text)；≤1500 字切片；null-id thinking 合并节流 ≤1/1.5s
+core/transcripts.mjs   DataChannel 事件 → 完整的 user / live 轮次（宽匹配 input|output.*transcript + completed|done|final）
+core/delegator.mjs     delegation.created → binding.handle(text) → think/say(id)；1.5s 内无委托的用户轮 → onUserTurn；插话 → interrupt
+bindings/thread.mjs    ThreadBinding：seed（最近 10 轮 + 在跑 run + 语音尾部，≤9000 字，最旧先丢）· handle（/chat/stream {thread_id}）· 写回缓冲 · events（/push/events）· interrupt
+adapters/starchild-runtime.mjs  唯一知道 :8000 的文件：resolveSession / messages / runs / chat / cancelRun / events
 ```
+依赖只向下：core 不知道 Starchild，bindings 不知道 WebRTC。加场景 = 加一个 binding 文件 + 在 bindings/index.mjs 注册 + URL 参数 `?binding=<kind>`。
+Live 端 **没有工具**（OpenAI client delegation 规范：`session.delegation.created` 只带元数据，业务规则与工具留在后端）。
 
 ## 快速开始
 
@@ -79,13 +73,15 @@ node server.mjs
 
 ## 文件说明
 
-| 文件 | 说明 |
-|------|------|
-| `scripts/server.mjs` | Express 中继服务器（WebRTC session 代理 + brain 桥接） |
-| `scripts/index.html` | 浏览器前端（WebRTC + UI + 计费器） |
-| `scripts/package.json` | Node.js 依赖（express, openai） |
-| `references/deploy.md` | 本地开发与生产部署完整指南 |
-| `references/api-notes.md` | GPT-Live delegation API 要点与已知坑 |
+| 文件 | 作用 |
+|---|---|
+| `scripts/server.mjs` | HTTP 壳：/api/session · /api/bridge/:id/{event,out} · /api/seed（调试）· /api/health |
+| `scripts/index.html` | 纯 WebRTC 前端，无业务逻辑 |
+| `scripts/core/*` | 协议层，与 Starchild 无关 |
+| `scripts/bindings/*` | 场景层；`index.mjs` 为注册表 |
+| `scripts/adapters/starchild-runtime.mjs` | runtime HTTP 客户端 |
+| `scripts/data/voice-log.json` | 过渡件：Live 自答轮次的写回缓冲（runtime 提供 append-message 后删除） |
+| `references/api-notes.md` | API 细节、已知坑、runtime 侧待补接口 |
 
 ## 使用本 skill 的场景
 
@@ -97,18 +93,17 @@ node server.mjs
 
 → 读 `references/deploy.md` 获取完整步骤。
 
-## Thread 绑定模式（v0.3）
+## Thread 绑定模式
 
-在 URL 上加 `?thread_id=<thread uuid>` 打开页面（全屏标签页，需麦克风权限）：
+URL：`/?binding=thread&thread_id=<thread uuid>`（全屏标签页，需麦克风权限）。
 
-- 建连时把该 thread 最近 10 轮压缩成快照灌给 Live，开口即可问"我们刚才在做什么"；
-- 所有需要事实/工具/推理的话都 delegation 到同一个 thread，文字页面能看到语音轮次与回答；
-- Live 自己直接答掉的闲聊/复述轮记入 `data/voice-log.json`，下次委托时补交给 Starchild；
-- thread 里新发生的事（文字消息、后台任务完成）以 `thinking.append` 静默回流给 Live。
+- 建连：thread 最近 10 轮 + 在跑 run 数 + 尚未写回的语音轮压缩成快照灌 `session.input`；
+- 委托：一切需要事实/工具/文件/写作/决策的话进同一 thread（runtime 写入用户轮与回答，网页可见）；
+- 写回：Live 自己答掉的轮次先记入 `data/voice-log.json`，下次委托时补交；
+- 回流：thread 事件以 `thinking.append(null)` 静默注入，合并节流；
+- 打断：只有 runtime 确认取消才对 Live 说「已停」（当前 run_id 未返回 → 始终按「仍在跑」处理）。
 
-不带 `thread_id` 则为原 legacy 模式（独立 voice-history）。细节与已知边界见 `references/api-notes.md`「Thread 绑定模式」。
-
-验收清单：A1 开场复述当前目标（快照）；A2 语音说一句 → 文字页出现；A3 文字页打一句 → 语音里能答"我刚打了什么"（回流）；A4 需要事实的全部委托、闲聊本地答；A5 重开页面 A1 仍过；A6 委托类首句 ≤3s。
+验收：A1 开场复述当前目标；A2 语音一句 → 文字页出现；A3 文字页打字 → 语音能答「刚打了什么」；A4 闲聊本地答/事实类委托；A5 重开页面 A1 仍过；A6 委托首句 ≤3s。
 
 ## 注意事项
 

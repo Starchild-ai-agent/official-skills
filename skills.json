@@ -172,8 +172,8 @@
     {
       "name": "coinglass",
       "path": "coinglass/SKILL.md",
-      "version": "3.0.4",
-      "description": "Crypto derivatives data: funding rates, open interest, liquidations, long/short ratios.\n\nUse when researching perp markets, tracking Hyperliquid whale positions, or comparing ETF flows (e.g. BTC funding, ETH OI, liquidation heatmap)."
+      "version": "3.1.0",
+      "description": "Crypto derivatives data: funding rates, open interest, liquidations, long/short ratios.\n\nUse when researching perp markets or comparing ETF flows (e.g. BTC funding, ETH OI).\nNOTE: platform API key is Startup tier — liquidation heatmap, coins-markets detail,\nliquidation order book and Hyperliquid positions require higher plans (see Plan 权限分级)."
     },
     {
       "name": "collectorcrypt",

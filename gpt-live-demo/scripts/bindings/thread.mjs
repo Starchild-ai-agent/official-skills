@@ -17,8 +17,11 @@ export class ThreadBinding {
   constructor(sessionId) { this.sessionId = sessionId; this.threadId = sessionId.split(":").pop(); this.runId = null; }
 
   static async create({ thread_id }) {
-    const sid = await runtime.resolveSession(String(thread_id || "").trim());
-    if (!sid) throw Object.assign(new Error(`thread not found: ${thread_id}`), { status: 404 });
+    // Default = the reserved Live channel thread (like TG/WeChat each own a fixed thread).
+    const tid = String(thread_id || process.env.LIVE_THREAD_ID || "").trim();
+    if (!tid) throw Object.assign(new Error("thread_id is required (?thread_id=<thread uuid> in the page URL)"), { status: 400 });
+    const sid = await runtime.resolveSession(tid);
+    if (!sid) throw Object.assign(new Error(`thread not found: ${tid}`), { status: 404 });
     return new ThreadBinding(sid);
   }
 
@@ -49,12 +52,16 @@ export class ThreadBinding {
     const voiceCtx = pending.length ? `[Voice-only exchanges since the last delegation, for context]\n${pending.map((e) => `${e.role === "user" ? "User" : "Live"}: ${e.text}`).join("\n")}\n\n` : "";
     pending.forEach((e) => { e.delegated = true; }); saveVoiceLog();
     const message = `${voiceCtx}[Voice] ${text}\n\n(The user is speaking by voice. Lead with 1–2 spoken sentences; leave details in the thread rather than reading them aloud.)`;
-    let reply = "";
+    let reply = "", thinkBuf = "", lastThink = 0;
     for await (const ev of runtime.chat({ message, thread_id: this.threadId }, signal)) {
       if (ev.type === "text_delta") reply += ev.data?.text || "";
       else if (ev.data?.run_id) this.runId = ev.data.run_id;
-      else if (ev.type === "tool_start") yield { kind: "think", text: `Using ${ev.data?.tool_name || "a tool"}…` };
-      else if (/thinking|reasoning/i.test(ev.type) && (ev.data?.summary || ev.data?.text)) yield { kind: "think", text: String(ev.data.summary || ev.data.text).slice(0, 200) };
+      else if (ev.type === "tool_start") { if (thinkBuf) { yield { kind: "think", text: thinkBuf }; thinkBuf = ""; } yield { kind: "think", text: `Using ${ev.data?.tool_name || "a tool"}…` }; }
+      else if (/thinking|reasoning/i.test(ev.type) && (ev.data?.summary || ev.data?.text)) {
+        // Reasoning arrives token by token; batch into ≤1 progress note per 1.5 s.
+        thinkBuf += (thinkBuf && !/\s$/.test(thinkBuf) ? " " : "") + String(ev.data.summary || ev.data.text);
+        if (Date.now() - lastThink > 1500 && thinkBuf.length > 40) { yield { kind: "think", text: thinkBuf.slice(0, 300) }; thinkBuf = ""; lastThink = Date.now(); }
+      }
     }
     reply = reply.trim();
     // Empty stream = the thread was mid-run and the runtime merged this message into it (verified); answer lands in the thread.

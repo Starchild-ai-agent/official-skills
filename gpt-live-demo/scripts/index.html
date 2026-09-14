@@ -57,6 +57,7 @@ const BINDING=Q.get("binding")||"thread", THREAD=Q.get("thread_id")||"";
 const base=location.pathname.replace(/\/?$/,"/");
 let pc,dc,stream,connected=false,bridgeId=null,out=null;
 if(THREAD)document.querySelector(".sub").textContent=`Bound to thread …${THREAD.slice(-12)} — open in a full tab (mic permission)`;
+else{document.querySelector(".sub").textContent="Bound to the Live channel thread (server default) — open in a full tab (mic permission)";}
 
 async function api(path,body,method){
   const r=await fetch(base+path,{method:method||(body?"POST":"GET"),headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});

@@ -40,11 +40,14 @@ app.post("/api/session", async (req, res) => {
   catch (e) { return res.status(e.status || 502).json({ error: e.message }); }
 
   try {
+    // Shape verified against 0.3.0 (worked end-to-end): session-level fields live under `session`.
     const result = await client.live.create({
-      model: process.env.GPT_LIVE_MODEL || "gpt-live-1",
-      instructions: LIVE_PROMPT,
-      delegation: { mode: "client" },
-      input: [{ role: "developer", content: [{ type: "input_text", text: seed }] }],
+      session: {
+        model: process.env.GPT_LIVE_MODEL || "gpt-live-1",
+        instructions: LIVE_PROMPT,
+        delegation: { type: "client" },
+        input: [{ role: "developer", content: [{ type: "input_text", text: seed }] }],
+      },
       transport: { type: "webrtc", sdp },
     });
     const id = `b${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

@@ -51,17 +51,15 @@ export class ThreadBinding {
     const pending = this._log().filter((e) => !e.delegated);
     const voiceCtx = pending.length ? `[Voice-only exchanges since the last delegation, for context]\n${pending.map((e) => `${e.role === "user" ? "User" : "Live"}: ${e.text}`).join("\n")}\n\n` : "";
     pending.forEach((e) => { e.delegated = true; }); saveVoiceLog();
-    const message = `${voiceCtx}[Voice] ${text}\n\n(The user is speaking by voice. Lead with 1–2 spoken sentences; leave details in the thread rather than reading them aloud.)`;
-    let reply = "", thinkBuf = "", lastThink = 0;
+    const isChannel = this.threadId === String(process.env.LIVE_THREAD_ID || "");
+    const dispatch = isChannel ? `\n\n[Live dispatcher mode] This is the user's Live voice channel thread, not a work thread. Before doing the task yourself, check whether it belongs to another thread that is already working on it (session_status locate/list_threads, other-threads context). If it does: hand it over there with sessions_message (kind=delegate, include the user's words) and reply with what you handed over and to which thread — do NOT redo the work here. Do it here only if it is a new task, a quick question, or the user explicitly says to run it here.` : "";
+    const message = `${voiceCtx}[Voice] ${text}${dispatch}\n\n(The user is speaking by voice. Lead with 1–2 spoken sentences; leave details in the thread rather than reading them aloud.)`;
+    let reply = "", toolsUsed = 0;
     for await (const ev of runtime.chat({ message, thread_id: this.threadId }, signal)) {
       if (ev.type === "text_delta") reply += ev.data?.text || "";
       else if (ev.data?.run_id) this.runId = ev.data.run_id;
-      else if (ev.type === "tool_start") { if (thinkBuf) { yield { kind: "think", text: thinkBuf }; thinkBuf = ""; } yield { kind: "think", text: `Using ${ev.data?.tool_name || "a tool"}…` }; }
-      else if (/thinking|reasoning/i.test(ev.type) && (ev.data?.summary || ev.data?.text)) {
-        // Reasoning arrives token by token; batch into ≤1 progress note per 1.5 s.
-        thinkBuf += (thinkBuf && !/\s$/.test(thinkBuf) ? " " : "") + String(ev.data.summary || ev.data.text);
-        if (Date.now() - lastThink > 1500 && thinkBuf.length > 40) { yield { kind: "think", text: thinkBuf.slice(0, 300) }; thinkBuf = ""; lastThink = Date.now(); }
-      }
+      // Milestones only. Token-level reasoning deltas made Live "narrate" every 1.5 s during silence.
+      else if (ev.type === "tool_start" && ++toolsUsed <= 3) yield { kind: "think", text: `Progress: using ${ev.data?.tool_name || "a tool"}. Still working — no need to say anything.` };
     }
     reply = reply.trim();
     // Empty stream = the thread was mid-run and the runtime merged this message into it (verified); answer lands in the thread.

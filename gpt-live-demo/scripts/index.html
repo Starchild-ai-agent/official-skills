@@ -103,7 +103,12 @@ async function connect(){
     ]);
     $("micdot").classList.add("on");$("mic").textContent="Microphone on";
     pc=new RTCPeerConnection();
-    pc.ontrack=e=>{const a=$("remote");a.srcObject=e.streams[0];a.play().catch(()=>{});};
+    pc.ontrack=e=>{
+      let a=$("remote");
+      if(!a){a=document.createElement("audio");a.id="remote";a.autoplay=true;a.playsInline=true;document.body.appendChild(a);}
+      a.srcObject=e.streams[0];
+      a.play().then(()=>addEv("sys","Audio","remote track playing")).catch(err=>{addEv("err","Audio","play() blocked: "+err.message+" — click anywhere to resume");setStatus("Click the page to enable audio",true);document.addEventListener("click",()=>a.play().catch(()=>{}),{once:true});});
+    };
     stream.getTracks().forEach(t=>pc.addTrack(t,stream));
     dc=pc.createDataChannel("oai-events");
     dc.onmessage=e=>{let ev;try{ev=JSON.parse(e.data);}catch{return;}renderEvent(ev);if(bridgeId)fetch(base+`api/bridge/${bridgeId}/event`,{method:"POST",headers:{"Content-Type":"application/json"},body:e.data}).catch(()=>{});};
@@ -126,6 +131,7 @@ function teardown(){
   try{out?.close();}catch{}
   if(bridgeId){fetch(base+`api/bridge/${bridgeId}`,{method:"DELETE",keepalive:true}).catch(()=>{});}
   try{dc?.close();}catch{}try{pc?.close();}catch{}
+  const ra=$("remote");if(ra){ra.srcObject=null;ra.remove();}
   stream?.getTracks().forEach(t=>t.stop());
   dc=null;pc=null;out=null;bridgeId=null;connected=false;
   $("micdot").classList.remove("on");$("mic").textContent="Microphone off";

@@ -203,7 +203,7 @@ than pointing at setup). Implements both
 `WalletProvider` and `IntentExecutor` (it `make_executor`s to itself). Key
 custody lives entirely inside twak. Full capability reference (supported
 ERC-8004 / ERC-8183 / x402 methods, boundaries, contract addresses):
-[`docs/twak.md`](../../docs/twak.md).
+[`docs/twak.md`](https://github.com/bnb-chain/bnbchain-studio/blob/main/docs/twak.md).
 
 | Member | Description |
 |---|---|
@@ -578,7 +578,7 @@ in.
 
 ## Related
 
-- [`erc8004`](../erc8004/README.md) — builds `Intent`s and runs them via the wallet's executor.
-- [`erc8183`](../erc8183/README.md) — uses `WalletProvider` via `ERC8183Config` for job transactions.
-- [`core`](../core/README.md) — `ContractClientMixin` delegates signing to `WalletProvider`.
-- [`docs/twak.md`](../../docs/twak.md) — twak capability reference: supported ERC-8004 / ERC-8183 / x402 methods, the delegated x402 payer, boundaries, and contract addresses.
+- [`erc8004`](https://github.com/bnb-chain/bnbchain-studio/blob/main/erc8004/README.md) — builds `Intent`s and runs them via the wallet's executor.
+- [`erc8183`](https://github.com/bnb-chain/bnbchain-studio/blob/main/erc8183/README.md) — uses `WalletProvider` via `ERC8183Config` for job transactions.
+- [`core`](https://github.com/bnb-chain/bnbchain-studio/blob/main/core/README.md) — `ContractClientMixin` delegates signing to `WalletProvider`.
+- [`docs/twak.md`](https://github.com/bnb-chain/bnbchain-studio/blob/main/docs/twak.md) — twak capability reference: supported ERC-8004 / ERC-8183 / x402 methods, the delegated x402 payer, boundaries, and contract addresses.

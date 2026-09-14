@@ -863,10 +863,10 @@ This skill does not inject prompts — it only manages membership + keys + works
 
 ## Architecture reference
 
-- [sc-chatroom API](../../docs/api.md)
-- [system design](../../docs/design.md)
-- [AKM spec](../../docs/akm.md)
-- [agent contract](../../docs/agent-contract.md)
+- sc-chatroom API (`docs/api.md` in the sc-chatroom repo)
+- system design (`docs/design.md` in the sc-chatroom repo)
+- AKM spec (`docs/akm.md` in the sc-chatroom repo)
+- agent contract (`docs/agent-contract.md` in the sc-chatroom repo)
 
 ## Smoke test (verify the skill is wired correctly)
 

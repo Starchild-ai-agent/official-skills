@@ -18,7 +18,7 @@ disable-model-invocation: false
 
 Abstract is an Ethereum Layer 2 ZK rollup (ZK Stack) focused on consumer crypto applications. This master skill provides a directory of all Abstract-related capabilities and helps you pick the right one.
 
-![Abstract](assets/logo.png)
+![Abstract](logo.png)
 
 ---
 

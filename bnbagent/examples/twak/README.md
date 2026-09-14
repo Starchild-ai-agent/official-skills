@@ -3,7 +3,7 @@
 Demos for `TWAKProvider` — the self-broadcasting wallet backed by the
 Trust Wallet Agent Kit (`twak`) CLI, **v0.19.0 minimum**. Each script is a
 runnable companion to one section of
-[`bnbagent/wallets/README.md`](../../bnbagent/wallets/README.md) (the TWAK
+[`bnbagent/wallets/README.md`](https://github.com/bnb-chain/bnbchain-studio/blob/main/bnbagent/wallets/README.md) (the TWAK
 section is the authoritative reference these scripts demonstrate).
 
 ## The scripts
@@ -49,8 +49,8 @@ exercise both natively.
 
 ## Further reading
 
-- [`docs/twak.md`](../../docs/twak.md) — twak capability reference: supported
+- [`docs/twak.md`](https://github.com/bnb-chain/bnbchain-studio/blob/main/docs/twak.md) — twak capability reference: supported
   ERC-8004 / ERC-8183 / x402 methods, the delegated x402 payer, boundaries,
   and contract addresses.
-- [`bnbagent/wallets/README.md`](../../bnbagent/wallets/README.md) — TWAK
+- [`bnbagent/wallets/README.md`](https://github.com/bnb-chain/bnbchain-studio/blob/main/bnbagent/wallets/README.md) — TWAK
   provider reference: signing model, capability sets, custody, deployment.

@@ -309,4 +309,4 @@ See [no-dna.org](https://no-dna.org) for the `NO_DNA` standard.
 - **TypeScript** — replace `@coral-xyz/anchor` with `@anchor-lang/core`.
 - **IDL** — IDL management is being moved off program, **mandatory** actions required.
 
-See [anchor/migrating-v0.32-to-v1.md](./anchor/migrating-v0.32-to-v1.md) for the full checklist and before/after examples.
+See the Anchor v1 migration guide (https://www.anchor-lang.com/docs/updates/release-notes) for the full checklist and before/after examples.

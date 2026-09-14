@@ -68,7 +68,7 @@ What switches and what doesn't:
   optParams), but a machine has exactly **one** twak wallet (per HOME), so
   twak cannot play two *distinct* parties locally — these flows keep the
   counterparty on EVM for that reason. See the capability reference
-  [`docs/twak.md`](../../docs/twak.md). (For a fully twak-driven both-roles
+  [`docs/twak.md`](https://github.com/bnb-chain/bnbchain-studio/blob/main/docs/twak.md). (For a fully twak-driven both-roles
   self-deal, see `examples/twak/e2e_smoke.py`.)
 
 Prerequisites (one-time):

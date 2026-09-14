@@ -322,7 +322,7 @@
     {
       "name": "mantle",
       "path": "mantle/SKILL.md",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "description": "Mantle Network hub: chain primer, registry checks, analytics, DeFi planning, contracts.\n\nUse when working on Mantle (e.g. verify an address, plan a DeFi route, debug a Mantle RPC error, design a contract for Mantle gas)."
     },
     {
@@ -400,7 +400,7 @@
     {
       "name": "project-builder",
       "path": "project-builder/SKILL.md",
-      "version": "1.7.0",
+      "version": "1.7.1",
       "description": "End-to-end project engineering: design, incremental build, verify, debug systematically.\n\nUse when building software, dashboards, scheduled jobs, or web apps the user has asked for (e.g. build a price monitor, daily summary task, ship an API)."
     },
     {
@@ -508,7 +508,7 @@
     {
       "name": "treasures",
       "path": "treasures/SKILL.md",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "description": "Treasures Finance: tokenized stocks (xStocks / Ondo) trading, USDC bridging, and delegated wallet ops on Solana and Ethereum.\n\nUse when running Treasures-routed finance ops (e.g. discover tokenized stocks, quote/execute a trade, bridge USDC across chains, check a delegated wallet's portfolio).\n\nBase URL needs the `/public/v1` prefix (bare host 404s). Trade paths (`/quote/*`, `/trade/submit`, `/bridge/quote`) are geo-fenced at the AWS load balancer → 451 from US and GB, before auth — route those calls through the `sc-vpn` skill with a per-request proxy (DE/NL/SE/CH/SG/HK/JP are clear); reads work from anywhere. A 451 is never a signing problem. See the \"Read this before any trade attempt\" section.\n\nWallet: DEFAULT to the user's Privy wallet via `treasures-b2b-api` (the wallet signs `ownership_proof` for quotes + per-leg signed payloads for `/trade/submit` — use the `wallet` skill to sign). Route by where the assets live: assets in the Privy/EOA wallet → `treasures-b2b-api`; only use the `treasures-wallet` delegated skill when the user explicitly asks for the Treasures-provisioned wallet or the assets sit in it."
     },
     {
@@ -544,7 +544,7 @@
     {
       "name": "upbit",
       "path": "upbit/SKILL.md",
-      "version": "0.9.2",
+      "version": "0.9.4",
       "description": "Use upbit CLI for Upbit REST API — spot orders, market data, withdrawals, deposits, travel rule, account management.\n업비트 CLI로 시세 조회, 주문, 잔고 확인, 입출금을 처리합니다.\n\nTrigger this skill whenever the user wants to query prices, place/cancel orders, check balances, withdraw or deposit assets, or interact with the Upbit exchange API — in any language.\n사용자가 업비트 시세·주문·잔고·입출금을 언급하면 반드시 이 스킬을 사용하세요."
     },
     {

@@ -1,6 +1,6 @@
 ---
 name: upbit
-version: 0.9.2
+version: 0.9.4
 description: |
   Use upbit CLI for Upbit REST API — spot orders, market data, withdrawals, deposits, travel rule, account management.
   업비트 CLI로 시세 조회, 주문, 잔고 확인, 입출금을 처리합니다.

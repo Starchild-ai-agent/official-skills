@@ -1,6 +1,6 @@
 ---
 name: project-builder
-version: 1.7.0
+version: 1.7.1
 description: |
   End-to-end project engineering: design, incremental build, verify, debug systematically.
 
@@ -50,7 +50,7 @@ triggers:
 
 **⚠️ CRITICAL — UI Design Quality Gate:** If the project produces ANY visual HTML output (dashboard, web app, landing page, portfolio, any page the user will see), you MUST `read_file` the `ui-design` skill's SKILL.md and follow it BEFORE writing any HTML/CSS. This is not optional. project-builder handles engineering; ui-design handles visual quality (and tells you when to reach for a component library like shadcn/ui, HeroUI, or coss ui instead of hand-writing). Skipping ui-design produces generic AI slop.
 
-**A. Pick the skills.** Gather every data source the project needs. For each one, prefer a skill: check `<available_skills>`, and if nothing fits, try `search_skills(query)` for official + community coverage. Skills are the most reliable layer — they ship tested clients, auth, and rate-limit handling. Web search is a last resort. Only write raw HTTP / SDK code when no skill can cover the source.
+**A. Pick the sources and tools.** For research and API documentation, use web search. For live market numbers or external actions, reuse the relevant installed skill. Read its SKILL.md before use; search missing skills with `auto_install=false` and install only with user approval. Write custom API code only after checking that no suitable skill covers the operation; verify endpoints and response shapes against current official documentation.
 
 **B. Read the platform rules for what the project touches.** These rules live in references (not in your system prompt) so you must `read_file` them before writing code. Skipping this is the #1 cause of 401s, broken paths, and "worked locally, fails in preview" bugs.
 
@@ -89,11 +89,7 @@ If the architecture choice is Preview Server or any project that outputs HTML th
 3. Include the Design Dials output line in your phase plan below.
 If you skip this step, the UI will look like generic AI output. This gate is blocking — do not proceed to Phase 2 without completing it.
 
-**Design Gate (required, blocking):**
-After Phase 1, STOP and present a short phase plan (milestones for DESIGN/BUILD/DEBUG). Ask explicitly: **"Approve this plan and proceed to Phase 2 BUILD?"** Match the user's language when phrasing the question — never inject a hardcoded non-English string.
-- If user confirms: proceed to Phase 2.
-- If user requests changes: revise design and re-confirm.
-- If no confirmation: do not write/modify code.
+**Design gate:** Present a short phase plan for multi-stage work. If the user has already authorized a clear, reversible implementation, proceed without asking for the same approval again. Ask only when scope is genuinely ambiguous, a material cost needs approval, or the next action is irreversible/external (publish, send, trade, delete). An active Plan Mode remains read-only until the user approves execution.
 
 ---
 

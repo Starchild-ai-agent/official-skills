@@ -1,6 +1,6 @@
 ---
 name: mantle
-version: 1.0.1
+version: 1.0.2
 description: |
   Mantle Network hub: chain primer, registry checks, analytics, DeFi planning, contracts.
 
@@ -35,36 +35,36 @@ disable-model-invocation: false
 
 | Skill | Role |
 | --- | --- |
-| [`mantle-network-primer`](./mantle-network-primer/SKILL.md) | Clarifies Mantle fundamentals such as MNT gas, chain IDs, official endpoints, and inclusion vs settlement |
+| [`mantle-network-primer`](./skills/mantle-network-primer/SKILL.md) | Clarifies Mantle fundamentals such as MNT gas, chain IDs, official endpoints, and inclusion vs settlement |
 
 ### Registry and Safety Gates
 
 | Skill | Role |
 | --- | --- |
-| [`mantle-address-registry-navigator`](./mantle-address-registry-navigator/SKILL.md) | Resolves verified Mantle addresses and blocks unsafe address guessing |
-| [`mantle-risk-evaluator`](./mantle-risk-evaluator/SKILL.md) | Returns `pass`, `warn`, or `block` verdicts for state-changing intents |
-| [`mantle-portfolio-analyst`](./mantle-portfolio-analyst/SKILL.md) | Inspects balances, allowances, and spender exposure with read-only data |
+| [`mantle-address-registry-navigator`](./skills/mantle-address-registry-navigator/SKILL.md) | Resolves verified Mantle addresses and blocks unsafe address guessing |
+| [`mantle-risk-evaluator`](./skills/mantle-risk-evaluator/SKILL.md) | Returns `pass`, `warn`, or `block` verdicts for state-changing intents |
+| [`mantle-portfolio-analyst`](./skills/mantle-portfolio-analyst/SKILL.md) | Inspects balances, allowances, and spender exposure with read-only data |
 
 ### Analytics and Diagnostics
 
 | Skill | Role |
 | --- | --- |
-| [`mantle-data-indexer`](./mantle-data-indexer/SKILL.md) | Retrieves historical wallet activity and time-windowed Mantle analytics |
-| [`mantle-readonly-debugger`](./mantle-readonly-debugger/SKILL.md) | Triages RPC failures, quote reverts, and ambiguous read-path behavior |
-| [`mantle-tx-simulator`](./mantle-tx-simulator/SKILL.md) | Prepares external simulation handoffs and WYSIWYS summaries |
+| [`mantle-data-indexer`](./skills/mantle-data-indexer/SKILL.md) | Retrieves historical wallet activity and time-windowed Mantle analytics |
+| [`mantle-readonly-debugger`](./skills/mantle-readonly-debugger/SKILL.md) | Triages RPC failures, quote reverts, and ambiguous read-path behavior |
+| [`mantle-tx-simulator`](./skills/mantle-tx-simulator/SKILL.md) | Prepares external simulation handoffs and WYSIWYS summaries |
 
 ### DeFi Planning
 
 | Skill | Role |
 | --- | --- |
-| [`mantle-defi-operator`](./mantle-defi-operator/SKILL.md) | Orchestrates venue discovery, comparison, and execution-ready DeFi planning |
+| [`mantle-defi-operator`](./skills/mantle-defi-operator/SKILL.md) | Orchestrates venue discovery, comparison, and execution-ready DeFi planning |
 
 ### Smart Contract Lifecycle
 
 | Skill | Role |
 | --- | --- |
-| [`mantle-smart-contract-developer`](./mantle-smart-contract-developer/SKILL.md) | Frames Mantle-specific contract design and deployment-readiness decisions |
-| [`mantle-smart-contract-deployer`](./mantle-smart-contract-deployer/SKILL.md) | Prepares deployment, verification, and external signer handoff steps |
+| [`mantle-smart-contract-developer`](./skills/mantle-smart-contract-developer/SKILL.md) | Frames Mantle-specific contract design and deployment-readiness decisions |
+| [`mantle-smart-contract-deployer`](./skills/mantle-smart-contract-deployer/SKILL.md) | Prepares deployment, verification, and external signer handoff steps |
 
 ## How to Pick a Skill
 

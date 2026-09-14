@@ -14,6 +14,12 @@ from typing import Dict, Any, Optional, List
 from ._api import cg_request
 
 
+def _to_pair(symbol: str) -> str:
+    """BTC -> BTCUSDT; pass through if already a pair."""
+    s = symbol.upper()
+    return s if s.endswith("USDT") else f"{s}USDT"
+
+
 def _format_funding_rate(val: Any) -> Any:
     """Format numeric funding-rate values to percent strings."""
     if isinstance(val, (int, float)):
@@ -110,17 +116,17 @@ def get_pair_data(
 def get_ohlc_history(
     symbol: str = "BTC",
     interval: str = "h4",
-    exchange: Optional[str] = None
+    exchange: str = "Binance"
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Get OHLC price history for a futures pair.
 
     Args:
-        symbol: Coin symbol.
+        symbol: Coin symbol (auto-converted to pair format, e.g. BTCUSDT).
         interval: Time interval (m1, m5, m15, h1, h4, h12, h24).
-        exchange: Optional exchange filter.
+        exchange: Required by the API (default Binance).
     """
-    params = {"symbol": symbol, "interval": interval}
+    params = {"symbol": _to_pair(symbol), "interval": interval}
     if exchange:
         params["exchange"] = exchange
     return cg_request("api/futures/price/history", params=params)

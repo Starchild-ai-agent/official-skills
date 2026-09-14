@@ -16,6 +16,7 @@ from ._api import cg_request
 
 def get_coin_liquidation_history(
     symbol: str = "BTC",
+    exchange_list: str = "Binance,OKX,Bybit,Bitget",
     interval: str = "h4"
 ) -> Optional[List[Dict[str, Any]]]:
     """
@@ -27,7 +28,8 @@ def get_coin_liquidation_history(
     """
     return cg_request(
         "api/futures/liquidation/aggregated-history",
-        params={"symbol": symbol, "interval": interval}
+        params={"symbol": symbol, "interval": interval,
+                "exchange_list": exchange_list}
     )
 
 
@@ -40,14 +42,15 @@ def get_pair_liquidation_history(
     Get liquidation history for a specific trading pair.
 
     Args:
-        symbol: Coin symbol.
+        symbol: Coin symbol (auto-converted to pair format, e.g. BTCUSDT).
         exchange: Exchange name.
         interval: Time interval (h1, h4, h12, h24).
     """
+    pair = symbol.upper() if symbol.upper().endswith("USDT") else f"{symbol.upper()}USDT"
     return cg_request(
         "api/futures/liquidation/history",
         params={
-            "symbol": symbol,
+            "symbol": pair,
             "exchange": exchange,
             "interval": interval,
         }

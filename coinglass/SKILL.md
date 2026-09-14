@@ -1,18 +1,20 @@
 ---
 name: coinglass
-version: 3.0.4
+version: 3.1.0
 description: |
   Crypto derivatives data: funding rates, open interest, liquidations, long/short ratios.
 
-  Use when researching perp markets, tracking Hyperliquid whale positions, or comparing ETF flows (e.g. BTC funding, ETH OI, liquidation heatmap).
+  Use when researching perp markets or comparing ETF flows (e.g. BTC funding, ETH OI).
+  NOTE: platform API key is Startup tier — liquidation heatmap, coins-markets detail,
+  liquidation order book and Hyperliquid positions require higher plans (see Plan 权限分级).
 delivery: script
 metadata:
   starchild:
     emoji: 📈
     skillKey: coinglass
-    plan: professional
+    plan: startup
     api_version: v4
-    version: 3.0.3
+    version: 3.1.0
     total_tools: 37
     requires:
       env:
@@ -22,11 +24,43 @@ disable-model-invocation: false
 
 ---
 
-## Liquidation Heatmap（真正的价格区间清算压力）
+## Plan 权限分级（平台 key = Startup 级，2026-09 实测）
 
-`cg_liquidation_analysis` 返回全0，不可用。正确做法是直接调 API：
+平台注入的 `COINGLASS_API_KEY` 已降级为 **Startup** 计划。工具层对端点的实际权限：
+
+**✅ Startup 可用**（全部正常数据）：
+- Funding rates（v2/v4）、Supported coins/exchanges/pairs、Pairs markets
+- Open interest（当前值 / OHLC history / aggregated history）
+- Long/Short ratios（global / top-account / top-position）
+- Taker buy/sell volume（单所 + aggregated，需 `exchange_list`）
+- CVD、Net position（v1/v2）、Coin netflow
+- Liquidations：coin-list、coin/pair history（pair 需 BTCUSDT 格式）、aggregated history（需 `exchange_list`）
+- ETF flows / lists / premium（BTC、ETH、SOL、XRP、HK）
+- Whale transfers、Hyperliquid whale alerts（仅 alert 流）
+- Price history（symbol 需 pair 格式 BTCUSDT）
+
+**❌ Startup 不可用**（401 "Upgrade plan"，调用前直接跳过）：
+- `api/futures/coins-markets`（币种市场汇总）
+- `api/futures/liquidation/order`（逐笔清算单）
+- `api/futures/liquidation/heatmap/model1` + `aggregated-heatmap/model1`（**清算热力图整个不可用**）
+- `api/hyperliquid/position`、`api/hyperliquid/wallet/position-distribution`（Hyperliquid 持仓分布；仅 whale-alert 可用）
+
+**替代方案（按优先级）**：
+1. **用户提供自己的 key**（Basic+ 计划）：设 `COINGLASS_API_KEY` 并绕过 sc-proxy 直连
+   `https://open-api-v4.coinglass.com`（sc-proxy 会强制覆盖该 header，代理路径下自带 key 无效）。
+2. **Apify 爬虫**：用 `apify` skill 抓 coinglass.com 页面上的清算热力图 / Hyperliquid 持仓数据。
+
+对 401 "Upgrade plan" 错误，`cg_request` 会抛 `CoinglassPlanError`，错误信息已含上述引导。
+
+## Liquidation Heatmap（❌ Startup 不可用 — 历史用法存档）
+
+`cg_liquidation_analysis` 返回全0，不可用。热力图两个端点（`heatmap/model1` 与
+`aggregated-heatmap/model1`）在 Startup 计划下均返回 401 Upgrade plan。
+
+如需热力图数据：让用户自带 Basic+ key 直连（见上文替代方案），或用 Apify 爬取页面。
 
 ```python
+# 以下仅在用户自有高级 key 下可用（直连，不走 sc-proxy）
 from tools._api import cg_request
 
 # 全市场聚合热力图（推荐，无需指定交易所）
@@ -52,8 +86,6 @@ for y_idx, leverage, usd_val in data["liquidation_leverage_data"]:
 longs  = {p: v for p, v in price_liq.items() if p < current_price}  # 多头清算（↓触发）
 shorts = {p: v for p, v in price_liq.items() if p > current_price}  # 空头清算（↑触发）
 ```
-
-注意：单交易所版本（`heatmap/model1` 带 exchange 参数）当前会报 400 错误，改用 aggregated 版本。
 
 ## Script Usage
 
@@ -87,8 +119,8 @@ signatures. Common ones: `funding_rate`, `long_short_ratio`,
 
 Coinglass provides the most comprehensive crypto derivatives and institutional data available. 37 tools covering futures positioning, whale tracking, volume analysis, liquidations, and ETF flows.
 
-**API Plan**: Professional ($699/month)
-**Rate Limit**: 6000 requests/minute
+**API Plan**: Startup (平台 key 已降级，见顶部「Plan 权限分级」)
+**Rate Limit**: 请求级限制随计划降低，控制批量调用频率
 **API Version**: V4 (with V2 backward compatibility)
 **Total Tools**: 37 across 8 categories
 
@@ -404,7 +436,7 @@ Core derivatives data for market analysis:
 - `long_short_ratio(symbol, exchange?, interval?)` - Basic L/S ratios
 - `cg_open_interest(symbol)` - Current OI across exchanges
 - `cg_liquidations(symbol, time?)` - Recent liquidations
-- `cg_liquidation_analysis(symbol)` - Liquidation heatmap analysis
+- `cg_liquidation_analysis(symbol)` - ❌ Startup 下不可用（依赖 heatmap 端点）
 - `cg_supported_coins()` - All supported coins
 - `cg_supported_exchanges()` - All exchanges with pairs
 
@@ -529,7 +561,7 @@ whale_alerts = cg_hyperliquid_whale_alerts()
 cg_global_account_ratio("BTC")  # Retail sentiment
 cg_top_account_ratio("BTC", "Binance")  # Smart money
 cg_net_position_v2("BTC")  # Net positioning
-cg_liquidation_heatmap("BTC", "Binance")  # Cascade levels
+# 注：清算热力图在 Startup 下不可用，见顶部「Plan 权限分级」
 ```
 
 ### ETF Flow Monitoring
@@ -697,12 +729,16 @@ Use `cg_supported_exchanges()` for complete list with pair details.
   - V4 endpoints use `CG-API-KEY` header (most tools)
   - V2 endpoints use `coinglassSecret` header (some legacy tools)
   - Both work with the same COINGLASS_API_KEY environment variable
-- **Rate Limits**: Professional plan allows 6000 requests/minute
+- **Rate Limits**: Startup plan — keep batch polling modest; avoid tight loops
 - **Historical Data Limits**:
   - Liquidation orders: Past 7 days, max 200 records
   - Whale transfers: Past 6 months, minimum $10M
   - Hyperliquid alerts: ~200 most recent large positions
   - Other endpoints: Typically months to years of history
+- **Plan gating (Startup)**: heatmap、liquidation/order、coins-markets、
+  Hyperliquid position 返回 401 Upgrade plan（会抛 `CoinglassPlanError`）。
+  用户需要这些数据 → 让用户提供自己的 key（`COINGLASS_DIRECT=1` + 自有
+  `COINGLASS_API_KEY` 直连），或用 Apify skill 爬 coinglass.com 页面。
 
 ## Data Quality Notes
 
@@ -714,6 +750,12 @@ Use `cg_supported_exchanges()` for complete list with pair details.
 
 ## Version History
 
+- **v3.1.0** (2026-09): Startup plan adaptation
+  - Platform key downgraded to Startup; documented full endpoint permission map
+  - Added `CoinglassPlanError` with BYOK / Apify guidance on 401 "Upgrade plan"
+  - Added `COINGLASS_DIRECT=1` direct mode for user-supplied keys (sc-proxy overwrites user keys)
+  - Fixed 4 parameter bugs: coin/pair liquidation history (`exchange_list` / pair symbol),
+    aggregated taker volume (`exchange_list`), price history (pair symbol)
 - **v3.0.0** (2025-03): Added 36 new tools
   - Advanced liquidations (5 tools)
   - Hyperliquid whale tracking (5 tools)

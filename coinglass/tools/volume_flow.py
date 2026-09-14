@@ -58,6 +58,7 @@ def get_taker_volume_history(
 
 def get_aggregated_taker_volume(
     symbol: str = "BTC",
+    exchange_list: str = "Binance,OKX,Bybit,Bitget",
     interval: str = "h4"
 ) -> Optional[List[Dict[str, Any]]]:
     """
@@ -65,11 +66,13 @@ def get_aggregated_taker_volume(
 
     Args:
         symbol: Coin symbol.
+        exchange_list: Comma-separated exchanges to aggregate.
         interval: Time interval.
     """
     return cg_request(
         "api/futures/aggregated-taker-buy-sell-volume/history",
-        params={"symbol": _to_pair(symbol), "interval": interval}
+        params={"symbol": _to_pair(symbol), "interval": interval,
+                "exchange_list": exchange_list}
     )
 
 

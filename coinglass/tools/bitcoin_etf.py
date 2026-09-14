@@ -11,7 +11,7 @@ import json
 import argparse
 from typing import Dict, Any, Optional, List
 
-from ._api import cg_request
+from ._api import cg_request, CoinglassError
 
 
 def get_btc_etf_flows() -> Optional[List[Dict[str, Any]]]:
@@ -36,12 +36,19 @@ def get_btc_etf_history(
     Get comprehensive Bitcoin ETF history.
 
     Args:
-        etf_ticker: Filter by specific ETF ticker (e.g. "GBTC", "IBIT").
+        etf_ticker: Required by the API (e.g. "GBTC", "IBIT").
     """
-    params = {}
-    if etf_ticker:
-        params["ticker"] = etf_ticker
-    return cg_request("api/etf/bitcoin/history", params=params or None)
+    if not etf_ticker:
+        raise CoinglassError(
+            "Coinglass API error [400]: api/etf/bitcoin/history now "
+            "requires a 'ticker' parameter (e.g. GBTC, IBIT). "
+            "Pass etf_ticker explicitly.",
+            code="API_400",
+            suggestion="Use cg_btc_etf_flows() for aggregate daily "
+                       "flows, or pass a specific ticker."
+        )
+    params = {"ticker": etf_ticker}
+    return cg_request("api/etf/bitcoin/history", params=params)
 
 
 def get_btc_etf_list() -> Optional[List[Dict[str, Any]]]:

@@ -28,7 +28,22 @@ except ImportError:
         )
 
 
+def _do_get(url, params, headers, timeout):
+    """Route the request through sc-proxy, or direct when BYOK.
+
+    sc-proxy injects the PLATFORM key and overwrites any user-supplied
+    Coinglass header, so a user's own higher-tier key is useless through
+    the proxy. Set COINGLASS_DIRECT=1 (with your own COINGLASS_API_KEY)
+    to bypass the proxy and hit open-api-v4.coinglass.com directly.
+    """
+    if os.environ.get("COINGLASS_DIRECT") == "1":
+        return requests.get(url, params=params, headers=headers,
+                            timeout=timeout)
+    return proxied_get(url, params=params, headers=headers, timeout=timeout)
+
+
 # ── Coinglass-specific exceptions ───────────────────────────
+
 
 class CoinglassError(Exception):
     """Base exception for all Coinglass API errors."""
@@ -37,6 +52,31 @@ class CoinglassError(Exception):
         self.code = code
         self.suggestion = suggestion
         super().__init__(message)
+
+
+class CoinglassPlanError(CoinglassError):
+    """Endpoint requires a higher Coinglass plan than the key's tier.
+
+    Platform key is Startup tier. For heatmaps / liquidation orders /
+    coins-markets / Hyperliquid positions, either use a user-supplied
+    higher-tier key with direct (non-proxied) requests, or scrape
+    coinglass.com via the Apify skill.
+    """
+
+    BYOK_MSG = (
+        "This endpoint needs a Coinglass plan above Startup. Options: "
+        "(1) user provides their own COINGLASS_API_KEY (Basic or higher) "
+        "and the skill calls https://open-api-v4.coinglass.com directly — "
+        "sc-proxy overwrites user keys, so BYOK must bypass it; "
+        "(2) scrape coinglass.com pages via the Apify skill."
+    )
+
+    def __init__(self, endpoint, msg="Upgrade plan"):
+        super().__init__(
+            f"Plan restriction on '{endpoint}': {msg}",
+            code="PLAN_LIMIT",
+            suggestion=self.BYOK_MSG,
+        )
 
 
 class CoinglassAPIKeyError(CoinglassError):
@@ -119,14 +159,25 @@ def cg_request(endpoint, params=None, version="v4", timeout=30):
 
     url = f"{base_url}/{endpoint}"
 
+    def _plan_error(msg: str) -> CoinglassPlanError:
+        return CoinglassPlanError(endpoint, msg)
+
     try:
-        response = proxied_get(
-            url, params=params, headers=headers, timeout=timeout
+        response = _do_get(
+            url, params, headers, timeout
         )
         response.raise_for_status()
     except requests.exceptions.HTTPError as e:
         status = getattr(e.response, "status_code", None)
+        body_msg = ""
+        try:
+            body_msg = str(e.response.json().get("msg", ""))[:120]
+        except Exception:
+            body_msg = str(getattr(e.response, "text", ""))[:120]
         suggestion = _suggestion_for_status(status)
+        # Coinglass signals plan restrictions via 401 + "Upgrade plan" message
+        if status == 401 and "upgrade" in body_msg.lower():
+            raise _plan_error(body_msg) from e
         if status == 401:
             raise CoinglassAPIKeyError(
                 f"HTTP 401 from Coinglass: {e}", code="HTTP_401",
@@ -178,8 +229,12 @@ def cg_request(endpoint, params=None, version="v4", timeout=30):
     # Check Coinglass response code
     if isinstance(data, dict):
         code = data.get("code")
+        msg = str(data.get("msg", ""))
         if code is not None and str(code) != "0":
-            msg = data.get("msg", "Unknown API error")
+            # Some plan-restricted endpoints return HTTP 200 with
+            # code 401 and an "Upgrade plan" message in the body
+            if str(code) == "401" and "upgrade" in msg.lower():
+                raise _plan_error(msg)
             raise CoinglassError(
                 f"Coinglass API error [{code}]: {msg}",
                 code=f"API_{code}",

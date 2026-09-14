@@ -302,6 +302,12 @@
       "description": "Cross-chain asset transfers via the LayerZero Value Transfer API. Quote, execute, and track bridging of 850 tokens across 170 chains (EVM, Solana, Aptos, TON) using OFT, Stargate, CCTP, and Aori routes. Quote-then-execute workflow with status polling."
     },
     {
+      "name": "lighter",
+      "path": "lighter/SKILL.md",
+      "version": "2.0.0",
+      "description": "Lighter.xyz (zklighter) perpetual and spot DEX — order placement, cancellation, modification, close-all positions, leverage, margin, withdrawals, fund transfers, orderbook depth, market data, candles, funding rates, account positions, balances, PnL, and trade history. Supports symbol resolution (BTC, ETH/USDC) and human-unit auto-scaling for prices and amounts. Triggers on: \"lighter\", \"zklighter\", \"elliot\", perpetual futures trading on lighter, lighter orderbook, lighter funding, lighter positions, lighter margin, \"robinhood chain\", \"lighter on robinhood\", robinhoodchain.lighter.xyz. Supports two separate deployments: Lighter on Ethereum and Lighter on Robinhood Chain — the user must pick one (LIGHTER_NETWORK). Do NOT use for CoinGecko price data, Hyperliquid, or general CEX trading."
+    },
+    {
       "name": "longbridge",
       "path": "longbridge/SKILL.md",
       "version": "1.0.0",

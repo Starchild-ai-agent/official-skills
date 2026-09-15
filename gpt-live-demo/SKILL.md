@@ -1,6 +1,6 @@
 ---
 name: gpt-live-demo
-version: 0.4.0
+version: 0.5.0
 description: >
   GPT-Live 语音接线员 Demo — WebRTC 语音通话前端 + Express 中继服务器 + Starchild brain 桥接。
   客户端委托（Live 端零工具）+ Binding 抽象：core（三通道封装/转写/委托器）· bindings（thread，可扩 onboarding/orchestrator）· adapters（Starchild runtime）。

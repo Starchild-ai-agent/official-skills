@@ -59,13 +59,16 @@ let pc,dc,stream,connected=false,bridgeId=null,out=null;
 if(THREAD)document.querySelector(".sub").textContent=`Bound to thread …${THREAD.slice(-12)} — open in a full tab (mic permission)`;
 else{document.querySelector(".sub").textContent="Bound to the Live channel thread (server default) — open in a full tab (mic permission)";}
 
+// Same-origin as the Starchild web app → reuse its persisted login token (redux-persist).
+function userToken(){try{const r=JSON.parse(localStorage.getItem("persist:root")||"{}");const l=JSON.parse(r.logincache||"{}");return l.authToken||"";}catch{return "";}}
 async function api(path,body,method){
-  const r=await fetch(base+path,{method:method||(body?"POST":"GET"),headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
+  const tok=userToken();
+  const r=await fetch(base+path,{method:method||(body?"POST":"GET"),headers:{"Content-Type":"application/json",...(tok?{Authorization:"Bearer "+tok}:{})},body:body?JSON.stringify(body):undefined});
   if(!r.ok){const e=await r.json().catch(()=>({error:"HTTP "+r.status}));throw new Error(e.error||("HTTP "+r.status));}
   return r.json();
 }
 const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-function addEv(cls,tag,body){const d=document.createElement("div");d.className="ev "+cls;d.innerHTML=`<span class="t">${new Date().toLocaleTimeString()}</span><span class="tag">${tag}</span>${body}`;log.prepend(d);}
+function addEv(cls,tag,body,raw){const d=document.createElement("div");d.className="ev "+cls;d.innerHTML=`<span class="t">${new Date().toLocaleTimeString()}</span><span class="tag">${tag}</span>${body}`;if(raw!==undefined){d.style.cursor="pointer";d.title="click to expand";d.addEventListener("click",()=>{let pre=d.querySelector("pre");if(pre){pre.remove();return;}pre=document.createElement("pre");pre.style.cssText="white-space:pre-wrap;word-break:break-all;font-size:11px;margin:4px 0 0;opacity:.85;max-height:300px;overflow:auto";pre.textContent=typeof raw==="string"?raw:JSON.stringify(raw,null,2);d.appendChild(pre);});}log.prepend(d);}
 function addBubble(role,text){const d=document.createElement("div");d.className="msg "+role;d.textContent=text;chat.appendChild(d);chat.scrollTop=chat.scrollHeight;}
 function setStatus(t,err){status.textContent=t;status.classList.toggle("err",!!err);}
 
@@ -85,11 +88,11 @@ function renderEvent(ev){
   if(t==="session.delegation.created"){addEv("deleg","Delegation",`→ bridge (${BINDING})`);return;}
   if(/error/.test(t)){addEv("err","Error",esc(JSON.stringify(ev.error||ev)));return;}
   if(/speech_started/.test(t)){addEv("sys","VAD","user speaking");return;}
-  if(!/delta|audio/.test(t))addEv("raw",t,"");
+  if(!/delta|audio/.test(t))addEv("raw",t,"",ev);
 }
 function renderOut(msg){
   const k=msg.type.split(".")[1];
-  addEv(k==="commentary"?"result":"tool",k,`${msg.delegation_id?`[${msg.delegation_id.slice(-6)}] `:""}${esc(msg.content.slice(0,200))}`);
+  addEv(k==="commentary"?"result":"tool",k,`${msg.delegation_id?`[${msg.delegation_id.slice(-6)}] `:""}${esc(msg.content.slice(0,200))}`,msg);
 }
 
 async function connect(){
@@ -120,9 +123,10 @@ async function connect(){
     await pc.setRemoteDescription(data.transport?.sdp?{type:"answer",sdp:data.transport.sdp}:data.answer??data);
     bridgeId=data.bridge_id;
     out=new EventSource(base+`api/bridge/${bridgeId}/out`);
-    out.onmessage=e=>{if(!dc||dc.readyState!=="open")return;dc.send(e.data);renderOut(JSON.parse(e.data));};
+    out.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==="bridge.sideband"){addEv("sys","sideband",m.open?"attached — server owns the control plane":"detached (attempt "+m.attempts+")");return;}if(m.mirror){renderOut(m);return;}if(!dc||dc.readyState!=="open")return;dc.send(e.data);renderOut(m);};
     const b=data.binding||{};
-    if(b.session_id)addEv("result","Thread",`Bound to …${b.session_id.slice(-12)} — seeded ${b.snapshot_turns}/${b.thread_messages} msgs (${b.snapshot_chars} chars)`);
+    if(b.session_id)addEv("result","Thread",`Bound to …${b.session_id.slice(-12)} — seeded ${b.snapshot_turns}/${b.thread_messages} msgs (${b.snapshot_chars} chars) · ${b.authed?"user-authed (persists to web thread)":"no user token (local session only)"}`);
+    if(!b.authed)addEv("err","Auth","No login token found in this origin — turns will not appear in the web thread list. Open this page from the Starchild web app domain while signed in.");
     connected=true;$("close").disabled=false;
     setStatus(THREAD?"Connected to thread, start talking":"Connected, start talking");
   }catch(e){setStatus("Error: "+e.message,true);addEv("err","Error",esc(e.message));teardown();$("connect").disabled=false;}

@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "dependencies": {
     "express": "^4.19.0",
-    "openai": "^7.15.0"
+    "openai": "^7.15.0",
+    "ws": "^8.21.3"
   }
 }

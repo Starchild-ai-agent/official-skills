@@ -55,8 +55,13 @@ export const runtime = {
   },
 
   // Delegation: POST /chat/stream, yields runtime SSE events (text_delta, tool_start, agent_complete, ...).
-  async *chat(body, signal) {
-    const r = await fetch(`${BASE}/chat/stream`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ call_source: "internal", ...body }), signal });
+  // With a user JWT the runtime treats the turn as a real user turn: the thread is registered in
+  // the web thread list and messages persist to DB. Without it, internal calls are forced temporary
+  // (main.py: auth_type=internal || call_source!=user → is_temporary) and only live in the local session.
+  async *chat(body, signal, auth) {
+    const headers = { "Content-Type": "application/json", ...(auth ? { Authorization: auth } : {}) };
+    const payload = { call_source: auth ? "user" : "internal", channel: process.env.LIVE_CHANNEL || "web", ...body };
+    const r = await fetch(`${BASE}/chat/stream`, { method: "POST", headers, body: JSON.stringify(payload), signal });
     if (!r.ok || !r.body) throw new Error(`runtime /chat/stream HTTP ${r.status}`);
     for await (const ev of sse(r)) { yield ev; if (ev.type === "agent_complete") return; }
   },

@@ -62,7 +62,11 @@ URL `?binding=thread&thread_id=<thread uuid 或完整 session id>`（0.4.0 起 b
 
 `resolveSession`：`/sessions` 列表有上限、可能漏掉最活跃的 thread，所以先从列表里任一 thread 推出 `agent:main:thread:<N>` 前缀，直接 `GET /session` 探测；可用 `STARCHILD_THREAD_PREFIX` 覆盖。runtime 地址由 `STARCHILD_RUNTIME`（默认 `http://localhost:8000`）指定。
 
-未在 P0 核实、需实测：`session.input` 的 token 上限；转写 completed 事件的精确类型名（前端按 `/input.*transcri/` + `/completed|done|final/` 宽匹配）。
+已核实（官方 live-conversations 指南，2026-09-15）：
+- `session.input`（开场历史）上限 **128 条消息 / 8,192 tokens 合计**；角色 developer/user/assistant，各一个 text part；超限从最旧开始丢。
+- `instructions` 只能在建会话时设定，会话中不可改，只能用 `session.instructions.append` 追加。
+- `session.instructions.append` / `session.thinking.append` / `session.commentary.append` 每条 **≤500 tokens**，需 `delegation_id`（`null` = 会话级）。
+- 转写事件只有 `session.input_transcript.delta` / `session.output_transcript.delta`（字段 delta/start_ms/end_ms），**没有回合结束事件**（"Transcript deltas have no item ID or authoritative turn-completed event"）。回合必须由应用按静音间隔切分——`core/transcripts.mjs` 用 900ms（用户）/1200ms（Live）间隔关闭回合，`session.delegation.created` 与 `speech_started` 也会强制关闭。旧的 `*transcript*.completed|done` 匹配只对 Realtime 遗留事件有效。
 
 ## runtime 侧待补接口（R1–R3，均为加法）
 

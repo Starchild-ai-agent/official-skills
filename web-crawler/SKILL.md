@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.9.0
+version: 2.10.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -78,38 +78,34 @@ archive_fallback("https://www.nytimes.com/.../article.html")  # archive snapshot
 ```python
 from core.skill_tools import web_crawler
 r = web_crawler.get_transcript(url, caller_id="chat:<thread>")
-# {found, kind, source, text, url, title, note}
+# {found, kind, source, text, url, title, tried, note}
 ```
 
-`get_transcript` dispatches by host and always returns the same shape:
+**Design rule: captions / subtitles / published transcripts are METADATA;
+the media file is PAYLOAD.** Exhaust every metadata provider first; touch the
+media only when the user explicitly agrees. Same rule claude-video, spoken.md
+and yt-dlp's `--skip-download` workflow follow. Nothing here is site-specific:
 
-| link | kind | source |
+| provider (cost order) | what it is | identity / validity check |
 |---|---|---|
-| youtube.com / youtu.be | youtube | captions (`youtube_transcript`) |
-| tiktok.com | tiktok | `tiktok_transcript` |
-| podcasts.apple.com / open.spotify.com/episode | podcast | `podcast_transcript` chain below |
-| anything else (publisher page, Snipd, Podscribe, blog) | page | `scrape_markdown` (browser-rendered; survives JS shells and WAF 403) |
+| `media_info(url)` | yt-dlp `extract_info(download=False)` — 1800+ sites, returns title, duration, upload date, channel, caption-track URLs. Zero media bytes. | track fetched must be 2xx with a real body |
+| RSS `<podcast:transcript>` | Podcasting 2.0 standard, any podcast | feed item matched by duration ±5 % + date ±3 d; transcript URL must be 2xx, > 500 chars, not an error page |
+| show's own YouTube upload | channel = the YouTube URL the show declares in its RSS (else search hit whose channel name **equals** the show name minus stopwords) | same episode = duration ±5 % AND date ±3 d; title similarity only breaks ties (shows retitle uploads) |
+| `scrape_markdown(url)` | any other page (publisher, Snipd, blog) — browser-rendered, survives WAF 403 | > 1000 chars |
 
-**`found=False` ⇒ report `kind` + `title` + `note` and ASK THE USER before any
-download.** Never `yt-dlp` / `curl … .mp3` / ffmpeg / whisper on your own —
-the bash gate holds those for confirmation anyway.
+`found=False` ⇒ report `kind`, `title`, `tried`, `note` and **ask the user**
+before any download. `yt-dlp --skip-download` / `-J` / `--list-subs` are
+metadata calls and pass the bash gate; `yt-dlp <url>`, `curl … .mp3`, ffmpeg,
+whisper are held for confirmation.
 
-Podcast chain (`podcast_transcript`, deterministic APIs, no model guessing):
-1. Link → show, episode title, release date, RSS (iTunes lookup
-   `entity=podcastEpisode`; Spotify og tags).
-2. RSS `<podcast:transcript>` (Podcasting 2.0) — SRT/VTT/JSON/text → plain
-   text. Most shows publish none (a16z: 0 of 1000), so usually falls through.
-3. Show's own YouTube upload → captions. Match = same channel AND (title
-   similarity ≥ 0.6 OR published ±2 days). Uploads are routinely retitled —
-   a16z feed "The AI-Native CRM" vs YouTube "How AI Is Rewriting Software
-   From First Principles", same day — so the date key matters.
-
-Title only, no link: `web_search("<show> <title> transcript")`, then
+Title only, no link → `web_search("<show> <title> transcript")` then
 `get_transcript(<page url>)`.
 
 Incident 2026-09-17: two 403s on transcript hosts led an agent to a 49 MB
-mp3 + ffmpeg install + 4 whisper calls + an incomplete summary. The podcast
-branch returns that episode's captions in one call (55k chars, ~15 s).
+mp3 + ffmpeg + 4 whisper calls + an incomplete summary. Same link through
+`get_transcript`: RSS had no transcript → RSS declares `youtube.com/@a16z` →
+channel listing → one upload within 1.2 % duration, same day → captions,
+55k chars, ~30 s, zero audio.
 
 ## Quick trigger rules (read this first)
 Use this skill immediately when any of these conditions is true:

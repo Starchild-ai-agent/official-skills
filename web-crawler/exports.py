@@ -280,25 +280,38 @@ __all__ = [
     "instagram_post", "instagram_profile",
     "twitter_tweet", "reddit_post", "reddit_search",
     "google_search", "linkedin_profile",
+    # transcript resolver (generic, read-only, never downloads media)
+    "get_transcript", "podcast_transcript", "resolve_podcast_episode",
+    "media_info", "captions_from_media_info",
 ]
 
 
 # ---------------------------------------------------------------------------
-# Podcast transcript — deterministic, read-only, no audio.
+# Transcript resolver — generic, read-only, never downloads media.
 #
-# Incident 2026-09-17: given an Apple Podcasts link, the agent hit 403 on two
-# transcript hosts and downloaded the 49 MB mp3 to transcribe it. The correct
-# route is a fixed chain of APIs, not model improvisation:
-#   Apple/Spotify link → show + episode title (+ RSS)
-#   → RSS <podcast:transcript> if the feed publishes one
-#   → the show's YouTube upload of the same episode → captions file.
-# Returns {"found": bool, "source": ..., "text": ..., "show": ..., "episode": ...}.
-# When found is False the caller must ASK THE USER before any download.
+# Principle (claude-video, spoken.md and every serious agent tool follow it):
+# captions / subtitles / published transcripts are METADATA — fetch them
+# first from every provider that has them; the media file is PAYLOAD and is
+# touched only when the user explicitly agrees. Every provider (a) returns
+# the same shape, (b) validates HTTP status + body, (c) proves identity
+# (same channel, same episode) before claiming found.
+#
+# Providers, in cost order:
+#   1. media_info(url) — yt-dlp extract_info(download=False): 1800+ sites,
+#      title/duration/upload_date/channel_id + caption-track URLs, zero
+#      media bytes. Covers YouTube/Vimeo/TED/… natively.
+#   2. RSS <podcast:transcript> (Podcasting 2.0) for podcast episodes.
+#   3. Cross-platform: the show's OWN YouTube channel (declared in its RSS,
+#      else resolved by name) → the upload whose duration matches ±5 % and
+#      date ±3 d; title similarity is a tie-break only.
+#   4. Any other page → scrape_markdown (browser-rendered; survives WAF 403).
+#   5. found=False → caller reports what was tried and ASKS THE USER.
 # ---------------------------------------------------------------------------
 import difflib as _difflib
 import html as _html
 import json as _json
 import re as _re
+from datetime import datetime as _dt, timezone as _tz
 
 
 def _pget(url, timeout=30, **kw):
@@ -306,6 +319,18 @@ def _pget(url, timeout=30, **kw):
     kw.setdefault("headers", {})
     kw["headers"].setdefault("User-Agent", "Mozilla/5.0")
     return proxied_get(url, timeout=timeout, **kw)
+
+
+def _ok_body(resp, min_chars=200):
+    """HTTP 2xx AND a real body, not an error page (review P1-3)."""
+    if resp is None or not (200 <= resp.status_code < 300):
+        return False
+    body = (resp.text or "").strip()
+    if len(body) < min_chars:
+        return False
+    head = body[:400].lower()
+    return not _re.search(r"\b(403 forbidden|404 not found|access denied|"
+                          r"error code|captcha|request blocked)\b", head)
 
 
 def _norm(s):
@@ -323,176 +348,290 @@ def _sim(a, b):
     return _difflib.SequenceMatcher(None, a, b).ratio()
 
 
+def _parse_dt(v):
+    if not v:
+        return None
+    try:
+        if isinstance(v, (int, float)):
+            return _dt.fromtimestamp(v, _tz.utc)
+        v = str(v)
+        if _re.fullmatch(r"\d{8}", v):
+            return _dt.strptime(v, "%Y%m%d").replace(tzinfo=_tz.utc)
+        try:
+            d = _dt.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError:
+            from email.utils import parsedate_to_datetime
+            d = parsedate_to_datetime(v)
+        return d if d.tzinfo else d.replace(tzinfo=_tz.utc)
+    except Exception:
+        return None
+
+
+def _dur_secs(v):
+    """'00:52:43' | '3163' | 3163 → seconds."""
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return int(v)
+    try:
+        parts = [int(float(x)) for x in str(v).strip().split(":")]
+    except ValueError:
+        return None
+    secs = 0
+    for x in parts:
+        secs = secs * 60 + x
+    return secs
+
+
+def _same_episode(a_dur, b_dur, a_dt, b_dt, a_title="", b_title="",
+                  dur_tol=0.05, day_tol=3):
+    """Identity test for 'same episode on another platform'.
+    Duration is the strong key (audio and video cuts of one recording differ
+    by seconds), date the second; title is a tie-break only — shows retitle
+    uploads (review P1-2: date alone matched a cooking show)."""
+    if not a_dur or not b_dur:
+        return False, 0.0
+    rel = abs(a_dur - b_dur) / max(a_dur, b_dur)
+    if rel > dur_tol:
+        return False, 0.0
+    score = 1.0 - rel
+    if a_dt and b_dt:
+        days = abs((a_dt - b_dt).total_seconds()) / 86400
+        if days > day_tol:
+            return False, 0.0
+        score += 0.5 * (1 - days / day_tol)
+    elif _sim(a_title, b_title) < 0.6:
+        return False, 0.0  # no date → need title agreement
+    score += 0.3 * _sim(a_title, b_title)
+    return True, round(score, 3)
+
+
+# ---- provider 1: yt-dlp metadata (no download) -----------------------------
+def media_info(url, flat=False, playlistend=40):
+    """yt-dlp extract_info(download=False): metadata + caption-track URLs for
+    1800+ sites; never fetches media. {} on failure."""
+    try:
+        import yt_dlp
+    except ImportError:
+        return {}
+    opts = {"skip_download": True, "quiet": True, "no_warnings": True,
+            "socket_timeout": 20, "noplaylist": not flat}
+    if flat:
+        opts.update({"extract_flat": "in_playlist", "playlistend": playlistend})
+    try:
+        with yt_dlp.YoutubeDL(opts) as y:
+            return y.extract_info(url, download=False) or {}
+    except Exception:
+        return {}
+
+
+def _caption_text_from_track(track):
+    r = _pget(track["url"], timeout=40)
+    if not (200 <= r.status_code < 300) or len(r.content) < 200:
+        return ""
+    ext = track.get("ext", "")
+    if ext == "json3":
+        try:
+            d = r.json()
+            return " ".join(seg.get("utf8", "") for ev in d.get("events", [])
+                            for seg in ev.get("segs", []) if seg.get("utf8", "").strip())
+        except Exception:
+            return ""
+    if ext in ("vtt", "srt", "srv1", "srv2", "srv3", "ttml"):
+        body = _re.sub(r"<[^>]+>", " ", r.text)
+        lines = [l for l in body.splitlines()
+                 if l.strip() and not _re.match(r"^\d+$", l.strip())
+                 and "-->" not in l
+                 and not l.startswith(("WEBVTT", "NOTE", "Kind:", "Language:"))]
+        return _html.unescape(" ".join(lines))
+    return ""
+
+
+def captions_from_media_info(info, languages=("en",)):
+    """Pick a caption track (manual before auto, json3 before text formats)
+    and return {text, lang, kind, ext} or None."""
+    pri = {"json3": 0, "vtt": 1, "srt": 2, "srv3": 3, "ttml": 4}
+    for pool_name in ("subtitles", "automatic_captions"):
+        pool = info.get(pool_name) or {}
+        langs = list(languages) + [l for l in pool
+                                   if l.split("-")[0] in languages and l not in languages]
+        for lang in langs:
+            for t in sorted(pool.get(lang) or [], key=lambda t: pri.get(t.get("ext"), 9)):
+                try:
+                    text = _re.sub(r"\s+", " ", _caption_text_from_track(t)).strip()
+                except Exception:
+                    continue
+                if len(text) > 200:
+                    return {"text": text, "lang": lang, "kind": pool_name, "ext": t.get("ext")}
+    return None
+
+
+# ---- podcast episode resolution --------------------------------------------
 def resolve_podcast_episode(url, caller_id=None):
-    """Apple / Spotify episode link → {show, episode, feed_url, release_date}."""
+    """Apple / Spotify / any podcast page → {show, episode, feed_url,
+    release_date, duration}. yt-dlp's own extractor first (generic), Apple
+    lookup adds the feed URL, Spotify og tags as last resort."""
     out = {"show": None, "episode": None, "feed_url": None, "release_date": None,
-           "provider": None}
+           "duration": None, "provider": None}
+    info = media_info(url)
+    if info:
+        out["provider"] = info.get("extractor")
+        out["episode"] = info.get("title")
+        out["show"] = info.get("series") or info.get("uploader") or info.get("channel")
+        out["duration"] = _dur_secs(info.get("duration"))
+        out["release_date"] = info.get("upload_date") or info.get("release_date")
     m = _re.search(r"podcasts\.apple\.com/.*?/id(\d+)(?:.*?[?&]i=(\d+))?", url)
     if m:
-        out["provider"] = "apple"
         coll, ep = m.group(1), m.group(2)
-        r = _pget("https://itunes.apple.com/lookup",
-                  params={"id": coll, "entity": "podcastEpisode", "limit": 300},
-                  timeout=20).json()
+        try:
+            r = _pget("https://itunes.apple.com/lookup",
+                      params={"id": coll, "entity": "podcastEpisode", "limit": 300},
+                      timeout=20).json()
+        except Exception:
+            r = {}
         for x in r.get("results", []):
             if x.get("kind") == "podcast":
-                out["show"] = x.get("collectionName")
+                out["show"] = x.get("collectionName") or out["show"]
                 out["feed_url"] = x.get("feedUrl")
             elif ep and str(x.get("trackId")) == ep:
-                out["episode"] = x.get("trackName")
-                out["release_date"] = x.get("releaseDate")
-                out["show"] = out["show"] or x.get("collectionName")
+                out["episode"] = x.get("trackName") or out["episode"]
+                out["release_date"] = x.get("releaseDate") or out["release_date"]
+                out["duration"] = out["duration"] or ((x.get("trackTimeMillis") or 0) // 1000 or None)
                 out["feed_url"] = out["feed_url"] or x.get("feedUrl")
-        return out
-    if "open.spotify.com/episode/" in url:
-        out["provider"] = "spotify"
-        t = _pget(url, timeout=20).text
+    elif "open.spotify.com/episode/" in url and not out["episode"]:
+        try:
+            t = _pget(url, timeout=20).text
+        except Exception:
+            t = ""
         og = _re.search(r'property="og:title"\s+content="([^"]+)"', t)
         desc = _re.search(r'property="og:description"\s+content="([^"]+)"', t)
         if og:
             out["episode"] = _html.unescape(og.group(1))
-        # Spotify og:description is "<Show> · Episode" on episode pages
         if desc and "·" in desc.group(1):
             out["show"] = _html.unescape(desc.group(1).split("·")[0]).strip()
-        return out
     return out
 
 
-def _rss_transcript(feed_url, episode_title, caller_id=None):
-    """Podcasting 2.0 <podcast:transcript> for the matching item, as text."""
-    if not feed_url:
-        return None
-    x = _pget(feed_url, timeout=40).text
+def _rss_item_for(feed_url, episode_title, release_date=None, duration=None):
+    """(item_xml | None, channel_xml) for the feed item matching the episode."""
+    r = _pget(feed_url, timeout=40)
+    if not _ok_body(r, 500):
+        return None, ""
+    x = r.text
+    head = x.split("<item>")[0]
+    rel = _parse_dt(release_date)
     best, best_s = None, 0.0
     for it in _re.findall(r"<item>(.*?)</item>", x, _re.S):
         t = _re.search(r"<title>(?:<!\[CDATA\[)?(.*?)(?:\]\]>)?</title>", it, _re.S)
-        s = _sim(t.group(1), episode_title) if t else 0.0
+        title = t.group(1) if t else ""
+        d = _re.search(r"<itunes:duration>(.*?)</itunes:duration>", it)
+        pd = _re.search(r"<pubDate>(.*?)</pubDate>", it)
+        s = _sim(title, episode_title)
+        ok, ident = _same_episode(duration, _dur_secs(d.group(1)) if d else None,
+                                  rel, _parse_dt(pd.group(1)) if pd else None,
+                                  episode_title, title)
+        s = max(s, ident if ok else 0.0)
         if s > best_s:
             best, best_s = it, s
-    if not best or best_s < 0.85:
-        return None
-    tags = _re.findall(r'<podcast:transcript\s+([^>]*)/?>', best)
-    if not tags:
-        return None
-    # prefer plain text/json/vtt/srt in that order
+    return (best if best_s >= 0.85 else None), head
+
+
+def _rss_transcript(item_xml):
+    """Podcasting 2.0 <podcast:transcript> → plain text, validated."""
     cand = []
-    for attrs in tags:
+    for attrs in _re.findall(r'<podcast:transcript\s+([^>]*)/?>', item_xml or ""):
         u = _re.search(r'url="([^"]+)"', attrs)
         ty = (_re.search(r'type="([^"]+)"', attrs) or [None, ""])[1]
         if u:
             cand.append((ty, _html.unescape(u.group(1))))
-    pri = ["text/plain", "application/json", "text/vtt", "application/x-subrip", "application/srt", "text/html"]
+    pri = ["text/plain", "application/json", "text/vtt", "application/x-subrip",
+           "application/srt", "text/html"]
     cand.sort(key=lambda c: pri.index(c[0]) if c[0] in pri else 99)
     for ty, u in cand:
         try:
-            body = _pget(u, timeout=40).text
+            r = _pget(u, timeout=40)
         except Exception:
             continue
+        if not _ok_body(r, 500):          # P1-3: a 403 body is not a transcript
+            continue
+        body = r.text
         if "json" in ty:
             try:
                 d = _json.loads(body)
-                segs = d.get("segments") or d
-                return {"text": " ".join(s.get("body", "") for s in segs), "url": u, "type": ty}
+                segs = d.get("segments") if isinstance(d, dict) else d
+                text = " ".join(s.get("body", "") for s in segs)
             except Exception:
                 continue
-        # vtt/srt → strip cue headers / timestamps / indices
-        lines = [l for l in body.splitlines()
-                 if l.strip() and not _re.match(r"^\d+$", l.strip())
-                 and "-->" not in l and not l.startswith(("WEBVTT", "NOTE"))]
-        return {"text": _re.sub(r"<[^>]+>", "", " ".join(lines)), "url": u, "type": ty}
+        else:
+            body = _re.sub(r"<[^>]+>", " ", body)
+            lines = [l for l in body.splitlines()
+                     if l.strip() and not _re.match(r"^\d+$", l.strip())
+                     and "-->" not in l and not l.startswith(("WEBVTT", "NOTE"))]
+            text = " ".join(lines)
+        text = _re.sub(r"\s+", " ", _html.unescape(text)).strip()
+        if len(text) > 500:
+            return {"text": text, "url": u, "type": ty}
     return None
 
 
-def _youtube_captions(show, episode_title, release_date=None, caller_id=None,
-                      min_sim=0.6):
-    """Find the show's YouTube upload of this episode and pull its captions.
+def _declared_youtube_channel(item_xml, channel_xml):
+    """The show's own YouTube channel as declared in its RSS (item first,
+    then channel level). Identity key for the cross-platform match — not a
+    fuzzy word overlap on channel names (review P1-2)."""
+    pat = r"https?://(?:www\.)?youtube\.com/(?:@[\w.\-]+|channel/[\w\-]+|c/[\w.\-]+|user/[\w.\-]+)"
+    for blob in (item_xml or "", channel_xml or ""):
+        for u in _re.findall(pat, blob):
+            return u.split("?")[0]
+    return None
 
-    Two keys, either suffices: title similarity >= min_sim, OR same channel
-    published within ±2 days of the podcast release (shows routinely retitle
-    the YouTube upload — a16z feed 'The AI-Native CRM' vs YouTube 'Inside
-    Lightfield's Vision for the AI-Native Business', both 2026-09-16)."""
-    from datetime import datetime, timezone
-    rel = None
-    if release_date:
-        try:
-            rel = datetime.fromisoformat(release_date.replace("Z", "+00:00"))
-        except Exception:
-            rel = None
-    q = f"{show} {episode_title}".strip()
-    r = sc_get("/v1/youtube/search", query=q, caller_id=caller_id)
-    vids = r.get("videos") or r.get("results") or r.get("data") or []
-    show_n = _norm(show)
+
+_STOP = {"the", "show", "podcast", "with", "a", "an", "of", "and"}
+
+
+def _key(s):
+    return " ".join(w for w in _norm(s).split() if w not in _STOP)
+
+
+def _youtube_match(ep, channel_url=None):
+    """Same episode on the show's own YouTube channel, or None.
+    Channel: RSS-declared URL (listed via yt-dlp flat extraction), else a
+    yt-dlp search whose channel name EQUALS the show name minus stopwords.
+    Episode: _same_episode. Returns {url, title, score, channel}."""
+    show_key = _key(ep.get("show") or "")
+    ep_dt = _parse_dt(ep.get("release_date"))
+    candidates = []
+    if channel_url:
+        lst = media_info(channel_url.rstrip("/") + "/videos", flat=True)
+        ch = lst.get("channel") or lst.get("uploader") or lst.get("title") or ""
+        candidates = [(e, ch) for e in lst.get("entries") or []]
+    if not candidates and show_key:
+        lst = media_info(f"ytsearch15:{ep.get('show')} {ep.get('episode')}", flat=True)
+        for e in lst.get("entries") or []:
+            ch = e.get("channel") or e.get("uploader") or ""
+            if _key(ch) and _key(ch) == show_key:
+                candidates.append((e, ch))
     best, best_s = None, 0.0
-    for v in vids[:20]:
-        title = v.get("title") or ""
-        ch = ((v.get("channel") or {}).get("title") or v.get("channelTitle")
-              or v.get("author") or "")
-        # channel must look like the show's own upload (a16z Show → channel a16z)
-        if not any(tok in _norm(ch) for tok in show_n.split() if len(tok) > 2):
-            continue
-        s = _sim(title, episode_title)
-        if rel and v.get("publishedTime"):
-            try:
-                pub = datetime.fromisoformat(v["publishedTime"].replace("Z", "+00:00"))
-                days = abs((pub - rel).total_seconds()) / 86400
-                if days <= 2:
-                    s = max(s, 0.9 - 0.1 * days + 0.1 * s)  # date match dominates
-            except Exception:
-                pass
-        if s > best_s:
-            best, best_s = v, s
-    if not best or best_s < min_sim:
+    for e, ch in candidates:
+        e_dur = _dur_secs(e.get("duration"))
+        e_dt = _parse_dt(e.get("upload_date") or e.get("timestamp"))
+        if e_dt is None and e_dur and ep.get("duration") and ep_dt:
+            # flat listings carry no date; only duration-plausible candidates
+            # (usually 1-3) pay for a full metadata fetch to prove the date.
+            if abs(e_dur - ep["duration"]) / max(e_dur, ep["duration"]) <= 0.05:
+                full = media_info(e.get("url") or f"https://www.youtube.com/watch?v={e.get('id')}")
+                e_dt = _parse_dt(full.get("upload_date") or full.get("timestamp"))
+                e_dur = _dur_secs(full.get("duration")) or e_dur
+        ok, score = _same_episode(ep.get("duration"), e_dur, ep_dt, e_dt,
+                                  ep.get("episode") or "", e.get("title") or "")
+        if ok and score > best_s:
+            best, best_s = (e, ch), score
+    if not best:
         return None
-    u = best.get("url") or f"https://www.youtube.com/watch?v={best.get('id')}"
-    tr = youtube_transcript(u, caller_id=caller_id)
-    text = tr.get("transcript_only_text") or tr.get("transcript") or ""
-    if isinstance(text, list):
-        text = " ".join(seg.get("text", "") for seg in text)
-    text = _re.sub(r"\s+", " ", str(text)).strip()
-    if len(text) < 500:
-        return None
-    return {"text": text, "url": u, "title": best.get("title"), "similarity": round(best_s, 2)}
+    e, ch = best
+    u = e.get("url") or e.get("webpage_url") or f"https://www.youtube.com/watch?v={e.get('id')}"
+    return {"url": u, "title": e.get("title"), "score": best_s, "channel": ch}
 
 
-def podcast_transcript(url, caller_id=None):
-    """Transcript for a podcast episode link WITHOUT touching the audio.
-
-    Chain: resolve link → RSS <podcast:transcript> → YouTube captions of the
-    show's own upload. On found=False do NOT download media — report show +
-    episode and ask the user.
-    """
-    ep = resolve_podcast_episode(url, caller_id=caller_id)
-    res = {"found": False, "source": None, "text": "", "url": None, **ep}
-    if not ep.get("episode"):
-        res["note"] = "could not resolve episode title from link"
-        return res
-    try:
-        rss = _rss_transcript(ep.get("feed_url"), ep["episode"], caller_id=caller_id)
-    except Exception as e:  # feed unreachable → fall through
-        rss = None
-        res["rss_error"] = str(e)[:120]
-    if rss:
-        res.update(found=True, source="rss_podcast_transcript", text=rss["text"], url=rss["url"])
-        return res
-    yt = _youtube_captions(ep.get("show") or "", ep["episode"],
-                           release_date=ep.get("release_date"), caller_id=caller_id)
-    if yt:
-        res.update(found=True, source="youtube_captions", text=yt["text"], url=yt["url"],
-                   youtube_title=yt["title"], similarity=yt["similarity"])
-        return res
-    res["note"] = ("no transcript file published (RSS has no podcast:transcript, "
-                   "no matching YouTube upload). Ask the user before downloading audio.")
-    return res
-
-
-# ---------------------------------------------------------------------------
-# Unified entry: get_transcript(url) — one call for any media link.
-# Routes by host; every branch returns the same shape:
-#   {"found": bool, "kind": str, "source": str|None, "text": str, "url": str,
-#    "title": str|None, "note": str|None}
-# found=False ⇒ no transcript file exists on the read-only routes. Caller
-# reports what was tried and ASKS THE USER before any media download.
-# ---------------------------------------------------------------------------
 def _flatten_segments(tr):
     text = tr.get("transcript_only_text") or tr.get("transcript") or tr.get("text") or ""
     if isinstance(text, list):
@@ -500,51 +639,125 @@ def _flatten_segments(tr):
     return _re.sub(r"\s+", " ", str(text)).strip()
 
 
-def get_transcript(url, caller_id=None, language="en"):
-    u = (url or "").strip()
-    host = _re.sub(r"^https?://(www\.|m\.)?", "", u).split("/")[0].lower()
-    res = {"found": False, "kind": None, "source": None, "text": "", "url": u,
-           "title": None, "note": None}
+def _youtube_text(url, caller_id=None):
+    """Captions for a YouTube URL: yt-dlp tracks first, ScrapeCreators as
+    fallback when yt-dlp is blocked. ('', src, title) when neither has them."""
+    info = media_info(url)
+    cap = captions_from_media_info(info) if info else None
+    if cap:
+        return cap["text"], f"native_captions:{cap['kind']}", info.get("title")
+    try:
+        text = _flatten_segments(youtube_transcript(url, caller_id=caller_id))
+    except Exception:
+        text = ""
+    return (text if len(text) > 200 else ""), "youtube_transcript", (info or {}).get("title")
 
-    if "youtube.com" in host or "youtu.be" in host:
-        res["kind"] = "youtube"
-        tr = youtube_transcript(u, language=language, caller_id=caller_id)
-        text = _flatten_segments(tr)
-        meta = youtube_video(u, caller_id=caller_id) if text else {}
-        res.update(found=len(text) > 200, source="youtube_captions", text=text,
-                   title=(meta or {}).get("title"))
-        if not res["found"]:
-            res["note"] = "no captions on this video"
+
+def podcast_transcript(url, caller_id=None):
+    """Transcript for a podcast episode WITHOUT touching the audio."""
+    ep = resolve_podcast_episode(url, caller_id=caller_id)
+    res = {"found": False, "source": None, "text": "", "url": None, "tried": [],
+           "youtube_channel_url": None, "note": None, **ep}
+    if not ep.get("episode"):
+        res["note"] = "could not resolve episode from link"
         return res
+    item, head = None, ""
+    if ep.get("feed_url"):
+        res["tried"].append("rss_podcast_transcript")
+        try:
+            item, head = _rss_item_for(ep["feed_url"], ep["episode"],
+                                       ep.get("release_date"), ep.get("duration"))
+            if item:
+                d = _re.search(r"<itunes:duration>(.*?)</itunes:duration>", item)
+                res["duration"] = res["duration"] or (_dur_secs(d.group(1)) if d else None)
+                rss = _rss_transcript(item)
+                if rss:
+                    res.update(found=True, source="rss_podcast_transcript",
+                               text=rss["text"], url=rss["url"])
+                    return res
+        except Exception as e:
+            res["rss_error"] = str(e)[:120]
+    ch = _declared_youtube_channel(item, head)
+    res["youtube_channel_url"] = ch
+    res["tried"].append("youtube_channel_match" if ch else "youtube_search_match")
+    yt = _youtube_match(res, channel_url=ch)
+    if yt:
+        text, src, _ = _youtube_text(yt["url"], caller_id=caller_id)
+        if text:
+            res.update(found=True, source=f"youtube:{src}", text=text, url=yt["url"],
+                       youtube_title=yt["title"], match_score=yt["score"],
+                       youtube_channel=yt["channel"])
+            return res
+        res["note"] = f"matched upload {yt['url']} has no captions"
+    res["note"] = res["note"] or (
+        "no transcript file published: RSS has no podcast:transcript and no "
+        "same-episode upload on the show's YouTube channel. "
+        "Ask the user before downloading audio.")
+    return res
+
+
+def get_transcript(url, caller_id=None, language="en"):
+    """ONE entry for any media link. Same shape every time:
+    {found, kind, source, text, url, title, tried, note}.
+    found=False ⇒ nothing read-only exists; ASK THE USER before any download."""
+    u = (url or "").strip()
+    res = {"found": False, "kind": None, "source": None, "text": "", "url": u,
+           "title": None, "tried": [], "note": None}
+    host = _re.sub(r"^https?://(www\.|m\.)?", "", u).split("/")[0].lower()
 
     if "tiktok.com" in host:
         res["kind"] = "tiktok"
-        tr = tiktok_transcript(u, lang=language, caller_id=caller_id)
-        text = _flatten_segments(tr)
-        res.update(found=len(text) > 50, source="tiktok_transcript", text=text)
-        if not res["found"]:
-            res["note"] = "no transcript for this video"
+        res["tried"].append("tiktok_transcript")
+        try:
+            text = _flatten_segments(tiktok_transcript(u, lang=language, caller_id=caller_id))
+        except Exception:
+            text = ""
+        res.update(found=len(text) > 50, source="tiktok_transcript", text=text,
+                   note=None if len(text) > 50 else "no transcript for this video")
         return res
 
     if "podcasts.apple.com" in host or ("spotify.com" in host and "/episode/" in u):
         res["kind"] = "podcast"
         r = podcast_transcript(u, caller_id=caller_id)
         res.update(found=r["found"], source=r["source"], text=r["text"],
-                   url=r.get("url") or u,
-                   title=f'{r.get("show") or ""} — {r.get("episode") or ""}'.strip(" —"),
-                   note=r.get("note"))
+                   url=r.get("url") or u, tried=r["tried"], note=r.get("note"),
+                   title=" — ".join(x for x in (r.get("show"), r.get("episode")) if x) or None)
         return res
 
-    # Generic page (publisher transcript page, Snipd, Podscribe, blog…):
-    # browser-rendered scrape handles JS shells and WAF 403s alike.
+    # 1. generic: yt-dlp metadata → native caption tracks (YouTube, Vimeo, TED, …)
+    info = media_info(u)
+    if info and (info.get("subtitles") or info.get("automatic_captions")):
+        res["tried"].append("native_captions")
+        cap = captions_from_media_info(info, (language,))
+        if cap:
+            res.update(found=True, kind=info.get("extractor"),
+                       source=f"native_captions:{cap['kind']}", text=cap["text"],
+                       title=info.get("title"))
+            return res
+    if info and info.get("extractor") == "youtube":
+        res["tried"].append("youtube_transcript")
+        try:
+            text = _flatten_segments(youtube_transcript(u, language=language, caller_id=caller_id))
+        except Exception:
+            text = ""
+        if len(text) > 200:
+            res.update(found=True, kind="youtube", source="youtube_transcript",
+                       text=text, title=info.get("title"))
+            return res
+    if info and info.get("extractor") not in (None, "generic"):
+        # a known media page with no captions anywhere → stop here, do not scrape
+        res.update(kind=info.get("extractor"), title=info.get("title"),
+                   note="media has no caption track; ask the user before downloading")
+        return res
+
+    # 2. any other page (publisher transcript page, Snipd, blog …)
     res["kind"] = "page"
+    res["tried"].append("scrape_markdown")
     try:
-        md = scrape_markdown(u, caller_id=caller_id)
+        md = (scrape_markdown(u, caller_id=caller_id) or "").strip()
     except Exception as e:
         res["note"] = f"scrape failed: {str(e)[:120]}"
         return res
-    md = (md or "").strip()
-    res.update(found=len(md) > 1000, source="scrape_markdown", text=md)
-    if not res["found"]:
-        res["note"] = "page has no substantial text"
+    res.update(found=len(md) > 1000, source="scrape_markdown", text=md,
+               note=None if len(md) > 1000 else "page has no substantial text")
     return res

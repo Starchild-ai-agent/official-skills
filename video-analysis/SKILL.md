@@ -1,6 +1,6 @@
 ---
 name: video-analysis
-version: 1.2.0
+version: 1.3.0
 description: "Video understanding for any model \u2014 native passthrough for small\
   \ files,\nframe extraction + audio transcription fallback for large files.\n\nUse\
   \ when the user asks to analyze, describe, or understand a video file\n(e.g. \"\
@@ -18,12 +18,26 @@ disable-model-invocation: false
 
 Analyze video files using either **native model understanding** or **frame extraction + transcription**.
 
-⚠️ **URL input (YouTube/TikTok/IG/...)?** This skill takes a **local file path**.
-For a web URL do NOT default to `yt-dlp` download (bot-check / rate-limit prone).
-First try the `web-crawler` skill: `youtube_video(url)` for metadata + transcript
-(speech text only — never name a speaker from it alone; see that skill's
-metadata-first rule). Only fall back to downloading + `analyze_video()` when the
-transcript/metadata path fails AND you actually need frames or audio.
+⚠️ **URL input (YouTube / TikTok / IG / Apple Podcasts / Spotify / any link)?**
+This skill takes a **local file path**. For a link, do NOT download the media.
+Route by input type, in order, and STOP at the first level that yields text:
+
+1. **Podcast episode link or episode name** (Apple Podcasts, Spotify, Overcast,
+   publisher site, or just "the a16z episode about X") → `web_search` for the
+   publisher's episode page / show notes / transcript page, then
+   `web-crawler.scrape_markdown(url)` to read it. Most major shows publish text.
+2. **Video URL** → `web-crawler.youtube_video(url)` / `youtube_transcript(url)`
+   (cloud captions, ~1 s, no download; TikTok has `tiktok_transcript`).
+3. **`web_fetch` came back empty** (`empty_extraction`, JS-rendered page) →
+   retry the same URL with `web-crawler.scrape_markdown` — it renders JS.
+   Never conclude "no transcript" from an empty plain fetch.
+4. **Nothing found** → report exactly that and ask. Local download +
+   `analyze_video()` runs ONLY when the user explicitly asks to download the
+   media, or hands you a file. It is not a fallback: datacenter IPs hit
+   bot-checks and a 100 MB audio pull takes minutes and usually fails.
+
+Transcript text is speech only — never name a speaker from it alone (see
+web-crawler's metadata-first rule).
 
 ## How It Works
 ```

@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.6.1
+version: 2.7.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -72,6 +72,21 @@ sc_get("/v1/tiktok/profile", handle="charlidamelio")     # any SC endpoint
 from exports import archive_fallback                      # paywall / Firecrawl-403
 archive_fallback("https://www.nytimes.com/.../article.html")  # archive snapshot
 ```
+
+### Podcast / interview transcript route (any link, not just YouTube)
+
+Podcast requests arrive as Apple Podcasts / Spotify links or as an episode
+*name*. There is no captions API for those — the text lives on the web:
+
+1. `web_search("<show> <episode title> transcript")` — publisher page, show
+   notes, or a third-party transcript page (pod.wave.co, podscribe, etc.).
+2. `scrape_markdown(url)` on the best hit. Apple/Spotify pages themselves only
+   carry the description; follow the publisher link found there.
+3. If a plain `web_fetch` of any of these returned `empty_extraction`, that is
+   a JS-rendered page — call `scrape_markdown` on the same URL before deciding
+   the transcript does not exist.
+4. Still nothing → say so and ask. **Do not download the audio** (`yt-dlp`,
+   `ffmpeg`, local Whisper) unless the user explicitly asks for the media file.
 
 Named wrappers exist for the high-frequency actions (YouTube/TikTok transcript &
 video, IG/Twitter/Reddit posts, profiles, Google/Reddit search). For any other

@@ -1,6 +1,6 @@
 ---
 name: video-analysis
-version: 1.2.0
+version: 1.3.0
 description: "Video understanding for any model \u2014 native passthrough for small\
   \ files,\nframe extraction + audio transcription fallback for large files.\n\nUse\
   \ when the user asks to analyze, describe, or understand a video file\n(e.g. \"\

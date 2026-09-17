@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.7.0
+version: 2.8.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -76,24 +76,37 @@ archive_fallback("https://www.nytimes.com/.../article.html")  # archive snapshot
 ### Podcast / interview transcript route (any link, not just YouTube)
 
 Podcast requests arrive as Apple Podcasts / Spotify links or as an episode
-*name*. There is no captions API for those — the text lives on the web:
+title. **Never download the audio.** One call does the whole chain:
 
-1. `web_search("<show> <episode title> transcript")` — publisher page, show
-   notes, or a third-party transcript page (pod.wave.co, podscribe, etc.).
-2. `scrape_markdown(url)` on the best hit. Apple/Spotify pages themselves only
-   carry the description; follow the publisher link found there.
-3. If a plain `web_fetch` of any of these returned `empty_extraction`, that is
-   a JS-rendered page — call `scrape_markdown` on the same URL before deciding
-   the transcript does not exist.
-4. Still nothing → say so and ask. **Do not download the audio** (`yt-dlp`,
-   `ffmpeg`, local Whisper) unless the user explicitly asks for the media file.
+```python
+from core.skill_tools import web_crawler
+r = web_crawler.podcast_transcript(url, caller_id="chat:<thread>")
+# r = {found, source, text, url, show, episode, release_date, note}
+```
 
-Named wrappers exist for the high-frequency actions (YouTube/TikTok transcript &
-video, IG/Twitter/Reddit posts, profiles, Google/Reddit search). For any other
-ScrapeCreators endpoint use `sc_get(path, **params)` — it auto-strips leading
-`@`/`#` from handles/hashtags. The intent-routing tables below still tell you
-*which* endpoint to pass. Pass `caller_id="chat:<thread>"` (or `job:`/`preview:`)
-for cost tracking.
+Internally, in this fixed order (deterministic APIs, no model guessing):
+1. Resolve the link → show name, episode title, release date, RSS url
+   (Apple: iTunes lookup `entity=podcastEpisode`; Spotify: og tags).
+2. RSS `<podcast:transcript>` (Podcasting 2.0) for the matching item —
+   SRT / VTT / JSON / text all normalised to plain text. Most shows do not
+   publish it (a16z: 0 of 1000 items), so usually falls through.
+3. The show's own YouTube upload of the same episode → captions file via
+   `youtube_transcript`. Match = same channel AND (title similarity ≥ 0.6 OR
+   published within ±2 days of the podcast release). Shows routinely retitle
+   the YouTube upload, so the date key matters: a16z feed "The AI-Native CRM"
+   → YouTube "How AI Is Rewriting Software From First Principles", same day,
+   55k chars in 14 s.
+4. `found=False` → report `show` + `episode` and **ask the user** whether to
+   download and transcribe. The bash gate holds `yt-dlp` / `curl … .mp3` for
+   confirmation anyway; re-issue only after they agree.
+
+If the user gives a title with no link: `web_search("<show> <title>
+transcript")` for the show's own page or a transcript host; a 401/403 or
+`empty_extraction` on that page → `scrape_markdown(url)` before giving up.
+
+Incident 2026-09-17: two 403s on transcript hosts led an agent straight to a
+49 MB mp3 + ffmpeg install + 4 whisper calls + an incomplete summary. Step 3
+above returns the same episode's captions in one call.
 
 ## Quick trigger rules (read this first)
 Use this skill immediately when any of these conditions is true:

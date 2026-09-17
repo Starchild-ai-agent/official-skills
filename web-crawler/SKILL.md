@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.10.0
+version: 2.11.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -90,11 +90,13 @@ and yt-dlp's `--skip-download` workflow follow. Nothing here is site-specific:
 |---|---|---|
 | `media_info(url)` | yt-dlp `extract_info(download=False)` — 1800+ sites, returns title, duration, upload date, channel, caption-track URLs. Zero media bytes. | track fetched must be 2xx with a real body |
 | RSS `<podcast:transcript>` | Podcasting 2.0 standard, any podcast | feed item matched by duration ±5 % + date ±3 d; transcript URL must be 2xx, > 500 chars, not an error page |
-| show's own YouTube upload | channel = the YouTube URL the show declares in its RSS (else search hit whose channel name **equals** the show name minus stopwords) | same episode = duration ±5 % AND date ±3 d; title similarity only breaks ties (shows retitle uploads) |
+| show's own YouTube upload | channel = the YouTube URL the show declares in its RSS (else search hit whose channel name **equals** the show name minus stopwords) | candidates = duration ±5 % AND date ±3 d; **identity = title similarity ≥ 0.6 OR show-notes overlap** (≥ 6 shared distinctive tokens, Jaccard ≥ 0.15). A candidate that fails identity is returned in `candidate` with `found=False` — never delivered as the episode |
 | `scrape_markdown(url)` | any other page (publisher, Snipd, blog) — browser-rendered, survives WAF 403 | > 1000 chars |
 
-`found=False` ⇒ report `kind`, `title`, `tried`, `note` and **ask the user**
-before any download. `yt-dlp --skip-download` / `-J` / `--list-subs` are
+`found=False` ⇒ report `kind`, `title`, `tried`, `note` (and `candidate` if
+any) and **ask the user** before any download. YouTube is recognised by URL:
+the captions API runs even when yt-dlp metadata fails, and a page scrape is
+never reported as a transcript for a media URL. `yt-dlp --skip-download` / `-J` / `--list-subs` are
 metadata calls and pass the bash gate; `yt-dlp <url>`, `curl … .mp3`, ffmpeg,
 whisper are held for confirmation.
 

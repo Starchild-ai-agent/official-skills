@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.8.0
+version: 2.9.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -73,40 +73,43 @@ from exports import archive_fallback                      # paywall / Firecrawl-
 archive_fallback("https://www.nytimes.com/.../article.html")  # archive snapshot
 ```
 
-### Podcast / interview transcript route (any link, not just YouTube)
-
-Podcast requests arrive as Apple Podcasts / Spotify links or as an episode
-title. **Never download the audio.** One call does the whole chain:
+### Transcript route — ONE entry for any media link
 
 ```python
 from core.skill_tools import web_crawler
-r = web_crawler.podcast_transcript(url, caller_id="chat:<thread>")
-# r = {found, source, text, url, show, episode, release_date, note}
+r = web_crawler.get_transcript(url, caller_id="chat:<thread>")
+# {found, kind, source, text, url, title, note}
 ```
 
-Internally, in this fixed order (deterministic APIs, no model guessing):
-1. Resolve the link → show name, episode title, release date, RSS url
-   (Apple: iTunes lookup `entity=podcastEpisode`; Spotify: og tags).
-2. RSS `<podcast:transcript>` (Podcasting 2.0) for the matching item —
-   SRT / VTT / JSON / text all normalised to plain text. Most shows do not
-   publish it (a16z: 0 of 1000 items), so usually falls through.
-3. The show's own YouTube upload of the same episode → captions file via
-   `youtube_transcript`. Match = same channel AND (title similarity ≥ 0.6 OR
-   published within ±2 days of the podcast release). Shows routinely retitle
-   the YouTube upload, so the date key matters: a16z feed "The AI-Native CRM"
-   → YouTube "How AI Is Rewriting Software From First Principles", same day,
-   55k chars in 14 s.
-4. `found=False` → report `show` + `episode` and **ask the user** whether to
-   download and transcribe. The bash gate holds `yt-dlp` / `curl … .mp3` for
-   confirmation anyway; re-issue only after they agree.
+`get_transcript` dispatches by host and always returns the same shape:
 
-If the user gives a title with no link: `web_search("<show> <title>
-transcript")` for the show's own page or a transcript host; a 401/403 or
-`empty_extraction` on that page → `scrape_markdown(url)` before giving up.
+| link | kind | source |
+|---|---|---|
+| youtube.com / youtu.be | youtube | captions (`youtube_transcript`) |
+| tiktok.com | tiktok | `tiktok_transcript` |
+| podcasts.apple.com / open.spotify.com/episode | podcast | `podcast_transcript` chain below |
+| anything else (publisher page, Snipd, Podscribe, blog) | page | `scrape_markdown` (browser-rendered; survives JS shells and WAF 403) |
 
-Incident 2026-09-17: two 403s on transcript hosts led an agent straight to a
-49 MB mp3 + ffmpeg install + 4 whisper calls + an incomplete summary. Step 3
-above returns the same episode's captions in one call.
+**`found=False` ⇒ report `kind` + `title` + `note` and ASK THE USER before any
+download.** Never `yt-dlp` / `curl … .mp3` / ffmpeg / whisper on your own —
+the bash gate holds those for confirmation anyway.
+
+Podcast chain (`podcast_transcript`, deterministic APIs, no model guessing):
+1. Link → show, episode title, release date, RSS (iTunes lookup
+   `entity=podcastEpisode`; Spotify og tags).
+2. RSS `<podcast:transcript>` (Podcasting 2.0) — SRT/VTT/JSON/text → plain
+   text. Most shows publish none (a16z: 0 of 1000), so usually falls through.
+3. Show's own YouTube upload → captions. Match = same channel AND (title
+   similarity ≥ 0.6 OR published ±2 days). Uploads are routinely retitled —
+   a16z feed "The AI-Native CRM" vs YouTube "How AI Is Rewriting Software
+   From First Principles", same day — so the date key matters.
+
+Title only, no link: `web_search("<show> <title> transcript")`, then
+`get_transcript(<page url>)`.
+
+Incident 2026-09-17: two 403s on transcript hosts led an agent to a 49 MB
+mp3 + ffmpeg install + 4 whisper calls + an incomplete summary. The podcast
+branch returns that episode's captions in one call (55k chars, ~15 s).
 
 ## Quick trigger rules (read this first)
 Use this skill immediately when any of these conditions is true:

@@ -483,3 +483,68 @@ def podcast_transcript(url, caller_id=None):
     res["note"] = ("no transcript file published (RSS has no podcast:transcript, "
                    "no matching YouTube upload). Ask the user before downloading audio.")
     return res
+
+
+# ---------------------------------------------------------------------------
+# Unified entry: get_transcript(url) — one call for any media link.
+# Routes by host; every branch returns the same shape:
+#   {"found": bool, "kind": str, "source": str|None, "text": str, "url": str,
+#    "title": str|None, "note": str|None}
+# found=False ⇒ no transcript file exists on the read-only routes. Caller
+# reports what was tried and ASKS THE USER before any media download.
+# ---------------------------------------------------------------------------
+def _flatten_segments(tr):
+    text = tr.get("transcript_only_text") or tr.get("transcript") or tr.get("text") or ""
+    if isinstance(text, list):
+        text = " ".join((s.get("text") or "") for s in text if isinstance(s, dict))
+    return _re.sub(r"\s+", " ", str(text)).strip()
+
+
+def get_transcript(url, caller_id=None, language="en"):
+    u = (url or "").strip()
+    host = _re.sub(r"^https?://(www\.|m\.)?", "", u).split("/")[0].lower()
+    res = {"found": False, "kind": None, "source": None, "text": "", "url": u,
+           "title": None, "note": None}
+
+    if "youtube.com" in host or "youtu.be" in host:
+        res["kind"] = "youtube"
+        tr = youtube_transcript(u, language=language, caller_id=caller_id)
+        text = _flatten_segments(tr)
+        meta = youtube_video(u, caller_id=caller_id) if text else {}
+        res.update(found=len(text) > 200, source="youtube_captions", text=text,
+                   title=(meta or {}).get("title"))
+        if not res["found"]:
+            res["note"] = "no captions on this video"
+        return res
+
+    if "tiktok.com" in host:
+        res["kind"] = "tiktok"
+        tr = tiktok_transcript(u, lang=language, caller_id=caller_id)
+        text = _flatten_segments(tr)
+        res.update(found=len(text) > 50, source="tiktok_transcript", text=text)
+        if not res["found"]:
+            res["note"] = "no transcript for this video"
+        return res
+
+    if "podcasts.apple.com" in host or ("spotify.com" in host and "/episode/" in u):
+        res["kind"] = "podcast"
+        r = podcast_transcript(u, caller_id=caller_id)
+        res.update(found=r["found"], source=r["source"], text=r["text"],
+                   url=r.get("url") or u,
+                   title=f'{r.get("show") or ""} — {r.get("episode") or ""}'.strip(" —"),
+                   note=r.get("note"))
+        return res
+
+    # Generic page (publisher transcript page, Snipd, Podscribe, blog…):
+    # browser-rendered scrape handles JS shells and WAF 403s alike.
+    res["kind"] = "page"
+    try:
+        md = scrape_markdown(u, caller_id=caller_id)
+    except Exception as e:
+        res["note"] = f"scrape failed: {str(e)[:120]}"
+        return res
+    md = (md or "").strip()
+    res.update(found=len(md) > 1000, source="scrape_markdown", text=md)
+    if not res["found"]:
+        res["note"] = "page has no substantial text"
+    return res

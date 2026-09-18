@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.7.0
+version: 2.11.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -73,27 +73,41 @@ from exports import archive_fallback                      # paywall / Firecrawl-
 archive_fallback("https://www.nytimes.com/.../article.html")  # archive snapshot
 ```
 
-### Podcast / interview transcript route (any link, not just YouTube)
+### Transcript route — ONE entry for any media link
 
-Podcast requests arrive as Apple Podcasts / Spotify links or as an episode
-*name*. There is no captions API for those — the text lives on the web:
+```python
+from core.skill_tools import web_crawler
+r = web_crawler.get_transcript(url, caller_id="chat:<thread>")
+# {found, kind, source, text, url, title, tried, note}
+```
 
-1. `web_search("<show> <episode title> transcript")` — publisher page, show
-   notes, or a third-party transcript page (pod.wave.co, podscribe, etc.).
-2. `scrape_markdown(url)` on the best hit. Apple/Spotify pages themselves only
-   carry the description; follow the publisher link found there.
-3. If a plain `web_fetch` of any of these returned `empty_extraction`, that is
-   a JS-rendered page — call `scrape_markdown` on the same URL before deciding
-   the transcript does not exist.
-4. Still nothing → say so and ask. **Do not download the audio** (`yt-dlp`,
-   `ffmpeg`, local Whisper) unless the user explicitly asks for the media file.
+**Design rule: captions / subtitles / published transcripts are METADATA;
+the media file is PAYLOAD.** Exhaust every metadata provider first; touch the
+media only when the user explicitly agrees. Same rule claude-video, spoken.md
+and yt-dlp's `--skip-download` workflow follow. Nothing here is site-specific:
 
-Named wrappers exist for the high-frequency actions (YouTube/TikTok transcript &
-video, IG/Twitter/Reddit posts, profiles, Google/Reddit search). For any other
-ScrapeCreators endpoint use `sc_get(path, **params)` — it auto-strips leading
-`@`/`#` from handles/hashtags. The intent-routing tables below still tell you
-*which* endpoint to pass. Pass `caller_id="chat:<thread>"` (or `job:`/`preview:`)
-for cost tracking.
+| provider (cost order) | what it is | identity / validity check |
+|---|---|---|
+| `media_info(url)` | yt-dlp `extract_info(download=False)` — 1800+ sites, returns title, duration, upload date, channel, caption-track URLs. Zero media bytes. | track fetched must be 2xx with a real body |
+| RSS `<podcast:transcript>` | Podcasting 2.0 standard, any podcast | feed item matched by duration ±5 % + date ±3 d; transcript URL must be 2xx, > 500 chars, not an error page |
+| show's own YouTube upload | channel = the YouTube URL the show declares in its RSS (else search hit whose channel name **equals** the show name minus stopwords) | candidates = duration ±5 % AND date ±3 d; **identity = title similarity ≥ 0.6 OR show-notes overlap** (≥ 6 shared distinctive tokens, Jaccard ≥ 0.15). A candidate that fails identity is returned in `candidate` with `found=False` — never delivered as the episode |
+| `scrape_markdown(url)` | any other page (publisher, Snipd, blog) — browser-rendered, survives WAF 403 | > 1000 chars |
+
+`found=False` ⇒ report `kind`, `title`, `tried`, `note` (and `candidate` if
+any) and **ask the user** before any download. YouTube is recognised by URL:
+the captions API runs even when yt-dlp metadata fails, and a page scrape is
+never reported as a transcript for a media URL. `yt-dlp --skip-download` / `-J` / `--list-subs` are
+metadata calls and pass the bash gate; `yt-dlp <url>`, `curl … .mp3`, ffmpeg,
+whisper are held for confirmation.
+
+Title only, no link → `web_search("<show> <title> transcript")` then
+`get_transcript(<page url>)`.
+
+Incident 2026-09-17: two 403s on transcript hosts led an agent to a 49 MB
+mp3 + ffmpeg + 4 whisper calls + an incomplete summary. Same link through
+`get_transcript`: RSS had no transcript → RSS declares `youtube.com/@a16z` →
+channel listing → one upload within 1.2 % duration, same day → captions,
+55k chars, ~30 s, zero audio.
 
 ## Quick trigger rules (read this first)
 Use this skill immediately when any of these conditions is true:

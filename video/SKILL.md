@@ -135,7 +135,7 @@ result = generate_video(
 Requests like "make it loop perfectly" or "use this image as both the start and end frame" must be served by a **cloud video model**, not local frame-by-frame rendering. Rendering frame sequences locally (Python/OpenCV + ffmpeg) on 1–2 GB containers causes memory spikes, OOM kills, and long render-and-recover loops.
 
 1. **Do not** generate frame sequences in Python/OpenCV and encode them with local ffmpeg. Local ffmpeg is for trimming/probing only, and any encode must carry `-threads 2` (the bash safety gate blocks bare encodes).
-2. For start+end-frame interpolation, use an API model that accepts first and last frame inputs (check the model schema via the proxy before assuming). Pass the SAME public image URL (from §3 `fal-assets`) as both frames.
+2. For first+last-frame interpolation, use an API model that accepts first and last frame inputs (check the model schema via the proxy before assuming). Pass each frame's own public URL (from §3 `fal-assets`): the SAME URL for both frames only when the user wants a same-image loop; if the user provides different start and end frames, pass them separately — never substitute one image for both.
 3. If no available model supports first+last frame, say so and offer the closest alternative (i2v with the single image, or a crossfade loop assembled from two short API-generated clips) — do not fall back to local interpolation.
 
 ## 3. One-time `fal-assets` public preview setup

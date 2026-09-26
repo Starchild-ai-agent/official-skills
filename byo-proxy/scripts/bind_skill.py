@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Bind / unbind a skill to a residential-proxy provider/country.
+"""Bind / unbind a skill to a proxy provider.
 
-Examples:
+Gateway provider (country + optional sticky session):
     python3 bind_skill.py web-crawler --provider iproyal --country jp
-    python3 bind_skill.py web-crawler --provider iproyal --country jp --sticky 30
+    python3 bind_skill.py web-crawler --provider iproyal --country jp --session abc --sticky 60
+
+Dedicated static IP (IPRoyal ISP, registered via add_isp_proxy.py):
+    python3 bind_skill.py web-crawler --provider iproyal-isp --proxy-id jp-1
+
+Unbind:
     python3 bind_skill.py web-crawler --unset
 """
 import argparse
@@ -11,18 +16,23 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from exports import set_binding, unset_binding, BINDINGS_FILE  # noqa: E402
+from exports import (  # noqa: E402
+    MAX_STICKY_MINUTES, MIN_STICKY_MINUTES, PROVIDERS,
+    ProxyNotConfiguredError, set_binding, unset_binding, BINDINGS_FILE,
+)
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Bind a skill to a residential-proxy provider/country.")
+    ap = argparse.ArgumentParser(description="Bind a skill to a proxy provider.")
     ap.add_argument("skill", help="Skill name (caller's identifier in get_proxy_for_skill)")
-    ap.add_argument("--provider", help="Provider name, e.g. iproyal")
-    ap.add_argument("--country", help="ISO-3166-1 alpha-2 country code, lowercase")
-    ap.add_argument("--sticky", type=int, default=None,
-                    help="Sticky-session lifetime in minutes (1..1440). Omit for rotating IPs.")
+    ap.add_argument("--provider", help=f"Provider name: {', '.join(sorted(PROVIDERS))}")
+    ap.add_argument("--country", help="ISO-3166-1 alpha-2 country code, lowercase (gateway providers)")
+    ap.add_argument("--proxy-id", dest="proxy_id", help="Registered ISP proxy id (isp providers)")
     ap.add_argument("--session", default=None,
-                    help="Optional named session id (any short string). Lets multiple bindings share an IP.")
+                    help="Named session id (gateway providers). Lets requests reuse one IP.")
+    ap.add_argument("--sticky", type=int, default=None,
+                    help=f"Sticky-session lifetime in minutes "
+                         f"({MIN_STICKY_MINUTES}..{MAX_STICKY_MINUTES}, 7 days). Requires --session.")
     ap.add_argument("--unset", action="store_true", help="Remove the binding for this skill")
     args = ap.parse_args()
 
@@ -31,19 +41,34 @@ def main() -> int:
         print(f"Unbound {args.skill!r}.  ({BINDINGS_FILE})")
         return 0
 
-    if not args.provider or not args.country:
-        ap.error("--provider and --country are required (or pass --unset)")
+    if not args.provider:
+        ap.error("--provider is required (or pass --unset)")
+
+    kind = PROVIDERS.get(args.provider, {}).get("kind")
+    if kind == "isp":
+        if not args.proxy_id:
+            ap.error(f"--proxy-id is required for provider {args.provider!r}")
+        if args.country or args.sticky or args.session:
+            ap.error(f"{args.provider!r} serves one dedicated IP per proxy; "
+                     f"--country/--sticky/--session do not apply")
+    elif kind == "gateway":
+        if not args.country:
+            ap.error(f"--country is required for provider {args.provider!r} (or pass --unset)")
 
     try:
-        set_binding(args.skill, args.provider, args.country,
-                    sticky_minutes=args.sticky, session=args.session)
-    except ValueError as e:
+        set_binding(args.skill, args.provider, country=args.country,
+                    sticky_minutes=args.sticky, session=args.session,
+                    proxy_id=args.proxy_id)
+    except (ValueError, ProxyNotConfiguredError) as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 2
 
-    sticky_note = f", sticky={args.sticky}m" if args.sticky else ""
-    session_note = f", session={args.session}" if args.session else ""
-    print(f"Bound {args.skill!r} → {args.provider}/{args.country}{sticky_note}{session_note}")
+    if kind == "isp":
+        print(f"Bound {args.skill!r} → {args.provider}/{args.proxy_id}")
+    else:
+        sticky_note = f", sticky={args.sticky}m" if args.sticky else ""
+        session_note = f", session={args.session}" if args.session else ""
+        print(f"Bound {args.skill!r} → {args.provider}/{args.country}{sticky_note}{session_note}")
     print(f"  ({BINDINGS_FILE})")
     return 0
 

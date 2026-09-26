@@ -29,11 +29,31 @@ Parameters are joined with `_` and follow the literal password.
 | `state-NAME` | `state-california` | US states only; lowercase, hyphens for spaces |
 | `city-NAME` | `city-tokyo` | Lowercase, hyphens for spaces. Country must be set. |
 | `session-ID` | `session-abc123` | Pin a logical session. Same id → same IP (within `lifetime`). |
-| `lifetime-Nm` | `lifetime-30m` | Sticky-session lifetime, 1..1440 minutes. Requires `session-`. |
+| `lifetime-Nm` | `lifetime-30m` | Sticky-session lifetime, 1 minute .. 7 days (`10080m`). Requires `session-`. |
 | `streaming-1` | `streaming-1` | Optimized for video/audio streaming. |
 
 Without `session-`, IPRoyal rotates the exit IP on every request — good for scraping,
 bad for sites that pin you to a session cookie.
+
+### Sticky session = "fixed" IP, up to 7 days
+
+To hold one exit IP, pass **both** `session-<id>` and `lifetime-<N>`:
+
+- Same `session-` id → same exit IP for the whole `lifetime`.
+- `lifetime-` is only meaningful alongside `session-` (IPRoyal ties a lifetime to a
+  named session). `byo-proxy` rejects sticky-without-session rather than emitting a
+  URL the provider refuses.
+- Ceiling is **7 days** (source: <https://docs.iproyal.com/proxies/residential/proxy/rotation>);
+  `byo-proxy` enforces 1..10080 minutes.
+- Only one time unit may be given (`m` or `h`); `byo-proxy` always emits minutes.
+- The IP is stable *for that session*, not permanent — a depleted pool or an expired
+  lifetime moves it. For an IP that never changes, use ISP proxies (`iproyal-isp`).
+
+```bash
+# same exit IP for 6 hours
+python3 scripts/bind_skill.py web-crawler --provider iproyal --country jp \
+    --session crawler-jp --sticky 360
+```
 
 ## Auth
 

@@ -124,8 +124,8 @@
     {
       "name": "byo-proxy",
       "path": "byo-proxy/SKILL.md",
-      "version": "0.1.1",
-      "description": "Bring-your-own residential proxy: per-skill country bindings, opt-in routing.\n\nUse when the user wants paid residential IPs or per-skill geo routing (e.g. bind web-crawler to JP, add IPRoyal account, route this scrape via DE)."
+      "version": "0.2.0",
+      "description": "Bring-your-own proxy: per-skill country bindings (rotating + sticky sessions) and dedicated static IPs, opt-in routing.\n\nUse when the user wants paid residential/static IPs or per-skill geo routing (e.g. bind web-crawler to JP, add IPRoyal account, pin one fixed IP to a skill, route this scrape via DE).\n"
     },
     {
       "name": "byok-custom-model",

@@ -1,6 +1,6 @@
 ---
 name: coingecko
-version: 2.0.4
+version: 2.1.0
 description: |
   Crypto spot prices, OHLC charts, market discovery, and global stats.
 

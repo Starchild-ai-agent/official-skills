@@ -40,7 +40,7 @@ disable-model-invocation: false
 - Price history（symbol 需 pair 格式 BTCUSDT）
 
 **❌ Startup 不可用**（401 "Upgrade plan"，调用前直接跳过）：
-- `api/futures/coins-markets`（币种市场汇总）
+- `api/futures/coins-markets`（币种市场汇总，即 `cg_coins_market_data`）— **不要调用**，按下方「全市场 / 多币种 OI 路由」处理
 - `api/futures/liquidation/order`（逐笔清算单）
 - `api/futures/liquidation/heatmap/model1` + `aggregated-heatmap/model1`（**清算热力图整个不可用**）
 - `api/hyperliquid/position`、`api/hyperliquid/wallet/position-distribution`（Hyperliquid 持仓分布；仅 whale-alert 可用）
@@ -51,6 +51,17 @@ disable-model-invocation: false
 2. **Apify 爬虫**：用 `apify` skill 抓 coinglass.com 页面上的清算热力图 / Hyperliquid 持仓数据。
 
 对 401 "Upgrade plan" 错误，`cg_request` 会抛 `CoinglassPlanError`，错误信息已含上述引导。
+
+### 全市场 / 多币种 OI 路由（coins-markets 不可用时）
+
+| 需求 | 用什么 | 注意 |
+|---|---|---|
+| 单币当前 OI、4h/24h 变化 | `cg_open_interest(symbol)`（取 `exchangeName=="All"` 行） | Startup 可用 |
+| 单币 funding | `funding_rate(symbol)` | 返回带 `%` 的字符串 |
+| OI 历史走势（多币） | 逐币 OI history，按时间戳相加 | 标注「Top-N 汇总」及 K 线粒度，不要冒充全市场 |
+| 全市场当前 OI 总量 / 各币当前 OI | **coingecko skill** `cg_derivatives(include_tickers='unexpired')`：只保留 `contract_type=="perpetual"`，按 `index_id` 汇总 `open_interest`（USD） | 交易所自报口径，含小所，数值高于 CoinGlass；只有当前值、无历史；图文必须注明来源 |
+
+**不要**把不同来源的数字（CoinGlass Top-N、CoinGecko 全市场、Bloomberg 等第三方）画在同一张图上做对比参考线。
 
 ## Liquidation Heatmap（❌ Startup 不可用 — 历史用法存档）
 
@@ -145,6 +156,10 @@ snake_case — `inspect` the dict before scripting.
   `longLiquidation_usd`, `shortLiquidation_usd`
 - `rate` fields (funding) are STRINGS with "+" / "-" / "%" — parse with
   `float(r.rstrip('%').lstrip('+'))` to compare numerically
+- `avgFundingRateBySymbol` (in `cg_open_interest` rows) is a NUMBER that is
+  **already in percent** — `0.005313` means 0.0053%/8h. Do NOT multiply by
+  100. Sanity bound: BTC funding is normally around ±0.01%/8h; anything above
+  ~0.1%/8h is almost certainly a unit bug.
 - timestamps are millisecond unix epoch (e.g. `1777881600000`)
 
 ### Funding & Open Interest
@@ -182,7 +197,7 @@ snake_case — `inspect` the dict before scripting.
 |---|---|
 | `cg_supported_coins()` | List[str] — symbols supported by CoinGlass |
 | `cg_supported_exchanges()` | list of exchange info dicts |
-| `cg_coins_market_data(symbol=None)` | list — current snapshot for all coins (or one if symbol given) |
+| `cg_coins_market_data(symbol=None)` | ❌ Startup 不可用（401）— 见「全市场 / 多币种 OI 路由」 |
 | `cg_pair_market_data(symbol='BTC', exchange=None)` | list — pair-level snapshot |
 | `cg_ohlc_history(symbol='BTC', interval='h4', exchange=None)` | list of OHLCV bars |
 
@@ -488,7 +503,7 @@ Track large traders on Hyperliquid DEX (~200 recent alerts):
 
 Market overview and price data:
 
-- `cg_coins_market_data()` - ALL coins data in one call (100+ coins)
+- `cg_coins_market_data()` - ❌ Startup 不可用；多币种数据见「全市场 / 多币种 OI 路由」
 - `cg_pair_market_data(symbol, exchange)` - Specific pair metrics
 - `cg_ohlc_history(symbol, exchange, interval, limit?)` - OHLC candlesticks
 - `cg_taker_volume_history(symbol, exchange, interval, limit?, start_time?, end_time?)` - Pair-specific taker volume
@@ -550,7 +565,7 @@ Ethereum, Solana, XRP, and Hong Kong ETFs:
 ### Quick Market Scan
 ```
 # Get everything in 3 calls
-all_coins = cg_coins_market_data()  # 100+ coins with full metrics
+btc_oi = cg_open_interest("BTC")  # coins-markets is plan-gated on Startup
 btc_liquidations = cg_liquidations("BTC")
 whale_alerts = cg_hyperliquid_whale_alerts()
 ```
@@ -667,8 +682,7 @@ Extreme funding often precedes reversals. The crowd is usually wrong at extremes
 
 **✅ OPTIMAL**: Use batch endpoints
 ```
-# One call gets 100+ coins
-all_coins = cg_coins_market_data()
+# Whole-market current OI: coingecko cg_derivatives (coins-markets is plan-gated)
 
 # One call gets all whale alerts
 whales = cg_hyperliquid_whale_alerts()

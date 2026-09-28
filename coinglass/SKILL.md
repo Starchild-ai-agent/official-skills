@@ -1,12 +1,12 @@
 ---
 name: coinglass
-version: 3.1.0
+version: 3.2.0
 description: |
   Crypto derivatives data: funding rates, open interest, liquidations, long/short ratios.
 
   Use when researching perp markets or comparing ETF flows (e.g. BTC funding, ETH OI).
   NOTE: platform API key is Startup tier — liquidation heatmap, coins-markets detail,
-  liquidation order book and Hyperliquid positions require higher plans (see Plan 权限分级).
+  liquidation order book and Hyperliquid positions require higher plans (see Plan Tiers).
 delivery: script
 metadata:
   starchild:
@@ -14,7 +14,7 @@ metadata:
     skillKey: coinglass
     plan: startup
     api_version: v4
-    version: 3.1.0
+    version: 3.2.0
     total_tools: 37
     requires:
       env:
@@ -24,57 +24,68 @@ disable-model-invocation: false
 
 ---
 
-## Plan 权限分级（平台 key = Startup 级，2026-09 实测）
+## Plan Tiers (platform key = Startup, verified 2026-09)
 
-平台注入的 `COINGLASS_API_KEY` 已降级为 **Startup** 计划。工具层对端点的实际权限：
+The platform-injected `COINGLASS_API_KEY` is on the **Startup** plan. Actual endpoint access at the tool layer:
 
-**✅ Startup 可用**（全部正常数据）：
+**✅ Available on Startup** (normal data):
 - Funding rates（v2/v4）、Supported coins/exchanges/pairs、Pairs markets
-- Open interest（当前值 / OHLC history / aggregated history）
+- Open interest (current / OHLC history / aggregated history)
 - Long/Short ratios（global / top-account / top-position）
-- Taker buy/sell volume（单所 + aggregated，需 `exchange_list`）
+- Taker buy/sell volume (single exchange + aggregated; aggregated needs `exchange_list`)
 - CVD、Net position（v1/v2）、Coin netflow
-- Liquidations：coin-list、coin/pair history（pair 需 BTCUSDT 格式）、aggregated history（需 `exchange_list`）
+- Liquidations: coin-list, coin/pair history (pair needs BTCUSDT format), aggregated history (needs `exchange_list`)
 - ETF flows / lists / premium（BTC、ETH、SOL、XRP、HK）
-- Whale transfers、Hyperliquid whale alerts（仅 alert 流）
-- Price history（symbol 需 pair 格式 BTCUSDT）
+- Whale transfers, Hyperliquid whale alerts (alert feed only)
+- Price history (symbol must be pair format, e.g. BTCUSDT)
 
-**❌ Startup 不可用**（401 "Upgrade plan"，调用前直接跳过）：
-- `api/futures/coins-markets`（币种市场汇总）
-- `api/futures/liquidation/order`（逐笔清算单）
-- `api/futures/liquidation/heatmap/model1` + `aggregated-heatmap/model1`（**清算热力图整个不可用**）
-- `api/hyperliquid/position`、`api/hyperliquid/wallet/position-distribution`（Hyperliquid 持仓分布；仅 whale-alert 可用）
+**❌ Not available on Startup** (401 "Upgrade plan" — skip these, don't call):
+- `api/futures/coins-markets` (all-coin market summary, i.e. `cg_coins_market_data`) — **do not call**; use "Full-market / multi-coin OI routing" below
+- `api/futures/liquidation/order` (individual liquidation orders)
+- `api/futures/liquidation/heatmap/model1` + `aggregated-heatmap/model1` (**liquidation heatmap is entirely unavailable**)
+- `api/hyperliquid/position`, `api/hyperliquid/wallet/position-distribution` (Hyperliquid position distribution; only whale alerts work)
 
-**替代方案（按优先级）**：
-1. **用户提供自己的 key**（Basic+ 计划）：设 `COINGLASS_API_KEY` 并绕过 sc-proxy 直连
-   `https://open-api-v4.coinglass.com`（sc-proxy 会强制覆盖该 header，代理路径下自带 key 无效）。
-2. **Apify 爬虫**：用 `apify` skill 抓 coinglass.com 页面上的清算热力图 / Hyperliquid 持仓数据。
+**Alternatives (in priority order)**:
+1. **User supplies their own key** (Basic+ plan): set `COINGLASS_API_KEY` and call
+   `https://open-api-v4.coinglass.com` directly, bypassing sc-proxy (sc-proxy overwrites that header, so a user key has no effect on the proxied path).
+2. **Apify scraper**: use the `apify` skill to scrape the liquidation heatmap / Hyperliquid position pages on coinglass.com.
 
-对 401 "Upgrade plan" 错误，`cg_request` 会抛 `CoinglassPlanError`，错误信息已含上述引导。
+On a 401 "Upgrade plan" response, `cg_request` raises `CoinglassPlanError`, and the error message already includes this guidance.
 
-## Liquidation Heatmap（❌ Startup 不可用 — 历史用法存档）
+### Full-market / multi-coin OI routing (coins-markets unavailable)
 
-`cg_liquidation_analysis` 返回全0，不可用。热力图两个端点（`heatmap/model1` 与
-`aggregated-heatmap/model1`）在 Startup 计划下均返回 401 Upgrade plan。
+| Need | Use | Notes |
+|---|---|---|
+| Current OI and 4h/24h change for one coin | `cg_open_interest(symbol)` (take the `exchangeName=="All"` row) | Works on Startup |
+| Funding for one coin | `funding_rate(symbol)` | Returns a string with `%` |
+| OI history across coins | Per-coin OI history, summed by timestamp | Label it "Top-N aggregate" with the bar interval; never present it as full-market |
+| Full-market current OI total / current OI per coin | **coingecko skill** `cg_derivatives(include_tickers='unexpired')`: keep `contract_type=="perpetual"`, sum `open_interest` (USD) by `index_id` | Exchange-reported, includes small exchanges, runs higher than CoinGlass; current values only, no history; always cite the source in charts and text |
 
-如需热力图数据：让用户自带 Basic+ key 直连（见上文替代方案），或用 Apify 爬取页面。
+**Do not** plot numbers from different sources (CoinGlass Top-N, CoinGecko full-market, Bloomberg or other third parties) on one chart as comparison or reference lines.
+
+## Liquidation Heatmap (❌ not available on Startup — archived usage)
+
+`cg_liquidation_analysis` returns all zeros and is unusable. Both heatmap endpoints (`heatmap/model1` and
+`aggregated-heatmap/model1`) return 401 Upgrade plan on the Startup plan.
+
+If heatmap data is needed: have the user bring a Basic+ key and call directly (see Alternatives above), or scrape the page with Apify.
 
 ```python
-# 以下仅在用户自有高级 key 下可用（直连，不走 sc-proxy）
+# Only works with a user-owned higher-tier key (direct, not via sc-proxy)
 from tools._api import cg_request
 
-# 全市场聚合热力图（推荐，无需指定交易所）
-# range 支持: 12h, 24h, 3d, 7d, 30d, 90d, 180d, 1y
+# Full-market aggregated heatmap (recommended, no exchange needed)
+# range supports: 12h, 24h, 3d, 7d, 30d, 90d, 180d, 1y
 data = cg_request("api/futures/liquidation/aggregated-heatmap/model1",
                   params={"symbol": "BTC", "range": "24h"})
 
-# 返回结构：
-# data["y_axis"]                   → 价格档位列表（从低到高）
+# Response structure:
+# data["y_axis"]                   → price levels (low to high)
 # data["liquidation_leverage_data"] → [[y_idx, leverage, usd_value], ...]
-# data["price_candlesticks"]        → OHLCV K线，最后一根收盘价 = 当前价
-# data["update_time"]               → 更新时间戳
+# data["price_candlesticks"]        → OHLCV candles; last close = current price
+# data["update_time"]               → update timestamp
 
-# 解析方法：
+# How to parse:
 from collections import defaultdict
 y_axis = data["y_axis"]
 current_price = float(data["price_candlesticks"][-1][4])
@@ -83,8 +94,8 @@ for y_idx, leverage, usd_val in data["liquidation_leverage_data"]:
     if 0 <= y_idx < len(y_axis):
         price_liq[y_axis[y_idx]] += usd_val
 
-longs  = {p: v for p, v in price_liq.items() if p < current_price}  # 多头清算（↓触发）
-shorts = {p: v for p, v in price_liq.items() if p > current_price}  # 空头清算（↑触发）
+longs  = {p: v for p, v in price_liq.items() if p < current_price}  # long liquidations (triggered on the way down)
+shorts = {p: v for p, v in price_liq.items() if p > current_price}  # short liquidations (triggered on the way up)
 ```
 
 ## Script Usage
@@ -119,8 +130,8 @@ signatures. Common ones: `funding_rate`, `long_short_ratio`,
 
 Coinglass provides the most comprehensive crypto derivatives and institutional data available. 37 tools covering futures positioning, whale tracking, volume analysis, liquidations, and ETF flows.
 
-**API Plan**: Startup (平台 key 已降级，见顶部「Plan 权限分级」)
-**Rate Limit**: 请求级限制随计划降低，控制批量调用频率
+**API Plan**: Startup (platform key downgraded; see "Plan Tiers" at the top)
+**Rate Limit**: request limits are lower on this plan; keep batch calls modest
 **API Version**: V4 (with V2 backward compatibility)
 **Total Tools**: 37 across 8 categories
 
@@ -145,6 +156,10 @@ snake_case — `inspect` the dict before scripting.
   `longLiquidation_usd`, `shortLiquidation_usd`
 - `rate` fields (funding) are STRINGS with "+" / "-" / "%" — parse with
   `float(r.rstrip('%').lstrip('+'))` to compare numerically
+- `avgFundingRateBySymbol` (in `cg_open_interest` rows) is a NUMBER that is
+  **already in percent** — `0.005313` means 0.0053%/8h. Do NOT multiply by
+  100. Sanity bound: BTC funding is normally around ±0.01%/8h; anything above
+  ~0.1%/8h is almost certainly a unit bug.
 - timestamps are millisecond unix epoch (e.g. `1777881600000`)
 
 ### Funding & Open Interest
@@ -182,7 +197,7 @@ snake_case — `inspect` the dict before scripting.
 |---|---|
 | `cg_supported_coins()` | List[str] — symbols supported by CoinGlass |
 | `cg_supported_exchanges()` | list of exchange info dicts |
-| `cg_coins_market_data(symbol=None)` | list — current snapshot for all coins (or one if symbol given) |
+| `cg_coins_market_data(symbol=None)` | ❌ Not available on Startup (401) — see "Full-market / multi-coin OI routing" |
 | `cg_pair_market_data(symbol='BTC', exchange=None)` | list — pair-level snapshot |
 | `cg_ohlc_history(symbol='BTC', interval='h4', exchange=None)` | list of OHLCV bars |
 
@@ -274,7 +289,7 @@ snake_case — `inspect` the dict before scripting.
 ```
 Liquidation query?
 ├─ YES → How many coins?
-│   ├─ ALL coins / ranking / 排行 / 汇总
+│   ├─ ALL coins / ranking / summary
 │   │   └─ → cg_liquidation_coin_list  ✅ (most liquidation queries land here)
 │   ├─ ONE coin, need history over time
 │   │   └─ → cg_coin_liquidation_history
@@ -288,7 +303,7 @@ Liquidation query?
 
 ```
 Long/short query?
-├─ Historical time-series, trend over time, 多空比变化
+├─ Historical time-series, trend over time, L/S ratio change
 │   └─ → cg_global_account_ratio  (ALL accounts)
 │      or cg_top_account_ratio    (top traders only)
 │      or cg_top_position_ratio   (by position size)
@@ -306,7 +321,7 @@ OI query?
 **Step 4: Is this a MARKET OVERVIEW / SENTIMENT query?**
 
 ```
-Sentiment / 市场情绪 / pre-trade check?
+Sentiment / pre-trade check?
 └─ Use: funding_rate + long_short_ratio + cg_open_interest
    DO NOT use cg_coins_market_data as a substitute for any of the above
 ```
@@ -317,13 +332,13 @@ Sentiment / 市场情绪 / pre-trade check?
 
 | Keyword / Pattern | Correct Tool | ❌ Do NOT use |
 |---|---|---|
-| 爆仓排行 / 今日爆仓 / all coins liquidation | `cg_liquidation_coin_list` | `cg_liquidations` |
-| 24h爆仓汇总 / liquidation summary | `cg_liquidation_coin_list` | `cg_liquidation_analysis` |
-| 全网账户多空比 / account L/S ratio | `cg_global_account_ratio` | `long_short_ratio` |
-| 头部交易者多空 / top trader ratio | `cg_top_account_ratio` | `long_short_ratio` |
-| 未平仓合约 / open interest | `cg_open_interest` | `cg_coins_market_data` |
-| 市场情绪多空分析 | `funding_rate` + `long_short_ratio` + `cg_open_interest` | `cg_coins_market_data` |
-| BTC做多检查 / pre-trade checklist | `funding_rate` + `cg_global_account_ratio` + `cg_liquidation_coin_list` | — |
+| liquidation ranking / today's liquidations / all coins liquidation | `cg_liquidation_coin_list` | `cg_liquidations` |
+| 24h liquidation summary | `cg_liquidation_coin_list` | `cg_liquidation_analysis` |
+| global account L/S ratio | `cg_global_account_ratio` | `long_short_ratio` |
+| top trader L/S ratio | `cg_top_account_ratio` | `long_short_ratio` |
+| open interest | `cg_open_interest` | `cg_coins_market_data` |
+| market sentiment / positioning analysis | `funding_rate` + `long_short_ratio` + `cg_open_interest` | `cg_coins_market_data` |
+| BTC long pre-trade checklist | `funding_rate` + `cg_global_account_ratio` + `cg_liquidation_coin_list` | — |
 
 ---
 
@@ -336,12 +351,12 @@ Sentiment / 市场情绪 / pre-trade check?
 
 **Mistake 2 (5x failure): Using `cg_liquidation_analysis` for liquidation rankings**
 - `cg_liquidation_analysis` adds a sentiment label to a single-coin total — it is NOT a ranking tool
-- **Rule:** "今日爆仓排行" / "各币种爆仓" → always `cg_liquidation_coin_list`
+- **Rule:** "today's liquidation ranking" / "liquidations by coin" → always `cg_liquidation_coin_list`
 
 **Mistake 3 (3x failure): Using `long_short_ratio` for historical L/S analysis**
 - `long_short_ratio` is a current snapshot (no time-series)
 - `cg_global_account_ratio` returns history — use it when the user wants trends or comparison over time
-- **Rule:** If the question compares 全网 (global) vs 头部 (top traders) → call BOTH `cg_global_account_ratio` AND `cg_top_account_ratio`
+- **Rule:** If the question compares global accounts vs top traders → call BOTH `cg_global_account_ratio` AND `cg_top_account_ratio`
 
 **Mistake 4 (2x failure): Using `cg_coins_market_data` for open interest**
 - `cg_coins_market_data` is a bulk snapshot of many coins — not a replacement for dedicated OI or L/S tools
@@ -363,10 +378,10 @@ Sentiment / 市场情绪 / pre-trade check?
 - Need calculation (%, change, ratio) → Do mental math in reply
 
 **Match tool count to question scope:**
-  - 单一指标问题（"BTC 资金费率"、"ETH 多空比"）→ 1 个工具，直接返回
-  - 多维度分析（"做多是否合适"、"衍生品体检"）→ 3-5 个工具，综合分析
-  - 对比问题（"ETH vs SOL"）→ 每个币种调相同工具，并列对比
-- **避免重复调用同一工具。** 除非用户明确要求不同币种/交易所的对比。
+  - Single-metric question ("BTC funding rate", "ETH long/short ratio") → 1 tool, answer directly
+  - Multi-dimension analysis ("is it a good time to long", "derivatives health check") → 3-5 tools, synthesize
+  - Comparison ("ETH vs SOL") → same tools per coin, side by side
+- **Avoid calling the same tool twice**, unless the user explicitly wants a cross-coin / cross-exchange comparison.
 
 ### Learning Log Usage (CRITICAL)
 
@@ -384,16 +399,16 @@ Sentiment / 市场情绪 / pre-trade check?
 ### ETF Tool Selection
 | Query | Primary Tool | Secondary Tool |
 |-------|--------------|----------------|
-| BTC ETF 资金流入/流出 | `cg_btc_etf_flows()` | `cg_btc_etf_history()` for detailed history |
-| ETH ETF 资金流入/流出 | `cg_eth_etf_flows()` | — |
+| BTC ETF inflows/outflows | `cg_btc_etf_flows()` | `cg_btc_etf_history()` for detailed history |
+| ETH ETF inflows/outflows | `cg_eth_etf_flows()` | — |
 | SOL/XRP ETF flows | `cg_sol_etf_flows()` / `cg_xrp_etf_flows()` | — |
 | HK ETF flows | `cg_hk_btc_etf_flows()` / `cg_hk_eth_etf_flows()` | — |
-| ETF 列表/代码 | `cg_btc_etf_list()` / `cg_eth_etf_list()` | — |
-| ETF 溢价/折价 | `cg_btc_etf_premium_discount()` | — |
+| ETF list / tickers | `cg_btc_etf_list()` / `cg_eth_etf_list()` | — |
+| ETF premium / discount | `cg_btc_etf_premium_discount()` | — |
 
-**ETF 对比问题 workflow:**
+**ETF comparison workflow:**
 ```
-# BTC vs ETH ETF 对比
+# BTC vs ETH ETF comparison
 btc = cg_btc_etf_flows()
 eth = cg_eth_etf_flows()
 # Compare the latest day's net flows, summarize in 2-3 sentences
@@ -403,7 +418,7 @@ eth = cg_eth_etf_flows()
 
 | Query type | Tool |
 |---|---|
-| 爆仓/liquidation summary (24h, by coin) | `cg_liquidation_coin_list` |
+| liquidation summary (24h, by coin) | `cg_liquidation_coin_list` |
 | Individual liquidation orders | `cg_liquidation_orders` |
 | Liquidation history for a coin | `cg_coin_liquidation_history` |
 | Funding rate | `funding_rate` |
@@ -436,7 +451,7 @@ Core derivatives data for market analysis:
 - `long_short_ratio(symbol, exchange?, interval?)` - Basic L/S ratios
 - `cg_open_interest(symbol)` - Current OI across exchanges
 - `cg_liquidations(symbol, time?)` - Recent liquidations
-- `cg_liquidation_analysis(symbol)` - ❌ Startup 下不可用（依赖 heatmap 端点）
+- `cg_liquidation_analysis(symbol)` - ❌ Not available on Startup (depends on heatmap endpoints)
 - `cg_supported_coins()` - All supported coins
 - `cg_supported_exchanges()` - All exchanges with pairs
 
@@ -488,7 +503,7 @@ Track large traders on Hyperliquid DEX (~200 recent alerts):
 
 Market overview and price data:
 
-- `cg_coins_market_data()` - ALL coins data in one call (100+ coins)
+- `cg_coins_market_data()` - ❌ Not available on Startup; for multi-coin data see "Full-market / multi-coin OI routing"
 - `cg_pair_market_data(symbol, exchange)` - Specific pair metrics
 - `cg_ohlc_history(symbol, exchange, interval, limit?)` - OHLC candlesticks
 - `cg_taker_volume_history(symbol, exchange, interval, limit?, start_time?, end_time?)` - Pair-specific taker volume
@@ -550,7 +565,7 @@ Ethereum, Solana, XRP, and Hong Kong ETFs:
 ### Quick Market Scan
 ```
 # Get everything in 3 calls
-all_coins = cg_coins_market_data()  # 100+ coins with full metrics
+btc_oi = cg_open_interest("BTC")  # coins-markets is plan-gated on Startup
 btc_liquidations = cg_liquidations("BTC")
 whale_alerts = cg_hyperliquid_whale_alerts()
 ```
@@ -561,7 +576,7 @@ whale_alerts = cg_hyperliquid_whale_alerts()
 cg_global_account_ratio("BTC")  # Retail sentiment
 cg_top_account_ratio("BTC", "Binance")  # Smart money
 cg_net_position_v2("BTC")  # Net positioning
-# 注：清算热力图在 Startup 下不可用，见顶部「Plan 权限分级」
+# Note: liquidation heatmap is unavailable on Startup; see "Plan Tiers" at the top
 ```
 
 ### ETF Flow Monitoring
@@ -667,8 +682,7 @@ Extreme funding often precedes reversals. The crowd is usually wrong at extremes
 
 **✅ OPTIMAL**: Use batch endpoints
 ```
-# One call gets 100+ coins
-all_coins = cg_coins_market_data()
+# Whole-market current OI: coingecko cg_derivatives (coins-markets is plan-gated)
 
 # One call gets all whale alerts
 whales = cg_hyperliquid_whale_alerts()
@@ -736,9 +750,9 @@ Use `cg_supported_exchanges()` for complete list with pair details.
   - Hyperliquid alerts: ~200 most recent large positions
   - Other endpoints: Typically months to years of history
 - **Plan gating (Startup)**: heatmap、liquidation/order、coins-markets、
-  Hyperliquid position 返回 401 Upgrade plan（会抛 `CoinglassPlanError`）。
-  用户需要这些数据 → 让用户提供自己的 key（`COINGLASS_DIRECT=1` + 自有
-  `COINGLASS_API_KEY` 直连），或用 Apify skill 爬 coinglass.com 页面。
+  Hyperliquid position return 401 Upgrade plan (raises `CoinglassPlanError`).
+  If the user needs this data → have them provide their own key (`COINGLASS_DIRECT=1` + own
+  `COINGLASS_API_KEY`, direct call), or scrape coinglass.com pages with the Apify skill.
 
 ## Data Quality Notes
 

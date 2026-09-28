@@ -11,7 +11,7 @@ import json
 import argparse
 from typing import Dict, Any, Optional, List
 
-from ._api import cg_request
+from ._api import cg_request, CoinglassPlanError
 
 
 def _to_pair(symbol: str) -> str:
@@ -91,7 +91,22 @@ def get_coins_data(
     params = {}
     if symbol:
         params["symbol"] = symbol
-    data = cg_request("api/futures/coins-markets", params=params or None)
+    try:
+        data = cg_request("api/futures/coins-markets", params=params or None)
+    except CoinglassPlanError as e:
+        # Platform key is Startup tier: coins-markets is plan-gated. Point the
+        # agent at the working routes instead of letting it improvise.
+        e.suggestion = (
+            "coins-markets needs a plan above Startup. Alternatives: "
+            "per-coin OI/funding/4h change -> cg_open_interest(symbol) + "
+            "funding_rate(symbol); OI history -> cg_open_interest history per "
+            "coin, summed; whole-market current OI -> coingecko skill "
+            "cg_derivatives(include_tickers='unexpired'), keep "
+            "contract_type=='perpetual', sum open_interest (USD) by index_id "
+            "(exchange-reported, runs higher than CoinGlass — label the source). "
+            + e.suggestion
+        )
+        raise
     return _normalize_funding_fields(data)
 
 

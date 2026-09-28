@@ -1,6 +1,6 @@
 ---
 name: coingecko
-version: 2.0.4
+version: 2.1.0
 description: |
   Crypto spot prices, OHLC charts, market discovery, and global stats.
 
@@ -79,7 +79,7 @@ All public functions are in `exports.py`. `coin_id` is the CoinGecko id
 |---|---|
 | `cg_categories(order='market_cap_desc')` | Top categories with market_cap and volume. |
 | `cg_categories_list()` | Just category ids/names. |
-| `cg_derivatives(include_tickers='unexpired')` | Derivatives tickers across exchanges. |
+| `cg_derivatives(include_tickers='unexpired')` | All derivatives tickers across exchanges (~27k rows). Returns `{tickers, count, filter}`; see "Derivatives: fields & full-market OI" below. |
 | `cg_derivatives_exchanges(order='open_interest_btc_desc', per_page=50)` | Derivatives exchange rankings. |
 | `cg_nfts_list(order='market_cap_usd_desc', per_page=100, page=1)` | Top NFT collections. |
 | `cg_nft(nft_id)` | NFT collection detail. |
@@ -161,6 +161,41 @@ All public functions are in `exports.py`. `coin_id` is the CoinGecko id
 | 永续合约交易所 / derivatives exchange / OI排名 | `cg_derivatives_exchanges()` | `cg_derivatives_exchanges()` |
 | 合约ticker / perpetual / funding / basis | `cg_derivatives()` | `cg_derivatives()` |
 | 交易所对比 + 永续交易所 | `cg_exchanges()` + `cg_derivatives_exchanges()` | both calls |
+
+## Derivatives: fields & full-market OI
+
+`cg_derivatives()` returns `{"tickers": [...], "count": N, "filter": "unexpired"}`. Each ticker:
+
+| Field | Meaning / unit |
+|---|---|
+| `market` | Exchange, e.g. `"Binance (Futures)"` |
+| `index_id` | Base coin, e.g. `"BTC"` — group by this for per-coin totals |
+| `contract_type` | `"perpetual"` or `"futures"` (dated) |
+| `open_interest` | **USD** notional |
+| `volume_24h` | USD |
+| `funding_rate` | **Already a percent** per funding interval: `0.006162` = 0.0062%. Do NOT multiply by 100 |
+| `basis`, `spread` | Percent |
+| `price` | String — cast with `float()` |
+
+**Full-market open interest** (use this when CoinGlass `coins-markets` is unavailable on the platform plan):
+
+```python
+from collections import defaultdict
+t = cg_derivatives()["tickers"]
+perp = [x for x in t if x["contract_type"] == "perpetual" and x.get("open_interest")]
+by_coin = defaultdict(float)
+for x in perp:
+    by_coin[x["index_id"]] += x["open_interest"]
+total = sum(by_coin.values())          # ~$217B as of 2026-09
+```
+
+Caveats:
+- **Current snapshot only, no history.** For OI history use the coinglass skill (per-coin history, summed).
+- Exchange-reported and includes small exchanges, so it runs well above CoinGlass
+  (~$217B vs ~$117B on the same day). Always cite "CoinGecko" as the source, and never
+  plot it on the same chart as CoinGlass or other third-party figures.
+- Funding differs by exchange and margin type (USDT vs USDC vs coin-margined); if you
+  report one per-coin number, use an OI-weighted average and say so.
 
 ## 🌳 Decision Tree
 

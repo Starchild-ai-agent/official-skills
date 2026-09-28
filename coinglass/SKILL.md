@@ -1,6 +1,6 @@
 ---
 name: coinglass
-version: 3.1.0
+version: 3.2.0
 description: |
   Crypto derivatives data: funding rates, open interest, liquidations, long/short ratios.
 
@@ -14,7 +14,7 @@ metadata:
     skillKey: coinglass
     plan: startup
     api_version: v4
-    version: 3.1.0
+    version: 3.2.0
     total_tools: 37
     requires:
       env:

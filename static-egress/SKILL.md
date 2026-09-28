@@ -27,13 +27,13 @@ it never has to track this agent's drifting egress again.
 agent container ──6PN private──▶ sc-static-egress relay ──static egress IP──▶ your DB
 ```
 
-## When to use
+## When to Use
 
 - A DB/API firewall is keyed on **source IP** and the agent's IP keeps changing.
 - You need a **stable source address for raw TCP** (Postgres 5432, MySQL 3306, Redis 6379…).
 - Someone must allowlist *your* traffic and you want to hand them one IP.
 
-## When NOT to use
+## When NOT to Use
 
 | Situation | Use instead |
 |---|---|
@@ -44,7 +44,7 @@ agent container ──6PN private──▶ sc-static-egress relay ──static e
 | The target is inside the platform's own private network (a `.internal` service, `localhost`, or a private/link-local address) | **Refused by policy** — the relay only dials external destinations. Reach those directly. |
 | You want a **different IP per request** | Not possible here — this is a container-level egress, not per-request routing |
 
-## Commands
+## How to Call
 
 ```bash
 # 1. Open an allocation for the target(s) you need to reach
@@ -60,11 +60,22 @@ python3 skills/static-egress/scripts/status.py
 python3 skills/static-egress/scripts/disable.py
 ```
 
+Or call it in-process (another skill wiring the egress without shelling out):
+
+```python
+from core.skill_tools import _modules
+egress = _modules["static-egress"]
+egress.enable_egress(["db-prod.abc123.us-east-1.rds.amazonaws.com:5432"])  # -> allowlist + rule
+egress.verify_egress("db-prod.abc123.us-east-1.rds.amazonaws.com:5432")    # read-only proof
+egress.egress_status()                                                     # read-only
+egress.disable_egress()                                                    # revoke
+```
+
 `enable.py` is **idempotent**: re-running keeps the same egress IPs, so an
 allowlist entry you already installed stays valid. It mints a fresh credential
 each time and revokes the previous one, so it also doubles as "renew".
 
-## Typical use case — an RDS Postgres behind a security group
+## Workflows — the typical case: an RDS Postgres behind a security group
 
 This is the case the service exists for: the agent's own egress IP drifts, RDS's
 security group allowlists IPs, so the allowlist keeps breaking. Put the static IP
@@ -207,7 +218,7 @@ IPv6 entry is doing anything.
 | `egress_matches_allowlist` | the two agree — if this is `no`, do not tell the user it works |
 | `target_reachable` | a real TCP handshake to the target from the relay |
 
-## Rules and boundaries (read before using)
+## Key facts, rules and boundaries
 
 - **The credential is the lock.** A relay port carries no identity; every
   connection is authenticated with a short-lived token bound to **you**, your
@@ -225,6 +236,12 @@ IPv6 entry is doing anything.
   default.
 - Do not set a global `HTTP_PROXY`/`HTTPS_PROXY` — it breaks the platform's
   paid-API routing (`sc-proxy`).
+
+## Dependencies
+
+None. Everything is Python 3 standard library; the only external requirement is
+the platform's `CONTAINER_JWT`, which the container injects. `exports.py` imports
+nothing beyond stdlib either.
 
 ## Troubleshooting
 
@@ -246,7 +263,10 @@ IPv6 entry is doing anything.
 ```
 static-egress/
 ├── SKILL.md
+├── exports.py      # in-process surface (read-only + end-to-end)
+├── logo.png
 └── scripts/
+    ├── api.py      # the functions exports.py re-exports
     ├── enable.py     # open/renew the allocation, print the allowlist + sg rule
     ├── status.py     # show allocation (credential redacted)
     ├── verify.py     # prove exit IP + TCP reachability

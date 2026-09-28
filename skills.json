@@ -464,6 +464,12 @@
       "description": "Unified swap + bridge router combining WOOFi (best-price meta-aggregator on 14 EVM\nchains) and the LayerZero Value Transfer API (broad multi-chain bridging incl.\nSolana, Aptos, TON — discover supported chains/tokens dynamically). One workflow:\nclassify the request, validate the wallet can actually execute, quote, compare\ncomplete routes, approve-then-requote-then-execute, and verify destination receipt."
     },
     {
+      "name": "static-egress",
+      "path": "static-egress/SKILL.md",
+      "version": "0.1.0",
+      "description": "Give this agent a fixed egress IP for TCP services that use IP allowlists (RDS/Postgres, MySQL, Redis, Kafka).\n\nUse when a database or API firewall keeps failing because the agent's outbound IP changes (e.g. \"RDS whitelist broke again\", \"our IP isn't in the security group\"), or when you need the agent to appear from one stable address for raw TCP traffic."
+    },
+    {
       "name": "taapi",
       "path": "taapi/SKILL.md",
       "version": "2.0.3",

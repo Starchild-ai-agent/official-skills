@@ -1,10 +1,11 @@
 ---
 name: gpt-live-demo
-version: 0.2.1
+version: 0.3.0
 description: >
   GPT-Live 语音接线员 Demo — WebRTC 语音通话前端 + Express 中继服务器 + Starchild brain 桥接。
   五工具路由（ask_starchild / check_task / cancel_task / list_tasks / memory_lookup）、
   跨重启持久化（data/tasks.json + voice-history.json）与会话记忆回灌。
+  v0.3 起支持 ?thread_id= 绑定 Starchild thread：以 thread 为唯一上下文源——启动灌快照、委托写回 thread、thread 事件回流 Live。
   用户通过浏览器直接与 GPT-Live 语音模型对话，对话内容由 Starchild agent 作为后端大脑处理。
   适用于：语音 Demo 演示、GPT-Live 中继服务开发、实时语音 + AI 代理集成原型。
 tags: [voice, gpt-live, webrtc, demo, relay-server]
@@ -95,6 +96,19 @@ node server.mjs
 - 部署到生产（Fly.io / Docker / Nginx 反代）
 
 → 读 `references/deploy.md` 获取完整步骤。
+
+## Thread 绑定模式（v0.3）
+
+在 URL 上加 `?thread_id=<thread uuid>` 打开页面（全屏标签页，需麦克风权限）：
+
+- 建连时把该 thread 最近 10 轮压缩成快照灌给 Live，开口即可问"我们刚才在做什么"；
+- 所有需要事实/工具/推理的话都 delegation 到同一个 thread，文字页面能看到语音轮次与回答；
+- Live 自己直接答掉的闲聊/复述轮记入 `data/voice-log.json`，下次委托时补交给 Starchild；
+- thread 里新发生的事（文字消息、后台任务完成）以 `thinking.append` 静默回流给 Live。
+
+不带 `thread_id` 则为原 legacy 模式（独立 voice-history）。细节与已知边界见 `references/api-notes.md`「Thread 绑定模式」。
+
+验收清单：A1 开场复述当前目标（快照）；A2 语音说一句 → 文字页出现；A3 文字页打一句 → 语音里能答"我刚打了什么"（回流）；A4 需要事实的全部委托、闲聊本地答；A5 重开页面 A1 仍过；A6 委托类首句 ≤3s。
 
 ## 注意事项
 

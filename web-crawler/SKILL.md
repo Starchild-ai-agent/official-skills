@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.11.0
+version: 2.12.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 

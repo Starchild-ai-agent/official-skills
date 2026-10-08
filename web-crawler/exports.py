@@ -212,7 +212,7 @@ def apify_run(actor_id, run_input, caller_id=None, timeout=180, max_charge_usd=2
 
     Args:
         actor_id: "username~actor-name", e.g. "zen-studio~douyin-search-scraper".
-                  Find reliable actors in output/apify_china_reliable.json.
+                  Pick from the actor table in SKILL.md (verified + priced in sc-proxy).
         run_input: dict, the actor's input JSON (varies per actor — fetch the
                    actor's input-schema page via scrape_markdown to discover
                    required fields).

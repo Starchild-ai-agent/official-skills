@@ -1,8 +1,10 @@
 ---
 name: web-crawler
 version: 2.12.0
-description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
-  Reddit, Threads, plus robust web-page fallback extraction.
+description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. stories),
+  LinkedIn, Reddit, Threads, plus China apps and Asian e-commerce via Apify (Douyin,
+  Xiaohongshu, Weibo, Bilibili, Zhihu, Douban, Xueqiu, Taobao, JD, 1688, Xianyu, Shopee,
+  Lazada, Temu, Trip.com reviews), plus robust web-page fallback extraction.
 
 
   Use when extracting public posts, transcripts, or pages JS-heavy enough to block
@@ -174,31 +176,48 @@ token automatically. The `Authorization: Bearer` header can be any fake value
 env, do NOT check `.env`, do NOT ask the user for an Apify key.
 
 **When to use Apify (vs Firecrawl/ScrapeCreators):**
-- ✅ China apps: 抖音, 小红书, 微博, B站, 京东, 淘宝, 1688, 闲鱼, 得物, 携程, 知乎, 豆瓣, 雪球, 快手, 爱奇艺, 优酷
+- ✅ China apps: 抖音, 小红书, 微博, B站, 京东, 淘宝, 1688, 闲鱼, 携程, 知乎, 豆瓣, 雪球, 优酷 (得物/快手/爱奇艺: no priced actor — search the Store)
 - ✅ Southeast Asia e-commerce: Shopee, Lazada, Temu
 - ✅ Instagram **stories** (ScrapeCreators has no story endpoint) — see "Instagram stories" below
 - ❌ Other Western social media (TikTok/Instagram posts & reels/YouTube/X/Reddit) → use ScrapeCreators first (cheaper)
 - ❌ Generic web page scraping → use Firecrawl first (cheaper)
 - ❌ Hard paywall articles → use `archive_fallback` (Apify doesn't help here)
 
-**How to pick an actor:** The reliable-actors catalog is at
-`output/apify_china_reliable.json` (sorted by 30-day success count). Pick the
-top actor for the target platform. A few common ones:
+**How to pick an actor:** Use the table below first — these actors are priced in
+sc-proxy and were verified live on 2026-10-08 (30-day successful runs in
+brackets). For a platform not listed, search the Store through the proxy
+(`proxied_get("https://api.apify.com/v2/store?search=<platform>&limit=10")`),
+prefer high 30-day run counts, and expect the default $0.007/result price.
 
 | Platform | Actor ID | Input key |
 |---|---|---|
 | 抖音 search | `zen-studio~douyin-search-scraper` | `{"keywords": [...], "maxResultsPerQuery": N}` |
+| 抖音 creator profile | `zen-studio~douyin-profile-scraper` (22k) | (see actor input schema) |
+| 抖音 video/audio download | `apple_yang~douyin-video-audio-downloader` (5k) | (see actor input schema) |
+| 抖音 transcripts | `apple_yang~douyin-transcripts-scraper` (2.6k) | (see actor input schema) |
 | 小红书 search | `zen-studio~rednote-search-scraper` | `{"keywords": [...], "maxResults": N}` |
 | 小红书 note detail | `sian.agency~xiaohongshu-rednote-scraper` | `{"operation": "noteDetail", "noteId": "...", "xsecToken": "..."}` |
+| 小红书 data API | `socialdatax~socialdatax-xhs-data-api` (64k) | (see actor input schema) |
 | 微博 hot search | `gentle_cloud~weibo-hot-search-scraper` | `{"mode": "hot_band", "includeScores": true}` |
-| 微博 posts | `zhorex~weibo-scraper` | (see actor input schema) |
-| B站 videos | `zhorex~bilibili-scraper` | (see actor input schema) |
+| 微博 posts/comments | `zhorex~weibo-scraper` (5k) or `sian.agency~weibo-scraper` (17k) | (see actor input schema) |
+| B站 videos/comments/danmaku | `zhorex~bilibili-scraper` (17k) | (see actor input schema) |
+| 知乎 Q&A/articles | `sian.agency~zhihu-scraper` | (see actor input schema) |
+| 豆瓣 reviews/subjects | `zhorex~douban-scraper` | (see actor input schema) |
+| 雪球 stock discussion | `zhorex~xueqiu-scraper` (low volume) | (see actor input schema) |
+| 优酷 videos | `sian.agency~youku-video-scraper` (low volume) | (see actor input schema) |
 | 京东 search | `zen-studio~jd-com-search-scraper` | `{"keyword": "...", "maxProducts": N}` |
 | 京东 products | `sian.agency~jd-com-product-scraper` | `{"operation": "productSearch", "keyword": "...", "maxPages": 1}` |
-| 淘宝 products | `sian.agency~taobao-tmall-product-scraper` | `{"operation": "keywordSearch", "keyword": "...", "maxPages": 1}` |
-| 1688 wholesale | `zen-studio~1688-wholesale-scraper` | (see actor input schema) |
+| 淘宝 search / detail | `zen-studio~taobao-search-scraper` / `zen-studio~taobao-detail-scraper` (18k) | (see actor input schema) |
+| 淘宝/天猫 products | `sian.agency~taobao-tmall-product-scraper` | `{"operation": "keywordSearch", "keyword": "...", "maxPages": 1}` |
+| 1688 wholesale | `zen-studio~1688-wholesale-scraper` or `devcake~1688-com-products-scraper` | (see actor input schema) |
 | 闲鱼 search | `zen-studio~goofish-xianyu-search-scraper` | (see actor input schema) |
+| Shopee / Lazada / Temu | `gio21~shopee-scraper` / `fatihtahta~lazada-scraper` / `amit123~temu-products-scraper` | (see actor input schema) |
+| 携程 / Trip.com reviews | `knagymate~trip-com-reviews-scraper` (89k) | (see actor input schema) |
+| Instagram stories | `data-slayer~instagram-stories-scraper` | `{"usernames": [...]}` — see "Instagram stories" |
 | TikTok | `clockworks~tiktok-scraper` | `{"hashtags": [...]}` or `{"profiles": [...]}` |
+
+Not covered by any priced actor: 快手, 爱奇艺 — search the Store and warn the user
+the actor is unverified.
 
 **Two-step Xiaohongshu workflow (search → note detail):**
 The search scraper (`zen-studio~rednote-search-scraper`) returns only a
@@ -272,6 +291,23 @@ and limit results to 5–10. Verify output quality before scaling up.
 - `401` → proxy misconfigured (should not happen). Report to user.
 - Empty result `[]` → actor ran but found nothing. Try different keywords or another actor.
 - Timeout → increase `timeout` param (default 180s). Some actors are slow.
+
+### Instagram — which route for which content
+
+| Content | Route |
+|---|---|
+| Profile, bio, recent posts | `sc_get('/v1/instagram/profile', handle=...)` |
+| All posts / all reels | `/v2/instagram/user/posts` / `/v1/instagram/user/reels` (paginate) |
+| One post or reel | `sc_get('/v1/instagram/post', url=...)` |
+| What was said in a post/reel | `/v2/instagram/media/transcript` (≤2 min) |
+| Comments | `/v2/instagram/post/comments` |
+| Highlights | `/v1/instagram/user/highlights` → `/v1/instagram/user/highlight/detail` |
+| Reels by keyword | `/v2/instagram/reels/search` |
+| **Live stories (<24h)** | Apify `data-slayer~instagram-stories-scraper` — section below |
+| Private accounts, DMs, followers lists | Not available — say so |
+
+`/v1/instagram/song/reels` is deprecated upstream (Instagram removed audio
+pages); don't call it.
 
 ### Instagram stories (use `apify_run`)
 
@@ -485,7 +521,7 @@ public figure from transcript content alone** — if metadata is unavailable, sa
 | Linkbio | `/v1/linkbio` | url | `https://linkbio.co/...` |
 | Linkme | `/v1/linkme` | url | `https://linkme.bio/...` |
 | Amazon Shop | `/v1/amazon/shop` | url | `https://www.amazon.com/shop/...` |
-| Instagram basic profile | `/v1/instagram/basic/profile` | userId | `314216` |
+| Instagram basic profile | `/v1/instagram/basic-profile` | userId | `314216` |
 | Instagram embed HTML | `/v1/instagram/user/embed` | handle | `jane` |
 | Age/Gender detect | `/v1/detect/age-gender` | url (social profile) | `https://www.tiktok.com/@charlidamelio` |
 | Credit balance | `/v1/credit/balance` | (none) | |

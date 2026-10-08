@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.11.0
+version: 2.12.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram, LinkedIn,
   Reddit, Threads, plus robust web-page fallback extraction.
 
@@ -129,6 +129,7 @@ Fallback rule:
 | **Firecrawl returns 403 / empty for a social media URL** | Check the intent-routing tables below for a **ScrapeCreators platform-specific endpoint** for this domain (e.g. `sc_get('/v1/instagram/post', url=...)`, `sc_get('/v2/tiktok/video', url=...)`). If one exists, use it — these have dedicated extraction that bypasses anti-bot. If no dedicated endpoint exists, fall through to `archive_fallback` or ask the user. |
 | **Firecrawl itself returns 403 / empty** (hard paywall: NYT, WSJ, Economist, FT, Bloomberg) | Call `archive_fallback(url)` — recovers full text from a web archive snapshot |
 | **Need structured data from a China app** (抖音/小红书/微博/B站/京东/淘宝/1688/闲鱼/得物 etc.) | Call `apify_run()` — Apify Store has purpose-built actors for these platforms that Firecrawl/ScrapeCreators don't cover |
+| **Instagram story URL** (`instagram.com/stories/<user>/<id>`) | ScrapeCreators has no story endpoint and Firecrawl hits the login wall — go straight to `apify_run("data-slayer~instagram-stories-scraper", ...)`. See "Instagram stories" below |
 
 ### Paywall / Firecrawl-blocked fallback chain (use `archive_fallback`)
 When Firecrawl can't get the page either (it returns 403, or markdown comes back
@@ -175,7 +176,8 @@ env, do NOT check `.env`, do NOT ask the user for an Apify key.
 **When to use Apify (vs Firecrawl/ScrapeCreators):**
 - ✅ China apps: 抖音, 小红书, 微博, B站, 京东, 淘宝, 1688, 闲鱼, 得物, 携程, 知乎, 豆瓣, 雪球, 快手, 爱奇艺, 优酷
 - ✅ Southeast Asia e-commerce: Shopee, Lazada, Temu
-- ❌ Western social media (TikTok/Instagram/YouTube/X/Reddit) → use ScrapeCreators first (cheaper)
+- ✅ Instagram **stories** (ScrapeCreators has no story endpoint) — see "Instagram stories" below
+- ❌ Other Western social media (TikTok/Instagram posts & reels/YouTube/X/Reddit) → use ScrapeCreators first (cheaper)
 - ❌ Generic web page scraping → use Firecrawl first (cheaper)
 - ❌ Hard paywall articles → use `archive_fallback` (Apify doesn't help here)
 
@@ -271,9 +273,36 @@ and limit results to 5–10. Verify output quality before scaling up.
 - Empty result `[]` → actor ran but found nothing. Try different keywords or another actor.
 - Timeout → increase `timeout` param (default 180s). Some actors are slow.
 
+### Instagram stories (use `apify_run`)
+
+Story URLs (`instagram.com/stories/<user>/<id>`) are not reachable via
+ScrapeCreators (no story endpoint; only highlights) or Firecrawl (login wall).
+Don't retry those — call Apify directly through the proxy (no user key):
+
+```python
+from exports import apify_run
+items = apify_run("data-slayer~instagram-stories-scraper",
+                  {"usernames": ["rafaelkborges"]}, max_charge_usd=0.5)
+story = next(i for i in items if str(i.get("id")) == "4002796791460342130")
+video_url = story["video_versions"][0]["url"]   # image-only stories: image_versions2
+```
+
+- Covers **public accounts, active stories only** (< 24h). Accounts with none
+  return a row `{"status": "no_active_stories"}`. Private or expired stories
+  can't be fetched by anyone — say so.
+- Match the story by **`id`** (the number in the URL). `pk` is null.
+- CDN links expire quickly — download the mp4 right away.
+- To get what was said, pass the mp4 to the video-analysis skill (native mode
+  handles a ~12 MB / 60 s story in one call; transcript + on-screen text).
+- If Apify returns nothing: check `/v1/instagram/user/highlights`; else if the
+  user's Chrome is connected (control-browser) and logged into Instagram, open
+  the story there; else ask for a screen recording (not a screenshot — most
+  stories are spoken video).
+- Verified 2026-10-08: 5 accounts in ~8–13 s, ~$0.0025/result real Apify cost.
+
 **Cost discipline:** Apify actors are more expensive than Firecrawl/ScrapeCreators.
 Only use Apify when the cheaper options can't get the data (China apps,
-structured e-commerce fields). For a single web page, always try Firecrawl first.
+Instagram stories, structured e-commerce fields). For a single web page, always try Firecrawl first.
 
 ## What each service is for
 ### ScrapeCreators — Social media data extraction (27+ platforms)

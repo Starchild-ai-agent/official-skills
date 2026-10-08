@@ -158,3 +158,10 @@ The authoritative pricing map lives in the proxy plugin:
 `transparent-proxy/apis/apify.py` → `_ACTOR_PER_RESULT_USD` dict.
 
 When you register a new actor's price there, also add it to this file.
+
+## Instagram stories
+
+| Actor | Real Apify cost | Notes |
+|---|---|---|
+| `data-slayer~instagram-stories-scraper` | ~$0.0005 start + ~$0.0025/result (measured: $0.0305 for 12 rows) | Not yet in the proxy's per-actor map, so sc-proxy bills it at the default $0.007/result × 2 |
+

@@ -138,8 +138,10 @@ def credentials() -> str:
     if not key:
         raise AsaasConfigError(
             "missing ASAAS_API_KEY. Create an account at https://sandbox.asaas.com/ "
-            "(self-service, no CNPJ required) and generate a key there, then call "
-            "request_env_input. Set ASAAS_ENV=production to target production."
+            "(self-service, no CNPJ — but the signup form asks for a real full name, "
+            "a personal mobile for the activation code, and a full address, so the "
+            "user should be the one filling it in) and generate a key there, then "
+            "call request_env_input. Set ASAAS_ENV=production to target production."
         )
     return key
 

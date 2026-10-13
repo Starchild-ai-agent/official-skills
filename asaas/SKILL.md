@@ -51,9 +51,16 @@ One env var, collected with `request_env_input` — never ask for it in chat:
 someone typed, not something someone forgot to change.
 
 A sandbox key is self-service: create an account at `sandbox.asaas.com` and
-generate one. **No CNPJ, no contract, no approval queue.** Sandbox and production
-share nothing — different accounts, different data, different keys, and a key
-from one is `401` on the other.
+generate one. **No CNPJ, no contract, no approval queue.**
+
+⚠️ **But the signup form is not anonymous** — it asks for a full name as on the
+document, a personal mobile that receives the activation code, and a full address
+(CEP, city, street, neighbourhood, number). So it needs a real person's details
+and a phone that can receive an SMS. Tell the user that before you ask them to
+sign up, and make sure they are the one volunteering their own data.
+
+Sandbox and production share nothing — different accounts, different data,
+different keys, and a key from one is `401` on the other.
 
 Then prove the handshake before anything else:
 

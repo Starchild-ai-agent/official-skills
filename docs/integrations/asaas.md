@@ -1,7 +1,19 @@
 # Asaas — integration dossier
 
-**Status: 🟢 buildable today. Self-serve sandbox, no CNPJ, no contract.**
-**And it is not hypothetical — it is the acquirer NUMA already charges through.**
+**Status: 🟢 buildable — the cheapest access in the census, with one caveat.**
+
+No contract, no sales call, no approval queue, no CNPJ. But the sandbox signup
+form is **not anonymous**: it asks for a full name *as on the document*, a
+personal mobile that receives the activation code, and a full address (CEP, city,
+street, neighbourhood, number). So "self-service" means *no gatekeeper*, not
+*no data* — someone has to volunteer their own details, and a real phone has to
+receive an SMS. Worth saying out loud before asking anyone to sign up.
+
+That matters for who owns the account, and it matters more for production: a
+payment account is a regulated thing tied to a real person or company.
+
+**And none of this is hypothetical — Asaas is the acquirer NUMA already charges
+through.**
 
 Researched 2026-10-13 from the vendor's own machine-readable index
 (`docs.asaas.com/llms.txt` → `reference/llms.txt`, 481 entries).
@@ -12,11 +24,24 @@ Researched 2026-10-13 from the vendor's own machine-readable index
 
 Two independent reasons, and they reinforce each other.
 
-**1. It is the cheapest access in the whole census.** Sandbox signup is
-self-service at `sandbox.asaas.com`, the account is independent of production,
-and approval is automatic when the required fields are valid. No CNPJ, no
-contract, no partner programme, no waiting on a human. Compare with Stone
-(partner programme + homologation) or TotalPass (Termo de Adesão).
+**1. It is the cheapest access in the whole census** — with one caveat worth
+stating plainly. Sandbox signup is self-service at `sandbox.asaas.com`, the
+account is independent of production, and approval is automatic when the fields
+are valid. No CNPJ, no contract, no partner programme, no waiting on a human.
+Compare with Stone (partner programme + homologation) or TotalPass (Termo de
+Adesão).
+
+**The caveat: the signup form is not anonymous.** It requires
+
+    Nome completo   as on the document
+    Celular         a personal mobile — it receives the activation code
+    CEP / Cidade / Rua / Bairro / Número / Complemento
+
+so a real person's identity and a phone that can receive an SMS go into it. That
+is still far cheaper than a partner programme, but it is not "no ask needed" —
+someone has to volunteer their own details, and they should know they are doing
+it. A CPF is not on the screen captured so far; a Brazilian financial account
+almost certainly requires one somewhere in the flow.
 
 **2. We have already hit it in production, from the wrong side.** While
 debugging NUMA's checkout we got this out of the Angular Pay gateway:
@@ -179,7 +204,8 @@ does give us:
 
 1. **A correct mental model of the payment path we are debugging.** Already
    earned — see the wrapper table above.
-2. **A sandbox to prototype against** — self-serve, today, no permission needed.
+2. **A sandbox to prototype against** — no permission needed, but a real
+   person's name, mobile and address are.
 3. **The option of a direct integration** if a client ever wants to cut out the
    gateway: same Pix artefacts, one less hop, and errors that say what happened.
 
@@ -192,7 +218,7 @@ Leonardo once he has read this.
 
 | Environment | What | Where |
 |---|---|---|
-| Sandbox | one API key | **self-serve** — `sandbox.asaas.com`, automatic approval |
+| Sandbox | one API key | self-service at `sandbox.asaas.com` — **requires a real name, a personal mobile for the activation code, and a full address** |
 | Production | one API key | the client's Asaas account (or ours, if we become the merchant) |
 
 Nothing else. No partner programme, no homologation, no sales call.

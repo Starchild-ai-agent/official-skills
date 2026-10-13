@@ -26,6 +26,18 @@ is really "I switched environments between calls".
 Sandbox signup is self-service at `sandbox.asaas.com`; approval is automatic when
 the required fields are valid. No CNPJ, no contract, no waiting.
 
+**But the signup form is not anonymous.** It requires:
+
+| Field | Note |
+|---|---|
+| Nome completo | *igual ao documento* — the full legal name |
+| Celular | a **personal mobile**; it receives the account activation code |
+| CEP, Cidade, Rua, Bairro, Número, Complemento | a full address (complement optional) |
+
+So the account is a real person's, and a real phone has to receive an SMS. No CPF
+appears on that screen; a Brazilian financial account almost certainly requires
+one somewhere in the flow. Treat this as *no gatekeeper*, not *no data*.
+
 ---
 
 ## Endpoints used by this skill

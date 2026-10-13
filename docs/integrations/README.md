@@ -65,7 +65,8 @@ Subtract anything Composio already reaches.
 ## Capability matrix
 
 Legend — **Write?**: can we mutate bookings/members through the API.
-**Sandbox**: `self` = self-service signup, `gated` = needs a contract/partner
+**Sandbox**: `self` = self-service signup (may still collect personal
+identity — check the service's note), `gated` = needs a contract/partner
 program, `none` = production only.
 
 ### Gym management systems
@@ -81,7 +82,7 @@ program, `none` = production only.
 
 | Service | Docs | Auth | Sandbox | Gate | Status |
 |---|---|---|---|---|---|
-| **Asaas** | ✅ `docs.asaas.com` | key in `access_token` **header** | ✅ **self-service** (`sandbox.asaas.com`) | none for sandbox | ✅ **`asaas/` skill shipped** (19 functions) |
+| **Asaas** | ✅ `docs.asaas.com` | key in `access_token` **header** | ✅ self-service (`sandbox.asaas.com`) — **signup takes a real name, personal mobile and address** | none for sandbox | ✅ **`asaas/` skill shipped** (19 functions) |
 | **Pagar.me** | ✅ `docs.pagar.me` (V5) | Basic `sk_` secret key, empty password | ✅ test mode, same host | Pagar.me account | 🟢 easy |
 | **Stone** | ⚠️ partner-only (`connect.stone.com.br`) | Basic `sk_` + Stonecode | ❌ **none** | **Stone Partner Program** + homologation | 🔴 highest friction |
 | **Mercado Pago** | ✅ `mercadopago.com.br/developers` | `Bearer` access token | ✅ **self-service** (+15 test accounts) | none for test | 🟢 easy |

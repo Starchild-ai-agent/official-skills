@@ -53,6 +53,7 @@ one somewhere in the flow. Treat this as *no gatekeeper*, not *no data*.
 | GET | `/payments/{id}` | one charge |
 | GET | `/payments/{id}/status` | just the status |
 | DELETE | `/payments/{id}` | delete a charge |
+| POST | `/sandbox/payment/{id}/confirm` | **[SANDBOX ONLY]** simulate payment |
 | GET | `/payments/{id}/pixQrCode` | **the Pix QR and copy-and-paste** |
 | GET | `/webhooks` | list webhooks |
 | POST | `/webhooks` | register a webhook |
@@ -322,7 +323,23 @@ payload.
 
 **Not yet verified live:** the write paths and a successful Pix QR read — those
 need a real sandbox key. Everything documented above comes from Asaas's own
-OpenAPI fragments for those endpoints, not from guessing.
+OpenAPI fragments for those endpoints, not from guessing. The production guard on
+`/sandbox/payment/{id}/confirm` *is* verified: with `ASAAS_ENV=production` the
+client refuses before touching the network.
+
+`references/smoke-test.md` is the script that closes the remaining gap.
+
+### Simulating a payment
+
+```
+POST /sandbox/payment/{id}/confirm
+```
+
+Sandbox only — Asaas does not offer it in production. It flips a charge to a paid
+state so you can reach `RECEIVED`, the `PAYMENT_RECEIVED` webhook, and a non-zero
+balance. Nothing real moves: no money, no financial institution. The client
+refuses to call it when pointed at production, because the failure mode of
+getting that wrong is a real charge marked paid.
 
 ---
 

@@ -25,7 +25,7 @@ __all__ = [
     "asaas_update_customer",
     # charges
     "asaas_charges", "asaas_charge", "asaas_charge_status", "asaas_create_charge",
-    "asaas_delete_charge",
+    "asaas_delete_charge", "asaas_confirm_payment",
     # pix
     "asaas_pix_qr_code",
     # webhooks
@@ -98,6 +98,7 @@ asaas_charge = _charges.charge
 asaas_charge_status = _charges.charge_status
 asaas_create_charge = _charges.create_charge
 asaas_delete_charge = _charges.delete_charge
+asaas_confirm_payment = _charges.confirm_payment
 
 # ── Pix ──────────────────────────────────────────────────────────────────────
 

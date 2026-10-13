@@ -25,9 +25,17 @@ ASAAS_API_KEY = "<PASTE_YOUR_SANDBOX_API_KEY_HERE>"
 ASAAS_ENV     = "sandbox"                        # leave as sandbox
 
 FULL_NAME     = "<YOUR_FULL_NAME_AS_ON_DOCUMENT>"
+#   any name works in sandbox, e.g. "Teste Sandbox"
 CPF           = "<YOUR_CPF_DIGITS_ONLY_NO_PUNCTUATION>"
+#   best: your own CPF - you are already the sandbox account holder.
+#   throwaway: a valid-format one, e.g. 83584053242 / 86568732702 / 46023907814
+#   Asaas validates the check digit, so a made-up 11 digits will be rejected.
+#   generate more:
+#     python3 -c "import random;f=lambda b:(lambda d:[d.append(0 if (s:=sum(x*y for x,y in zip(d,range(len(d)+1,1,-1)))%11)<2 else 11-s) for _ in range(2)] and ''.join(map(str,d)))([int(x) for x in b]);print(f(''.join(random.choice('0123456789') for _ in range(9))))"
 EMAIL         = "<YOUR_EMAIL>"
+#   MUST be yours - Asaas sends real messages during sandbox tests
 MOBILE        = "<YOUR_MOBILE_WITH_AREA_CODE_DIGITS_ONLY>"
+#   MUST be yours, for the same reason. Digits only, with area code.
 
 VALUE         = 80.00                            # BRL; 80 is the gym price point
 DESCRIPTION   = "Sandbox smoke test"

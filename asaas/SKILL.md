@@ -34,8 +34,10 @@ Angular Pay, which several gym platforms use. When one of those gateways answers
 skill speaks Asaas directly, so errors say what they mean.
 
 Everything here was built from Asaas's own machine-readable docs
-(`docs.asaas.com/reference/llms.txt`, 448 pages) and the transport was verified
-against the live sandbox. See `references/api-reference.md` for the contracts.
+(`docs.asaas.com/reference/llms.txt`, 448 pages). The transport is verified
+against the live sandbox; the write paths are not yet — run
+`references/smoke-test.md` to close that in two minutes. Contracts are in
+`references/api-reference.md`.
 
 ## Credentials
 
@@ -128,6 +130,7 @@ Every function returns `{"ok": True, "data": ...}` or
 | `asaas_charge_status(payment_id)` | Just the status, plus a `settled` boolean — cheap, and usually the actual question. |
 | `asaas_create_charge(customer, value, due_date=None, billing_type="PIX", description=None, external_reference=None, confirm=False)` | **WRITE** — create a charge. `due_date` defaults to today. |
 | `asaas_delete_charge(payment_id, confirm=False)` | **WRITE** — delete a charge (restorable for a while). |
+| `asaas_confirm_payment(payment_id, confirm=False)` | **WRITE, SANDBOX ONLY** — simulate payment so you can reach `RECEIVED`, the `PAYMENT_RECEIVED` webhook and a non-zero balance. Refuses to run outside sandbox. |
 
 ### Pix
 
@@ -266,6 +269,9 @@ Asaas exposes **112 events**; the default here is the seven that move a sale
 
 ## References
 
+- `references/smoke-test.md` — **a runnable two-minute test** that exercises the
+  whole skill in sandbox, including the payment simulation. Start here if you
+  are the one verifying.
 - `references/api-reference.md` — endpoint index, request contracts, enums, and
   the evidence behind each claim here.
 - Asaas docs index: `https://docs.asaas.com/reference/llms.txt` (448 pages,

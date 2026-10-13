@@ -23,7 +23,7 @@ import sys
 
 try:  # loaded by exports.py
     from _asaas_client import (BILLING_TYPES, SETTLED_STATUS, _date_str, _money,
-                               _status_label, call, digits, err, ok)
+                               _status_label, call, digits, environment, err, ok)
 except ImportError:  # standalone: python3 tools/charges.py
     import importlib.util as _iu
 
@@ -35,7 +35,7 @@ except ImportError:  # standalone: python3 tools/charges.py
     _spec.loader.exec_module(_mod)
     from _asaas_client import (  # noqa: E402,F811
         BILLING_TYPES, SETTLED_STATUS, _date_str, _money, _status_label,
-        call, digits, err, ok,
+        call, digits, environment, err, ok,
     )
 
 
@@ -166,3 +166,36 @@ def delete_charge(payment_id, confirm=False):
     data = result["data"] or {}
     return ok({"deleted": (data or {}).get("deleted", True),
                "payment_id": payment_id})
+
+
+def confirm_payment(payment_id, confirm=False):
+    """**[SANDBOX ONLY]** Simulate payment of a charge.
+
+        POST /sandbox/payment/{id}/confirm
+
+    Asaas exposes no way to pay a Pix in a test environment, so this is how you
+    reach the states that only exist after payment: `RECEIVED`, the
+    `PAYMENT_RECEIVED` webhook, and a non-zero balance.
+
+    **Refuses to run outside sandbox.** Asaas does not offer this endpoint in
+    production, and the check here is deliberate: the failure mode of getting it
+    wrong is a real charge marked paid.
+
+    Nothing real moves — no money, no financial institution — but the charge's
+    status genuinely changes, which is the point.
+    """
+    if environment() != "sandbox":
+        return err(None, "confirm_payment is sandbox-only",
+                   hint=f"this client is pointed at {environment()}. Asaas does not "
+                        f"offer the confirm endpoint in production, and marking a real "
+                        f"charge paid is not something to do by accident.")
+    if not payment_id:
+        return err(None, "confirm_payment needs a payment id")
+    if not confirm:
+        return err(None, "confirm_payment is a write and requires confirm=True",
+                   hint="it flips the charge to a paid state (in sandbox)")
+
+    result = call("POST", f"/sandbox/payment/{payment_id}/confirm")
+    if not result["ok"]:
+        return result
+    return ok({"simulated": True, "charge": _normalize(result["data"])})

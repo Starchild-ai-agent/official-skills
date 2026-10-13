@@ -12,6 +12,7 @@ knowledge does not live only in chat.
 | `nextfit.md` | Paid add-on, GET-only, docs behind the customer login |
 | `../evo/references/api-reference.md` | The one **shipped** skill (`evo/`) — curated endpoint/enum index |
 | `asaas.md` | Deep dossier — auth, contracts, and the proof that Angular Pay is a thin Asaas wrapper |
+| `../asaas/` | **Shipped skill** — 19 functions: customers, charges, Pix QR, webhooks, balance, statement |
 | `../composio/SKILL.md` | **Already-shipped gateway to 1000+ SaaS apps.** Before building any generic connector, check here — see "Composio overlap" below. |
 
 Non-skill directory by design: these are research records, not installable
@@ -80,7 +81,7 @@ program, `none` = production only.
 
 | Service | Docs | Auth | Sandbox | Gate | Status |
 |---|---|---|---|---|---|
-| **Asaas** | ✅ `docs.asaas.com` | key in `access_token` **header** | ✅ **self-service** (`sandbox.asaas.com`) | none for sandbox | 🟢 **next build — dossier in `asaas.md`** |
+| **Asaas** | ✅ `docs.asaas.com` | key in `access_token` **header** | ✅ **self-service** (`sandbox.asaas.com`) | none for sandbox | ✅ **`asaas/` skill shipped** (19 functions) |
 | **Pagar.me** | ✅ `docs.pagar.me` (V5) | Basic `sk_` secret key, empty password | ✅ test mode, same host | Pagar.me account | 🟢 easy |
 | **Stone** | ⚠️ partner-only (`connect.stone.com.br`) | Basic `sk_` + Stonecode | ❌ **none** | **Stone Partner Program** + homologation | 🔴 highest friction |
 | **Mercado Pago** | ✅ `mercadopago.com.br/developers` | `Bearer` access token | ✅ **self-service** (+15 test accounts) | none for test | 🟢 easy |
@@ -268,7 +269,7 @@ no public documentation.
 | 4 | **Next Fit** | 🗄️ system of record | MED | ⚠️ read-only, in-panel only | none | **yes** — gym + paid add-on + access key | paid add-on | 🔴 **reclassified — see below** |
 | 5 | **Wellhub** | 🎟️ benefit bridge | HIGH | ✅ | ✅ gated | yes — vendor-issued token + Gym ID | **yes** — partner + Tech Sales |
 | 6 | **TotalPass** | 🎟️ benefit bridge | HIGH | ✅ | **none — prod only** | yes — 2 keys + a test user | **yes** — Termo de Adesão |
-| 7 | **Asaas** | 💳 payment | LOW | ✅ | ✅ self-serve | no | no (prod: Asaas account) | 🟢 **next build** |
+| 7 | **Asaas** | 💳 payment | LOW | ✅ | ✅ self-serve | no | no (prod: Asaas account) | ✅ **`asaas/` skill shipped** |
 | 8a | **Pagar.me** | 💳 payment | LOW | ✅ V5 | ✅ test mode | a Pagar.me account | no |
 | 8b | **Stone** | 💳 payment | **HIGH** | ⚠️ partner-only | **none** | partner credentials | **yes** — Partner Program + homologation |
 | 9 | **Mercado Pago** | 💳 payment | LOW | ✅ | ✅ self-serve | no | no |

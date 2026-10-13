@@ -269,7 +269,8 @@ Asaas exposes **112 events**; the default here is the seven that move a sale
 
 ## References
 
-- `references/smoke-test.md` — **a runnable two-minute test** that exercises the
+- `references/smoke_test.py` — the same test as a script with a fill-in block
+  of `<...>` placeholders at the top. `references/smoke-test.md` — **a runnable two-minute test** that exercises the
   whole skill in sandbox, including the payment simulation. Start here if you
   are the one verifying.
 - `references/api-reference.md` — endpoint index, request contracts, enums, and

@@ -37,6 +37,16 @@ Set `ASAAS_ENV` to `sandbox` (or leave it — sandbox is the default).
 
 ## Run it
 
+**Easiest: edit the script.** `references/smoke_test.py` has a fill-in block at
+the top with `<...>` placeholders, and it refuses to run until they are replaced
+— so a forgotten field is a clear message, not a junk request to Asaas.
+
+```bash
+python3 smoke_test.py
+```
+
+**Or paste this inline** if you would rather not edit a file:
+
 ```bash
 export ASAAS_API_KEY="<your sandbox key>"
 export ASAAS_ENV=sandbox
@@ -112,12 +122,14 @@ If `charge_by_pix` fails, the error names the field. The two most likely:
 
 ## Then clean up
 
+The script already does this as its last step:
+
 ```python
 asaas_delete_charge(payment_id, confirm=True)
 ```
 
-The customer stays (harmless, and reusable for the next run — the second run will
-report `customer_created: false`, which is the idempotency working).
+The customer stays (harmless, and reusable for the next run — a second run
+reports `customer_created: false`, which is the idempotency working).
 
 ---
 

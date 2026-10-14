@@ -4,10 +4,13 @@ version: 1.1.0
 description: |
   Angulare (Angular e-Commerce) gym and studio management: class schedule, member
   attendance and check-ins, first-experience detection, the per-class mat/seat map,
-  sales orders and payment status, credit-card payment links.
+  sales orders and payment status, credit-card payment links, and booking writes —
+  book, cancel, reschedule and waitlist a member.
 
-  Use when working with an Angulare-run studio or gym — finding which member is on which mat in a class,
-  who actually attended a class, detecting a member's first class so a follow-up can go out, checking whether a customer has paid, looking up a member, or listing plans and aggregator (TotalPass/Wellhub) check-ins.
+  Use when working with an Angulare-run studio or gym — finding which member is on which mat
+  in a class, booking or cancelling a class for a member, finding who actually attended,
+  detecting a member's first class so a follow-up can go out, checking whether a customer
+  has paid, looking up a member, or listing plans and aggregator (TotalPass/Wellhub) check-ins.
 delivery: script
 author: starchild
 tags: [gym, fitness, angulare, angular-ecommerce, booking, attendance, checkin, members, pilates, brazil]
@@ -111,6 +114,17 @@ Every function returns `{"ok": True, "data": ...}` or
 | `angulare_session_seats(event_token)` | The mat/spot map: `{spot, name, email, is_staff, status}` per attendee, plus `free_spots` and `maintenance_spots`. |
 | `angulare_find_session(activity=None, date=None, time=None)` | Resolve "Pilates at 19:00" to one session. |
 
+### Bookings — read and **write**
+
+| Function | Purpose |
+|---|---|
+| `angulare_my_bookings(user_id, days_ahead=7, include_past=False, take=50)` | A member's bookings. **The only source of the booking token** — start here before cancelling anything. |
+| `angulare_session_bookings(event_token, take=100)` | One session's roster, with each member's booking token. |
+| **`angulare_book(event_token, user_id, spot_code=None, check_credits=True, confirm=False)`** | **WRITE** — book a member in. Guards: already booked? has credits? then **reads back** to confirm. |
+| **`angulare_cancel_booking(booking_token, confirm=False)`** | **WRITE** — cancel. Read `can_cancel_until` first: past it the credit is forfeit, so say so before acting. |
+| **`angulare_join_waitlist(event_token, user_id, confirm=False)`** | **WRITE** — add to the waiting list. Reserves nothing; never promise a spot. |
+| **`angulare_reschedule_booking(booking_token, to_event_token, spot_code=None, confirm=False)`** | **WRITE** — move a booking. ⚠️ Body unverified; fall back to cancel-then-book after checking capacity. |
+
 ### Attendance and check-ins
 
 | Function | Purpose |
@@ -169,6 +183,49 @@ ones. Use `angulare_session_roster` when you only need attendance status.
 
 Find the session first with `angulare_find_session(activity="Pilates", date="today", time="19:00")`
 — it returns the `token` everything else keys on.
+
+### Booking, and cancelling safely
+
+The member asks for a class. The AI must **make the change in Angulare**, not
+send them to the app — this is the capability that turns the bot into an
+operational employee.
+
+```python
+# 1. find the session (returns event_token)
+angulare_find_session(activity="Hot Sculpt", date="tomorrow", time="19:15")
+
+# 2. book — the function runs the guards for you, then reads back
+angulare_book(event_token, user_id=2052, confirm=True)
+# -> {"booked": True, "spot_matches": True, "booking": {...}}
+# or refuses, naming why:
+#    "this member already has a booking for that session"
+#    "this member has no credits"
+
+# 3. read bookings back — the booking token lives here
+angulare_my_bookings(2052)
+# -> bookings[] with booking_token, status, can_cancel_until
+
+# 4. cancel, having read the deadline first
+angulare_cancel_booking(booking_token, confirm=True)
+```
+
+**Why `angulare_book` checks three times.** A `200` from the booking endpoint is
+not proof the member is in the class. So it checks for a duplicate first (the API
+accepts one happily), checks credits second (a booking without credits succeeds
+and then fails at check-in — worse than refusing), and **reads the roster back**
+third. If the read-back does not show the member, it returns an error telling you
+**not** to report success. That ordering is NUMA's production bot's, and each
+step exists because the failure it prevents actually happened.
+
+**Cancelling: read `can_cancel_until` before, not after.** It is the server's own
+credit-refund deadline, so you can tell the customer the consequence *before*
+acting instead of reporting it afterwards. Past it the cancellation still works —
+the credit is simply forfeit. The field comes back in two different formats
+depending on which endpoint you read (see Gotchas), and carries no timezone.
+
+**Aggregator members (Wellhub / TotalPass) have no credit balance.** Pass
+`check_credits=False` for them or the guard will refuse a booking they are
+entitled to.
 
 ### The 2-hour post-first-class follow-up
 
@@ -330,9 +387,15 @@ the first checkout step rather than at the payment step — that is normal.
   count drops. Verified: one cart was readable in the morning and gone the same
   afternoon, while `Submitted` carts stayed. So never cache a checkout id, and
   read a 404 from `/share/` as "that cart is gone", not as a permission error.
-- **Booking cancellation is not implemented** — the `event-books` list omits
-  `id` and the attendance row ids do not resolve on the event-book detail
-  endpoint. Do not promise a cancel-booking feature.
+- **The booking id is `token`, not `id`.** The `event-books` list returns
+  `id: null` on every row, which is why an earlier pass concluded cancellation
+  was impossible. `token` is present and is what `.../cancel/` takes. **Do not
+  confuse it with `event_info.token`** — that one identifies the *class*; this
+  one identifies the *booking*.
+- **`can_cancel_until` is the server's deadline, and it comes back in two
+  formats.** `events/{token}/bookings/` gives `"2026-10-15T16:15:00"`;
+  `event-books/?user=` gives `"2026-10-17 06:30"`. Neither carries a timezone —
+  treat it as studio-local. Read it instead of re-deriving the cancellation rule.
 - Angulare returns **HTTP 500 for a malformed `Authorization` value** (their
   bug); a bad token should be 401.
 - Multi-tenant by host: a tenant only exists on its own deployment

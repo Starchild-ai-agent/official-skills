@@ -221,13 +221,70 @@ Checkout statuses observed: `Open`, `Submitted`.
 | POST | `/api/v1/events/event-books/{id}/cancel/` | cancel a booking — **unreachable today** (see below) |
 | POST | `/api/v1/events/events/{id}/change-level/`, `/change-room/` | move a session |
 
-### Why booking cancellation is not implemented
+### ⚠️ Correction: booking cancellation WAS possible — the id is `token`
 
-The `event-books/` **list** serializer omits `id` (every row returns `id: null`),
-and the `id` present on `reports/event-books/` rows **404s** on
-`GET /api/v1/events/event-books/{id}/` — different id spaces. So there is no
-verified path from a booking row to a cancellable id. Do not promise a
-cancel-booking feature until Angulare confirms the mapping.
+An earlier pass through this API concluded cancellation was impossible, because
+the `event-books/` list returns `id: null` on every row. **Both halves of that
+were wrong**, and the correction matters:
+
+- the list **does** carry an identifier — it is **`token`**, not `id`
+- **`token` is exactly what `.../cancel/` wants**
+
+So the blocker was a wrong field name, not a missing capability. Verified against
+production: 8/8 rows in a live session roster carried a `booking_token` UUID.
+
+**Do not confuse the two tokens on a booking row.** `token` identifies the
+*booking*; `event_info.token` identifies the *class*. Cancel and reschedule take
+the first; everything in the schedule endpoints takes the second.
+
+### Booking write endpoints
+
+```
+POST /events/events/{event_token}/book/                  {"user": <uid>, "map_spot_code": "<n>"}
+POST /events/event-books/{booking_token}/cancel/          {}   (optional ?timezone_from_unit=)
+POST /events/events/{event_token}/add-to-waiting-list/    {"user": <uid>}
+POST /events/event-books/{booking_token}/reschedule/      (body UNVERIFIED — see booking.py)
+```
+
+All four are wrapped by `tools/booking.py`. The first three were taken from
+NUMA's production bot, which has run them against real members; `reschedule` was
+found in the dashboard bundle but never executed, and `angulare_reschedule_booking`
+says so.
+
+### Reading bookings
+
+```
+GET /events/event-books/?user={uid}&limit=50        one member's bookings
+GET /events/events/{event_token}/bookings/?limit=100 one session's roster
+```
+
+Booking row, as returned:
+
+| field | meaning |
+|---|---|
+| `token` | **the booking token** — what cancel/reschedule take |
+| `user` | the member id |
+| `status` | `booked` · `waiting-list` · `allocated` |
+| `map_spot_code` | mat/bike position, zero-padded (`"08"`) |
+| `canceled_at` | set once cancelled — this, not `status`, is the cancelled flag |
+| `can_cancel_until` | **the credit-refund deadline, computed server-side** |
+| `event_info` | `token`, `name`, `event_date`, `event_hour`, `start_time`, `instructor_detail` |
+
+### ⚠️ `can_cancel_until` comes back in TWO formats
+
+Same field, two serializers — observed on the same day, same tenant:
+
+```
+GET /events/events/{token}/bookings/   ->  "2026-10-15T16:15:00"   ISO
+GET /events/event-books/?user={uid}    ->  "2026-10-17 06:30"      space-separated
+```
+
+Parse defensively; do not assume `fromisoformat` will take both (it will not take
+the space form before Python 3.11's relaxed parser, and neither form carries a
+timezone). Treat the value as a studio-local wall clock.
+
+Reading `can_cancel_until` is how you honour the "explain the consequence before
+acting" rule without re-deriving the cancellation policy yourself.
 
 ## The "Link de Pagamento" (credit-card) link — fully decoded
 

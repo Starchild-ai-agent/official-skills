@@ -54,6 +54,13 @@ def _normalize(row):
             "totalpass": row.get("code_totalpass") or row.get("codeTotalpass"),
         },
         "permission_groups": row.get("permission_groups"),
+        # Credits live here, and this is the only place the API exposes them.
+        # Note the key style is inconsistent upstream: `checkins-total` uses a
+        # hyphen while `credits_available_all_packages` uses underscores, and
+        # some members return `{}` rather than zeros.
+        "credits": ((row.get("user_stats") or {}).get("credits_available_all_packages")
+                    if isinstance(row.get("user_stats"), dict) else None),
+        "user_stats": row.get("user_stats"),
     }
 
 

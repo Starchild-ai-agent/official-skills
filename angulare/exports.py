@@ -47,6 +47,9 @@ __all__ = [
     "angulare_quick_register_member",
     # schedule
     "angulare_sessions", "angulare_session", "angulare_session_roster", "angulare_find_session",
+    "angulare_my_bookings", "angulare_session_bookings",
+    "angulare_book", "angulare_cancel_booking", "angulare_join_waitlist",
+    "angulare_reschedule_booking",
     # attendance / check-ins
     "angulare_attendance", "angulare_first_experience_checkins", "angulare_followup_candidates",
     "angulare_member_attendance", "angulare_aggregator_checkins", "angulare_instructor_stats",
@@ -80,6 +83,7 @@ _client = _load("_angulare_client", "client.py")
 _auth = _load("_angulare_auth", "tools", "auth.py")
 _members = _load("_angulare_members", "tools", "members.py")
 _schedule = _load("_angulare_schedule", "tools", "schedule.py")
+_booking = _load("_angulare_booking", "tools", "booking.py")
 _attendance = _load("_angulare_attendance", "tools", "attendance.py")
 _catalog = _load("_angulare_catalog", "tools", "catalog.py")
 _payments = _load("_angulare_payments", "tools", "payments.py")
@@ -101,6 +105,14 @@ angulare_sessions = _schedule.sessions
 angulare_session = _schedule.session
 angulare_session_roster = _schedule.session_roster
 angulare_find_session = _schedule.find_session
+
+# ── Bookings (read + gated writes) ───────────────────────────────────────────
+angulare_my_bookings = _booking.my_bookings
+angulare_session_bookings = _booking.session_bookings
+angulare_book = _booking.book
+angulare_cancel_booking = _booking.cancel_booking
+angulare_join_waitlist = _booking.join_waitlist
+angulare_reschedule_booking = _booking.reschedule_booking
 
 # ── Attendance / check-ins ───────────────────────────────────────────────────
 angulare_attendance = _attendance.attendance

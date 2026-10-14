@@ -436,23 +436,27 @@ Details worth knowing:
   hint; `null` → `Este campo não pode ser nulo.`
 - **`expiration_capped`** says whether the requested date was clamped. A date in
   2030 came back uncapped, so the ceiling is generous.
-- **The response discriminates**, which makes it a usable success signal:
+- **The response discriminates acceptance** (not delivery — there is no receipt):
 
   | Response | Meaning |
   |---|---|
-  | `200 {"ok": …, "expiration": …}` | accepted — the communication is queued |
+  | `200 {"ok": …, "expiration": …}` | accepted — the communication is queued, delivery unconfirmed |
   | `403 {"detail":"Você não tem permissão…"}` | the cart's owner is a staff member |
   | `404 {"detail":"No Checkout matches the given query."}` | bad cart id |
   | `400 {"<field>":[…]}` | that required field is missing / malformed |
 
 - **The side effect is checkable:** after a successful `share` the cart's
-  `shared_to_customer` flips to `true` (verified) — a second, independent
-  confirmation.
+  `shared_to_customer` flips to `true` — the same acceptance read back, not a
+  delivery receipt. Re-sharing an already-shared cart sends a new e-mail
+  (verified 2026-10-15 on cart 16204, received alongside a recadastramento sent
+  one second later). Gmail threads repeats into the earlier conversation, so
+  verify by searching All Mail, not by scanning the inbox.
 - `channels_to_send: []` also answers `200`, so the response alone cannot tell
   you whether an e-mail was suppressed; pass `["email"]` to have it sent.
 
 **So every "build the link ourselves" workaround in this file is unnecessary.**
-`share` sends the payment-link e-mail and reports whether it was accepted.
+`share` sends the payment-link e-mail and reports whether it was accepted;
+only the recipient's mailbox proves delivery.
 
 ### Where the Pix code actually comes from — SOLVED
 

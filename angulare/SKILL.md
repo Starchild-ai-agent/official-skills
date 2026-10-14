@@ -1,6 +1,6 @@
 ---
 name: angulare
-version: 1.0.0
+version: 1.1.0
 description: |
   Angulare (Angular e-Commerce) gym and studio management: class schedule, member
   attendance and check-ins, first-experience detection, sales orders and payment status, credit-card payment links, and booking writes — book, cancel, reschedule and waitlist a member.

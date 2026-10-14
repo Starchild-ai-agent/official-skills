@@ -74,6 +74,12 @@
       "description": "Alpaca brokerage — US stocks & ETFs. Account, positions, orders, quotes, history, and order placement (paper + live).\n\nUse when the user wants to check or trade a US-stock account on Alpaca (e.g. \"Alpaca buying power\", \"buy 1 AAPL on Alpaca paper\", \"my Alpaca positions\"). Cloud API, runs directly in the container."
     },
     {
+      "name": "angulare",
+      "path": "angulare/SKILL.md",
+      "version": "1.0.0",
+      "description": "Angulare (Angular e-Commerce) gym and studio management: class schedule, member\nattendance and check-ins, first-experience detection, sales orders and payment status, credit-card payment links.\n\nUse when working with an Angulare-run studio or gym — finding who actually attended a class, detecting a member's first class so a follow-up can go out, checking whether a customer has paid, looking up a member, or listing plans and aggregator (TotalPass/Wellhub) check-ins."
+    },
+    {
       "name": "backtest",
       "path": "backtest/SKILL.md",
       "version": "1.0.1",
@@ -234,6 +240,12 @@
       "path": "ethena/SKILL.md",
       "version": "1.2.1",
       "description": "Ethena staking: stake USDe for sUSDe yield, unstake with cooldown, view rates.\n\nUse when farming stablecoin yield via Ethena (e.g. stake 1000 USDe, check sUSDe APY, unstake my position, current cooldown)."
+    },
+    {
+      "name": "evo",
+      "path": "evo/SKILL.md",
+      "version": "1.0.0",
+      "description": "EVO (W12 / ABC Evo) gym management: class schedule, member bookings, plans, check-ins, webhooks.\n\nUse when working with an EVO-run gym or studio — booking or cancelling a class for a member (e.g. \"book Ana into Pilates tomorrow at 7am\"), checking who is enrolled and how many spots are left, looking up a member by CPF/e-mail/phone, listing plans and a member's contracts, or pulling gym and Wellhub/TotalPass check-ins."
     },
     {
       "name": "feishu-binding",
@@ -474,6 +486,12 @@
       "path": "taapi/SKILL.md",
       "version": "2.0.3",
       "description": "Technical analysis indicators: RSI, MACD, Bollinger Bands, ADX, and 200+ more.\n\nUse when computing TA signals or scanning support and resistance on a price series (e.g. BTC RSI, ETH MACD cross, 4h Bollinger bands)."
+    },
+    {
+      "name": "tecnofit",
+      "path": "tecnofit/SKILL.md",
+      "version": "1.0.0",
+      "description": "Tecnofit member lookup and entitlement: verify a student's identity and contract status, and decide whether they may enter.\n\nUse when checking a Tecnofit gym member at a turnstile or reception — is this student active, do they hold a valid contract, should access be granted (e.g. \"check member 12345 at the gate\", \"is this student's plan still active\"). Tecnofit's public API is access-control only: it has no schedule, booking or check-in endpoints."
     },
     {
       "name": "temp-files",

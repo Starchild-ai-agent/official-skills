@@ -372,9 +372,10 @@ def checkout_share(checkout_id, channels=None, expiration=None, revalidate=False
     password / a new card; `show_checkout` shows the checkout as the last step.
 
     VERIFIED — executed successfully against production. It sends a real message
-    to a real person, so it requires `confirm=True`. The reply is a usable
-    success signal: `200 {"ok":…, "expiration":…, "expiration_capped":…}` means
-    queued, `404` means the cart is gone, `400` means a bad expiry.
+    to a real person, so it requires `confirm=True`. The reply signals acceptance,
+    not delivery: `200 {"ok":…, "expiration":…, "expiration_capped":…}` means
+    queued (no delivery receipt exists), `404` means the cart is gone, `400` means
+    a bad expiry. Re-sharing an already-shared cart sends a new e-mail.
 
     After sending, re-read the checkout and `orders(user_id=…)` to see the
     `shared_to_customer` flag and any new `waiting_payment` order.

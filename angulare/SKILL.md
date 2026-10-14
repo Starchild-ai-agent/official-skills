@@ -301,10 +301,11 @@ The call needs these fields (the API names whichever one you omit):
 
 - **`expiration`** — a datetime. `YYYY-MM-DD` is accepted and normalised to
   `T00:00:00-03:00`; an integer number of days is rejected. Defaults here to
-  today 23:59:59 at UTC-3, matching the dashboard.
+  the end of tomorrow at UTC-3 (24-48h); a bare date would expire at midnight.
 - `revalidate`, `ask_password`, `ask_card`, `show_checkout` — all required.
 
-The response is a usable success signal:
+The response tells you whether the request was **accepted**, not whether the
+e-mail was delivered — there is no delivery receipt:
 
 | Response | Meaning |
 |---|---|
@@ -313,8 +314,11 @@ The response is a usable success signal:
 | `404 {"detail":"No Checkout matches the given query."}` | cart gone |
 | `400 {"<field>":[…]}` | that required field is missing |
 
-After a successful share the cart's `shared_to_customer` flips to `true` — a
-second, independent confirmation the function already reads back.
+After a successful share the cart's `shared_to_customer` flips to `true`. That
+is the same acceptance, read back — not delivery. Re-sharing an already-shared
+cart sends a new e-mail (verified). Gmail threads repeat sends into the earlier
+conversation, so when checking an inbox, search
+`from:<sender> newer_than:1d` in All Mail instead of scanning the inbox by time.
 
 **The link looks like this** (captured from a real `share` e-mail):
 

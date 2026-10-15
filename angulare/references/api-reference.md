@@ -677,6 +677,47 @@ So both ingredients of the link (`ec`, and the "shared" flag) can be obtained
 without the `share` permission — the permission gates the *endpoint*, not the
 *state*.
 
+### ⚠️ `pay_key_public` is NOT a checkout route — do not build a link from it
+
+The checkout object carries `pay_key_public` (a UUID). It is tempting to read that
+as "the checkout's public URL key" and mint
+`https://numastudios.com.br/#/checkout/{pay_key_public}`. **That URL opens
+nothing — verified 2026-10-16, twice:**
+
+| URL | Result |
+|---|---|
+| `https://numastudios.com.br/#/checkout/7913cfd4-…` | renders the **home page** |
+| `https://numastudios.com.br/checkout/7913cfd4-…` | **404** |
+
+`pay_key_public` is the **payment gateway's public key**, handed to the
+card-tokenisation SDK — not a route id. From the storefront bundle
+(`static.angulare.app/web/v4.0.394/web.js`) it appears only in the payment
+payload, next to `installments` and the customer block:
+
+```js
+public_key: a.pay_key_public,
+installments: a.installments_info || a.installments,
+reference: i.id,
+customer: { name, email, cpf, mobile_phone, … }
+```
+
+and is read as `settings.payments.fixed_pay_customer_public_key ||
+currentCheckout.pay_key_public`.
+
+The storefront does not route on a path or hash segment at all. It reads **query
+parameters** off `window.location.search` — `uid`, `ck`, `ec` — and loads the cart
+by `ck` (the plain checkout id):
+
+```js
+var t = Object.fromEntries(new URLSearchParams(window.location.search));
+… r.ck && !n.placeOrder ? r.ck : null   →  M.checkout.get(i)
+```
+
+So the only link shape that can open a cart is the one the e-mail already uses
+(`?uid=…&ck=…&ec=…`), and `ec` is still the emailed OTP. **The bot cannot mint a
+payment link from the checkout object; either keep the Angulare `/share/` e-mail
+as the delivery path, or ask Angulare for a link-minting endpoint.**
+
 ### Why the reconstructed link still renders nothing
 
 With `uid` + `ck` + `ec` + `shared_to_customer` all in place the page

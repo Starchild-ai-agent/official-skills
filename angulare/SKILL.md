@@ -268,6 +268,15 @@ second, independent confirmation the function already reads back.
 https://numastudios.com.br/?uid=<member_id>&ck=<checkout_id>&ec=<code>
 ```
 
+⚠️ **Do not try to build this URL yourself.** `ck` is the checkout id but `ec` is
+an emailed OTP the API never returns, and the storefront opens a cart only from
+those **query parameters** — not from a path or hash segment. In particular
+`pay_key_public` on the checkout is the **payment gateway's public key**, not a
+route id: `#/checkout/{pay_key_public}` renders the home page and
+`/checkout/{pay_key_public}` 404s (verified 2026-10-16). Delivery must go through
+`/share/`, or through a link-minting endpoint Angulare would have to expose.
+See `references/api-reference.md` → "pay_key_public is NOT a checkout route".
+
 `uid` and `ck` are readable from the API (`checkout.owner`, `checkout.id`);
 `ec` is not — but you do not need it. **`share` delivers the whole link itself**,
 inside an e-mail whose subject is *"Link para pagamento do seu pedido"* and which

@@ -2,17 +2,19 @@
 name: asaas
 version: 1.0.0
 description: |
-  Asaas payments (Brazil): customers, Pix and boleto charges, the Pix copy-and-paste
-  code, charge status, webhooks, balance and statement.
+  Asaas payments (Brazil): customers, Pix/boleto/credit-card charges, the Pix
+  copy-and-paste code, the hosted checkout link, charge status, webhooks,
+  balance and statement.
 
   Use when charging a Brazilian customer, generating a Pix code to send in chat,
-  asking whether a charge was actually paid and why not, reconciling received
-  payments, or registering a webhook for payment events. Also the right place to
-  look when a payment fails behind a gateway — Asaas is what several Brazilian
-  gateways proxy, so its error vocabulary explains theirs.
+  sending a hosted checkout/payment link a customer pays by card, asking whether
+  a charge was actually paid and why not, reconciling received payments, or
+  registering a webhook for payment events. Also the right place to look when a
+  payment fails behind a gateway — Asaas is what several Brazilian gateways
+  proxy, so its error vocabulary explains theirs.
 delivery: script
 author: starchild
-tags: [payments, brazil, pix, boleto, asaas, charges, cobranca, webhooks, reconciliation, fintech]
+tags: [payments, brazil, pix, boleto, credit-card, checkout-link, asaas, charges, cobranca, webhooks, reconciliation, fintech]
 metadata:
   starchild:
     emoji: "\U0001F4B3"
@@ -34,10 +36,13 @@ Angular Pay, which several gym platforms use. When one of those gateways answers
 skill speaks Asaas directly, so errors say what they mean.
 
 Everything here was built from Asaas's own machine-readable docs
-(`docs.asaas.com/reference/llms.txt`, 448 pages). The transport is verified
-against the live sandbox; the write paths are not yet — run
-`references/smoke-test.md` to close that in two minutes. Contracts are in
-`references/api-reference.md`.
+(`docs.asaas.com/reference/llms.txt`, 448 pages), then **verified against the
+live sandbox end to end** (2026-10-15): customer creation, Pix charges, the QR
+read, the sandbox payment simulation, card charges — approval, decline and
+fee/net/settlement semantics — the `UNDEFINED` hosted checkout link, and the
+PENDING/OVERDUE-only delete rule. Contracts are in
+`references/api-reference.md`; the reproducible proof run is
+`references/smoke-test.md`.
 
 ## Credentials
 

@@ -3,8 +3,8 @@
 One run covers the whole skill: register a payer, create a charge, read the Pix
 code, **simulate the payment**, and watch the status flip. Nothing real moves.
 
-The write paths in this skill have not been exercised against a live account yet —
-this is how you close that gap in about two minutes.
+First full live run: 2026-10-15 — green end to end (sandbox, Asaas's real API).
+This script is how you re-verify in about two minutes.
 
 ---
 
@@ -12,11 +12,11 @@ this is how you close that gap in about two minutes.
 
 | Value | What to use | Why that one |
 |---|---|---|
-| `ASAAS_API_KEY` | a key from `sandbox.asaas.com` | sandbox keys and production keys are not interchangeable |
+| `ASAAS_API_KEY` | a key from `sandbox.asaas.com` | export it (preferred) or paste it into the script; sandbox and production keys are not interchangeable |
 | `name` | **your own full name** | you are already the sandbox account holder, so the payer can be you |
 | `cpf_cnpj` | **your own CPF** | same reason — no third party's document goes into a financial account for a test |
-| `email` | **your own** | see the warning below |
-| `mobile_phone` | **your own** | see the warning below |
+| `email` | **your own**, or empty | empty = no e-mail is sent at all — the safest option |
+| `mobile_phone` | **your own**, or empty | empty = no SMS is sent at all |
 | `value` | `80.00` | small, and it is the price point the gym flows use |
 | `external_reference` | `sandbox-smoke-1` | your own marker, so the test data is trivial to find and delete |
 
@@ -29,7 +29,8 @@ Asaas says so explicitly in their sandbox guide:
 
 **The sandbox sends real messages.** A made-up address or phone number means
 those messages go to a stranger. Your own details mean any test traffic lands in
-your own inbox, where it belongs.
+your own inbox, where it belongs. Leaving both fields empty sends nothing to
+anyone — nothing safer exists.
 
 Set `ASAAS_ENV` to `sandbox` (or leave it — sandbox is the default).
 
@@ -37,13 +38,19 @@ Set `ASAAS_ENV` to `sandbox` (or leave it — sandbox is the default).
 
 ## Run it
 
-**Easiest: edit the script.** `references/smoke_test.py` has a fill-in block at
-the top with `<...>` placeholders, and it refuses to run until they are replaced
-— so a forgotten field is a clear message, not a junk request to Asaas.
+**Easiest: export, then run.** The script reads `ASAAS_API_KEY`,
+`SMOKE_FULL_NAME` and `SMOKE_CPF` from the environment, so no file edit is
+needed and the key never lands in a file that gets committed:
 
 ```bash
+export ASAAS_API_KEY="<your sandbox key>"
+export SMOKE_FULL_NAME="Teste Sandbox" SMOKE_CPF="<your or a test CPF>"
 python3 smoke_test.py
 ```
+
+**Or edit the script.** `references/smoke_test.py` has a fill-in block at the
+top with `<...>` placeholders, and it refuses to run until they are replaced —
+so a forgotten field is a clear message, not a junk request to Asaas.
 
 **Or paste this inline** if you would rather not edit a file:
 
@@ -110,26 +117,32 @@ EOF
 | `confirm_payment` | `ok: true`, `simulated: true` |
 | `did_they_pay` after | `status: "RECEIVED"`, `settled: true` |
 | `balance` | non-zero |
-| `statement` | a row for the charge |
+| `statement` | two rows for the charge: the receipt (`PAYMENT_RECEIVED`) and the Pix fee (`PAYMENT_FEE`) |
+| cleanup | charge kept — Asaas only removes `PENDING`/`OVERDUE` charges |
 
-If `charge_by_pix` fails, the error names the field. The two most likely:
+If `charge_by_pix` fails, the error names the field. The most likely:
 
 - **`cpfCnpj`** — Asaas validates the check digit. A transposed digit is rejected.
 - **`invalid_access_token`** — the key is from the other environment. Check
   `asaas_environment()` against where you generated it.
+- **Pix QR lag** — a fresh charge's QR can lag its creation by a beat; the
+  workflow now retries the read three times before reporting failure.
 
 ---
 
 ## Then clean up
 
-The script already does this as its last step:
+**Asaas only removes a charge that is still `PENDING` or `OVERDUE`** — a paid or
+simulated one answers `invalid_action` and stays:
 
-```python
-asaas_delete_charge(payment_id, confirm=True)
-```
+> *"A cobrança não pode ser removida: só é possível remover cobranças
+> pendentes ou vencidas."*
 
-The customer stays (harmless, and reusable for the next run — a second run
-reports `customer_created: false`, which is the idempotency working).
+So after a green run the settled charge stays as sandbox residue — findable by
+its `external_reference`, mixing with nothing. The script knows the rule and
+only attempts the delete when the charge is still removable. The customer also
+stays (harmless, and reusable for the next run — a second run reports
+`customer_created: false`, which is the idempotency working).
 
 ---
 

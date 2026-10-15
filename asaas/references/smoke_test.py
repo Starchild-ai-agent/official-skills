@@ -21,21 +21,24 @@ import sys
 #  FILL THESE IN  —  replace everything between the angle brackets
 # ═══════════════════════════════════════════════════════════════════════════
 
-ASAAS_API_KEY = "<PASTE_YOUR_SANDBOX_API_KEY_HERE>"
-ASAAS_ENV     = "sandbox"                        # leave as sandbox
+ASAAS_API_KEY = os.environ.get("ASAAS_API_KEY") or "<PASTE_YOUR_SANDBOX_API_KEY_HERE>"
+#   preferred: export it (`export ASAAS_API_KEY=...`) so the key never lives in
+#   this file. Pasting works too — the export wins.
+ASAAS_ENV     = os.environ.get("ASAAS_ENV") or "sandbox"   # leave as sandbox
 
-FULL_NAME     = "<YOUR_FULL_NAME_AS_ON_DOCUMENT>"
+FULL_NAME     = os.environ.get("SMOKE_FULL_NAME") or "<YOUR_FULL_NAME_AS_ON_DOCUMENT>"
 #   any name works in sandbox, e.g. "Teste Sandbox"
-CPF           = "<YOUR_CPF_DIGITS_ONLY_NO_PUNCTUATION>"
+CPF           = os.environ.get("SMOKE_CPF") or "<YOUR_CPF_DIGITS_ONLY_NO_PUNCTUATION>"
 #   best: your own CPF - you are already the sandbox account holder.
 #   throwaway: a valid-format one, e.g. 83584053242 / 86568732702 / 46023907814
 #   Asaas validates the check digit, so a made-up 11 digits will be rejected.
 #   generate more:
 #     python3 -c "import random;f=lambda b:(lambda d:[d.append(0 if (s:=sum(x*y for x,y in zip(d,range(len(d)+1,1,-1)))%11)<2 else 11-s) for _ in range(2)] and ''.join(map(str,d)))([int(x) for x in b]);print(f(''.join(random.choice('0123456789') for _ in range(9))))"
-EMAIL         = "<YOUR_EMAIL>"
-#   MUST be yours - Asaas sends real messages during sandbox tests
-MOBILE        = "<YOUR_MOBILE_WITH_AREA_CODE_DIGITS_ONLY>"
-#   MUST be yours, for the same reason. Digits only, with area code.
+EMAIL         = os.environ.get("SMOKE_EMAIL") or ""
+#   yours only - Asaas sends real messages during sandbox tests.
+#   leave empty and nothing is sent at all (the safest option).
+MOBILE        = os.environ.get("SMOKE_MOBILE") or ""
+#   yours only, digits with area code. Empty = no SMS.
 
 VALUE         = 80.00                            # BRL; 80 is the gym price point
 DESCRIPTION   = "Sandbox smoke test"
@@ -54,10 +57,6 @@ def check_filled():
         missing.append("FULL_NAME")
     if CPF.startswith("<"):
         missing.append("CPF")
-    if EMAIL.startswith("<"):
-        missing.append("EMAIL")
-    if MOBILE.startswith("<"):
-        missing.append("MOBILE")
     if missing:
         print("Fill these in first:")
         for name in missing:
@@ -136,8 +135,16 @@ def main():
     show("6. statement", asaas_statement(start_date="-1"))
 
     # ── 8. clean up ─────────────────────────────────────────────────────────
-    show("7. delete_charge (cleanup)",
-         asaas_delete_charge(payment_id, confirm=True))
+    # Asaas only removes charges still PENDING/OVERDUE. Ours just went RECEIVED
+    # (we simulated it), so it stays as sandbox residue — that is the rule, not
+    # a failure. A run that stops before the simulation can delete here.
+    status_now = (after.get("data") or {}).get("status")
+    if status_now in ("PENDING", "OVERDUE"):
+        show("7. delete_charge (cleanup)",
+             asaas_delete_charge(payment_id, confirm=True))
+    else:
+        print(f"\n7. cleanup: the charge is {status_now} — Asaas keeps received")
+        print(f"   charges; left as residue, findable by '{REFERENCE}'.")
 
     # ── verdict ─────────────────────────────────────────────────────────────
     print(f"\n{'=' * 66}\n## RESULT\n{'=' * 66}")

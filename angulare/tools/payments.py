@@ -424,8 +424,12 @@ def checkout_share(checkout_id, channels=None, expiration=None, revalidate=False
         payload["shared_to_customer"] = after["data"].get("shared_to_customer")
         payload["user_id"] = after["data"].get("owner")
     payload["note"] = ("Angulare delivered the link itself; the URL is not returned by the "
-                       "API. Ask the customer to forward the e-mail, or ask Angulare for "
-                       "the link template (see references/api-reference.md).")
+                       "API. Do NOT try to reconstruct it: the working URL needs uid + ck + "
+                       "`ec`, and `ec` only exists inside the e-mail and expires. Two "
+                       "hand-built attempts have failed in production (revalidate-url, then "
+                       "pay_key_public — which is the payment gateway's public key, not a "
+                       "route). Ask the customer to forward the e-mail, or ask Angulare for a "
+                       "link-minting endpoint (see references/api-reference.md).")
     return ok(payload)
 
 

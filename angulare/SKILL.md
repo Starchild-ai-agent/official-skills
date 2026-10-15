@@ -275,7 +275,9 @@ those **query parameters** — not from a path or hash segment. In particular
 route id: `#/checkout/{pay_key_public}` renders the home page and
 `/checkout/{pay_key_public}` 404s (verified 2026-10-16). Delivery must go through
 `/share/`, or through a link-minting endpoint Angulare would have to expose.
-See `references/api-reference.md` → "pay_key_public is NOT a checkout route".
+See `references/api-reference.md` → "pay_key_public is NOT a checkout route" and
+"Two hand-built link attempts, two failures" — both the `revalidate-url` and the
+`pay_key_public` shortcuts have already shipped broken and reached customers.
 
 `uid` and `ck` are readable from the API (`checkout.owner`, `checkout.id`);
 `ec` is not — but you do not need it. **`share` delivers the whole link itself**,

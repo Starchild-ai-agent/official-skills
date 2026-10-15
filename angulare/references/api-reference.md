@@ -718,6 +718,26 @@ So the only link shape that can open a cart is the one the e-mail already uses
 payment link from the checkout object; either keep the Angulare `/share/` e-mail
 as the delivery path, or ask Angulare for a link-minting endpoint.**
 
+### 🛑 Two hand-built link attempts, two failures — do not attempt a third
+
+Both attempts assumed the checkout object carries something that can be turned
+into a cart URL. It does not. The working link needs `ec`, which exists only in
+the e-mail and expires.
+
+| Attempt | Field used | Built URL | Result |
+|---|---|---|---|
+| #1 (original NUMA bot code) | `revalidate-url` → `url` | `?revalidated-user=true&user_id=…&revalidate_token=…` | ❌ renders nothing (browser-verified); domain was the unset `prd.app` placeholder |
+| #2 (added 2026-10-15) | `checkout.pay_key_public` | `#/checkout/{pay_key_public}` | ❌ renders the home page (`/checkout/{…}` → 404) |
+| ✅ the only working form | — | `?uid={owner}&ck={checkout_id}&ec={from the e-mail}` | ✅ cart renders |
+
+Attempt #1 was removed by the share patch (which also swapped the wrong
+`send-revalidation-link` e-mail for `/share/`); attempt #2 was added afterwards
+and is the live bug. **`link_pagamento` must stay `None`** — the bot cannot mint
+a working payment link, and it must not send a hand-built one to a customer.
+Note the consumer side already sends whatever is truthy
+(`bot_webhook.py`: *if link and "numastudios.com.br/planos" not in link →
+`send_zapi_text(phone, link)`*), so a wrong value here reaches real customers.
+
 ### ✅ Verified end to end, 2026-10-16 — the e-mail link does open the cart
 
 With a **complete** member (CPF + mobile + zip + address) the real e-mail link

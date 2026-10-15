@@ -12,6 +12,7 @@ it surfaces as the field Asaas names.
 
 import os
 import sys
+import time
 
 try:  # loaded by exports.py
     from _asaas_client import _money, err, ok
@@ -89,7 +90,14 @@ def charge_by_pix(name, cpf_cnpj, value, email=None, mobile_phone=None,
     created = made["data"]["charge"]
     payment_id = created.get("id")
 
-    qr = _pix_qr(payment_id)
+    qr = None
+    for attempt in range(3):
+        # a fresh charge's QR can lag its creation on Asaas's side; retrying
+        # the read is cheap, re-charging is not
+        qr = _pix_qr(payment_id)
+        if qr["ok"] or attempt == 2:
+            break
+        time.sleep(1.0)
     if not qr["ok"]:
         return err(qr.get("status"),
                    "the charge exists but the Pix QR could not be read",

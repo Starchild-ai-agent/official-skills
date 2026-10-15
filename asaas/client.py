@@ -107,10 +107,13 @@ def ok(data, status: int = 200) -> Dict[str, Any]:
     return {"ok": True, "status": status, "data": data}
 
 
-def err(status: Optional[int], message: str, hint: Optional[str] = None) -> Dict[str, Any]:
+def err(status: Optional[int], message: str, hint: Optional[str] = None,
+        **extra: Any) -> Dict[str, Any]:
     out: Dict[str, Any] = {"ok": False, "status": status, "error": message}
     if hint:
         out["hint"] = hint
+    if extra:
+        out.update(extra)
     return out
 
 

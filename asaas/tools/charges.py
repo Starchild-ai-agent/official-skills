@@ -157,7 +157,11 @@ def create_charge(customer, value, due_date=None, billing_type="PIX",
 
 
 def delete_charge(payment_id, confirm=False):
-    """Delete a charge. Asaas keeps it restorable for a while."""
+    """Delete a charge. Asaas keeps it restorable for a while.
+
+    Asaas only removes a charge still PENDING or OVERDUE — a paid or simulated
+    one answers `invalid_action` and has to stay.
+    """
     if not confirm:
         return err(None, "delete_charge is a write and requires confirm=True")
     result = call("DELETE", f"/payments/{payment_id}")

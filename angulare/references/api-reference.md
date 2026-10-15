@@ -718,6 +718,31 @@ So the only link shape that can open a cart is the one the e-mail already uses
 payment link from the checkout object; either keep the Angulare `/share/` e-mail
 as the delivery path, or ask Angulare for a link-minting endpoint.**
 
+### ✅ Verified end to end, 2026-10-16 — the e-mail link does open the cart
+
+With a **complete** member (CPF + mobile + zip + address) the real e-mail link
+renders the checkout:
+
+```
+https://numastudios.com.br/?uid=2246&ck=16204&ec=<from the e-mail>
+-> "Carrinho" modal: Seus Dados (name + CPF), the product line (R$ 80 -> R$ 60),
+   coupon field, "Continuar para pagamento"
+```
+
+Two corrections to what this file previously implied:
+
+1. **The old "renders nothing" result was the incomplete member, not the link.**
+   Confirmed: the same member, once completed, gets a working cart. A complete
+   profile is a hard prerequisite (`require_cpf_on_purchase` / `mobile` /
+   `address` in `GET /api/v1/core/settings/`).
+2. **`ec` is time-limited, so the link is effectively one-shot.** The same `ec`
+   that authenticated and loaded the cart was rejected minutes later on a fresh
+   load (`web-authorization` was not set and no cart appeared). Treat any minted
+   link as short-lived; a customer who does not finish needs a new e-mail.
+
+This is also why the bot must not try to construct the link itself — it cannot
+know `ec`, and even a valid one expires.
+
 ### Why the reconstructed link still renders nothing
 
 With `uid` + `ck` + `ec` + `shared_to_customer` all in place the page

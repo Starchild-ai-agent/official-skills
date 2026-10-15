@@ -28,7 +28,10 @@ derived, not literally stated · **NOT FOUND** = could not locate.
 - **AUTH** Custom API key sent in the **`access_token` header**. Lifetime/scope NOT FOUND.
   Bases: sandbox `https://api-sandbox.asaas.com/v3`, production `https://api.asaas.com/v3`.
   A sandbox key is rejected (401) on prod and vice-versa. **CONFIRMED**
-- **SANDBOX** **YES, fully self-service** — sign up at `https://sandbox.asaas.com/`,
+- **SANDBOX** **YES, self-service — but the signup form collects a real person's
+  identity**: full name as on the document, a personal mobile (it receives the
+  activation code) and a full address. No gatekeeper, but not anonymous.
+  Sign up at `https://sandbox.asaas.com/`,
   generate an API key immediately. Sandbox is independent of any production
   account. Sandbox-only helpers exist to approve the account, confirm a payment
   and force a due date (`https://docs.asaas.com/reference/acoes-em-sandbox.md`).
@@ -150,7 +153,8 @@ derived, not literally stated · **NOT FOUND** = could not locate.
 
 ### Payments cross-cut
 
-Self-service today, no CNPJ, no waiting: **Asaas**, **Mercado Pago**, **Stripe**;
+Self-service today, no CNPJ, no waiting — but see each one's note, as some
+collect personal identity at signup: **Asaas**, **Mercado Pago**, **Stripe**;
 **Pagar.me** needs an account but no partner program. **Stone** is the outlier —
 partner program, account manager, homologation, no public sandbox.
 

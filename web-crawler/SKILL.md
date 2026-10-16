@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.14.0
+version: 2.14.1
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. stories),
   LinkedIn, Reddit, Threads, plus China apps and Asian e-commerce via Apify (Douyin,
   Xiaohongshu, Weibo, Bilibili, Zhihu, Douban, Xueqiu, Taobao, JD, 1688, Xianyu, Shopee,

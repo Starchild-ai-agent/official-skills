@@ -367,7 +367,7 @@ def audit_site(start_url, max_pages=150, render=True, check_external=True,
             crawled[url] = r["status"]
             log = page_log[url] = {"fetch_error": r["error"], "render": "skipped",
                                    "render_note": None, "soft_404": None, "analysis": None}
-            if r["status"] != 200 or "html" not in (r["content_type"] or "html"):
+            if r["status"] != 200 or "html" not in (r["content_type"] or "html").lower():
                 log["render_note"] = "not an HTML 200 page"
                 continue
             log["soft_404"] = _soft404_reason(r["body"], soft404_fp)
@@ -415,8 +415,17 @@ def audit_site(start_url, max_pages=150, render=True, check_external=True,
     unvisited = sorted({u for u in queue if u not in crawled})
 
     # 3. check every non-crawled URL
-    to_check = [u for u in found_via if u not in crawled and u not in unvisited
-                and (check_external or kinds.get(u) != "external")]
+    to_check = []
+    for u in found_via:
+        if u in crawled or u in unvisited:
+            continue
+        if not check_external and kinds.get(u) == "external":
+            continue
+        if _excluded(u, cfg.get("exclude")):
+            if u not in excluded:
+                excluded.append(u)
+            continue
+        to_check.append(u)
     with ThreadPoolExecutor(max_workers=workers) as ex:
         results = dict(zip(to_check, ex.map(lambda u: check_url(u, timeout), to_check)))
 

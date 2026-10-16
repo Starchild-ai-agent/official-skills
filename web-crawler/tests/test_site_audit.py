@@ -543,3 +543,107 @@ undefined_function_call();
             b.close()
         self.assertEqual(unsafe, [False, False])   # submit + "Delete" inside a form
         self.assertTrue(safe)
+
+
+@unittest.skipUnless(_HAS_PW and os.environ.get("SITE_AUDIT_BROWSER_TESTS") == "1",
+                     "real-browser test: set SITE_AUDIT_BROWSER_TESTS=1 with Playwright")
+class ReviewRound4BrowserTests(unittest.TestCase):
+    """Review on 3306e98: form submit via <button form=>, exclude leaking into
+    link checks, invalid :has-text selector, same-shape updates losing links."""
+
+    @classmethod
+    def setUpClass(cls):
+        import http.server, tempfile, threading
+        import site_browser as sb
+        cls.sb = sb
+        cls.dir = tempfile.mkdtemp()
+        cls.requests = []
+        w = lambda n, body: open(os.path.join(cls.dir, n), "w").write(body)  # noqa: E731
+        w("forms.html", """<html><body>
+<form id="f" action="/submitted" method="post"><input name="q"></form>
+<button form="f" aria-expanded="false">Outside submit</button>
+<button aria-expanded="false">Implicit submit</button>
+<input type="submit" aria-expanded="false" value="Go">
+<div><button id="ok" type="button" aria-expanded="false">Toggle</button></div>
+<form action="/submitted2"><button type="button" id="inform" aria-expanded="false">In form</button></form>
+<script>document.getElementById('ok').onclick=()=>{document.body.insertAdjacentHTML(
+  'beforeend','<a href="toggled.html">T</a>')};</script></body></html>""")
+        w("more.html", """<html><body><div id="list"><a href="item-1.html">Item 1</a></div>
+<button type="button" id="lm">Load more</button>
+<button type="button" id="nx" aria-expanded="false">Next</button>
+<script>
+var n=1;document.getElementById('lm').onclick=()=>{document.getElementById('list')
+  .insertAdjacentHTML('beforeend','<a href="more-'+(++n)+'.html">More</a>')};
+var k=1;document.getElementById('nx').onclick=function(){k++;
+  document.getElementById('list').innerHTML='<a href="item-'+k+'.html">Item '+k+'</a>';
+  this.setAttribute('aria-expanded', 'false');};
+</script></body></html>""")
+        w("excl.html", '<html><body><a href="blocked.html">b</a><a href="fine.html">f</a></body></html>')
+        for n in ("toggled.html", "item-1.html", "item-2.html", "more-2.html",
+                  "blocked.html", "fine.html"):
+            w(n, "<html><body>ok</body></html>")
+        d = cls.dir
+        reqs = cls.requests
+
+        class H(http.server.SimpleHTTPRequestHandler):
+            def __init__(self, *a, **k):
+                super().__init__(*a, directory=d, **k)
+
+            def log_message(self, *a):
+                pass
+
+            def do_GET(self):
+                reqs.append(("GET", self.path))
+                super().do_GET()
+
+            def do_HEAD(self):
+                reqs.append(("HEAD", self.path))
+                super().do_HEAD()
+
+            def do_POST(self):
+                reqs.append(("POST", self.path))
+                self.send_response(200); self.end_headers(); self.wfile.write(b"posted")
+        cls.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+        cls.base = f"http://127.0.0.1:{cls.srv.server_port}"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.shutdown()
+
+    def analyze(self, page):
+        r = self.sb._Renderer()
+        try:
+            rec, err = r.analyze(f"{self.base}/{page}")
+        finally:
+            r.close()
+        self.assertIsNone(err, err)
+        return rec
+
+    def test_1_never_submits_forms(self):
+        del self.requests[:]
+        rec = self.analyze("forms.html")
+        posts = [r for r in self.requests if r[0] == "POST"]
+        self.assertEqual(posts, [], posts)
+        self.assertFalse(any("?q=" in p for _, p in self.requests))
+        self.assertIn("toggled.html", {u.rsplit("/", 1)[-1] for u in rec["dynamic_links"]})
+        self.assertGreaterEqual(rec["interactions"]["skipped_unsafe"], 4)  # form=, implicit, input submit, in-form
+
+    def test_2_exclude_blocks_link_checks_too(self):
+        del self.requests[:]
+        a = sa.audit_site(f"{self.base}/excl.html", render=False, check_external=False,
+                          config={"exclude": [r"/blocked"]})
+        self.assertFalse(any("blocked" in p for _, p in self.requests), self.requests)
+        self.assertTrue(any(u.endswith("/blocked.html") for u in a["coverage"]["excluded"]))
+        self.assertTrue(any(u.endswith("/fine.html") for u in
+                            [p["url"] for p in a["pages"]]), [p["url"] for p in a["pages"]])
+
+    def test_3_load_more_button_is_clicked(self):
+        rec = self.analyze("more.html")
+        self.assertGreaterEqual(rec["interactions"]["clicked"], 1, rec["interactions"])
+        self.assertIn("more-2.html", {u.rsplit("/", 1)[-1] for u in rec["dynamic_links"]})
+
+    def test_4_same_shape_update_links_collected(self):
+        rec = self.analyze("more.html")
+        names = {u.rsplit("/", 1)[-1] for u in rec["dynamic_links"]}
+        self.assertIn("item-2.html", names, names)

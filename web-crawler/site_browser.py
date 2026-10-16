@@ -37,14 +37,17 @@ DEFAULT_CONFIG = {
     "viewport": (1280, 800),
 }
 
-# Generic expanders. Elements inside <form> and submit controls are never clicked.
+# Buttons matched by accessible name (Playwright get_by_role, regex allowed).
+EXPANDER_NAME_RE = re.compile(
+    r"^\s*(menu|more|load more|show more|see more|view more|ver mais|carregar mais|"
+    r"mostrar mais|更多|加载更多|查看更多)\s*$", re.I)
+
+# Generic expanders. Form-associated and submit-like controls are never clicked.
 EXPANDER_SELECTORS = [
     '[aria-expanded="false"]',
     '[aria-haspopup]:not(a)',
     'details:not([open]) > summary',
     'nav button, nav [role="button"]',
-    'button:has-text(/^\\s*(menu|more|load more|show more|see more|view more|'
-    'ver mais|carregar mais|mostrar mais|更多|加载更多|查看更多)\\s*$/i)',
     '[class*="dropdown"] > :is(button, [role="button"]), [class*="dropdown-toggle"]',
     '[class*="load-more"], [class*="show-more"], [class*="accordion"] > :is(button, [role="button"])',
 ]
@@ -105,10 +108,15 @@ _RECORD_JS = """() => {
 }"""
 
 _CLICKABLE_EXPANDER_JS = """e => {
-  if (e.closest('form')) return false;                       // never touch forms
-  if (e.closest('a[href]')) return false;                    // links are crawled, not clicked
+  // Real form association: <button form="id"> outside the form counts too.
+  if (e.form || e.closest('form') || e.hasAttribute('form')) return false;
+  if (e.closest('a[href], [role="link"]')) return false;     // links are crawled, not clicked
+  const tag = e.tagName.toLowerCase();
   const t = (e.getAttribute('type') || '').toLowerCase();
-  if (t === 'submit' || t === 'reset') return false;
+  // <button> and <input> default to type=submit when type is missing/invalid
+  if (tag === 'button' && !['button', 'menu'].includes(t)) return false;
+  if (tag === 'input' && !['button'].includes(t)) return false;
+  if (t === 'submit' || t === 'reset' || t === 'image') return false;
   const txt = (e.innerText || e.getAttribute('aria-label') || '').toLowerCase();
   return !/(submit|send|enviar|buy|comprar|pay|pagar|delete|excluir|remove|checkout|login|sign ?in|logout|subscribe)/.test(txt);
 }"""
@@ -205,11 +213,13 @@ class _Renderer:
             # 2. expand menus / dropdowns / load-more (bounded, never in forms)
             budget = int(cfg.get("max_interactions") or 0)
             seen_states = {pg.evaluate(_STATE_JS)}
-            for sel in EXPANDER_SELECTORS + list(cfg.get("expand_selectors") or []):
+            locators = [pg.get_by_role("button", name=EXPANDER_NAME_RE)]
+            locators += [pg.locator(sel) for sel in
+                         EXPANDER_SELECTORS + list(cfg.get("expand_selectors") or [])]
+            for loc in locators:
                 if budget <= 0:
                     break
                 try:
-                    loc = pg.locator(sel)
                     n = min(loc.count(), 12)
                 except Exception:
                     continue
@@ -230,11 +240,13 @@ class _Renderer:
                         if pg.url != before_url:
                             pg.go_back(wait_until="load", timeout=10000)
                             continue
+                        # Always re-extract: same-shape updates (Item 1 -> Item 2)
+                        # change links without changing the fingerprint.
+                        dynamic |= set(pg.evaluate(_LINKS_JS)) - base_links
                         st = pg.evaluate(_STATE_JS)
                         if st not in seen_states:
                             seen_states.add(st)
                             inter["expanded"] += 1
-                            dynamic |= set(pg.evaluate(_LINKS_JS)) - base_links
                     except Exception:
                         continue
 

@@ -131,3 +131,81 @@ class ClickReportTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ClickVerdictTests(unittest.TestCase):
+    """Review on #189: a click landing on a 404 was reported OK."""
+    base = {"error": None, "covered_by": None, "popup_url": None,
+            "final_url": BASE + "/x", "href": "x", "console_errors": []}
+
+    def v(self, **kw):
+        return sa.click_verdict({**self.base, **kw})
+
+    def test_http_error_is_fail(self):
+        self.assertEqual(self.v(final_status=404), "FAIL")
+        self.assertEqual(self.v(final_status=500), "FAIL")
+
+    def test_unknown_status_is_unverified(self):
+        self.assertEqual(self.v(final_status=None), "UNVERIFIED")
+        self.assertEqual(self.v(final_status=None, popup_url="https://p"), "UNVERIFIED")
+
+    def test_ok_only_when_loaded_and_uncovered(self):
+        self.assertEqual(self.v(final_status=200), "OK")
+        self.assertEqual(self.v(final_status=200, covered_by="div.overlay"), "FAIL")
+        self.assertEqual(self.v(final_status=200, error="click did not navigate"), "FAIL")
+
+    def test_report_shows_fail_for_404(self):
+        a = {"start_url": BASE, "pages": [], "links": [], "broken": [],
+             "false_positives": [], "script_only_unreachable": [],
+             "coverage": {"pages_crawled": 0, "urls_checked": 0, "robots_txt": False,
+                          "sitemap": False, "rendered_dom": False, "rendered_pages": 0,
+                          "pages_found_only_via_js_or_script": [], "user_named_urls": [],
+                          "blind_spots": []}}
+        r = sa.format_report(a, {"logo": {"desktop": {**self.base, "final_status": 404}}})
+        self.assertIn("[desktop]: FAIL", r)
+        self.assertNotIn(": OK", r)
+
+
+try:
+    import playwright.sync_api  # noqa: F401
+    _HAS_PW = True
+except Exception:
+    _HAS_PW = False
+
+
+@unittest.skipUnless(_HAS_PW and os.environ.get("SITE_AUDIT_BROWSER_TESTS") == "1",
+                     "real-browser test: set SITE_AUDIT_BROWSER_TESTS=1 with Playwright")
+class ClickCheckBrowserTests(unittest.TestCase):
+    """Review on #189: text= targets crashed the cover check (native
+    querySelector got a Playwright selector); 404 landings showed OK."""
+
+    @classmethod
+    def setUpClass(cls):
+        import functools, http.server, tempfile, threading
+        cls.dir = tempfile.mkdtemp()
+        open(os.path.join(cls.dir, "page.html"), "w").write(
+            '<html><body><a href="missing.html">Numa</a> '
+            '<a href="ok.html">Home</a></body></html>')
+        open(os.path.join(cls.dir, "ok.html"), "w").write("<html><body>ok</body></html>")
+        h = functools.partial(http.server.SimpleHTTPRequestHandler, directory=cls.dir)
+        http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
+        cls.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), h)
+        threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+        cls.url = f"http://127.0.0.1:{cls.srv.server_port}/page.html"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.shutdown()
+
+    def test_text_selector_clicks_and_404_fails(self):
+        out = sa.click_check(self.url, "text=Numa", viewports=sa.VIEWPORTS[:1])
+        r = out["desktop"]
+        self.assertIsNone(r["error"], r)
+        self.assertTrue(r["final_url"].endswith("/missing.html"))
+        self.assertEqual(r["final_status"], 404)
+        self.assertEqual(sa.click_verdict(r), "FAIL")
+
+    def test_text_selector_ok_target(self):
+        r = sa.click_check(self.url, "text=Home", viewports=sa.VIEWPORTS[:1])["desktop"]
+        self.assertEqual((r["error"], r["final_status"]), (None, 200))
+        self.assertEqual(sa.click_verdict(r), "OK")

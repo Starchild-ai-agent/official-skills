@@ -386,12 +386,13 @@ def audit_site(start_url, max_pages=150, render=True, check_external=True,
 # ---------------------------------------------------------------------------
 VIEWPORTS = (("desktop", 1280, 800, False), ("mobile", 390, 844, True))
 
-_COVER_JS = """([x, y, sel]) => {
+# Runs on the already-located element (Playwright passes it as `target`), so
+# Playwright-only selectors like text=/alt= never reach document.querySelector.
+_COVER_JS = """(target, [x, y]) => {
   const e = document.elementFromPoint(x, y);
   if (!e) return null;
-  const target = document.querySelector(sel);
   return {tag: e.tagName.toLowerCase(), cls: (e.className || '').toString().slice(0, 80),
-          inside_target: !!(target && (target === e || target.contains(e)))};
+          inside_target: target === e || target.contains(e)};
 }"""
 
 
@@ -444,9 +445,8 @@ def click_check(url, target, viewports=VIEWPORTS, timeout_ms=30000):
                         "e => (e.closest('a') || e).getAttribute('href')")
                     box = el.bounding_box()
                     if box:
-                        cover = pg.evaluate(_COVER_JS, [box["x"] + box["width"] / 2,
-                                                        box["y"] + box["height"] / 2,
-                                                        sel.split(",")[0]])
+                        cover = el.evaluate(_COVER_JS, [box["x"] + box["width"] / 2,
+                                                         box["y"] + box["height"] / 2])
                         if cover and not cover["inside_target"]:
                             res["covered_by"] = f'{cover["tag"]}.{cover["cls"]}'
                     before = pg.url
@@ -470,6 +470,19 @@ def click_check(url, target, viewports=VIEWPORTS, timeout_ms=30000):
             out[name] = res
         b.close()
     return out
+
+
+def click_verdict(r):
+    """OK only when the click navigated somewhere that loaded (status < 400) and
+    nothing covered the element. HTTP error -> FAIL; unknown status -> UNVERIFIED."""
+    if r.get("error") or r.get("covered_by"):
+        return "FAIL"
+    if r.get("popup_url") and r.get("final_status") is None:
+        return "UNVERIFIED"  # popup opened; its status is not captured
+    st = r.get("final_status")
+    if st is None:
+        return "UNVERIFIED"
+    return "FAIL" if st >= 400 else "OK"
 
 
 # ---------------------------------------------------------------------------
@@ -509,7 +522,7 @@ def format_report(audit, clicks=None):
                 L.append(f"- {target}: NOT VERIFIED — {by_vp['error']}")
                 continue
             for vp, r in by_vp.items():
-                verdict = "OK" if not r["error"] and not r["covered_by"] else "PROBLEM"
+                verdict = click_verdict(r)
                 L.append(f"- {target} [{vp}]: {verdict} → {r['final_url'] or r['popup_url']}"
                          f" (status {r['final_status']}, href={r['href']}, "
                          f"covered_by={r['covered_by']}, console_errors="

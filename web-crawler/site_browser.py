@@ -366,7 +366,14 @@ def click_check(url, target, viewports=VIEWPORTS, timeout_ms=30000, expect=None,
                   if m.type == "error" else None)
             shot_page = pg
             try:
-                pg.goto(url, wait_until="networkidle", timeout=timeout_ms)
+                # Same wait policy as _Renderer.analyze: never let analytics
+                # beacons or long-polling widgets time out the whole check.
+                pg.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+                for state, ms in (("load", 8000), ("networkidle", 5000)):
+                    try:
+                        pg.wait_for_load_state(state, timeout=ms)
+                    except Exception:
+                        pass
                 loc = pg.locator(sel)
                 n = loc.count()
                 visible = [i for i in range(n) if loc.nth(i).is_visible()]

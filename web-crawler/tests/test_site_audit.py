@@ -378,6 +378,38 @@ class ClickCheckBrowserTests(unittest.TestCase):
         self.assertEqual(r["final_status"], 404)
         self.assertEqual(sa.click_verdict(r), "FAIL")
 
+    def test_long_polling_page_does_not_time_out(self):
+        """A page with a never-ending request must still be checkable (regression:
+        goto(networkidle) timed out on a live site with analytics beacons)."""
+        import http.server, functools, threading, time as _t
+
+        class H(http.server.SimpleHTTPRequestHandler):
+            def do_GET(self):
+                if self.path.startswith("/hang"):
+                    self.send_response(200); self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    try:
+                        for _ in range(600):
+                            self.wfile.write(b" "); self.wfile.flush(); _t.sleep(0.1)
+                    except Exception:
+                        pass
+                    return
+                return super().do_GET()
+            def log_message(self, *a): pass
+        open(os.path.join(self.dir, "poll.html"), "w").write(
+            '<html><body><a href="ok.html">Go</a><script>fetch("/hang")</script></body></html>')
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0),
+                                              functools.partial(H, directory=self.dir))
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            t0 = _t.time()
+            r = sa.click_check(f"http://127.0.0.1:{srv.server_port}/poll.html", "text=Go",
+                               viewports=sa.VIEWPORTS[:1], timeout_ms=20000)["desktop"]
+            self.assertLess(_t.time() - t0, 30)
+            self.assertEqual((r["outcome"], r["verdict"]), ("navigation", "OK"), r)
+        finally:
+            srv.shutdown()
+
     def test_text_selector_ok_target(self):
         r = sa.click_check(self.url, "text=Home", viewports=sa.VIEWPORTS[:1])["desktop"]
         self.assertEqual((r["error"], r["final_status"]), (None, 200))

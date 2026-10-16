@@ -428,8 +428,11 @@ def click_check(url, target, viewports=VIEWPORTS, timeout_ms=30000):
             pg = ctx.new_page()
             pg.on("console", lambda m, r=res: r["console_errors"].append(m.text[:200])
                   if m.type == "error" else None)
-            statuses = {}
+            statuses, ctx_statuses = {}, {}
             pg.on("response", lambda resp: statuses.__setitem__(resp.url, resp.status))
+            # context-level listener also sees responses of pages opened by the click
+            ctx.on("response", lambda resp: ctx_statuses.__setitem__(resp.url, resp.status)
+                   if resp.request.is_navigation_request() else None)
             try:
                 pg.goto(url, wait_until="networkidle", timeout=timeout_ms)
                 loc = pg.locator(sel)
@@ -450,20 +453,32 @@ def click_check(url, target, viewports=VIEWPORTS, timeout_ms=30000):
                         if cover and not cover["inside_target"]:
                             res["covered_by"] = f'{cover["tag"]}.{cover["cls"]}'
                     before = pg.url
+                    popup = None
                     try:
                         with ctx.expect_page(timeout=3000) as pop:
                             el.click(timeout=8000)
-                        res["popup_url"] = pop.value.url
+                        popup = pop.value
                     except Exception:
                         pass  # no popup: normal same-tab navigation
-                    try:
-                        pg.wait_for_load_state("networkidle", timeout=15000)
-                    except Exception:
-                        pass
-                    res["final_url"] = pg.url
-                    res["final_status"] = statuses.get(pg.url)
-                    if pg.url == before and not res["popup_url"]:
-                        res["error"] = "click did not navigate (no URL change, no popup)"
+                    if popup is not None:
+                        # target="_blank" / window.open: judge the NEW page, never
+                        # fall back to the opener's status.
+                        try:
+                            popup.wait_for_load_state("load", timeout=15000)
+                        except Exception:
+                            pass
+                        res["popup_url"] = popup.url
+                        res["final_url"] = popup.url
+                        res["final_status"] = ctx_statuses.get(popup.url)
+                    else:
+                        try:
+                            pg.wait_for_load_state("networkidle", timeout=15000)
+                        except Exception:
+                            pass
+                        res["final_url"] = pg.url
+                        res["final_status"] = statuses.get(pg.url)
+                        if pg.url == before:
+                            res["error"] = "click did not navigate (no URL change, no popup)"
             except Exception as e:
                 res["error"] = f"{type(e).__name__}: {e}"[:300]
             ctx.close()
@@ -477,9 +492,9 @@ def click_verdict(r):
     nothing covered the element. HTTP error -> FAIL; unknown status -> UNVERIFIED."""
     if r.get("error") or r.get("covered_by"):
         return "FAIL"
-    if r.get("popup_url") and r.get("final_status") is None:
-        return "UNVERIFIED"  # popup opened; its status is not captured
     st = r.get("final_status")
+    if r.get("popup_url") and (st is None or r.get("final_url") != r.get("popup_url")):
+        return "UNVERIFIED"  # new window opened but its own status was not captured
     if st is None:
         return "UNVERIFIED"
     return "FAIL" if st >= 400 else "OK"

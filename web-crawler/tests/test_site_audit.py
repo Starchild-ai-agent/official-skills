@@ -148,6 +148,9 @@ class ClickVerdictTests(unittest.TestCase):
     def test_unknown_status_is_unverified(self):
         self.assertEqual(self.v(final_status=None), "UNVERIFIED")
         self.assertEqual(self.v(final_status=None, popup_url="https://p"), "UNVERIFIED")
+        # opener's 200 must never stand in for the new window's status
+        self.assertEqual(self.v(final_status=200, popup_url="https://p",
+                                final_url=BASE + "/page.html"), "UNVERIFIED")
 
     def test_ok_only_when_loaded_and_uncovered(self):
         self.assertEqual(self.v(final_status=200), "OK")
@@ -185,7 +188,9 @@ class ClickCheckBrowserTests(unittest.TestCase):
         cls.dir = tempfile.mkdtemp()
         open(os.path.join(cls.dir, "page.html"), "w").write(
             '<html><body><a href="missing.html">Numa</a> '
-            '<a href="ok.html">Home</a></body></html>')
+            '<a href="ok.html">Home</a> '
+            '<a href="missing.html" target="_blank">NewTab404</a> '
+            '<a href="ok.html" target="_blank">NewTabOK</a></body></html>')
         open(os.path.join(cls.dir, "ok.html"), "w").write("<html><body>ok</body></html>")
         h = functools.partial(http.server.SimpleHTTPRequestHandler, directory=cls.dir)
         http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
@@ -209,3 +214,16 @@ class ClickCheckBrowserTests(unittest.TestCase):
         r = sa.click_check(self.url, "text=Home", viewports=sa.VIEWPORTS[:1])["desktop"]
         self.assertEqual((r["error"], r["final_status"]), (None, 200))
         self.assertEqual(sa.click_verdict(r), "OK")
+
+
+    def test_new_window_404_fails_on_both_viewports(self):
+        out = sa.click_check(self.url, "text=NewTab404")
+        for vp in ("desktop", "mobile"):
+            r = out[vp]
+            self.assertTrue(r["popup_url"].endswith("/missing.html"), r)
+            self.assertEqual(r["final_status"], 404, r)
+            self.assertEqual(sa.click_verdict(r), "FAIL", r)
+
+    def test_new_window_ok(self):
+        r = sa.click_check(self.url, "text=NewTabOK", viewports=sa.VIEWPORTS[:1])["desktop"]
+        self.assertEqual((r["final_status"], sa.click_verdict(r)), (200, "OK"), r)

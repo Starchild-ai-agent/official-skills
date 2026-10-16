@@ -161,7 +161,8 @@ full worked example: `reference/site-audit-case-study.md`):
 Safety: only click targets you chose for a reason. Don't click anything
 `form_associated` or whose text/context implies submit, buy, delete, send or
 subscribe unless the user explicitly asked. `browse` aborts non-GET requests
-during actions by default (`blocked_writes`); keep it that way unless the user
+for the whole browser session by default — page load, actions and any new
+windows (`blocked_writes`, each with its `phase`); keep it that way unless the user
 authorizes writes. If Playwright is unavailable `browse` returns `{"error": …}` —
 report clicks as not verified; never infer them from status codes.
 

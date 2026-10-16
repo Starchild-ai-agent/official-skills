@@ -97,7 +97,8 @@ Read each action record:
 | `element.topmost_at_center.is_element_or_child` False | another element covers the target at this viewport |
 | new `page_errors` entries during the action | the handler threw |
 | `error` "no visible match" | the target is hidden at this viewport (e.g. inside a collapsed menu). Open the menu first, then retry |
-| `blocked_writes` not empty | the click tried to write. You did not test the real effect; say so |
+| `blocked_writes` not empty | something tried to write (`phase` says when: `load`, `action[i]`, `after-actions`). You did not test the real effect; say so |
+| `new_pages[i].timeout` True | the new window did not answer within `popup_timeout_ms`. Not verified; re-check it with a larger timeout or `fetch`, never call it fine |
 
 Menus and lazy content: click the toggle, then read the action's `new_links`.
 Scroll (`{"scroll": "bottom"}`) and check again for lazy-loaded links.

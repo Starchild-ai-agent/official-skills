@@ -265,7 +265,8 @@ _STATE_JS = """() => [document.querySelectorAll('body *').length,
 
 
 def browse(url, actions=None, viewport=(1280, 800), mobile=False, allow_writes=False,
-           timeout_ms=30000, settle_ms=800, screenshot=None, save_html=None):
+           timeout_ms=30000, settle_ms=800, screenshot=None, save_html=None,
+           popup_timeout_ms=10000):
     """Open `url` in headless Chromium, optionally perform `actions`, and return
     what was observed. Nothing here decides pass/fail.
 
@@ -277,9 +278,15 @@ def browse(url, actions=None, viewport=(1280, 800), mobile=False, allow_writes=F
         {"wait": <ms>}
         {"back": true}
         {"screenshot": "<path>"}
-    allow_writes: False (default) aborts every non-GET/HEAD/OPTIONS request
-        made WHILE actions run (fetch/XHR POST, beacons, form submits) and lists
-        them in `blocked_writes`. Only set True with the user's explicit OK.
+    allow_writes: False (default) aborts every non-GET/HEAD/OPTIONS request for
+        the whole browser context — initial load, actions, new windows, and
+        anything they send later (fetch/XHR POST, beacons, form submits) — and
+        lists them in `blocked_writes` as {method, url, phase}. Writes blocked
+        during "load" may change how the page renders; check `phase`.
+        Only set True with the user's explicit OK.
+    popup_timeout_ms: upper bound for waiting on a new window that an action
+        started (its response may be slow). If it does not finish in time the
+        new_pages entry has status None and `timeout: True` — not verified.
 
     Returns {
       url, final_url, status, title, error,
@@ -293,7 +300,7 @@ def browse(url, actions=None, viewport=(1280, 800), mobile=False, allow_writes=F
       failed_requests: [{url, type, failure}]
       blocked_writes: [...]
       actions: [{action, element, url_before, url_after, navigations: [{url, status}],
-                 new_pages: [{url, status}], downloads: [{url, filename, failure}],
+                 new_pages: [{url, status, timeout, failure}], downloads: [{url, filename, failure}],
                  dom_changed, new_links, error}]
       screenshot, html_path
     }
@@ -313,7 +320,10 @@ def browse(url, actions=None, viewport=(1280, 800), mobile=False, allow_writes=F
         ctx = b.new_context(viewport={"width": w, "height": h}, is_mobile=mobile,
                             has_touch=mobile, user_agent=UA, accept_downloads=True)
         navs, new_pages, downloads, doc_status = [], [], [], {}
-        acting = {"on": False}
+        acting = {"on": False, "phase": "load"}
+        # top-level navigations NOT belonging to the main page (popups / new tabs),
+        # tracked from the first request so a slow new window is never missed
+        popup_navs = []
 
         def on_response(r):
             try:
@@ -328,17 +338,70 @@ def browse(url, actions=None, viewport=(1280, 800), mobile=False, allow_writes=F
                 pass
 
         def guard(route, req):
-            if not acting["on"] or allow_writes or req.method in ("GET", "HEAD", "OPTIONS"):
+            # Write protection is a code-level safety boundary: it stays on for
+            # the whole browser context (initial load, every action, popups and
+            # anything they do later), not just the instant of a click.
+            if allow_writes or req.method in ("GET", "HEAD", "OPTIONS"):
                 return route.continue_()
-            out["blocked_writes"].append(f"{req.method} {req.url[:300]}")
+            out["blocked_writes"].append(
+                {"method": req.method, "url": req.url[:300], "phase": acting["phase"]})
             return route.abort()
 
+        def on_request(r):
+            try:
+                if not (r.is_navigation_request() and r.resource_type == "document"):
+                    return
+                try:
+                    fr = r.frame
+                except Exception:
+                    # Playwright: a popup's first navigation request is issued
+                    # before its frame exists, so .frame raises — it is a new window
+                    fr = None
+                if fr is not None:
+                    if fr.parent_frame is not None:
+                        return
+                    try:
+                        if fr.page is pg:
+                            return
+                    except Exception:
+                        pass
+                popup_navs.append({"request": r, "url": r.url, "status": None,
+                                   "done": False, "failure": None, "phase": acting["phase"]})
+            except Exception:
+                pass
+
+        def on_popup_done(r, failure=None):
+            for n in popup_navs:
+                if n["request"] is r and not n["done"]:
+                    n["done"] = True
+                    n["failure"] = failure
+                    try:
+                        resp = r.response() if failure is None else None
+                        n["status"] = resp.status if resp else n["status"]
+                    except Exception:
+                        pass
+
+        def on_popup_response(resp):
+            for n in popup_navs:
+                if n["request"] is resp.request:
+                    n["status"] = resp.status
+                    n["done"] = True
+
+        def on_failed(r):
+            out["failed_requests"].append(
+                {"url": r.url[:300], "type": r.resource_type, "failure": (r.failure or "")[:120]})
+            on_popup_done(r, failure=(r.failure or "failed")[:120])
+
+        pg = None
+        ctx.on("request", on_request)
         ctx.on("response", on_response)
-        ctx.on("requestfailed", lambda r: out["failed_requests"].append(
-            {"url": r.url[:300], "type": r.resource_type, "failure": (r.failure or "")[:120]}))
-        ctx.on("page", lambda pg: new_pages.append(pg))
+        ctx.on("response", on_popup_response)
+        ctx.on("requestfailed", on_failed)
+        ctx.on("page", lambda p_: new_pages.append(p_) if p_ is not pg else None)
         ctx.route("**/*", guard)
         pg = ctx.new_page()
+        if new_pages and new_pages[-1] is pg:
+            new_pages.pop()
         pg.on("pageerror", lambda e: out["page_errors"].append(str(e)[:300]))
         pg.on("console", lambda m: out["console"].append({"type": m.type, "text": m.text[:300]})
               if m.type in ("error", "warning") else None)
@@ -352,9 +415,12 @@ def browse(url, actions=None, viewport=(1280, 800), mobile=False, allow_writes=F
                 except Exception:
                     pass  # slow third parties / long polling never settle
             out["controls"] = pg.evaluate(_CONTROLS_JS)
-            for act in actions or []:
+            for i, act in enumerate(actions or []):
+                acting["phase"] = f"action[{i}]"
                 out["actions"].append(_do_action(pg, act, navs, new_pages, downloads,
-                                                 acting, settle_ms, doc_status))
+                                                 acting, settle_ms, doc_status,
+                                                 popup_navs, popup_timeout_ms))
+            acting["phase"] = "after-actions"
             out["final_url"] = pg.url
             out["title"] = pg.title()
             out["links"] = pg.evaluate(_LINKS_JS)
@@ -374,17 +440,17 @@ def browse(url, actions=None, viewport=(1280, 800), mobile=False, allow_writes=F
     return out
 
 
-def _do_action(pg, act, navs, new_pages, downloads, acting, settle_ms, doc_status):
+def _do_action(pg, act, navs, new_pages, downloads, acting, settle_ms, doc_status,
+               popup_navs, popup_timeout_ms):
     rec = {"action": act, "element": None, "url_before": pg.url, "url_after": None,
            "navigations": [], "new_pages": [], "downloads": [], "dom_changed": None,
            "new_links": [], "error": None}
-    n_nav, n_pages, n_dl = len(navs), len(new_pages), len(downloads)
+    n_nav, n_pages, n_dl, n_pop = len(navs), len(new_pages), len(downloads), len(popup_navs)
     try:
         links_before = {x["url"] for x in pg.evaluate(_LINKS_JS)}
         state_before = pg.evaluate(_STATE_JS)
     except Exception:
         links_before, state_before = set(), None
-    acting["on"] = True
     try:
         if "click" in act or "hover" in act:
             sel = act.get("click") or act.get("hover")
@@ -416,19 +482,40 @@ def _do_action(pg, act, navs, new_pages, downloads, acting, settle_ms, doc_statu
             pass
     except Exception as e:
         rec["error"] = f"{type(e).__name__}: {e}"[:300]
-    finally:
-        acting["on"] = False
+    # New windows: a popup's Page object only appears once its first response
+    # commits, so a slow server can outlast the settle time. Popup navigations
+    # are tracked from their first request; wait (bounded) for each to finish.
+    deadline = time.monotonic() + popup_timeout_ms / 1000
+    while time.monotonic() < deadline and any(
+            not n["done"] for n in popup_navs[n_pop:]):
+        pg.wait_for_timeout(100)
     for np in new_pages[n_pages:]:
         try:
-            np.wait_for_load_state("domcontentloaded", timeout=10000)
+            np.wait_for_load_state(
+                "domcontentloaded",
+                timeout=max(1, int((deadline - time.monotonic()) * 1000)))
         except Exception:
             pass
-        # popups' first response is not always attributed to the new page object;
-        # fall back to the document response for the URL the new page landed on
+    seen = set()
+    for np in new_pages[n_pages:]:
         st = next((n["status"] for n in navs if n["page"] is np), None)
+        nav = next((n for n in popup_navs[n_pop:] if n["url"] == np.url
+                    or n["status"] is not None and doc_status.get(np.url) == n["status"]), None)
         if st is None:
             st = doc_status.get(np.url)
-        rec["new_pages"].append({"url": np.url, "status": st})
+        if nav is not None:
+            seen.add(id(nav))
+            if st is None:
+                st = nav["status"]
+        rec["new_pages"].append({"url": np.url, "status": st,
+                                 "timeout": st is None and (nav is None or not nav["done"]),
+                                 "failure": nav["failure"] if nav else None})
+    # popup navigations whose Page never materialised (slow, failed, blocked)
+    for n in popup_navs[n_pop:]:
+        if id(n) in seen or any(p["url"] == n["url"] for p in rec["new_pages"]):
+            continue
+        rec["new_pages"].append({"url": n["url"], "status": n["status"],
+                                 "timeout": not n["done"], "failure": n["failure"]})
     rec["navigations"] = [{"url": n["url"], "status": n["status"]}
                           for n in navs[n_nav:] if n["page"] is pg]
     for d in downloads[n_dl:]:

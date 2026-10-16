@@ -32,6 +32,20 @@ def _serve(files, log):
 
         def do_GET(self):
             log.append(("GET", self.path))
+            if self.path.startswith("/slow"):
+                # delayed response headers: /slow404-1500 -> 404 after 1.5s
+                import re as _re
+                import time as _t
+                m = _re.match(r"/slow(\d{3})-(\d+)", self.path)
+                code, ms = (int(m.group(1)), int(m.group(2))) if m else (200, 1500)
+                _t.sleep(ms / 1000)
+                body = b"<html><body>slow</body></html>"
+                self.send_response(code)
+                self.send_header("Content-Type", "text/html")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
             super().do_GET()
 
         def do_HEAD(self):
@@ -169,6 +183,10 @@ class BrowseTests(unittest.TestCase):
 <a id="blank404" href="missing.html" target="_blank">New tab</a>
 <a id="dl" href="ok.html" download>Get</a>
 <a id="anchor" href="#sec">Jump</a>
+<a id="slow404" href="/slow404-1500" target="_blank">Slow 404</a>
+<a id="slow200" href="/slow200-1500" target="_blank">Slow 200</a>
+<a id="hang" href="/slow200-4000" target="_blank">Hang</a>
+<a id="latepost" href="late-post.html" target="_blank">Late post</a>
 <my-el></my-el><img src="nope.png">
 <div style="height:2000px"></div><h2 id="sec">Sec</h2>
 <script>
@@ -179,6 +197,10 @@ customElements.define('my-el', class extends HTMLElement{connectedCallback(){
 undefined_call();
 </script></body></html>""",
             "ok.html": "<html><body>ok</body></html>",
+            # new window that only POSTs well after the click finished
+            "late-post.html": """<html><body>late<script>
+setTimeout(function(){ fetch('/api/late', {method: 'POST', body: 'x'}); }, 1500);
+</script></body></html>""",
             "menu-only.html": "<html><body>m</body></html>",
             "shadow.html": "<html><body>s</body></html>",
         }, cls.log)
@@ -221,7 +243,33 @@ undefined_call();
         del self.log[:]
         r = st.browse(self.url, actions=[{"click": "#fav"}])
         self.assertEqual([x for x in self.log if x[0] == "POST"], [])
-        self.assertTrue(any("/api/fav" in w for w in r["blocked_writes"]))
+        self.assertTrue(any("/api/fav" in w["url"] and w["phase"] == "action[0]"
+                            for w in r["blocked_writes"]))
+
+    def test_writes_from_late_new_window_still_blocked(self):
+        # regression: protection used to end when the click returned, so a
+        # new window that POSTed later reached the server
+        del self.log[:]
+        r = st.browse(self.url, actions=[{"click": "#latepost"}, {"wait": 2500}])
+        self.assertEqual([x for x in self.log if x[0] == "POST"], [])
+        self.assertTrue(any("/api/late" in w["url"] for w in r["blocked_writes"]),
+                        r["blocked_writes"])
+
+    def test_slow_new_window_status_is_captured(self):
+        # regression: response headers delayed 1.5s used to yield new_pages == []
+        r = st.browse(self.url, actions=[{"click": "#slow404"}, {"click": "#slow200"}])
+        a, b = r["actions"]
+        self.assertEqual([(p["status"], p["timeout"]) for p in a["new_pages"]], [(404, False)],
+                         a["new_pages"])
+        self.assertEqual([(p["status"], p["timeout"]) for p in b["new_pages"]], [(200, False)],
+                         b["new_pages"])
+
+    def test_new_window_over_wait_cap_is_reported_as_timeout(self):
+        r = st.browse(self.url, actions=[{"click": "#hang"}], popup_timeout_ms=1000)
+        pages = r["actions"][0]["new_pages"]
+        self.assertEqual(len(pages), 1, pages)
+        self.assertIsNone(pages[0]["status"])
+        self.assertTrue(pages[0]["timeout"])
 
     def test_missing_target_is_an_action_error(self):
         r = st.browse(self.url, actions=[{"click": "#nope"}])

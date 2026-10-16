@@ -164,7 +164,11 @@ Pass `evidence_dir` to save a screenshot for every non-OK result.
 
 **Discovery goes beyond `<a>` and the initial DOM** (bounded, per page):
 scroll in steps for lazy-loaded content, expand menus / dropdowns / "load more"
-(never inside forms, never submit/pay/delete-like controls), read Shadow DOM links.
+(never form-associated or submit-like controls), read Shadow DOM links. While it
+clicks, every non-GET request (fetch/XHR POST, beacon, submit) is aborted and listed
+in `interactions.blocked_writes`, so exploration cannot change server state. A click
+that navigates away is recorded as a dynamic link and the page is reloaded; if it
+cannot return, the page is reported as failed rather than analysed on the wrong URL.
 Links that appear only after interaction are tagged `dynamic` and crawled too.
 Sitemaps are parsed as XML (namespaces, `&amp;`, CDATA). Dedup removes only known
 tracking params (`utm_*`, `fbclid`, `gclid`, …); `?tab=3` or `?page=2` are kept.
@@ -175,7 +179,9 @@ same title and size, or an error-like title, lands in `soft_404_suspects`.
 **Per-page analysis** (`pages[i]["analysis"]`, rendered pages only) is evidence,
 not judgement: title, h1/headings, meta description, text length and sample,
 buttons and CTAs, forms + fields, images (total / failed / missing alt), iframes,
-horizontal overflow, JS errors, failed requests, interactions performed, screenshot.
+horizontal overflow, JS errors (uncaught, at load time — errors caused by our own
+clicks are in `interactions.errors_after_interaction`), console errors, failed
+requests, interactions performed, screenshot.
 Use it to answer "what is on this page / is anything visibly broken". Whether the
 copy, offer or CTA is *right* for the business is for you (the agent) to judge
 from that record — the skill does not decide that.

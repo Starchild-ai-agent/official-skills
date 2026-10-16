@@ -647,3 +647,74 @@ var k=1;document.getElementById('nx').onclick=function(){k++;
         rec = self.analyze("more.html")
         names = {u.rsplit("/", 1)[-1] for u in rec["dynamic_links"]}
         self.assertIn("item-2.html", names, names)
+
+
+@unittest.skipUnless(_HAS_PW and os.environ.get("SITE_AUDIT_BROWSER_TESTS") == "1",
+                     "real-browser test: set SITE_AUDIT_BROWSER_TESTS=1 with Playwright")
+class SelfReviewRound5BrowserTests(unittest.TestCase):
+    """Self-review on 1357aad: JS-driven POST from a form-less button,
+    location.replace() leaving the record on about:blank, resource 404s
+    counted as JS errors."""
+
+    @classmethod
+    def setUpClass(cls):
+        import http.server, tempfile, threading
+        import site_browser as sb
+        cls.sb = sb
+        d = cls.dir = tempfile.mkdtemp()
+        reqs = cls.requests = []
+        w = lambda n, body: open(os.path.join(d, n), "w").write(body)  # noqa: E731
+        w("nav.html", """<html><head><title>Nav</title></head><body><nav>
+<button type="button" onclick="fetch('/api/fav',{method:'POST'})">Favoritar</button>
+<button type="button" onclick="navigator.sendBeacon('/api/beacon','x')">Curtir</button>
+<button type="button" onclick="location.replace('other.html')">Ir</button>
+</nav><a href="real.html">real</a><img src="missing.png" alt="x"></body></html>""")
+        w("other.html", '<html><head><title>Other</title></head><body>o</body></html>')
+        w("real.html", "<html><body>ok</body></html>")
+        w("boom.html", "<html><body><script>nope();</script></body></html>")
+
+        class H(http.server.SimpleHTTPRequestHandler):
+            def __init__(self, *a, **k):
+                super().__init__(*a, directory=d, **k)
+
+            def log_message(self, *a):
+                pass
+
+            def do_GET(self):
+                reqs.append(("GET", self.path)); super().do_GET()
+
+            def do_POST(self):
+                reqs.append(("POST", self.path))
+                self.send_response(200); self.end_headers()
+        cls.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), H)
+        threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+        cls.base = f"http://127.0.0.1:{cls.srv.server_port}"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.shutdown()
+
+    def analyze(self, page):
+        r = self.sb._Renderer()
+        try:
+            return r.analyze(f"{self.base}/{page}")
+        finally:
+            r.close()
+
+    def test_js_writes_blocked_and_replace_navigation_recovered(self):
+        del self.requests[:]
+        rec, err = self.analyze("nav.html")
+        self.assertIsNone(err, err)
+        self.assertEqual([r for r in self.requests if r[0] == "POST"], [])
+        self.assertGreaterEqual(len(rec["interactions"]["blocked_writes"]), 2)
+        # record is from the audited page, not about:blank / the replaced page
+        self.assertEqual(rec["title"], "Nav")
+        self.assertTrue(rec["final_url"].endswith("/nav.html"), rec["final_url"])
+        self.assertIn("other.html", {u.rsplit("/", 1)[-1] for u in rec["dynamic_links"]})
+
+    def test_resource_404_is_not_a_js_error(self):
+        rec, _ = self.analyze("nav.html")
+        self.assertEqual(rec["js_errors"], [])
+        self.assertTrue(any(f["status"] == 404 for f in rec["failed_requests"]))
+        rec, _ = self.analyze("boom.html")
+        self.assertTrue(any("nope" in e for e in rec["js_errors"]))

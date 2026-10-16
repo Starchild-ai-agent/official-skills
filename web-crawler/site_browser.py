@@ -167,10 +167,14 @@ class _Renderer:
             w, h = cfg["viewport"]
             ctx = self._b.new_context(user_agent=UA, viewport={"width": w, "height": h})
             pg = ctx.new_page()
-            js_errors, failed = [], []
+            js_errors, console_errors, failed = [], [], []
+            blocked_writes = []
+            # js_errors = uncaught exceptions only. console.error goes to its own
+            # list; "Failed to load resource" is dropped (already in failed_requests).
             pg.on("pageerror", lambda e: js_errors.append(str(e)[:200]))
-            pg.on("console", lambda m: js_errors.append("console: " + m.text[:200])
-                  if m.type == "error" else None)
+            pg.on("console", lambda m: console_errors.append(m.text[:200])
+                  if m.type == "error" and not m.text.startswith("Failed to load resource")
+                  else None)
             pg.on("response", lambda r: failed.append(
                 {"url": r.url[:200], "status": r.status, "type": r.request.resource_type})
                 if r.status >= 400 else None)
@@ -209,8 +213,23 @@ class _Renderer:
                 dynamic |= set(pg.evaluate(_LINKS_JS)) - base_links
             pg.evaluate("window.scrollTo(0, 0)")
 
-            # 2. expand menus / dropdowns / load-more (bounded, never in forms)
+            # 2. expand menus / dropdowns / load-more (bounded, never in forms).
+            # Hard guarantee on top of the element filter: while we click, any
+            # non-GET/HEAD request (fetch/XHR POST, form submit, beacon) is aborted
+            # and recorded, so a JS-driven button cannot change server state.
+            def _guard(route, req):
+                if req.method in ("GET", "HEAD", "OPTIONS"):
+                    return route.continue_()
+                blocked_writes.append(f"{req.method} {req.url[:200]}")
+                return route.abort()
             budget = int(cfg.get("max_interactions") or 0)
+            # Errors raised after this point may be caused by our own clicks or
+            # by the write-blocking above ("Failed to fetch"); keep them apart
+            # from load-time errors, which are what a real visitor sees.
+            n_load_errors = len(js_errors)
+            if budget > 0:
+                pg.route("**/*", _guard)
+            aborted = None
             seen_states = {pg.evaluate(_STATE_JS)}
             locators = [pg.get_by_role("button", name=EXPANDER_NAME_RE)]
             locators += [pg.locator(sel) for sel in
@@ -237,7 +256,26 @@ class _Renderer:
                         inter["clicked"] += 1
                         pg.wait_for_timeout(350)
                         if pg.url != before_url:
-                            pg.go_back(wait_until="load", timeout=10000)
+                            # The click navigated: record the destination, then
+                            # return. location.replace() leaves nothing to go back
+                            # to, so verify and reload the page if needed.
+                            if pg.url.startswith(("http://", "https://")):
+                                dynamic.add(pg.url)
+                            try:
+                                pg.go_back(wait_until="domcontentloaded", timeout=10000)
+                            except Exception:
+                                pass
+                            if urldefrag(pg.url)[0] != urldefrag(before_url)[0]:
+                                try:
+                                    pg.goto(before_url, wait_until="domcontentloaded",
+                                            timeout=self.timeout_ms)
+                                except Exception as e:
+                                    aborted = f"could not return after navigation: {e}"[:200]
+                            if aborted or urldefrag(pg.url)[0] != urldefrag(before_url)[0]:
+                                aborted = aborted or f"stuck on {pg.url} after a click"
+                                budget = 0
+                                break
+                            # re-resolve locators on the reloaded page next round
                             continue
                         # Always re-extract: same-shape updates (Item 1 -> Item 2)
                         # change links without changing the fingerprint.
@@ -248,16 +286,30 @@ class _Renderer:
                             inter["expanded"] += 1
                     except Exception:
                         continue
+                if aborted:
+                    break
+            if int(cfg.get("max_interactions") or 0) > 0:
+                try:
+                    pg.unroute("**/*", _guard)
+                except Exception:
+                    pass
+            if aborted:
+                # never report a record extracted from the wrong page
+                return None, "interaction aborted: " + aborted
 
             rec = pg.evaluate(_RECORD_JS)
             rec.update({
                 "url": url, "final_url": pg.url,
                 "main_status": resp.status if resp else None,
                 "links": sorted(base_links), "dynamic_links": sorted(dynamic - base_links),
-                "js_errors": js_errors[:20], "failed_requests": failed[:30],
-                "interactions": inter, "evidence": None,
+                "js_errors": js_errors[:n_load_errors][:20],
+                "console_errors": console_errors[:20],
+                "failed_requests": failed[:30],
+                "interactions": {**inter, "blocked_writes": blocked_writes[:20],
+                                 "errors_after_interaction": js_errors[n_load_errors:][:20]},
+                "evidence": None,
             })
-            if self.evidence_dir and (js_errors or rec["images"]["failed"] or rec["overflow_x"]):
+            if self.evidence_dir and (rec["js_errors"] or rec["images"]["failed"] or rec["overflow_x"]):
                 rec["evidence"] = self._shot(pg, url)
             return rec, None
         except Exception as e:

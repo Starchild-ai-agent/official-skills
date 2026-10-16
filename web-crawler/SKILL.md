@@ -10,7 +10,9 @@ description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. s
   Use when extracting public posts, transcripts, or pages JS-heavy enough to block
   plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages
   behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403,
-  anti-bot, cloudflare, JS-heavy page.
+  anti-bot, cloudflare, JS-heavy page. Also use for whole-site link audits and
+  "this button/link doesn't work" reports (check all links, broken links, 404,
+  button not working) via audit_site / click_check.
 
   '
 metadata:
@@ -110,6 +112,51 @@ mp3 + ffmpeg + 4 whisper calls + an incomplete summary. Same link through
 `get_transcript`: RSS had no transcript → RSS declares `youtube.com/@a16z` →
 channel listing → one upload within 1.2 % duration, same day → captions,
 55k chars, ~30 s, zero audio.
+
+## Site link audit — "check all links" / "this button doesn't work"
+
+Use `audit_site` + `click_check` from `exports.py`. **Do not hand-roll a
+crawler.** A hand-rolled one that follows only `<a href>` once missed a live
+page referenced only in an inline script. It never clicked anything, then
+reported "everything works", and gave the same answer when the user pushed back.
+
+```python
+import sys; sys.path.insert(0, "/data/workspace/skills/web-crawler")
+from exports import audit_site, click_check, format_report
+a = audit_site("https://example.com/", extra_urls=["/page-the-user-named"])
+clicks = {"Logo on /join": click_check("https://example.com/join", "a.logo")}
+open("output/<site>-link-audit.md", "w").write(format_report(a, clicks))
+```
+
+What `audit_site` does that a naive crawler doesn't:
+- Discovers pages from robots.txt sitemaps, `<a>`/`<area>`/`<form>`, canonical links,
+  and quoted same-site paths in inline scripts and `data-*`/`on*` attributes.
+  When Playwright is installed, it also reads the rendered DOM.
+- Checks every URL (HEAD, then GET fallback) and splits results into three buckets:
+  `broken`, `false_positives` (Cloudflare `/cdn-cgi/l/email-protection`, preconnect
+  hints, bot-blocking externals), and `script_only_unreachable` (a path string in JS
+  that 404s, such as a route rule; this is a review item, not a broken link).
+- Returns `coverage`: sitemap or not, rendered or not, pages found only via scripts,
+  user-named URLs, and blind spots.
+
+Rules:
+1. **The user named a page or button → verify that page first.** Pass it in
+   `extra_urls` and run `click_check(url, target)` at desktop and mobile widths.
+   Target formats: CSS selector, `text=Numa`, `alt=Numa`, or `href=index.html`.
+   Report the final URL, HTTP status, `covered_by` (the overlay blocking the click),
+   and any console errors.
+2. **Never say "everything works" without the Coverage + Not covered sections.**
+   A status check proves the URL loads, not that the button works. Unreferenced
+   pages can't be found by any crawler; say so and ask for those URLs.
+3. **The user pushes back** ("really? none are broken?") → treat it as evidence that
+   your method missed something. Change the method: add `extra_urls`, render the
+   page, click the element. Do not re-run the same check and repeat yourself.
+4. **Can't reproduce a click failure** → say exactly what you tested
+   (page, element, viewport, result). Give likely causes as hypotheses, e.g. a
+   cached pre-publish page or a different mobile/desktop element. Ask for the device
+   and what they saw.
+5. Playwright missing → `click_check` returns `{"error": ...}`. Report it as
+   **not verified**; never fall back to "the link returns 200, so the button works".
 
 ## Quick trigger rules (read this first)
 Use this skill immediately when any of these conditions is true:

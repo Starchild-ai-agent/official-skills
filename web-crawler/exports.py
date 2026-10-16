@@ -833,3 +833,9 @@ def get_transcript(url, caller_id=None, language="en"):
     res.update(found=len(md) > 1000, source="scrape_markdown", text=md,
                note=None if len(md) > 1000 else "page has no substantial text")
     return res
+
+
+# ---------------------------------------------------------------------------
+# Site link audit + real-browser click check (see SKILL.md "Site link audit")
+# ---------------------------------------------------------------------------
+from site_audit import audit_site, click_check, format_report  # noqa: E402,F401

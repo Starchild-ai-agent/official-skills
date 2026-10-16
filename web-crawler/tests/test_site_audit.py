@@ -627,7 +627,7 @@ var k=1;document.getElementById('nx').onclick=function(){k++;
         self.assertEqual(posts, [], posts)
         self.assertFalse(any("?q=" in p for _, p in self.requests))
         self.assertIn("toggled.html", {u.rsplit("/", 1)[-1] for u in rec["dynamic_links"]})
-        self.assertGreaterEqual(rec["interactions"]["skipped_unsafe"], 4)  # form=, implicit, input submit, in-form
+        self.assertGreaterEqual(rec["interactions"]["skipped_unsafe"], 3)  # form=, input submit, in-form
 
     def test_2_exclude_blocks_link_checks_too(self):
         del self.requests[:]

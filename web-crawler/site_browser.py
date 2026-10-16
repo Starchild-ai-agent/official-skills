@@ -111,11 +111,10 @@ _CLICKABLE_EXPANDER_JS = """e => {
   // Real form association: <button form="id"> outside the form counts too.
   if (e.form || e.closest('form') || e.hasAttribute('form')) return false;
   if (e.closest('a[href], [role="link"]')) return false;     // links are crawled, not clicked
-  const tag = e.tagName.toLowerCase();
+  // A <button> with no form owner (checked above via e.form / form= / closest)
+  // cannot submit anything, so a missing type is harmless there. Explicit
+  // submit-like controls are still never clicked.
   const t = (e.getAttribute('type') || '').toLowerCase();
-  // <button> and <input> default to type=submit when type is missing/invalid
-  if (tag === 'button' && !['button', 'menu'].includes(t)) return false;
-  if (tag === 'input' && !['button'].includes(t)) return false;
   if (t === 'submit' || t === 'reset' || t === 'image') return false;
   const txt = (e.innerText || e.getAttribute('aria-label') || '').toLowerCase();
   return !/(submit|send|enviar|buy|comprar|pay|pagar|delete|excluir|remove|checkout|login|sign ?in|logout|subscribe)/.test(txt);

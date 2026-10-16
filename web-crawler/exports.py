@@ -836,7 +836,7 @@ def get_transcript(url, caller_id=None, language="en"):
 
 
 # ---------------------------------------------------------------------------
-# Site link audit + real-browser click check (see SKILL.md "Site link audit")
+# Site audit primitives (see SKILL.md "Site audit"). Observation only — the
+# agent investigates and decides; nothing here judges pass/fail.
 # ---------------------------------------------------------------------------
-from site_audit import audit_site, canonical_url, click_check, click_verdict, format_report  # noqa: E402,F401
-from site_browser import DEFAULT_CONFIG  # noqa: E402,F401
+from site_tools import browse, check_urls, extract_refs, fetch, parse_sitemap, same_host  # noqa: E402,F401

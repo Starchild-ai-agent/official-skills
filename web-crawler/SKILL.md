@@ -12,7 +12,7 @@ description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. s
   behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403,
   anti-bot, cloudflare, JS-heavy page. Also use for whole-site link audits and
   "this button/link doesn't work" reports (check all links, broken links, 404,
-  button not working) via audit_site / click_check.
+  button not working) — you investigate with site-agnostic fetch / browse tools.
 
   '
 metadata:
@@ -113,112 +113,57 @@ mp3 + ffmpeg + 4 whisper calls + an incomplete summary. Same link through
 channel listing → one upload within 1.2 % duration, same day → captions,
 55k chars, ~30 s, zero audio.
 
-## Site link audit — "check all links" / "this button doesn't work"
+## Site audit — "check all links" / "this button doesn't work"
 
-Use `audit_site` + `click_check` from `exports.py`. **Do not hand-roll a
-crawler.** A hand-rolled one that follows only `<a href>` once missed a live
-page referenced only in an inline script. It never clicked anything, then
-reported "everything works", and gave the same answer when the user pushed back.
+You are the auditor. `exports.py` gives you small, site-agnostic tools that
+**observe and return raw data**; they never decide what is broken. There is no
+keyword list, no per-site config and no verdict function — every site is
+different, so you look, form a hypothesis, test it, and judge from evidence.
 
-```python
-import sys; sys.path.insert(0, "/data/workspace/skills/web-crawler")
-from exports import audit_site, click_check, format_report
-a = audit_site("https://example.com/", extra_urls=["/page-the-user-named"])
-clicks = {"Logo on /join": click_check("https://example.com/join", "a.logo")}
-open("output/<site>-link-audit.md", "w").write(format_report(a, clicks))
-```
-
-What `audit_site` does that a naive crawler doesn't:
-- Discovers pages from robots.txt sitemaps, `<a>`/`<area>`/`<form>`, canonical links,
-  and quoted same-site paths in inline scripts and `data-*`/`on*` attributes.
-  When Playwright is installed, it also reads the rendered DOM.
-- Checks every URL (HEAD, then GET fallback) and splits failures into four buckets:
-  - `broken`: HTTP error or unreachable.
-  - `restricted`: 401/403/429/999 refused the checker. **Unverified**, not "fine";
-    confirm in a browser before concluding either way.
-  - `false_positives`: only mechanism-proven cases (Cloudflare
-    `/cdn-cgi/l/email-protection`, preconnect hints).
-  - `script_only_unreachable`: a path string in JS that 404s, such as a route rule.
-    This is a review item, not a broken link.
-- One browser is reused for rendering. A page that fails to render is logged with its
-  reason, and the rest keep rendering.
-- Budgets: `max_pages`, `max_render`, `max_seconds`. Hitting one is reported along with
-  the discovered-but-unvisited URLs.
-- Returns `coverage`, with a per-page fetch/render state (rendered / failed / skipped /
-  unavailable + reason), budget, pages found only via scripts, user-named URLs, and
-  blind spots.
-
-`click_check(url, target, expect=None, evidence_dir=None)` classifies what the click
-did: `navigation`, `popup`, `download`, `anchor`, `client_navigation`, `dom_change`, or
-`no_change`. Verdicts:
-
-| Verdict | Meaning |
+| Tool | Returns |
 |---|---|
-| OK | It loaded (HTTP < 400), the download completed, the anchor exists, or the outcome matched `expect` |
-| FAIL | HTTP >= 400, a click/load error, covered, a failed download, a missing anchor target, or the outcome differs from `expect` |
-| UNVERIFIED | Something happened but its status could not be measured (e.g. a new window's status was missing) |
-| CHANGED | In-page state changed (menu, tab, dialog). This is a fact; pass `expect="change"` if that is the intended behavior |
-| NO_CHANGE | Nothing observable happened. This is a fact, not proof the control is broken |
+| `fetch(url, method="GET")` | raw `status`, `final_url`, headers, body, `error` |
+| `check_urls(urls, method="HEAD")` | `fetch` for many URLs in parallel, no bodies |
+| `extract_refs(html, base_url)` | every URL-like reference + where it came from (`a[href]`, `link[rel=…]`, `inline-script`, `attr[data-…]`, `meta[refresh]`…) |
+| `parse_sitemap(xml)` | `<loc>` entries of a sitemap / sitemap index |
+| `browse(url, actions=[…], viewport=…, mobile=…)` | real Chromium: rendered links (incl. shadow DOM), visible controls, JS exceptions, console errors, ≥400 responses, failed requests, and for each action you asked for: URL before/after, navigations with status, new windows with **their own** status, downloads, DOM changed?, new links |
 
-Pass `evidence_dir` to save a screenshot for every non-OK result.
+Method (details and worked checks: `reference/site-audit-method.md`;
+full worked example: `reference/site-audit-case-study.md`):
 
-**Discovery goes beyond `<a>` and the initial DOM** (bounded, per page):
-scroll in steps for lazy-loaded content, expand menus / dropdowns / "load more"
-(never form-associated or submit-like controls), read Shadow DOM links. While it
-clicks, every non-GET request (fetch/XHR POST, beacon, submit) is aborted and listed
-in `interactions.blocked_writes`, so exploration cannot change server state. A click
-that navigates away is recorded as a dynamic link and the page is reloaded; if it
-cannot return, the page is reported as failed rather than analysed on the wrong URL.
-Links that appear only after interaction are tagged `dynamic` and crawled too.
-Sitemaps are parsed as XML (namespaces, `&amp;`, CDATA). Dedup removes only known
-tracking params (`utm_*`, `fbclid`, `gclid`, …); `?tab=3` or `?page=2` are kept.
+1. **Map the site from several sources, then reconcile.** Home page HTML via
+   `extract_refs`, `robots.txt` → sitemap(s) via `parse_sitemap`, rendered DOM
+   via `browse`, and any URL the user named. Read the `inline-script` and
+   `attr[...]` hits yourself — route tables and JS navigation live there. A page
+   the user mentions that none of your sources found is a finding about your
+   map, not about the user.
+2. **Learn what "normal" and "error" look like on THIS site.** Fetch one real
+   page and one surely-missing URL (random path). Compare status, title, size,
+   text. That baseline — not a word list — tells you how this site shows a 404
+   (real 404, 200 soft-404, redirect to home…).
+3. **Check every page and every reference.** `check_urls`, re-try HEAD failures
+   with GET, re-check transient errors once. Keep raw results; group them
+   yourself (same-site pages / assets / third-party).
+4. **For what users actually click, click it.** Use `browse(...).controls` and
+   rendered links to choose targets, then `browse(url, actions=[{"click": sel}])`
+   at desktop **and** mobile width. Judge from the action record: did the URL
+   change, did a new window open and what was *its* status, did a download
+   finish, did the DOM change, did a JS error fire, was the element covered
+   (`element.topmost_at_center`)?
+5. **Explain anything unexpected before reporting it.** 401/403/429 or bot
+   walls = "could not verify", not broken and not fine. A click with no visible
+   effect may be correct (already on that page) — say what you observed.
+6. **Report with evidence.** Pages found and how; what is broken (URL, where it
+   is referenced, status/observation, viewport); what could not be verified and
+   why; what you did not cover. Never write "all links OK" for areas you did not
+   check.
 
-**Soft 404s:** a random non-existent URL is fetched first. Any 200 page with the
-same title and size, or an error-like title, lands in `soft_404_suspects`.
-
-**Per-page analysis** (`pages[i]["analysis"]`, rendered pages only) is evidence,
-not judgement: title, h1/headings, meta description, text length and sample,
-buttons and CTAs, forms + fields, images (total / failed / missing alt), iframes,
-horizontal overflow, JS errors (uncaught, at load time — errors caused by our own
-clicks are in `interactions.errors_after_interaction`), console errors, failed
-requests, interactions performed, screenshot.
-Use it to answer "what is on this page / is anything visibly broken". Whether the
-copy, offer or CTA is *right* for the business is for you (the agent) to judge
-from that record — the skill does not decide that.
-
-**Site config** (`audit_site(..., config={...})`, nothing hardcoded per site):
-`wait_for` (selector to wait for), `scroll_steps`, `max_interactions`,
-`expand_selectors` (site-specific menu/"load more" selectors), `exclude`
-(regexes never visited), `entry_points` (extra start URLs).
-
-**Budgets:** `max_pages`, `max_render`, `max_seconds`, per-page
-`max_interactions`, `workers` (link-check concurrency). Any budget hit is reported
-with the discovered-but-unvisited URLs.
-
-Rules:
-1. **The user named a page or button → verify that page first.** Pass it in
-   `extra_urls` and run `click_check(url, target)` at desktop and mobile widths.
-   Target formats: CSS selector, `text=Numa`, `alt=Numa`, or `href=index.html`.
-   Report the final URL, HTTP status, `covered_by` (the overlay blocking the click),
-   and any console errors.
-2. **Never say "everything works" without the Coverage + Not covered sections.**
-   A status check proves the URL loads, not that the button works. Unreferenced
-   pages can't be found by any crawler; say so and ask for those URLs.
-3. **The user pushes back** ("really? none are broken?") → treat it as evidence that
-   your method missed something. Change the method: add `extra_urls`, render the
-   page, click the element. Do not re-run the same check and repeat yourself.
-4. **Can't reproduce a click failure** → say exactly what you tested
-   (page, element, viewport, result). Give likely causes as hypotheses, e.g. a
-   cached pre-publish page or a different mobile/desktop element. Ask for the device
-   and what they saw.
-5. Playwright missing → `click_check` returns `{"error": ...}`. Report it as
-   **not verified**; never fall back to "the link returns 200, so the button works".
-6. **Separate facts from conclusions.** "No change observed after the click" is a fact.
-   "The button is broken" needs an expected behavior (`expect=`) or the user's description.
-   `restricted` URLs are unverified, never "working".
-7. **Low-risk only.** `click_check` clicks the single named element; it never fills or
-   submits forms. Submitting, paying, messaging, deleting, or changing an account needs
-   explicit user authorization for that specific action.
+Safety: only click targets you chose for a reason. Don't click anything
+`form_associated` or whose text/context implies submit, buy, delete, send or
+subscribe unless the user explicitly asked. `browse` aborts non-GET requests
+during actions by default (`blocked_writes`); keep it that way unless the user
+authorizes writes. If Playwright is unavailable `browse` returns `{"error": …}` —
+report clicks as not verified; never infer them from status codes.
 
 ## Quick trigger rules (read this first)
 Use this skill immediately when any of these conditions is true:

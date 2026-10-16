@@ -132,12 +132,35 @@ What `audit_site` does that a naive crawler doesn't:
 - Discovers pages from robots.txt sitemaps, `<a>`/`<area>`/`<form>`, canonical links,
   and quoted same-site paths in inline scripts and `data-*`/`on*` attributes.
   When Playwright is installed, it also reads the rendered DOM.
-- Checks every URL (HEAD, then GET fallback) and splits results into three buckets:
-  `broken`, `false_positives` (Cloudflare `/cdn-cgi/l/email-protection`, preconnect
-  hints, bot-blocking externals), and `script_only_unreachable` (a path string in JS
-  that 404s, such as a route rule; this is a review item, not a broken link).
-- Returns `coverage`: sitemap or not, rendered or not, pages found only via scripts,
-  user-named URLs, and blind spots.
+- Checks every URL (HEAD, then GET fallback) and splits failures into four buckets:
+  - `broken`: HTTP error or unreachable.
+  - `restricted`: 401/403/429/999 refused the checker. **Unverified**, not "fine";
+    confirm in a browser before concluding either way.
+  - `false_positives`: only mechanism-proven cases (Cloudflare
+    `/cdn-cgi/l/email-protection`, preconnect hints).
+  - `script_only_unreachable`: a path string in JS that 404s, such as a route rule.
+    This is a review item, not a broken link.
+- One browser is reused for rendering. A page that fails to render is logged with its
+  reason, and the rest keep rendering.
+- Budgets: `max_pages`, `max_render`, `max_seconds`. Hitting one is reported along with
+  the discovered-but-unvisited URLs.
+- Returns `coverage`, with a per-page fetch/render state (rendered / failed / skipped /
+  unavailable + reason), budget, pages found only via scripts, user-named URLs, and
+  blind spots.
+
+`click_check(url, target, expect=None, evidence_dir=None)` classifies what the click
+did: `navigation`, `popup`, `download`, `anchor`, `client_navigation`, `dom_change`, or
+`no_change`. Verdicts:
+
+| Verdict | Meaning |
+|---|---|
+| OK | It loaded (HTTP < 400), the download completed, the anchor exists, or the outcome matched `expect` |
+| FAIL | HTTP >= 400, a click/load error, covered, a failed download, a missing anchor target, or the outcome differs from `expect` |
+| UNVERIFIED | Something happened but its status could not be measured (e.g. a new window's status was missing) |
+| CHANGED | In-page state changed (menu, tab, dialog). This is a fact; pass `expect="change"` if that is the intended behavior |
+| NO_CHANGE | Nothing observable happened. This is a fact, not proof the control is broken |
+
+Pass `evidence_dir` to save a screenshot for every non-OK result.
 
 Rules:
 1. **The user named a page or button → verify that page first.** Pass it in
@@ -157,6 +180,12 @@ Rules:
    and what they saw.
 5. Playwright missing → `click_check` returns `{"error": ...}`. Report it as
    **not verified**; never fall back to "the link returns 200, so the button works".
+6. **Separate facts from conclusions.** "No change observed after the click" is a fact.
+   "The button is broken" needs an expected behavior (`expect=`) or the user's description.
+   `restricted` URLs are unverified, never "working".
+7. **Low-risk only.** `click_check` clicks the single named element; it never fills or
+   submits forms. Submitting, paying, messaging, deleting, or changing an account needs
+   explicit user authorization for that specific action.
 
 ## Quick trigger rules (read this first)
 Use this skill immediately when any of these conditions is true:

@@ -169,6 +169,86 @@ class ClickVerdictTests(unittest.TestCase):
         self.assertNotIn(": OK", r)
 
 
+class Priority1OfflineTests(unittest.TestCase):
+    """Review follow-up: restricted != fine; one render failure must not stop rendering."""
+
+    def test_restricted_is_unverified_not_false_positive(self):
+        pages = {BASE + "/": '<a href="https://x.test/members">m</a><a href="/admin">a</a>'}
+
+        def fetch(url, method="GET", timeout=15, read=True):
+            if url in pages:
+                return {"status": 200, "final_url": url, "body": pages[url],
+                        "content_type": "text/html", "error": None}
+            st = {"https://x.test/members": 403, BASE + "/admin": 401}.get(url, 404)
+            return {"status": st, "final_url": url, "body": "", "content_type": "",
+                    "error": None}
+        with mock.patch.object(sa, "_fetch", side_effect=fetch):
+            a = sa.audit_site(BASE + "/", render=False)
+        restricted = {r["url"] for r in a["restricted"]}
+        self.assertEqual(restricted, {"https://x.test/members", BASE + "/admin"})
+        self.assertFalse(a["false_positives"])
+        self.assertTrue(any("unverified" in b for b in a["coverage"]["blind_spots"]))
+        self.assertIn("NOT verified", sa.format_report(a))
+
+    def test_one_render_failure_does_not_stop_rendering(self):
+        calls = []
+
+        def render(self, url):
+            calls.append(url)
+            if len(calls) == 1:
+                return None, "TimeoutError: page hung"
+            return set(), None
+        with mock.patch.object(sa, "_fetch", side_effect=fake_fetch), \
+                mock.patch.object(sa._Renderer, "render", render), \
+                mock.patch.object(sa._Renderer, "close", lambda self: None):
+            a = sa.audit_site(BASE + "/", render=True)
+        states = [p["render"] for p in a["pages"] if p["status"] == 200]
+        self.assertEqual(states[0], "failed")
+        self.assertIn("rendered", states[1:])
+        self.assertEqual(a["coverage"]["render_counts"]["failed"], 1)
+        self.assertTrue(a["coverage"]["rendered_dom"])
+        self.assertIn("TimeoutError", sa.format_report(a))
+
+    def test_render_cap_is_recorded_per_page(self):
+        with mock.patch.object(sa, "_fetch", side_effect=fake_fetch), \
+                mock.patch.object(sa._Renderer, "render", lambda self, u: (set(), None)), \
+                mock.patch.object(sa._Renderer, "close", lambda self: None):
+            a = sa.audit_site(BASE + "/", render=True, max_render=1)
+        notes = [p["render_note"] for p in a["pages"] if p["render"] == "skipped"
+                 and p["render_note"] != "not an HTML 200 page"]
+        self.assertTrue(notes and all("max_render=1" in n for n in notes), notes)
+        self.assertTrue(any("were not rendered" in b for b in a["coverage"]["blind_spots"]))
+
+    def test_time_budget_reports_unvisited(self):
+        with mock.patch.object(sa, "_fetch", side_effect=fake_fetch):
+            a = sa.audit_site(BASE + "/", render=False, max_seconds=-1)
+        self.assertEqual(a["coverage"]["budget_hit"], "max_seconds=-1")
+        self.assertTrue(a["coverage"]["unvisited"])
+
+
+class OutcomeVerdictTests(unittest.TestCase):
+    def v(self, **kw):
+        return sa.click_verdict({"error": None, "covered_by": None, "click_error": None,
+                                 "popup_url": None, "final_url": BASE + "/", **kw})
+
+    def test_in_page_outcomes_are_facts_not_failures(self):
+        self.assertEqual(self.v(outcome="dom_change"), "CHANGED")
+        self.assertEqual(self.v(outcome="no_change"), "NO_CHANGE")
+        self.assertEqual(self.v(outcome="client_navigation"), "CHANGED")
+        self.assertEqual(self.v(outcome="anchor"), "OK")
+
+    def test_expectation_decides(self):
+        self.assertEqual(self.v(outcome="dom_change", expect="change"), "OK")
+        self.assertEqual(self.v(outcome="dom_change", expect="navigate"), "FAIL")
+        self.assertEqual(self.v(outcome="no_change", expect="change"), "FAIL")
+
+    def test_click_error_and_download(self):
+        self.assertEqual(self.v(click_error="TimeoutError"), "FAIL")
+        self.assertEqual(self.v(outcome="download", download={"failure": None}), "OK")
+        self.assertEqual(self.v(outcome="download", download={"failure": "canceled"}), "FAIL")
+
+
+
 try:
     import playwright.sync_api  # noqa: F401
     _HAS_PW = True
@@ -190,7 +270,15 @@ class ClickCheckBrowserTests(unittest.TestCase):
             '<html><body><a href="missing.html">Numa</a> '
             '<a href="ok.html">Home</a> '
             '<a href="missing.html" target="_blank">NewTab404</a> '
-            '<a href="ok.html" target="_blank">NewTabOK</a></body></html>')
+            '<a href="ok.html" target="_blank">NewTabOK</a> '
+            '<button id="menu" aria-expanded="false">Menu</button>'
+            '<div id="drop" hidden>items</div> <button id="noop">Noop</button> '
+            '<a href="#sec">ToSec</a> <a href="#nowhere">ToNowhere</a> '
+            '<a href="ok.html" download>Get</a>'
+            '<div style="height:3000px"></div><h2 id="sec">Section</h2>'
+            "<script>document.getElementById('menu').onclick=function(){"
+            "this.setAttribute('aria-expanded','true');"
+            "document.getElementById('drop').hidden=false;};</script></body></html>")
         open(os.path.join(cls.dir, "ok.html"), "w").write("<html><body>ok</body></html>")
         h = functools.partial(http.server.SimpleHTTPRequestHandler, directory=cls.dir)
         http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
@@ -227,3 +315,33 @@ class ClickCheckBrowserTests(unittest.TestCase):
     def test_new_window_ok(self):
         r = sa.click_check(self.url, "text=NewTabOK", viewports=sa.VIEWPORTS[:1])["desktop"]
         self.assertEqual((r["final_status"], sa.click_verdict(r)), (200, "OK"), r)
+
+
+    def test_menu_toggle_is_changed_not_fail(self):
+        r = sa.click_check(self.url, "#menu", viewports=sa.VIEWPORTS[:1])["desktop"]
+        self.assertEqual((r["outcome"], r["verdict"]), ("dom_change", "CHANGED"), r)
+        r = sa.click_check(self.url, "#menu", viewports=sa.VIEWPORTS[:1],
+                           expect="change")["desktop"]
+        self.assertEqual(r["verdict"], "OK", r)
+
+    def test_noop_is_no_change(self):
+        r = sa.click_check(self.url, "#noop", viewports=sa.VIEWPORTS[:1])["desktop"]
+        self.assertEqual((r["outcome"], r["verdict"]), ("no_change", "NO_CHANGE"), r)
+
+    def test_anchor_ok_and_missing_target(self):
+        r = sa.click_check(self.url, "text=ToSec", viewports=sa.VIEWPORTS[:1])["desktop"]
+        self.assertEqual((r["outcome"], r["verdict"]), ("anchor", "OK"), r)
+        r = sa.click_check(self.url, "text=ToNowhere", viewports=sa.VIEWPORTS[:1])["desktop"]
+        self.assertEqual((r["outcome"], r["verdict"]), ("anchor", "FAIL"), r)
+
+    def test_download(self):
+        r = sa.click_check(self.url, "text=Get", viewports=sa.VIEWPORTS[:1])["desktop"]
+        self.assertEqual((r["outcome"], r["verdict"]), ("download", "OK"), r)
+
+    def test_evidence_saved_for_non_ok(self):
+        import tempfile
+        d = tempfile.mkdtemp()
+        r = sa.click_check(self.url, "text=NewTab404", viewports=sa.VIEWPORTS[:1],
+                           evidence_dir=d)["desktop"]
+        self.assertEqual(r["verdict"], "FAIL")
+        self.assertTrue(r["evidence"] and os.path.exists(r["evidence"]), r)

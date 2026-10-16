@@ -24,8 +24,10 @@ This module makes the robust path the default:
 Pure stdlib except optional Playwright. Target sites are fetched directly
 (public pages, no credentials involved).
 """
+import os
 import re
 import ssl
+import time
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -191,24 +193,57 @@ def check_url(url, timeout=15):
     return r
 
 
-def _render_links(url, timeout_ms=30000):
-    """Rendered-DOM hrefs via Playwright, or None if Playwright is unavailable."""
-    try:
-        from playwright.sync_api import sync_playwright
-    except Exception:
-        return None
-    try:
-        with sync_playwright() as p:
-            b = p.chromium.launch()
-            pg = b.new_page(user_agent=UA)
-            pg.goto(url, wait_until="networkidle", timeout=timeout_ms)
+class _Renderer:
+    """One headless Chromium reused for the whole audit; a fresh context per page.
+    A failure on one page never disables rendering for the rest."""
+
+    def __init__(self, timeout_ms=30000):
+        self.timeout_ms = timeout_ms
+        self.unavailable = None
+        self._pw = self._b = None
+
+    def _start(self):
+        if self._b or self.unavailable:
+            return
+        try:
+            from playwright.sync_api import sync_playwright
+            self._pw = sync_playwright().start()
+            self._b = self._pw.chromium.launch()
+        except Exception as e:
+            self.unavailable = f"{type(e).__name__}: {e}"[:200]
+            self.close()
+
+    def render(self, url):
+        """Return (set_of_urls, None) or (None, reason)."""
+        self._start()
+        if self.unavailable:
+            return None, "browser unavailable: " + self.unavailable
+        ctx = None
+        try:
+            ctx = self._b.new_context(user_agent=UA)
+            pg = ctx.new_page()
+            pg.goto(url, wait_until="networkidle", timeout=self.timeout_ms)
             hrefs = pg.eval_on_selector_all(
                 "a[href], area[href], [data-href]",
                 "els => els.map(e => e.href || e.getAttribute('data-href'))")
-            b.close()
-            return {u for u in (_norm(urljoin(url, h)) for h in hrefs if h) if u}
-    except Exception:
-        return None
+            return {u for u in (_norm(urljoin(url, h)) for h in hrefs if h) if u}, None
+        except Exception as e:
+            return None, f"{type(e).__name__}: {e}"[:200]
+        finally:
+            if ctx:
+                try:
+                    ctx.close()
+                except Exception:
+                    pass
+
+    def close(self):
+        for obj, fn in ((self._b, "close"), (self._pw, "stop")):
+            if obj:
+                try:
+                    getattr(obj, fn)()
+                except Exception:
+                    pass
+        self._pw = self._b = None
 
 
 # ---------------------------------------------------------------------------
@@ -225,28 +260,36 @@ def _discover_sitemaps(origin, timeout):
     return list(dict.fromkeys(found)), robots_ok
 
 
+# Statuses that mean "this checker was refused", not "the link is broken".
+RESTRICTED_STATUSES = (401, 403, 407, 429, 451, 999)
+
+
 def audit_site(start_url, max_pages=150, render=True, check_external=True,
-               timeout=15, workers=8, extra_urls=None):
+               timeout=15, workers=8, extra_urls=None, max_render=30,
+               max_seconds=600, render_timeout_ms=30000):
     """Crawl one site and check every link it references.
 
-    extra_urls: URLs the USER named (e.g. a page they say is broken). They are
-    always crawled and checked even if nothing links to them — never skip what
-    the user pointed at.
+    extra_urls: URLs the USER named. Always crawled and checked even if nothing
+    links to them — never skip what the user pointed at.
+    Budgets: max_pages, max_render (pages rendered in a browser), max_seconds
+    (crawl wall time). Hitting any budget is reported, never silent.
 
     Returns a dict:
-      pages:    [{url, status, found_via:[...]}]          same-site HTML pages crawled
-      links:    [{url, status, ok, kind, found_via, referrers, note}]
-      broken:   subset of links that are really broken (false positives removed)
-      false_positives: links that fail for bots but work for people (with reason)
-      coverage: what was and wasn't done — ALWAYS show this to the user
+      pages:      [{url, status, found_via, render, render_note, fetch_error}]
+      links:      [{url, status, ok, kind, found_via, referrers, note}]
+      broken:     really broken (HTTP error / unreachable, not restricted)
+      restricted: refused this checker (401/403/429/...) — UNVERIFIED, needs a browser
+      false_positives: mechanism-proven non-breakages (Cloudflare email
+                  protection, preconnect hints)
+      script_only_unreachable: path strings in JS that 404 — review items
+      coverage:   what was and wasn't done — ALWAYS show this to the user
     """
     start_url = _norm(start_url)
     p = urlparse(start_url)
     origin = f"{p.scheme}://{p.netloc}"
+    t0 = time.monotonic()
 
-    found_via = {}      # url -> set(source)
-    referrers = {}      # url -> set(page)
-    kinds = {}          # url -> page|asset|hint|external
+    found_via, referrers, kinds = {}, {}, {}
 
     def note(url, source, page=None, kind=None):
         found_via.setdefault(url, set()).add(source)
@@ -281,77 +324,100 @@ def audit_site(start_url, max_pages=150, render=True, check_external=True,
                     queue.append(u)
                     note(u, "sitemap", kind="page")
 
-    # 2. crawl same-site pages (BFS)
-    crawled, rendered_pages, render_available = {}, 0, None
-    while queue and len(crawled) < max_pages:
-        url = queue.pop(0)
-        if url in crawled:
-            continue
-        r = _fetch(url, timeout=timeout)
-        crawled[url] = r["status"]
-        if r["status"] != 200 or "html" not in (r["content_type"] or "html"):
-            continue
-        page_url = r["final_url"]
-        groups = extract_urls(r["body"], page_url)
-        if render and render_available is not False and rendered_pages < 30:
-            dom = _render_links(page_url)
-            render_available = dom is not None
-            if dom is not None:
-                rendered_pages += 1
-                groups["rendered"] = dom - groups.get("a", set())
-        for src, urls in groups.items():
-            for u in urls:
-                same = _same_site(u, start_url)
-                if src == "hint":
-                    note(u, src, url, "hint")
-                elif src == "asset" or _ASSET_RE.search(urlparse(u).path):
-                    note(u, src, url, "asset")
-                elif same:
-                    note(u, src, url, "page")
-                    if u not in crawled:
-                        queue.append(u)
+    # 2. crawl same-site pages (BFS), per-page fetch + render log
+    crawled, page_log, rendered_pages, budget_hit = {}, {}, 0, None
+    renderer = _Renderer(render_timeout_ms) if render else None
+    try:
+        while queue:
+            if len(crawled) >= max_pages:
+                budget_hit = f"max_pages={max_pages}"
+                break
+            if time.monotonic() - t0 > max_seconds:
+                budget_hit = f"max_seconds={max_seconds}"
+                break
+            url = queue.pop(0)
+            if url in crawled:
+                continue
+            r = _fetch(url, timeout=timeout)
+            crawled[url] = r["status"]
+            log = page_log[url] = {"fetch_error": r["error"], "render": "skipped",
+                                   "render_note": None}
+            if r["status"] != 200 or "html" not in (r["content_type"] or "html"):
+                log["render_note"] = "not an HTML 200 page"
+                continue
+            page_url = r["final_url"]
+            groups = extract_urls(r["body"], page_url)
+            if not render:
+                log["render_note"] = "rendering disabled"
+            elif rendered_pages >= max_render:
+                log["render_note"] = f"max_render={max_render} reached"
+            else:
+                dom, err = renderer.render(page_url)
+                if dom is None:
+                    log["render"] = "unavailable" if renderer.unavailable else "failed"
+                    log["render_note"] = err
                 else:
-                    note(u, src, url, "external")
+                    log["render"] = "rendered"
+                    rendered_pages += 1
+                    groups["rendered"] = dom - groups.get("a", set())
+            for src, urls in groups.items():
+                for u in urls:
+                    if src == "hint":
+                        note(u, src, url, "hint")
+                    elif src == "asset" or _ASSET_RE.search(urlparse(u).path):
+                        note(u, src, url, "asset")
+                    elif _same_site(u, start_url):
+                        note(u, src, url, "page")
+                        if u not in crawled:
+                            queue.append(u)
+                    else:
+                        note(u, src, url, "external")
+    finally:
+        if renderer:
+            renderer.close()
+    unvisited = sorted({u for u in queue if u not in crawled})
 
     # 3. check every non-crawled URL
-    to_check = [u for u in found_via if u not in crawled
+    to_check = [u for u in found_via if u not in crawled and u not in unvisited
                 and (check_external or kinds.get(u) != "external")]
     with ThreadPoolExecutor(max_workers=workers) as ex:
         results = dict(zip(to_check, ex.map(lambda u: check_url(u, timeout), to_check)))
 
-    links, broken, fps, script_only = [], [], [], []
+    links, broken, restricted, fps, script_only = [], [], [], [], []
     for u, srcs in found_via.items():
         if u in crawled:
-            status = crawled[u]
+            status, err = crawled[u], page_log.get(u, {}).get("fetch_error")
         elif u in results:
-            status = results[u]["status"]
+            status, err = results[u]["status"], results[u]["error"]
         else:
             continue
         ok = status is not None and status < 400
         row = {"url": u, "status": status, "ok": ok, "kind": kinds.get(u, "page"),
                "found_via": sorted(srcs), "referrers": sorted(referrers.get(u, []))[:5],
-               "note": None}
+               "note": err}
         if not ok:
             fp = false_positive_note(u) or (
-                "hint" if kinds.get(u) == "hint" else None)
+                "resource hint, not a clickable link" if kinds.get(u) == "hint" else None)
             if fp:
-                row["note"] = fp if fp != "hint" else "resource hint, not a clickable link"
+                row["note"] = fp
                 fps.append(row)
-            elif status in (401, 403, 429, 999) and kinds.get(u) == "external":
-                row["note"] = "blocks bots; verify manually in a browser"
-                fps.append(row)
+            elif status in RESTRICTED_STATUSES:
+                row["note"] = (f"refused this checker ({status}); not verified either "
+                               "way — open it in a real browser before concluding")
+                restricted.append(row)
             elif set(srcs) <= {"script"}:
-                # A path string inside JS (route table, redirect rule, config) is
-                # not necessarily something a visitor can click. Report it for
-                # review; do not call it a broken link without a click_check().
                 row["note"] = "only referenced inside script code, not a clickable link"
                 script_only.append(row)
             else:
                 broken.append(row)
         links.append(row)
 
-    pages = [{"url": u, "status": s, "found_via": sorted(found_via.get(u, []))}
-             for u, s in crawled.items()]
+    pages = [{"url": u, "status": s, "found_via": sorted(found_via.get(u, [])),
+              **page_log.get(u, {})} for u, s in crawled.items()]
+    html_pages = [pg for pg in pages if pg.get("render_note") != "not an HTML 200 page"]
+    render_counts = {}
+    for pg in html_pages:
+        render_counts[pg["render"]] = render_counts.get(pg["render"], 0) + 1
     js_only = [pg["url"] for pg in pages
                if pg["status"] == 200 and set(pg["found_via"]) & {"script", "rendered"}
                and not set(pg["found_via"]) & {"a", "sitemap", "start"}]
@@ -360,24 +426,38 @@ def audit_site(start_url, max_pages=150, render=True, check_external=True,
         "discovered by any crawler — ask the user for those URLs.",
         "Status checks prove a URL loads; they do not prove a button works. For a "
         "specific button/flow, run click_check() in a real browser.",
+        "Content inside menus, tabs, lazy-loaded sections and 'load more' is only "
+        "seen if it is in the HTML or the initially rendered DOM.",
     ]
-    if not render_available:
-        blind.append("Rendered DOM was NOT inspected (Playwright unavailable or "
-                     "disabled): links injected by JavaScript may be missing.")
-    if len(crawled) >= max_pages:
-        blind.append(f"Stopped at max_pages={max_pages}; the site may have more pages.")
+    if rendered_pages == 0:
+        why = (renderer.unavailable if renderer and renderer.unavailable
+               else "disabled" if not render else "every render failed")
+        blind.append(f"Rendered DOM was NOT inspected ({why}): links injected by "
+                     "JavaScript may be missing.")
+    elif rendered_pages < len(html_pages):
+        blind.append(f"{len(html_pages) - rendered_pages} of {len(html_pages)} HTML pages "
+                     "were not rendered (see per-page render column): JS-injected links "
+                     "on those pages may be missing.")
+    if budget_hit:
+        blind.append(f"Stopped at {budget_hit}; {len(unvisited)} discovered pages were "
+                     "not visited or checked.")
+    if restricted:
+        blind.append(f"{len(restricted)} URLs refused this checker (401/403/429...); "
+                     "they are unverified, not confirmed working.")
     if not check_external:
         blind.append("External links were not checked.")
     coverage = {
         "pages_crawled": len(crawled), "urls_checked": len(links),
         "robots_txt": robots_ok, "sitemap": sitemap_ok,
-        "rendered_dom": bool(render_available), "rendered_pages": rendered_pages,
+        "rendered_dom": rendered_pages > 0, "rendered_pages": rendered_pages,
+        "render_counts": render_counts, "budget_hit": budget_hit,
+        "unvisited": unvisited, "elapsed_s": round(time.monotonic() - t0, 1),
         "pages_found_only_via_js_or_script": js_only,
         "user_named_urls": [u for u, s in found_via.items() if "user" in s],
         "blind_spots": blind,
     }
     return {"start_url": start_url, "pages": pages, "links": links,
-            "broken": broken, "false_positives": fps,
+            "broken": broken, "restricted": restricted, "false_positives": fps,
             "script_only_unreachable": script_only, "coverage": coverage}
 
 
@@ -395,52 +475,101 @@ _COVER_JS = """(target, [x, y]) => {
           inside_target: target === e || target.contains(e)};
 }"""
 
+# Cheap page-state fingerprint to detect in-page changes (menu, tab, dialog).
+_STATE_JS = """() => {
+  const vis = [...document.querySelectorAll('body *')]
+    .filter(e => e.getClientRects().length).length;
+  const aria = [...document.querySelectorAll('[aria-expanded],[aria-selected],[aria-pressed],[open]')]
+    .map(e => [e.getAttribute('aria-expanded'), e.getAttribute('aria-selected'),
+               e.getAttribute('aria-pressed'), e.hasAttribute('open')].join(':')).join(',');
+  const dlg = document.querySelectorAll('dialog[open],[aria-modal="true"]').length;
+  return [vis, aria, dlg, (document.body && document.body.innerText || '').length].join('|');
+}"""
 
-def click_check(url, target, viewports=VIEWPORTS, timeout_ms=30000):
+# outcome -> what the click demonstrably did
+OUTCOMES = ("navigation", "popup", "download", "anchor", "client_navigation",
+            "dom_change", "no_change")
+EXPECTATIONS = {
+    "navigate": {"navigation", "popup", "client_navigation"},
+    "popup": {"popup"},
+    "download": {"download"},
+    "anchor": {"anchor"},
+    "change": set(OUTCOMES) - {"no_change"},
+}
+
+
+def _target_selector(target):
+    if target.startswith("alt="):
+        return f'a:has(img[alt*="{target[4:]}" i]), img[alt*="{target[4:]}" i]'
+    if target.startswith("href="):
+        return f'a[href*="{target[5:]}"]'
+    return target
+
+
+def click_check(url, target, viewports=VIEWPORTS, timeout_ms=30000, expect=None,
+                evidence_dir=None, settle_ms=1500):
     """Open `url` in headless Chromium, click `target`, report what happened.
 
-    target: CSS selector ("a.logo"), or "text=Numa", or "alt=Numa" (image alt),
-            or "href=index.html". Use exactly what the user described.
-    Returns {viewport: {...}} with: found, visible, covered_by, href,
-    final_url, final_status, console_errors, popup_url, error.
-    Requires Playwright; returns {"error": ...} if unavailable — then say so
-    instead of claiming the button works.
+    target: CSS selector ("a.logo"), "text=Numa", "alt=Numa", or "href=index.html".
+    expect: optional "navigate" | "popup" | "download" | "anchor" | "change".
+            Without it, an in-page change is reported as CHANGED (a fact), not
+            as OK/FAIL — whether it is correct needs an expectation.
+    evidence_dir: if set, a screenshot is saved for every non-OK result.
+
+    Low-risk by design: clicks only the one named element; never fills or
+    submits forms. Side-effecting flows (submit, pay, delete) need explicit
+    user authorization and are out of scope here.
+
+    Returns {viewport: result}; each result has `outcome`, `verdict`, `reason`,
+    final_url/final_status, popup_url, download, covered_by, click_error,
+    console_errors, evidence. Returns {"error": ...} if Playwright is missing —
+    then report NOT VERIFIED.
     """
     try:
         from playwright.sync_api import sync_playwright
     except Exception as e:
         return {"error": f"Playwright unavailable: {e}"}
-    if target.startswith("alt="):
-        sel = f'a:has(img[alt*="{target[4:]}" i]), img[alt*="{target[4:]}" i]'
-    elif target.startswith("href="):
-        sel = f'a[href*="{target[5:]}"]'
-    else:
-        sel = target
+    if expect is not None and expect not in EXPECTATIONS:
+        raise ValueError(f"expect must be one of {sorted(EXPECTATIONS)}")
+    sel = _target_selector(target)
     out = {}
     with sync_playwright() as p:
         b = p.chromium.launch()
         for name, w, h, mobile in viewports:
             res = {"found": False, "visible": False, "covered_by": None, "href": None,
-                   "final_url": None, "final_status": None, "console_errors": [],
-                   "popup_url": None, "error": None}
+                   "outcome": None, "final_url": None, "final_status": None,
+                   "popup_url": None, "download": None, "console_errors": [],
+                   "click_error": None, "error": None, "expect": expect,
+                   "evidence": None}
             ctx = b.new_context(viewport={"width": w, "height": h}, is_mobile=mobile,
-                                has_touch=mobile, user_agent=UA)
+                                has_touch=mobile, user_agent=UA, accept_downloads=True)
             pg = ctx.new_page()
+            opened, downloads, post = [], [], {"on": False, "nav": {}}
+            nav_status = {}
+
+            def on_resp(resp, post=post, nav_status=nav_status):
+                try:
+                    if resp.request.is_navigation_request():
+                        nav_status[resp.url] = resp.status
+                        if post["on"]:
+                            post["nav"][resp.url] = resp.status
+                except Exception:
+                    pass
+            ctx.on("response", on_resp)
+            ctx.on("page", lambda pp, opened=opened: opened.append(pp))
+            pg.on("download", lambda d, downloads=downloads: downloads.append(d))
             pg.on("console", lambda m, r=res: r["console_errors"].append(m.text[:200])
                   if m.type == "error" else None)
-            statuses, ctx_statuses = {}, {}
-            pg.on("response", lambda resp: statuses.__setitem__(resp.url, resp.status))
-            # context-level listener also sees responses of pages opened by the click
-            ctx.on("response", lambda resp: ctx_statuses.__setitem__(resp.url, resp.status)
-                   if resp.request.is_navigation_request() else None)
+            shot_page = pg
             try:
                 pg.goto(url, wait_until="networkidle", timeout=timeout_ms)
                 loc = pg.locator(sel)
-                visible = [i for i in range(loc.count()) if loc.nth(i).is_visible()]
-                res["found"] = loc.count() > 0
+                n = loc.count()
+                visible = [i for i in range(n) if loc.nth(i).is_visible()]
+                res["found"] = n > 0
                 if not visible:
-                    res["error"] = ("element not visible at this width"
-                                    if res["found"] else "element not found")
+                    res["error"] = ("element not visible at this width" if n
+                                    else "element not found")
                 else:
                     el = loc.nth(visible[0])
                     res["visible"] = True
@@ -452,52 +581,122 @@ def click_check(url, target, viewports=VIEWPORTS, timeout_ms=30000):
                                                          box["y"] + box["height"] / 2])
                         if cover and not cover["inside_target"]:
                             res["covered_by"] = f'{cover["tag"]}.{cover["cls"]}'
-                    before = pg.url
-                    popup = None
+                    before_url, before_state = pg.url, pg.evaluate(_STATE_JS)
+                    post["on"] = True
                     try:
-                        with ctx.expect_page(timeout=3000) as pop:
-                            el.click(timeout=8000)
-                        popup = pop.value
-                    except Exception:
-                        pass  # no popup: normal same-tab navigation
-                    if popup is not None:
-                        # target="_blank" / window.open: judge the NEW page, never
-                        # fall back to the opener's status.
-                        try:
-                            popup.wait_for_load_state("load", timeout=15000)
-                        except Exception:
-                            pass
-                        res["popup_url"] = popup.url
-                        res["final_url"] = popup.url
-                        res["final_status"] = ctx_statuses.get(popup.url)
-                    else:
-                        try:
-                            pg.wait_for_load_state("networkidle", timeout=15000)
-                        except Exception:
-                            pass
-                        res["final_url"] = pg.url
-                        res["final_status"] = statuses.get(pg.url)
-                        if pg.url == before:
-                            res["error"] = "click did not navigate (no URL change, no popup)"
+                        el.click(timeout=8000)
+                    except Exception as e:
+                        res["click_error"] = f"{type(e).__name__}: {e}"[:300]
+                    if not res["click_error"]:
+                        pg.wait_for_timeout(settle_ms)
+                        popups = [pp for pp in opened if pp is not pg]
+                        if downloads:
+                            d = downloads[0]
+                            try:
+                                fail = d.failure()
+                            except Exception as e:
+                                fail = f"{type(e).__name__}: {e}"[:200]
+                            res["outcome"] = "download"
+                            res["download"] = {"url": d.url, "filename": d.suggested_filename,
+                                               "failure": fail}
+                        elif popups:
+                            pp = shot_page = popups[0]
+                            try:
+                                pp.wait_for_load_state("load", timeout=15000)
+                            except Exception as e:
+                                res["error"] = f"popup did not finish loading: {e}"[:300]
+                            res["outcome"] = "popup"
+                            res["popup_url"] = res["final_url"] = pp.url
+                            res["final_status"] = nav_status.get(pp.url)
+                        else:
+                            try:
+                                pg.wait_for_load_state("networkidle", timeout=10000)
+                            except Exception:
+                                pass  # long-polling pages never go idle; judge by URL/status
+                            after = pg.url
+                            res["final_url"] = after
+                            if after in post["nav"]:
+                                res["outcome"] = "navigation"
+                                res["final_status"] = post["nav"][after]
+                            elif (after != before_url and urldefrag(after)[0]
+                                  == urldefrag(before_url)[0]):
+                                res["outcome"] = "anchor"
+                                frag = urldefrag(after)[1]
+                                exists = pg.evaluate(
+                                    "f => !!(document.getElementById(f) || "
+                                    "document.getElementsByName(f).length)", frag)
+                                if frag and not exists:
+                                    res["error"] = f"anchor target #{frag} not found on page"
+                            elif after != before_url:
+                                res["outcome"] = "client_navigation"
+                            elif pg.evaluate(_STATE_JS) != before_state:
+                                res["outcome"] = "dom_change"
+                            else:
+                                res["outcome"] = "no_change"
             except Exception as e:
                 res["error"] = f"{type(e).__name__}: {e}"[:300]
+            res["verdict"], res["reason"] = _verdict(res)
+            if evidence_dir and res["verdict"] != "OK":
+                try:
+                    os.makedirs(evidence_dir, exist_ok=True)
+                    slug = re.sub(r"[^A-Za-z0-9]+", "-", f"{target}-{name}").strip("-")[:80]
+                    path = os.path.join(evidence_dir, f"{slug}.png")
+                    shot_page.screenshot(path=path, full_page=False)
+                    res["evidence"] = path
+                except Exception:
+                    pass
             ctx.close()
             out[name] = res
         b.close()
     return out
 
 
+def _verdict(r):
+    """(verdict, reason). Verdicts:
+    OK         the click did what a working control does and it loaded
+    FAIL       observed error: HTTP >= 400, click/load error, covered, failed
+               download, missing anchor target, or outcome != expect
+    UNVERIFIED something happened but its result could not be measured
+    CHANGED    in-page state changed (menu/tab/dialog); correct only if expected
+    NO_CHANGE  nothing observable happened (fact, not proof the control is broken)
+    """
+    if r.get("click_error"):
+        return "FAIL", "click failed: " + r["click_error"]
+    if r.get("covered_by"):
+        return "FAIL", f"element covered by {r['covered_by']}"
+    if r.get("error"):
+        return "FAIL", r["error"]
+    out = r.get("outcome") or ("popup" if r.get("popup_url") else "navigation")
+    exp = r.get("expect")
+    if exp and out not in EXPECTATIONS[exp]:
+        return "FAIL", f"expected {exp}, observed {out}"
+    if out == "download":
+        f = (r.get("download") or {}).get("failure")
+        return ("FAIL", f"download failed: {f}") if f else ("OK", "download completed")
+    if out in ("navigation", "popup"):
+        st = r.get("final_status")
+        if out == "popup" and r.get("final_url") != r.get("popup_url"):
+            return "UNVERIFIED", "new window opened; its own status was not captured"
+        if st is None:
+            return "UNVERIFIED", f"{out} happened but HTTP status was not captured"
+        if st >= 400:
+            return "FAIL", f"{out} landed on HTTP {st}"
+        return "OK", f"{out} → HTTP {st}"
+    if out == "anchor":
+        return "OK", "scrolled to in-page anchor"
+    if out == "client_navigation":
+        if exp:
+            return "OK", "URL changed client-side as expected (no HTTP status to judge)"
+        return "CHANGED", "URL changed client-side; content not judged"
+    if out == "dom_change":
+        return ("OK", "in-page change as expected") if exp else (
+            "CHANGED", "in-page state changed (menu/tab/dialog?); correctness needs an expectation")
+    return "NO_CHANGE", "no navigation, popup, download or DOM change observed"
+
+
 def click_verdict(r):
-    """OK only when the click navigated somewhere that loaded (status < 400) and
-    nothing covered the element. HTTP error -> FAIL; unknown status -> UNVERIFIED."""
-    if r.get("error") or r.get("covered_by"):
-        return "FAIL"
-    st = r.get("final_status")
-    if r.get("popup_url") and (st is None or r.get("final_url") != r.get("popup_url")):
-        return "UNVERIFIED"  # new window opened but its own status was not captured
-    if st is None:
-        return "UNVERIFIED"
-    return "FAIL" if st >= 400 else "OK"
+    """Verdict string for one viewport result (see _verdict)."""
+    return _verdict(r)[0]
 
 
 # ---------------------------------------------------------------------------
@@ -507,16 +706,22 @@ def format_report(audit, clicks=None):
     """Markdown report. Coverage + blind spots are always included — never send
     a link-check verdict without them."""
     c = audit["coverage"]
+    restricted = audit.get("restricted", [])
     L = [f"# Link audit: {audit['start_url']}", "",
          f"**Result:** {len(audit['broken'])} broken, "
+         f"{len(restricted)} restricted (unverified), "
          f"{len(audit['false_positives'])} bot-only failures (not user-facing), "
          f"{len(audit.get('script_only_unreachable', []))} script-only refs to review, "
          f"{c['urls_checked']} URLs checked across {c['pages_crawled']} pages.", ""]
     if audit["broken"]:
         L += ["## Broken", "| URL | Status | Found on | Found via |", "|---|---|---|---|"]
         for r in audit["broken"]:
-            L.append(f"| {r['url']} | {r['status']} | {', '.join(r['referrers'][:2]) or '-'}"
-                     f" | {', '.join(r['found_via'])} |")
+            L.append(f"| {r['url']} | {r['status'] or r.get('note') or '-'} | "
+                     f"{', '.join(r['referrers'][:2]) or '-'} | {', '.join(r['found_via'])} |")
+        L.append("")
+    if restricted:
+        L += ["## Restricted — refused this checker, NOT verified (open in a browser)"]
+        L += [f"- {r['url']} ({r['status']})" for r in restricted]
         L.append("")
     if audit["false_positives"]:
         L += ["## Fails for bots only (not broken for visitors)"]
@@ -527,25 +732,34 @@ def format_report(audit, clicks=None):
         L += [f"- {r['url']} ({r['status']}) in script on "
               f"{', '.join(r['referrers'][:2]) or '-'}" for r in audit["script_only_unreachable"]]
         L.append("")
-    L += ["## Pages crawled"]
-    L += [f"- {pg['status']} {pg['url']} (via {', '.join(pg['found_via'])})"
-          for pg in audit["pages"]]
+    L += ["## Pages", "| URL | Status | Render | Found via |", "|---|---|---|---|"]
+    for pg in audit["pages"]:
+        rn = pg.get("render", "-")
+        if pg.get("render_note") and rn != "rendered":
+            rn += f" ({pg['render_note'][:60]})"
+        L.append(f"| {pg['url']} | {pg['status']} | {rn} | {', '.join(pg['found_via'])} |")
     if clicks:
         L += ["", "## Click checks (real browser)"]
         for target, by_vp in clicks.items():
-            if "error" in by_vp and isinstance(by_vp["error"], str):
+            if isinstance(by_vp.get("error"), str):
                 L.append(f"- {target}: NOT VERIFIED — {by_vp['error']}")
                 continue
             for vp, r in by_vp.items():
-                verdict = click_verdict(r)
-                L.append(f"- {target} [{vp}]: {verdict} → {r['final_url'] or r['popup_url']}"
-                         f" (status {r['final_status']}, href={r['href']}, "
-                         f"covered_by={r['covered_by']}, console_errors="
-                         f"{len(r['console_errors'])}{', ' + r['error'] if r['error'] else ''})")
+                verdict, reason = (r.get("verdict"), r.get("reason")) if r.get("verdict") \
+                    else _verdict(r)
+                L.append(f"- {target} [{vp}]: {verdict} — {reason}"
+                         f" (outcome={r.get('outcome')}, final={r.get('final_url')}, "
+                         f"href={r.get('href')}, console_errors={len(r.get('console_errors', []))}"
+                         f"{', evidence=' + r['evidence'] if r.get('evidence') else ''})")
+    rc = c.get("render_counts", {})
     L += ["", "## Coverage",
           f"- robots.txt: {'yes' if c['robots_txt'] else 'no'}; sitemap: "
-          f"{'yes' if c['sitemap'] else 'no'}; rendered DOM: "
-          f"{'yes (' + str(c['rendered_pages']) + ' pages)' if c['rendered_dom'] else 'no'}"]
+          f"{'yes' if c['sitemap'] else 'no'}; rendered pages: {c['rendered_pages']} "
+          f"({', '.join(f'{k} {v}' for k, v in sorted(rc.items())) or 'none'})",
+          f"- Budget: {c.get('budget_hit') or 'not hit'}; elapsed {c.get('elapsed_s')}s"]
+    if c.get("unvisited"):
+        L.append(f"- Discovered but not visited ({len(c['unvisited'])}): "
+                 + ", ".join(c["unvisited"][:10]))
     if c["pages_found_only_via_js_or_script"]:
         L.append("- Pages found ONLY via scripts/rendered DOM (a plain <a> crawler misses "
                  "these): " + ", ".join(c["pages_found_only_via_js_or_script"]))

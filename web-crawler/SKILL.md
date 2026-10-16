@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.13.0
+version: 2.14.0
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. stories),
   LinkedIn, Reddit, Threads, plus China apps and Asian e-commerce via Apify (Douyin,
   Xiaohongshu, Weibo, Bilibili, Zhihu, Douban, Xueqiu, Taobao, JD, 1688, Xianyu, Shopee,
@@ -10,7 +10,9 @@ description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. s
   Use when extracting public posts, transcripts, or pages JS-heavy enough to block
   plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages
   behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403,
-  anti-bot, cloudflare, JS-heavy page.
+  anti-bot, cloudflare, JS-heavy page. Also use for whole-site link audits and
+  "this button/link doesn't work" reports (check all links, broken links, 404,
+  button not working) — you investigate with site-agnostic fetch / browse tools.
 
   '
 metadata:
@@ -110,6 +112,59 @@ mp3 + ffmpeg + 4 whisper calls + an incomplete summary. Same link through
 `get_transcript`: RSS had no transcript → RSS declares `youtube.com/@a16z` →
 channel listing → one upload within 1.2 % duration, same day → captions,
 55k chars, ~30 s, zero audio.
+
+## Site audit — "check all links" / "this button doesn't work"
+
+You are the auditor. `exports.py` gives you small, site-agnostic tools that
+**observe and return raw data**; they never decide what is broken. There is no
+keyword list, no per-site config and no verdict function — every site is
+different, so you look, form a hypothesis, test it, and judge from evidence.
+
+| Tool | Returns |
+|---|---|
+| `fetch(url, method="GET")` | raw `status`, `final_url`, headers, body, `error` |
+| `check_urls(urls, method="HEAD")` | `fetch` for many URLs in parallel, no bodies |
+| `extract_refs(html, base_url)` | every URL-like reference + where it came from (`a[href]`, `link[rel=…]`, `inline-script`, `attr[data-…]`, `meta[refresh]`…) |
+| `parse_sitemap(xml)` | `<loc>` entries of a sitemap / sitemap index |
+| `browse(url, actions=[…], viewport=…, mobile=…)` | real Chromium: rendered links (incl. shadow DOM), visible controls, JS exceptions, console errors, ≥400 responses, failed requests, and for each action you asked for: URL before/after, navigations with status, new windows with **their own** status, downloads, DOM changed?, new links |
+
+Method (details and worked checks: `reference/site-audit-method.md`;
+full worked example: `reference/site-audit-case-study.md`):
+
+1. **Map the site from several sources, then reconcile.** Home page HTML via
+   `extract_refs`, `robots.txt` → sitemap(s) via `parse_sitemap`, rendered DOM
+   via `browse`, and any URL the user named. Read the `inline-script` and
+   `attr[...]` hits yourself — route tables and JS navigation live there. A page
+   the user mentions that none of your sources found is a finding about your
+   map, not about the user.
+2. **Learn what "normal" and "error" look like on THIS site.** Fetch one real
+   page and one surely-missing URL (random path). Compare status, title, size,
+   text. That baseline — not a word list — tells you how this site shows a 404
+   (real 404, 200 soft-404, redirect to home…).
+3. **Check every page and every reference.** `check_urls`, re-try HEAD failures
+   with GET, re-check transient errors once. Keep raw results; group them
+   yourself (same-site pages / assets / third-party).
+4. **For what users actually click, click it.** Use `browse(...).controls` and
+   rendered links to choose targets, then `browse(url, actions=[{"click": sel}])`
+   at desktop **and** mobile width. Judge from the action record: did the URL
+   change, did a new window open and what was *its* status, did a download
+   finish, did the DOM change, did a JS error fire, was the element covered
+   (`element.topmost_at_center`)?
+5. **Explain anything unexpected before reporting it.** 401/403/429 or bot
+   walls = "could not verify", not broken and not fine. A click with no visible
+   effect may be correct (already on that page) — say what you observed.
+6. **Report with evidence.** Pages found and how; what is broken (URL, where it
+   is referenced, status/observation, viewport); what could not be verified and
+   why; what you did not cover. Never write "all links OK" for areas you did not
+   check.
+
+Safety: only click targets you chose for a reason. Don't click anything
+`form_associated` or whose text/context implies submit, buy, delete, send or
+subscribe unless the user explicitly asked. `browse` aborts non-GET requests
+for the whole browser session by default — page load, actions and any new
+windows (`blocked_writes`, each with its `phase`); keep it that way unless the user
+authorizes writes. If Playwright is unavailable `browse` returns `{"error": …}` —
+report clicks as not verified; never infer them from status codes.
 
 ## Quick trigger rules (read this first)
 Use this skill immediately when any of these conditions is true:

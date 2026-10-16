@@ -833,3 +833,10 @@ def get_transcript(url, caller_id=None, language="en"):
     res.update(found=len(md) > 1000, source="scrape_markdown", text=md,
                note=None if len(md) > 1000 else "page has no substantial text")
     return res
+
+
+# ---------------------------------------------------------------------------
+# Site audit primitives (see SKILL.md "Site audit"). Observation only — the
+# agent investigates and decides; nothing here judges pass/fail.
+# ---------------------------------------------------------------------------
+from site_tools import browse, check_urls, extract_refs, fetch, parse_sitemap, same_host  # noqa: E402,F401

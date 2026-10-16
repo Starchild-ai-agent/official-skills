@@ -193,13 +193,13 @@ class Priority1OfflineTests(unittest.TestCase):
     def test_one_render_failure_does_not_stop_rendering(self):
         calls = []
 
-        def render(self, url):
+        def analyze(self, url):
             calls.append(url)
             if len(calls) == 1:
                 return None, "TimeoutError: page hung"
-            return set(), None
+            return {"links": [], "dynamic_links": []}, None
         with mock.patch.object(sa, "_fetch", side_effect=fake_fetch), \
-                mock.patch.object(sa._Renderer, "render", render), \
+                mock.patch.object(sa._Renderer, "analyze", analyze), \
                 mock.patch.object(sa._Renderer, "close", lambda self: None):
             a = sa.audit_site(BASE + "/", render=True)
         states = [p["render"] for p in a["pages"] if p["status"] == 200]
@@ -211,7 +211,8 @@ class Priority1OfflineTests(unittest.TestCase):
 
     def test_render_cap_is_recorded_per_page(self):
         with mock.patch.object(sa, "_fetch", side_effect=fake_fetch), \
-                mock.patch.object(sa._Renderer, "render", lambda self, u: (set(), None)), \
+                mock.patch.object(sa._Renderer, "analyze",
+                                  lambda self, u: ({"links": [], "dynamic_links": []}, None)), \
                 mock.patch.object(sa._Renderer, "close", lambda self: None):
             a = sa.audit_site(BASE + "/", render=True, max_render=1)
         notes = [p["render_note"] for p in a["pages"] if p["render"] == "skipped"
@@ -247,6 +248,85 @@ class OutcomeVerdictTests(unittest.TestCase):
         self.assertEqual(self.v(outcome="download", download={"failure": None}), "OK")
         self.assertEqual(self.v(outcome="download", download={"failure": "canceled"}), "FAIL")
 
+
+
+class Priority2OfflineTests(unittest.TestCase):
+    def test_sitemap_xml_namespaces_and_escapes(self):
+        xml = """<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"><url><loc>https://s.test/p?a=1&amp;b=2</loc>
+        <xhtml:link rel="alternate" href="https://s.test/en"/></url>
+        <url><loc><![CDATA[https://s.test/q]]></loc></url></urlset>"""
+        pages, kids = sa.parse_sitemap(xml)
+        self.assertEqual(pages, ["https://s.test/p?a=1&b=2", "https://s.test/q"])
+        self.assertEqual(kids, [])
+        pages, kids = sa.parse_sitemap("<sitemapindex><sitemap><loc>https://s/a.xml</loc>"
+                                       "</sitemap></sitemapindex>")
+        self.assertEqual((pages, kids), ([], ["https://s/a.xml"]))
+        # malformed -> regex fallback still works
+        pages, _ = sa.parse_sitemap("<urlset><url><loc>https://s/broken&amp;x</loc></url>")
+        self.assertEqual(pages, ["https://s/broken&x"])
+
+    def test_canonical_url_strips_only_tracking_params(self):
+        c = sa.canonical_url
+        self.assertEqual(c(BASE + "/agenda?ag-tab=3&utm_source=ig&fbclid=x#top"),
+                         BASE + "/agenda?ag-tab=3")
+        self.assertEqual(c(BASE + "/p?page=2&id=7"), BASE + "/p?page=2&id=7")
+        self.assertEqual(c("HTTPS://site.test:443/x"), "https://site.test/x")
+        self.assertIsNone(c("mailto:a@b.c"))
+
+    def test_soft_404_detection(self):
+        err = "<html><head><title>NUMA</title></head><body>" + "x " * 400 + "</body></html>"
+        real = "<html><head><title>NUMA</title></head><body>" + "real content " * 300 + "</body></html>"
+        pages = {BASE + "/": '<a href="/gone">g</a><a href="/real">r</a><a href="/nf">n</a>',
+                 BASE + "/gone": err, BASE + "/real": real,
+                 BASE + "/nf": "<html><head><title>Page not found</title></head><body>hi</body></html>"}
+
+        def fetch(url, method="GET", timeout=15, read=True):
+            body = pages.get(url, err if "sc-probe" in url else "")
+            st = 200 if (url in pages or "sc-probe" in url) else 404
+            return {"status": st, "final_url": url, "body": body if read else "",
+                    "content_type": "text/html", "error": None}
+        with mock.patch.object(sa, "_fetch", side_effect=fetch):
+            a = sa.audit_site(BASE + "/", render=False)
+        sus = {x["url"]: x["reason"] for x in a["soft_404_suspects"]}
+        self.assertIn(BASE + "/gone", sus)
+        self.assertIn(BASE + "/nf", sus)
+        self.assertNotIn(BASE + "/real", sus)
+        self.assertTrue(a["coverage"]["soft_404_baseline"])
+        self.assertIn("Soft-404 suspects", sa.format_report(a))
+
+    def test_exclude_and_entry_points_config(self):
+        with mock.patch.object(sa, "_fetch", side_effect=fake_fetch):
+            a = sa.audit_site(BASE + "/", render=False,
+                              config={"exclude": [r"/planos"], "entry_points": ["/old-home.html"]})
+        urls = {p["url"] for p in a["pages"]}
+        self.assertNotIn(BASE + "/planos.html", urls)
+        self.assertIn(BASE + "/planos.html", a["coverage"]["excluded"])
+        self.assertIn(BASE + "/old-home.html", a["coverage"]["user_named_urls"])
+        self.assertTrue(any("config.exclude" in b for b in a["coverage"]["blind_spots"]))
+
+    def test_dynamic_links_are_queued_and_tagged(self):
+        rec = {"links": [], "dynamic_links": [BASE + "/hidden"], "title": "t", "h1": [],
+               "forms": [], "images": {"failed": []}, "js_errors": ["boom"],
+               "failed_requests": [], "overflow_x": False}
+        pages = dict(PAGES); pages[BASE + "/hidden"] = PLAIN
+
+        def fetch(url, method="GET", timeout=15, read=True):
+            if url in pages:
+                return {"status": 200, "final_url": url, "body": pages[url] if read else "",
+                        "content_type": "text/html", "error": None}
+            return fake_fetch(url, method, timeout, read)
+        with mock.patch.object(sa, "_fetch", side_effect=fetch), \
+                mock.patch.object(sa._Renderer, "analyze", lambda self, u: (rec, None)), \
+                mock.patch.object(sa._Renderer, "close", lambda self: None):
+            a = sa.audit_site(BASE + "/", render=True)
+        hidden = next(p for p in a["pages"] if p["url"] == BASE + "/hidden")
+        self.assertIn("dynamic", hidden["found_via"])
+        self.assertIn(BASE + "/hidden", a["coverage"]["pages_found_only_via_js_or_script"])
+        self.assertGreater(a["coverage"]["dynamic_links_found"], 0)
+        r = sa.format_report(a)
+        self.assertIn("## Page analysis", r)
+        self.assertIn("JS: boom", r)
 
 
 try:
@@ -345,3 +425,89 @@ class ClickCheckBrowserTests(unittest.TestCase):
                            evidence_dir=d)["desktop"]
         self.assertEqual(r["verdict"], "FAIL")
         self.assertTrue(r["evidence"] and os.path.exists(r["evidence"]), r)
+
+
+@unittest.skipUnless(_HAS_PW and os.environ.get("SITE_AUDIT_BROWSER_TESTS") == "1",
+                     "real-browser test: set SITE_AUDIT_BROWSER_TESTS=1 with Playwright")
+class DynamicDiscoveryBrowserTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import functools, http.server, tempfile, threading
+        import site_browser as sb
+        cls.sb = sb
+        cls.dir = tempfile.mkdtemp()
+        w = lambda n, body: open(os.path.join(cls.dir, n), "w").write(body)  # noqa: E731
+        w("home.html", """<html><head><title>Home</title></head><body>
+<nav><button id="m" aria-expanded="false">Menu</button>
+<div id="dd" hidden></div></nav>
+<form action="/send"><input name="q"><button type="submit">Send</button>
+<button id="danger">Delete</button></form>
+<h1>Welcome</h1><img src="nope.png" alt=""><img src="also-nope.png">
+<my-el></my-el>
+<div style="height:4000px"></div><div id="lazy"></div>
+<script>
+document.getElementById('m').onclick=function(){this.setAttribute('aria-expanded','true');
+  var d=document.getElementById('dd'); d.hidden=false;
+  d.innerHTML='<a href="menu-only.html">Menu only</a>';};
+customElements.define('my-el', class extends HTMLElement{connectedCallback(){
+  this.attachShadow({mode:'open'}).innerHTML='<a href="shadow-only.html">S</a>';}});
+window.addEventListener('scroll',()=>{ if(!document.getElementById('lz')){
+  const a=document.createElement('a');a.id='lz';a.href='lazy-only.html';a.textContent='L';
+  document.getElementById('lazy').appendChild(a);} });
+document.getElementById('danger').onclick=()=>{window.clicked_danger=true};
+undefined_function_call();
+</script></body></html>""")
+        for n in ("menu-only.html", "shadow-only.html", "lazy-only.html"):
+            w(n, "<html><body>ok</body></html>")
+        h = functools.partial(http.server.SimpleHTTPRequestHandler, directory=cls.dir)
+        http.server.SimpleHTTPRequestHandler.log_message = lambda *a: None
+        cls.srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), h)
+        threading.Thread(target=cls.srv.serve_forever, daemon=True).start()
+        cls.url = f"http://127.0.0.1:{cls.srv.server_port}/home.html"
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.srv.shutdown()
+
+    def test_analyze_record_and_dynamic_links(self):
+        r = self.sb._Renderer()
+        try:
+            rec, err = r.analyze(self.url)
+        finally:
+            r.close()
+        self.assertIsNone(err, err)
+        dyn = {u.rsplit("/", 1)[-1] for u in rec["dynamic_links"]}
+        self.assertIn("menu-only.html", dyn)
+        self.assertIn("lazy-only.html", dyn)
+        self.assertIn("shadow-only.html", {u.rsplit("/", 1)[-1] for u in rec["links"]})
+        self.assertEqual(rec["h1"], ["Welcome"])
+        self.assertEqual(len(rec["forms"]), 1)
+        self.assertEqual(rec["forms"][0]["fields"][0]["name"], "q")
+        self.assertEqual(len(rec["images"]["failed"]), 2)
+        self.assertEqual(rec["images"]["missing_alt"], 1)
+        self.assertTrue(any("undefined_function_call" in e for e in rec["js_errors"]))
+        self.assertTrue(any(f["status"] == 404 for f in rec["failed_requests"]))
+        self.assertGreaterEqual(rec["interactions"]["expanded"], 1)
+
+    def test_audit_discovers_pages_behind_interaction(self):
+        a = sa.audit_site(self.url, render=True, check_external=False)
+        names = {p["url"].rsplit("/", 1)[-1]: p for p in a["pages"]}
+        for n in ("menu-only.html", "lazy-only.html", "shadow-only.html"):
+            self.assertIn(n, names, names.keys())
+            self.assertEqual(names[n]["status"], 200)
+        self.assertIn("dynamic", names["menu-only.html"]["found_via"])
+        # the form was never submitted: no URL with its query string was ever discovered
+        self.assertFalse(any("?q=" in u for u in names))
+
+    def test_expander_safety_filter(self):
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            b = p.chromium.launch()
+            pg = b.new_page()
+            pg.goto(self.url)
+            unsafe = pg.eval_on_selector_all(
+                "form button", f"els => els.map({self.sb._CLICKABLE_EXPANDER_JS})")
+            safe = pg.eval_on_selector("#m", self.sb._CLICKABLE_EXPANDER_JS)
+            b.close()
+        self.assertEqual(unsafe, [False, False])   # submit + "Delete" inside a form
+        self.assertTrue(safe)

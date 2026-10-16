@@ -162,6 +162,33 @@ did: `navigation`, `popup`, `download`, `anchor`, `client_navigation`, `dom_chan
 
 Pass `evidence_dir` to save a screenshot for every non-OK result.
 
+**Discovery goes beyond `<a>` and the initial DOM** (bounded, per page):
+scroll in steps for lazy-loaded content, expand menus / dropdowns / "load more"
+(never inside forms, never submit/pay/delete-like controls), read Shadow DOM links.
+Links that appear only after interaction are tagged `dynamic` and crawled too.
+Sitemaps are parsed as XML (namespaces, `&amp;`, CDATA). Dedup removes only known
+tracking params (`utm_*`, `fbclid`, `gclid`, …); `?tab=3` or `?page=2` are kept.
+
+**Soft 404s:** a random non-existent URL is fetched first. Any 200 page with the
+same title and size, or an error-like title, lands in `soft_404_suspects`.
+
+**Per-page analysis** (`pages[i]["analysis"]`, rendered pages only) is evidence,
+not judgement: title, h1/headings, meta description, text length and sample,
+buttons and CTAs, forms + fields, images (total / failed / missing alt), iframes,
+horizontal overflow, JS errors, failed requests, interactions performed, screenshot.
+Use it to answer "what is on this page / is anything visibly broken". Whether the
+copy, offer or CTA is *right* for the business is for you (the agent) to judge
+from that record — the skill does not decide that.
+
+**Site config** (`audit_site(..., config={...})`, nothing hardcoded per site):
+`wait_for` (selector to wait for), `scroll_steps`, `max_interactions`,
+`expand_selectors` (site-specific menu/"load more" selectors), `exclude`
+(regexes never visited), `entry_points` (extra start URLs).
+
+**Budgets:** `max_pages`, `max_render`, `max_seconds`, per-page
+`max_interactions`, `workers` (link-check concurrency). Any budget hit is reported
+with the discovered-but-unvisited URLs.
+
 Rules:
 1. **The user named a page or button → verify that page first.** Pass it in
    `extra_urls` and run `click_check(url, target)` at desktop and mobile widths.

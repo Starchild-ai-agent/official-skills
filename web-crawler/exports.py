@@ -839,4 +839,37 @@ def get_transcript(url, caller_id=None, language="en"):
 # Site audit primitives (see SKILL.md "Site audit"). Observation only — the
 # agent investigates and decides; nothing here judges pass/fail.
 # ---------------------------------------------------------------------------
-from site_tools import browse, check_urls, extract_refs, fetch, parse_sitemap, same_host  # noqa: E402,F401
+# Load the sibling module by path so this works however exports.py is loaded
+# (sys.path import, core.skill_tools, or importlib.spec_from_file_location in
+# task scripts, where the skill dir is NOT on sys.path). Never let a problem in
+# the site-audit tools break the other exports.
+def _load_site_tools():
+    import importlib.util as _ilu
+    import os as _os
+    import sys as _sys
+    name = "web_crawler_site_tools"
+    if name in _sys.modules:
+        return _sys.modules[name]
+    path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "site_tools.py")
+    spec = _ilu.spec_from_file_location(name, path)
+    mod = _ilu.module_from_spec(spec)
+    _sys.modules[name] = mod
+    try:
+        spec.loader.exec_module(mod)
+    except Exception:
+        _sys.modules.pop(name, None)
+        raise
+    return mod
+
+
+try:
+    _st = _load_site_tools()
+    browse, check_urls, extract_refs = _st.browse, _st.check_urls, _st.extract_refs
+    fetch, parse_sitemap, same_host = _st.fetch, _st.parse_sitemap, _st.same_host
+except Exception as _e:  # keep crawler/social exports usable
+    _site_tools_error = f"{type(_e).__name__}: {_e}"
+
+    def _unavailable(*_a, **_k):
+        raise RuntimeError(f"web-crawler site audit tools unavailable: {_site_tools_error}")
+
+    browse = check_urls = extract_refs = fetch = parse_sitemap = same_host = _unavailable

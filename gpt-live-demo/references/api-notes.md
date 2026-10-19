@@ -48,7 +48,23 @@ Demo 用正则 `/second(s)?$/i` 防御性解析，找到第一个数字型 `*sec
 截至 2026 年，`gpt-live-1` 仍需申请 Beta 访问权限。
 错误表现：POST `/api/session` 返回 403 或 404。
 
-## 会话历史与持久化设计
+## Thread 绑定模式（v0.3）—— Starchild thread 为唯一事实源
+
+前端 URL 加 `?thread_id=<thread uuid 或完整 session id>` 即进入 thread 模式：
+
+| 环节 | 实现 | 说明 |
+|---|---|---|
+| 启动快照 | `POST /api/session {thread_id}` → 中继 `GET <runtime>/session?session_id=` → 最近 10 轮（每条 ≤400 字）作 developer message 灌 `session.input` | 不再用 voice-history 回灌；`GET /api/thread-snapshot?thread_id=` 可预览灌入内容 |
+| 委托 | `POST /api/agent {thread_id,text}` → runtime `/chat/stream {message, thread_id}` | **不再拼历史**——runtime 自己持有 thread；用户轮与回答由 runtime 写入 thread |
+| 语音专属轮写回 | 前端在 `input…transcription completed` 后 1.5s 内无 delegation → `POST /api/voice-log {role:"user"}`；Live 说出的话 `output…completed` → `{role:"live"}` | runtime 暂无 append-message API，故先记在 `data/voice-log.json`，下次 delegation 时作为 `[Voice-only exchanges…]` 前缀交给 brain 并标记 delegated |
+| thread 事件回流 | 中继按 thread 订阅 `<runtime>/push/events?session_id=` 缓冲；前端每 2s `GET /api/thread-events?since=` → `session.thinking.append(delegation_id:null)` | 静默注入，≤1 条/1.5s、合并、≤1500 字；建连时跳过历史事件 |
+| thread 忙碌 | `/chat/stream` 返回空流 | 已实测：thread 正在跑别的 run 时 runtime 会把消息**并入该 run**，答案落在 thread 而非本 SSE；中继此时回一句"已并入，稍后在对话里出现"，避免 Live 沉默 |
+
+`resolveSession`：`/sessions` 列表有上限、可能漏掉最活跃的 thread，所以先从列表里任一 thread 推出 `agent:main:thread:<N>` 前缀，直接 `GET /session` 探测；可用 `STARCHILD_THREAD_PREFIX` 覆盖。runtime 地址由 `STARCHILD_RUNTIME`（默认 `http://localhost:8000`）指定。
+
+未在 P0 核实、需实测：`session.input` 的 token 上限；转写 completed 事件的精确类型名（前端按 `/input.*transcri/` + `/completed|done|final/` 宽匹配）。
+
+## 会话历史与持久化设计（无 thread_id 的 legacy 模式）
 
 服务器维护全局语音历史（`voiceHistory`，所有语音会话共享一个 `voice` 流，最多 40 条）。
 每次建会话时把最近 12 条历史以 developer message 回灌进 GPT-Live session（记忆回灌），

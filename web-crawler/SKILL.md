@@ -11,7 +11,7 @@ description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. s
   plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages
   behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403,
   anti-bot, cloudflare, JS-heavy page. Also use for whole-site link audits and
-  "this button/link doesn't work" reports (check all links, broken links, 404,
+  "this button/link doesn''t work" reports (check all links, broken links, 404,
   button not working) — you investigate with site-agnostic fetch / browse tools.
 
   '

@@ -190,8 +190,14 @@
     {
       "name": "composio",
       "path": "composio/SKILL.md",
-      "version": "1.5.1",
+      "version": "1.4.1",
       "description": "Composio gateway: act on 1000+ connected apps like Gmail, Slack, GitHub, Calendar.\n\nUse when the user wants to act in a connected SaaS app (e.g. send Gmail, create Notion page, add Calendar event, open a GitHub issue)."
+    },
+    {
+      "name": "composio-br",
+      "path": "composio-br/SKILL.md",
+      "version": "1.0.0",
+      "description": "Composio for BR agents (br-composio-proxy + machine Agent Key): act on 1000+ connected apps like Gmail, Slack, GitHub, Calendar.\n\nUse when the user wants to act in a connected SaaS app (e.g. send Gmail, create Notion page, add Calendar event, open a GitHub issue)."
     },
     {
       "name": "control-browser",

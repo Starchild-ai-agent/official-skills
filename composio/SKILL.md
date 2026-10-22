@@ -1,6 +1,6 @@
 ---
 name: composio
-version: 1.5.0
+version: 1.5.1
 description: |
   Composio gateway: act on 1000+ connected apps like Gmail, Slack, GitHub, Calendar.
 
@@ -44,9 +44,10 @@ AUTH=(); [ -n "$COMPOSIO_GATEWAY_AUTH" ] && AUTH=(-H "Authorization: $COMPOSIO_G
 # then: curl -s "${AUTH[@]}" "$GATEWAY/..."
 ```
 
-Python: `from core.http_client import proxied_get, proxied_post` already maps the
-flycast URL onto the configured gateway and adds the auth header — keep using the
-flycast URL in code; no branching needed.
+Python: read the same env vars (see the examples below — `GATEWAY` from
+`COMPOSIO_GATEWAY_URL`, `HEADERS` from `COMPOSIO_GATEWAY_AUTH`) and pass `headers=HEADERS`
+on every call. Alternatively `core.http_client.proxied_get / proxied_post / proxied_request`
+map the flycast URL onto the configured gateway and add the auth header automatically.
 
 On Starchild all requests use **plain HTTP over Fly internal network** (flycast).
 No JWT needed. When `COMPOSIO_GATEWAY_URL` is set the gateway is reached over HTTPS
@@ -292,12 +293,14 @@ curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
 import asyncio, os, requests
 from playwright.async_api import async_playwright
 
-GATEWAY = "http://composio-gateway.flycast"  # proxied_* maps this to COMPOSIO_GATEWAY_URL when set
+GATEWAY = os.environ.get("COMPOSIO_GATEWAY_URL", "http://composio-gateway.flycast")
+HEADERS = ({"Authorization": os.environ["COMPOSIO_GATEWAY_AUTH"]}
+           if os.environ.get("COMPOSIO_GATEWAY_AUTH") else {})
 PROJECT_ID = os.environ.get("BROWSERBASE_PROJECT_ID")
 
 async def main():
     # 1. Create session via Composio
-    resp = requests.post(f"{GATEWAY}/internal/execute", json={
+    resp = requests.post(f"{GATEWAY}/internal/execute", headers=HEADERS, json={
         "tool": "BROWSERBASE_TOOL_SESSIONS_CREATE",
         "arguments": {"projectId": PROJECT_ID}
     }).json()
@@ -319,7 +322,7 @@ async def main():
 
     finally:
         # 3. Always delete session to stop billing
-        requests.post(f"{GATEWAY}/internal/execute", json={
+        requests.post(f"{GATEWAY}/internal/execute", headers=HEADERS, json={
             "tool": "BROWSERBASE_TOOL_SESSIONS_DELETE",
             "arguments": {"id": session_id}
         })
@@ -406,15 +409,17 @@ For recurring queries, write a one-shot Python script:
 
 ```python
 #!/usr/bin/env python3
-import sys, json, requests
+import os, sys, json, requests
 from datetime import datetime, timedelta, timezone
 
-GATEWAY = "http://composio-gateway.flycast"  # proxied_* maps this to COMPOSIO_GATEWAY_URL when set
+GATEWAY = os.environ.get("COMPOSIO_GATEWAY_URL", "http://composio-gateway.flycast")
+HEADERS = ({"Authorization": os.environ["COMPOSIO_GATEWAY_AUTH"]}
+           if os.environ.get("COMPOSIO_GATEWAY_AUTH") else {})
 days = int(sys.argv[1]) if len(sys.argv) > 1 else 7
 tz_name = sys.argv[2] if len(sys.argv) > 2 else "UTC"
 
 # ... build timeMin/timeMax ...
-resp = requests.post(f"{GATEWAY}/internal/execute", json={
+resp = requests.post(f"{GATEWAY}/internal/execute", headers=HEADERS, json={
     "tool": "GOOGLECALENDAR_EVENTS_LIST",
     "arguments": {"calendarId": "primary", "timeMin": t_min, "timeMax": t_max,
                    "singleEvents": True, "timeZone": tz_name}

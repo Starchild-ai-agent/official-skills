@@ -1,6 +1,6 @@
 ---
 name: composio
-version: 1.4.1
+version: 1.5.0
 description: |
   Composio gateway: act on 1000+ connected apps like Gmail, Slack, GitHub, Calendar.
 
@@ -36,15 +36,26 @@ Composio Cloud → Target API (Gmail, Slack, etc.)
 
 ## Gateway Base URL
 
-```
-GATEWAY = "http://composio-gateway.flycast"
+```bash
+# Starchild platform: flycast (default). Other deployments (e.g. BR) export
+# COMPOSIO_GATEWAY_URL + COMPOSIO_GATEWAY_AUTH at startup — always read them.
+GATEWAY="${COMPOSIO_GATEWAY_URL:-http://composio-gateway.flycast}"
+AUTH=(); [ -n "$COMPOSIO_GATEWAY_AUTH" ] && AUTH=(-H "Authorization: $COMPOSIO_GATEWAY_AUTH")
+# then: curl -s "${AUTH[@]}" "$GATEWAY/..."
 ```
 
-All requests use **plain HTTP over Fly internal network** (flycast). No JWT needed.
+Python: `from core.http_client import proxied_get, proxied_post` already maps the
+flycast URL onto the configured gateway and adds the auth header — keep using the
+flycast URL in code; no branching needed.
+
+On Starchild all requests use **plain HTTP over Fly internal network** (flycast).
+No JWT needed. When `COMPOSIO_GATEWAY_URL` is set the gateway is reached over HTTPS
+and identity is the machine's Agent Key (`COMPOSIO_GATEWAY_AUTH`); connections
+are per machine, shared by owner and admin.
 
 **CRITICAL — never route the gateway through sc-proxy:**
-- Use **curl** (as in the examples below) or plain `requests` / `http.client` with **no proxy**.
-- Do **not** use `proxied_get` / `proxied_post` for this host (even though PROTOCOL says “always proxied” for external APIs — flycast is the documented exception; `core.http_client` also auto-bypasses `*.flycast`).
+- Use **curl** (as in the examples below, with `"${AUTH[@]}"`) or plain `requests` / `http.client` with **no proxy**.
+- `proxied_get` / `proxied_post` are safe for this host: `core.http_client` keeps `*.flycast` off sc-proxy and only rewrites the host onto `COMPOSIO_GATEWAY_URL` when that is set.
 - Do **not** set `HTTP_PROXY` / `HTTPS_PROXY` or `curl -x` toward the gateway.
 - Proxying rewrites the caller identity so the gateway sees the wrong user and connections/execute fail or hit another locker.
 
@@ -55,7 +66,7 @@ All requests use **plain HTTP over Fly internal network** (flycast). No JWT need
 Find the right tool slug for a task. Returns **compact** tool info — just slug, description, and parameter names. Enough to pick the right tool.
 
 ```bash
-curl -s -X POST $GATEWAY/internal/search \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/search \
   -H "Content-Type: application/json" \
   -d '{"query": "send email via gmail"}'
 ```
@@ -82,7 +93,7 @@ curl -s -X POST $GATEWAY/internal/search \
 Get the **complete** parameter definitions for a specific tool — types, descriptions, enums, defaults. Use this **after** search when you need exact parameter formats.
 
 ```bash
-curl -s -X POST $GATEWAY/internal/tool_schema \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/tool_schema \
   -H "Content-Type: application/json" \
   -d '{"tool": "GOOGLECALENDAR_EVENTS_LIST"}'
 ```
@@ -111,7 +122,7 @@ curl -s -X POST $GATEWAY/internal/tool_schema \
 Execute a Composio tool. **Key name is `arguments`, not `params`.**
 
 ```bash
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GMAIL_SEND_EMAIL", "arguments": {"to": "x@example.com", "subject": "Hi", "body": "Hello!"}}'
 ```
@@ -139,7 +150,7 @@ curl -s -X POST $GATEWAY/internal/execute \
 ```bash
 # Optional toolkit filter: oauth_completed_active only turns true
 # when that toolkit status is ACTIVE.
-curl -s "$GATEWAY/internal/connections?toolkit=gmail"
+curl -s "${AUTH[@]}" "$GATEWAY/internal/connections?toolkit=gmail"
 ```
 
 Response includes:
@@ -151,7 +162,7 @@ Cache invalidation is triggered only after ACTIVE is observed, and it targets th
 ### 5. Initiate New Connection
 
 ```bash
-curl -s -X POST $GATEWAY/api/connect \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/api/connect \
   -H "Content-Type: application/json" \
   -d '{"toolkit": "gmail"}'
 ```
@@ -179,7 +190,7 @@ is **not** connected yet.
 5. Never send the user to dig through the Connections page first.
 6. **Fallback** (no SSE / non-Web channel, or `frontend_action` fails): 
    ```bash
-   curl -s -X POST $GATEWAY/api/connect \
+   curl -s "${AUTH[@]}" -X POST $GATEWAY/api/connect \
      -H "Content-Type: application/json" \
      -d '{"toolkit": "gmail"}'
    ```
@@ -189,7 +200,7 @@ is **not** connected yet.
 ### 6. Disconnect
 
 ```bash
-curl -s -X DELETE $GATEWAY/api/connections/{connection_id}
+curl -s "${AUTH[@]}" -X DELETE $GATEWAY/api/connections/{connection_id}
 ```
 
 ### Instagram Posting (important slug mapping)
@@ -221,7 +232,7 @@ To actually operate a browser (navigate, click, fill forms, scrape data), use **
 #### Step 1: Create a Browserbase Session via Composio
 
 ```bash
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "BROWSERBASE_TOOL_SESSIONS_CREATE", "arguments": {"projectId": "YOUR_PROJECT_ID"}}'
 ```
@@ -258,7 +269,7 @@ async with async_playwright() as p:
 #### Step 4: Delete the Session (IMPORTANT — stops billing)
 
 ```bash
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "BROWSERBASE_TOOL_SESSIONS_DELETE", "arguments": {"id": "YOUR_SESSION_ID"}}'
 ```
@@ -281,7 +292,7 @@ curl -s -X POST $GATEWAY/internal/execute \
 import asyncio, os, requests
 from playwright.async_api import async_playwright
 
-GATEWAY = "http://composio-gateway.flycast"
+GATEWAY = "http://composio-gateway.flycast"  # proxied_* maps this to COMPOSIO_GATEWAY_URL when set
 PROJECT_ID = os.environ.get("BROWSERBASE_PROJECT_ID")
 
 async def main():
@@ -353,16 +364,16 @@ Quick diagnosis:
 
 ```bash
 # 1) Health + active connections
-curl -s $GATEWAY/health
-curl -s $GATEWAY/internal/connections
+curl -s "${AUTH[@]}" $GATEWAY/health
+curl -s "${AUTH[@]}" $GATEWAY/internal/connections
 
 # 2) Search browser tool slugs
-curl -s -X POST $GATEWAY/internal/search \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/search \
   -H "Content-Type: application/json" \
   -d '{"query":"browserbase create task"}'
 
 # 3) Try execute and inspect exact error
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool":"BROWSER_TOOL_CREATE_TASK","arguments":{"task":"open https://example.com"}}'
 ```
@@ -376,7 +387,7 @@ If error says **No active connection found for toolkit 'browserbase'**, gateway 
 If you already know the tool slug and parameters from previous use or the Common Tools table below, **skip search entirely**:
 
 ```bash
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GOOGLECALENDAR_EVENTS_LIST", "arguments": {"calendarId": "primary", "timeMin": "2026-04-02T00:00:00+08:00", "timeMax": "2026-04-09T00:00:00+08:00", "singleEvents": true, "timeZone": "Asia/Hong_Kong"}}'
 ```
@@ -398,7 +409,7 @@ For recurring queries, write a one-shot Python script:
 import sys, json, requests
 from datetime import datetime, timedelta, timezone
 
-GATEWAY = "http://composio-gateway.flycast"
+GATEWAY = "http://composio-gateway.flycast"  # proxied_* maps this to COMPOSIO_GATEWAY_URL when set
 days = int(sys.argv[1]) if len(sys.argv) > 1 else 7
 tz_name = sys.argv[2] if len(sys.argv) > 2 else "UTC"
 
@@ -428,17 +439,17 @@ Then future calls are just: `bash("python3 scripts/calendar_events.py 7 Asia/Hon
 
 ```bash
 # Send email
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GMAIL_SEND_EMAIL", "arguments": {"to": "user@example.com", "subject": "Hello", "body": "Hi there!"}}'
 
 # Fetch last 5 emails
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GMAIL_FETCH_EMAILS", "arguments": {"max_results": 5}}'
 
 # Search specific emails (using Gmail search syntax)
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GMAIL_FETCH_EMAILS", "arguments": {"max_results": 10, "q": "from:github.com after:2026/03/01"}}'
 ```
@@ -460,12 +471,12 @@ curl -s -X POST $GATEWAY/internal/execute \
 
 ```bash
 # Post tweet
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "TWITTER_CREATION_OF_A_POST", "arguments": {"text": "Hello from Composio!"}}'
 
 # Delete tweet
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "TWITTER_POST_DELETE_BY_POST_ID", "arguments": {"id": "2039756730192601584"}}'
 ```
@@ -567,12 +578,12 @@ url = f"https://x.com/i/web/status/{tweet_id}"
 
 ```bash
 # Create issue
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GITHUB_CREATE_AN_ISSUE", "arguments": {"owner": "myorg", "repo": "myrepo", "title": "Bug: login fails", "body": "Steps to reproduce..."}}'
 
 # List open issues
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GITHUB_LIST_REPOSITORY_ISSUES", "arguments": {"owner": "myorg", "repo": "myrepo", "state": "open", "per_page": 10}}'
 ```
@@ -594,12 +605,12 @@ curl -s -X POST $GATEWAY/internal/execute \
 
 ```bash
 # Search pages
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "NOTION_SEARCH_NOTION_PAGE", "arguments": {"query": "Meeting Notes", "page_size": 5}}'
 
 # Query database with filter
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "NOTION_QUERY_DATABASE_WITH_FILTER", "arguments": {"database_id": "abc123", "filter": {"property": "Status", "select": {"equals": "In Progress"}}, "page_size": 10}}'
 ```
@@ -616,12 +627,12 @@ curl -s -X POST $GATEWAY/internal/execute \
 
 ```bash
 # Search files by name
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GOOGLEDRIVE_FIND_FILE", "arguments": {"q": "name contains '\''report'\'' and mimeType != '\''application/vnd.google-apps.folder'\''"}}'
 
 # Create text file
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GOOGLEDRIVE_CREATE_FILE_FROM_TEXT", "arguments": {"file_name": "notes.txt", "text_content": "Hello World"}}'
 ```
@@ -638,12 +649,12 @@ curl -s -X POST $GATEWAY/internal/execute \
 
 ```bash
 # Create doc with markdown content
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GOOGLEDOCS_CREATE_DOCUMENT_MARKDOWN", "arguments": {"title": "Meeting Notes", "markdown_text": "# Q2 Planning\n\n- Item 1\n- Item 2"}}'
 
 # Read doc as plain text
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GOOGLEDOCS_GET_DOCUMENT_PLAINTEXT", "arguments": {"document_id": "1abc...xyz"}}'
 ```
@@ -663,17 +674,17 @@ curl -s -X POST $GATEWAY/internal/execute \
 
 ```bash
 # Read cells
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GOOGLESHEETS_BATCH_GET", "arguments": {"spreadsheet_id": "1abc...xyz", "ranges": ["Sheet1!A1:D10"]}}'
 
 # Write cells
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GOOGLESHEETS_UPDATE_VALUES_BATCH", "arguments": {"spreadsheet_id": "1abc...xyz", "valueInputOption": "USER_ENTERED", "data": [{"range": "Sheet1!A1:B2", "values": [["Name", "Score"], ["Alice", 95]]}]}}'
 
 # Append rows
-curl -s -X POST $GATEWAY/internal/execute \
+curl -s "${AUTH[@]}" -X POST $GATEWAY/internal/execute \
   -H "Content-Type: application/json" \
   -d '{"tool": "GOOGLESHEETS_SPREADSHEETS_VALUES_APPEND", "arguments": {"spreadsheetId": "1abc...xyz", "range": "Sheet1!A:B", "valueInputOption": "USER_ENTERED", "values": [["Bob", 88], ["Charlie", 92]]}}'
 ```

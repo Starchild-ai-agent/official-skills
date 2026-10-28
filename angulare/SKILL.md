@@ -1,11 +1,13 @@
 ---
 name: angulare
-version: 1.0.0
+version: 1.1.0
 description: |
   Angulare (Angular e-Commerce) gym and studio management: class schedule, member
-  attendance and check-ins, first-experience detection, sales orders and payment status, credit-card payment links.
+  attendance and check-ins, first-experience detection, the per-class mat/seat map,
+  sales orders and payment status, credit-card payment links.
 
-  Use when working with an Angulare-run studio or gym — finding who actually attended a class, detecting a member's first class so a follow-up can go out, checking whether a customer has paid, looking up a member, or listing plans and aggregator (TotalPass/Wellhub) check-ins.
+  Use when working with an Angulare-run studio or gym — finding which member is on which mat in a class,
+  who actually attended a class, detecting a member's first class so a follow-up can go out, checking whether a customer has paid, looking up a member, or listing plans and aggregator (TotalPass/Wellhub) check-ins.
 delivery: script
 author: starchild
 tags: [gym, fitness, angulare, angular-ecommerce, booking, attendance, checkin, members, pilates, brazil]
@@ -105,7 +107,8 @@ Every function returns `{"ok": True, "data": ...}` or
 |---|---|
 | `angulare_sessions(date=None, take=100, all_pages=False, max_pages=10)` | Class sessions, optionally for one day. |
 | `angulare_session(event_token)` | One session by token. |
-| `angulare_session_roster(event_token)` | Everyone booked into one session, with status. |
+| `angulare_session_roster(event_token)` | Everyone booked into one session, with status and spot (`map_spot_code`). |
+| `angulare_session_seats(event_token)` | The mat/spot map: `{spot, name, email, is_staff, status}` per attendee, plus `free_spots` and `maintenance_spots`. |
 | `angulare_find_session(activity=None, date=None, time=None)` | Resolve "Pilates at 19:00" to one session. |
 
 ### Attendance and check-ins
@@ -151,6 +154,18 @@ angulare_session_roster("f657c898-b5c4-4662-b03d-e74bc3a04117")
 # or, with check-in timestamps and first-experience flags:
 angulare_attendance(event_token="f657c898-…")
 ```
+
+### Which mat is each person on? (read-only)
+
+```python
+angulare_session_seats("f657c898-b5c4-4662-b03d-e74bc3a04117")
+# -> {"seats": [{"spot": "01", "name": "Thaiane ...", "email": "...",
+#                "is_staff": False, "user_id": 1607, "status": "confirmed"}, ...],
+#     "free_spots": ["05", ...], "maintenance_spots": []}
+```
+
+`spot` ("01"…"24") is Angulare's mat position; `free_spots` lists the unused
+ones. Use `angulare_session_roster` when you only need attendance status.
 
 Find the session first with `angulare_find_session(activity="Pilates", date="today", time="19:00")`
 — it returns the `token` everything else keys on.

@@ -46,7 +46,8 @@ __all__ = [
     "angulare_find_members", "angulare_resolve_member", "angulare_member",
     "angulare_quick_register_member",
     # schedule
-    "angulare_sessions", "angulare_session", "angulare_session_roster", "angulare_find_session",
+    "angulare_sessions", "angulare_session", "angulare_session_roster", "angulare_session_seats",
+    "angulare_find_session",
     # attendance / check-ins
     "angulare_attendance", "angulare_first_experience_checkins", "angulare_followup_candidates",
     "angulare_member_attendance", "angulare_aggregator_checkins", "angulare_instructor_stats",
@@ -100,6 +101,7 @@ angulare_quick_register_member = _members.quick_register_member
 angulare_sessions = _schedule.sessions
 angulare_session = _schedule.session
 angulare_session_roster = _schedule.session_roster
+angulare_session_seats = _schedule.session_seats
 angulare_find_session = _schedule.find_session
 
 # ── Attendance / check-ins ───────────────────────────────────────────────────

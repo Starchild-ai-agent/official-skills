@@ -66,7 +66,8 @@ filters are listed per endpoint below; everything else is noise.
 | `GET /api/v1/core/settings/` | — | tenant config (site, checkouts, events, users, payments, domains) |
 | `GET /api/v1/events/events/` | `date` | class sessions; **`token` (UUID) is the session key** |
 | `GET /api/v1/events/events/{token}/` | — | one session |
-| `GET /api/v1/events/events/{token}/bookings/` | — | one session's roster |
+| `GET /api/v1/events/events/{token}/bookings/` | — | one session's roster (`map_spot_code` = mat position) |
+| `GET /api/v1/events/events/{token}/` | — | session detail; `map_spots[]` = `{code, position, bookings[{attendee{first_name,last_name,email,is_staff}, booked_at}], maintenance}` |
 | `GET /api/v1/events/schedule/` | — | schedule view (444 rows on the test tenant) |
 | `GET /api/v1/events/reports/event-books/` | **`status`, `user_id`, `event_token`** | **the attendance report — the useful one** |
 | `GET /api/v1/events/event-books/` | `status`, `user_id`, `event_token` | same data, thinner serializer, **no `id`** |

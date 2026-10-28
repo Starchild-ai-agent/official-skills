@@ -115,8 +115,73 @@ def session_roster(event_token):
             "checkedin_at": r.get("checkedin_at"),
             "noshow_at": r.get("noshow_at"),
             "booked_at": r.get("booked_at") or r.get("created_at"),
+            "spot": r.get("map_spot_code"),
+            "email": (r.get("user_info") or {}).get("email"),
             "is_first_activity_checkin": r.get("is_first_activity_checkin"),
         } for r in rows],
+    })
+
+
+def session_seats(event_token):
+    """Which person is on which mat/spot in one session.
+
+    Source: the session detail's `map_spots` — each numbered spot carries its
+    bookings, and each booking carries the attendee (name, e-mail, staff flag).
+    `map_spot_code` on the roster rows is the same spot code, so the two views
+    join on the e-mail to add the booking status.
+    """
+    result = call("GET", f"/api/v1/events/events/{event_token}/")
+    if not result["ok"]:
+        return result
+    detail = result["data"] or {}
+
+    by_email = {}
+    roster = call("GET", f"/api/v1/events/events/{event_token}/bookings/",
+                  params={"page_size": 200})
+    if roster["ok"]:
+        for row in page(roster)["results"]:
+            email = ((row.get("user_info") or {}).get("email") or "").strip().lower()
+            user = row.get("user")
+            if email:
+                by_email[email] = {
+                    "user_id": user.get("id") if isinstance(user, dict) else user,
+                    "status": row.get("status"),
+                    "booking_id": row.get("id"),
+                }
+
+    seats, free, maintenance = [], [], []
+    for spot in detail.get("map_spots") or []:
+        code = spot.get("code")
+        if spot.get("maintenance"):
+            maintenance.append(code)
+            continue
+        bookings = spot.get("bookings") or []
+        if not bookings:
+            free.append(code)
+            continue
+        for booking in bookings:
+            attendee = booking.get("attendee") or {}
+            email = (attendee.get("email") or "").strip().lower()
+            joined = by_email.get(email) or {}
+            seats.append({
+                "spot": code,
+                "name": " ".join(p for p in (attendee.get("first_name"),
+                                             attendee.get("last_name")) if p) or None,
+                "email": attendee.get("email"),
+                "is_staff": attendee.get("is_staff"),
+                "booked_at": booking.get("booked_at"),
+                "user_id": joined.get("user_id"),
+                "status": joined.get("status"),
+                "booking_id": joined.get("booking_id"),
+            })
+
+    return ok({
+        "event_token": event_token,
+        "event": _normalize(detail),
+        "attendees_booked": detail.get("attendees_booked"),
+        "seats": seats,
+        "free_spots": free,
+        "maintenance_spots": maintenance,
     })
 
 

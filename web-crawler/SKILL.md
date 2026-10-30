@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.15.1
+version: 2.15.2
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. stories, followers, likers, hashtags),
   LinkedIn, Reddit, Threads, plus China apps and Asian e-commerce via Apify (Douyin,
   Xiaohongshu, Weibo, Bilibili, Zhihu, Douban, Xueqiu, Taobao, JD, 1688, Xianyu, Shopee,
@@ -107,11 +107,10 @@ whisper are held for confirmation.
 Title only, no link → `web_search("<show> <title> transcript")` then
 `get_transcript(<page url>)`.
 
-Incident 2026-09-17: two 403s on transcript hosts led an agent to a 49 MB
-mp3 + ffmpeg + 4 whisper calls + an incomplete summary. Same link through
-`get_transcript`: RSS had no transcript → RSS declares `youtube.com/@a16z` →
-channel listing → one upload within 1.2 % duration, same day → captions,
-55k chars, ~30 s, zero audio.
+Why: answering 403s on transcript hosts by downloading audio and running
+whisper is slow, expensive and often incomplete. `get_transcript` instead
+follows RSS → the channel the feed declares → the matching upload → captions,
+with no audio download.
 
 ## Site audit — "check all links" / "this button doesn't work"
 
@@ -239,8 +238,7 @@ env, do NOT check `.env`, do NOT ask the user for an Apify key.
 - ❌ Hard paywall articles → use `archive_fallback` (Apify doesn't help here)
 
 **How to pick an actor:** Use the table below first — these actors are priced in
-sc-proxy and were verified live on 2026-10-08 (30-day successful runs in
-brackets). For a platform not listed, search the Store through the proxy
+sc-proxy (30-day successful runs in brackets). For a platform not listed, search the Store through the proxy
 (`proxied_get("https://api.apify.com/v2/store?search=<platform>&limit=10")`),
 prefer high 30-day run counts, and expect the default $0.007/result price.
 
@@ -362,6 +360,7 @@ and limit results to 5–10. Verify output quality before scaling up.
 | **Followers / following list** (+ public/private flag) | `instagram_followers(handle, limit)` (Apify) — SC has no endpoint, never conclude "impossible" |
 | **Post likers** (+ public/private flag) | `instagram_likers(post_url, limit)` (Apify) |
 | **Posts by hashtag** | `instagram_hashtag(tag, limit)` (Apify) |
+| **Posts the account is tagged in** | `instagram_tagged(handle, limit)` (Apify `apify~instagram-tagged-scraper`) |
 | All posts in one call | `instagram_all_posts(handle)` (SC, paginates) |
 | Story views, reach/impressions, follower demographics, expired stories, DMs, private accounts | Owner-only — not available to anyone, say so |
 
@@ -396,7 +395,7 @@ video_url = story["video_versions"][0]["url"]   # image-only stories: image_vers
   user's Chrome is connected (control-browser) and logged into Instagram, open
   the story there; else ask for a screen recording (not a screenshot — most
   stories are spoken video).
-- Verified 2026-10-08: 5 accounts in ~8–13 s, ~$0.0025/result real Apify cost.
+- Typical: ~8–13 s per batch of accounts, ~$0.0025/result.
 
 **Cost discipline:** Apify actors are more expensive than Firecrawl/ScrapeCreators.
 Only use Apify when the cheaper options can't get the data (China apps,

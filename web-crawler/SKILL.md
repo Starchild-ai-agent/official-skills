@@ -1,7 +1,7 @@
 ---
 name: web-crawler
-version: 2.14.1
-description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. stories),
+version: 2.15.0
+description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. stories, followers, likers, hashtags),
   LinkedIn, Reddit, Threads, plus China apps and Asian e-commerce via Apify (Douyin,
   Xiaohongshu, Weibo, Bilibili, Zhihu, Douban, Xueqiu, Taobao, JD, 1688, Xianyu, Shopee,
   Lazada, Temu, Trip.com reviews), plus robust web-page fallback extraction.
@@ -358,8 +358,15 @@ and limit results to 5–10. Verify output quality before scaling up.
 | Comments | `/v2/instagram/post/comments` |
 | Highlights | `/v1/instagram/user/highlights` → `/v1/instagram/user/highlight/detail` |
 | Reels by keyword | `/v2/instagram/reels/search` |
-| **Live stories (<24h)** | Apify `data-slayer~instagram-stories-scraper` — section below |
-| Private accounts, DMs, followers lists | Not available — say so |
+| **Live stories (<24h)** | `instagram_stories(handle)` (Apify `data-slayer~instagram-stories-scraper`) — section below |
+| **Followers / following list** (+ public/private flag) | `instagram_followers(handle, limit)` (Apify) — SC has no endpoint, never conclude "impossible" |
+| **Post likers** (+ public/private flag) | `instagram_likers(post_url, limit)` (Apify) |
+| **Posts by hashtag** | `instagram_hashtag(tag, limit)` (Apify) |
+| All posts in one call | `instagram_all_posts(handle)` (SC, paginates) |
+| Story views, reach/impressions, follower demographics, expired stories, DMs, private accounts | Owner-only — not available to anyone, say so |
+
+**Full verified map (fields, costs, recipes, what is impossible):**
+`reference/instagram.md` — read it before any Instagram analysis.
 
 `/v1/instagram/song/reels` is deprecated upstream (Instagram removed audio
 pages); don't call it.

@@ -173,6 +173,55 @@ def instagram_profile(handle, caller_id=None):
     return sc_get("/v1/instagram/profile", handle=handle, caller_id=caller_id)
 
 
+def instagram_all_posts(handle, max_pages=10, caller_id=None):
+    """All feed posts of a public account (12 per page via next_max_id)."""
+    out, cursor = [], None
+    for _ in range(max_pages):
+        params = {"handle": handle}
+        if cursor:
+            params["next_max_id"] = cursor
+        page = sc_get("/v2/instagram/user/posts", caller_id=caller_id, **params)
+        out.extend(page.get("items") or [])
+        cursor = page.get("next_max_id")
+        if not cursor or not page.get("more_available", True):
+            break
+    return out
+
+
+def instagram_followers(handle, limit=100, kind="followers", caller_id=None,
+                        max_charge_usd=0.5):
+    """Follower/following list with isPrivate/isVerified (Apify, no login).
+
+    SC has no follower endpoint (404) — this is the route. Cost scales with
+    `limit` (~$0.0008–0.002/user real); sample first, confirm before full pulls.
+    """
+    return apify_run(
+        "apify~instagram-followers-following-scraper",
+        {"usernames": [handle], "dataToScrape": kind, "resultsLimit": int(limit)},
+        caller_id=caller_id, max_charge_usd=max_charge_usd)
+
+
+def instagram_stories(handle, caller_id=None, max_charge_usd=0.5):
+    """Active (<24h) stories of a public account: id, taken_at, expiring_at, media URLs."""
+    return apify_run("data-slayer~instagram-stories-scraper",
+                     {"usernames": [handle]}, caller_id=caller_id,
+                     max_charge_usd=max_charge_usd)
+
+
+def instagram_likers(post_url, limit=100, caller_id=None, max_charge_usd=0.5):
+    """Users who liked a post, with isPrivate/isVerified (Apify)."""
+    return apify_run("memo23~instagram-likers-scraper",
+                     {"postUrls": [post_url], "maxLikersPerPost": int(limit)},
+                     caller_id=caller_id, max_charge_usd=max_charge_usd)
+
+
+def instagram_hashtag(tag, limit=20, caller_id=None, max_charge_usd=0.5):
+    """Recent posts under a hashtag (owner, likes, comments, caption, mentions)."""
+    return apify_run("apify~instagram-hashtag-scraper",
+                     {"hashtags": [tag.lstrip("#")], "resultsLimit": int(limit)},
+                     caller_id=caller_id, max_charge_usd=max_charge_usd)
+
+
 def twitter_tweet(url, caller_id=None):
     return sc_get("/v1/twitter/tweet", url=url, caller_id=caller_id)
 
@@ -277,7 +326,9 @@ __all__ = [
     "apify_run",
     "youtube_transcript", "youtube_video",
     "tiktok_video", "tiktok_transcript", "tiktok_profile",
-    "instagram_post", "instagram_profile",
+    "instagram_post", "instagram_profile", "instagram_all_posts",
+    "instagram_followers", "instagram_stories", "instagram_likers",
+    "instagram_hashtag",
     "twitter_tweet", "reddit_post", "reddit_search",
     "google_search", "linkedin_profile",
     # transcript resolver (generic, read-only, never downloads media)

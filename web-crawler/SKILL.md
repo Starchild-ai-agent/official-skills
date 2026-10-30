@@ -1,6 +1,6 @@
 ---
 name: web-crawler
-version: 2.15.0
+version: 2.15.1
 description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. stories, followers, likers, hashtags),
   LinkedIn, Reddit, Threads, plus China apps and Asian e-commerce via Apify (Douyin,
   Xiaohongshu, Weibo, Bilibili, Zhihu, Douban, Xueqiu, Taobao, JD, 1688, Xianyu, Shopee,
@@ -11,7 +11,7 @@ description: 'Web scraping plus social data: YouTube, TikTok, Instagram (incl. s
   plain fetch (e.g. download YouTube transcript, scrape TikTok comments, listing pages
   behind anti-bot/Cloudflare). Auto-fallback trigger terms: web_fetch failed, 403,
   anti-bot, cloudflare, JS-heavy page. Also use for whole-site link audits and
-  "this button/link doesn't work" reports (check all links, broken links, 404,
+  "this button/link does not work" reports (check all links, broken links, 404,
   button not working) — you investigate with site-agnostic fetch / browse tools.
 
   '

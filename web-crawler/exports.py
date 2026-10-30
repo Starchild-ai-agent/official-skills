@@ -193,7 +193,7 @@ def instagram_followers(handle, limit=100, kind="followers", caller_id=None,
     """Follower/following list with isPrivate/isVerified (Apify, no login).
 
     SC has no follower endpoint (404) — this is the route. Cost scales with
-    `limit` (~$0.0008–0.002/user real); sample first, confirm before full pulls.
+    `limit` (~$0.0008–0.002/user); sample first, confirm before full pulls.
     """
     return apify_run(
         "apify~instagram-followers-following-scraper",
@@ -219,6 +219,13 @@ def instagram_hashtag(tag, limit=20, caller_id=None, max_charge_usd=0.5):
     """Recent posts under a hashtag (owner, likes, comments, caption, mentions)."""
     return apify_run("apify~instagram-hashtag-scraper",
                      {"hashtags": [tag.lstrip("#")], "resultsLimit": int(limit)},
+                     caller_id=caller_id, max_charge_usd=max_charge_usd)
+
+
+def instagram_tagged(handle, limit=20, caller_id=None, max_charge_usd=0.3):
+    """Posts other accounts tagged this account in (Apify apify~instagram-tagged-scraper)."""
+    return apify_run("apify~instagram-tagged-scraper",
+                     {"username": [handle], "resultsLimit": int(limit)},
                      caller_id=caller_id, max_charge_usd=max_charge_usd)
 
 
@@ -328,7 +335,7 @@ __all__ = [
     "tiktok_video", "tiktok_transcript", "tiktok_profile",
     "instagram_post", "instagram_profile", "instagram_all_posts",
     "instagram_followers", "instagram_stories", "instagram_likers",
-    "instagram_hashtag",
+    "instagram_hashtag", "instagram_tagged",
     "twitter_tweet", "reddit_post", "reddit_search",
     "google_search", "linkedin_profile",
     # transcript resolver (generic, read-only, never downloads media)

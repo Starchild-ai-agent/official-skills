@@ -1088,3 +1088,34 @@ needed because `share` was being tested against the operator's own (staff) cart.
   (`catalogue-latest.js`, `angulareVersion: 'latest-v4'`), so Angulare can change
   customer-page behaviour without notice. Prefer the versioned API
   (`/api/v1/`, `/api/v3/`) over anything that depends on the customer page.
+
+## Supplemental P0/P1 endpoints (verified 2026-11-06)
+
+These paths are present in the dashboard bundle and were read-probed against
+tenant `numa`. They are not yet wrapped by the `angulare_*` functions here;
+br-ai-api exposes them through `services/angulare_api/g11_resources.py`.
+
+| Group | Paths | Read status |
+|---|---|---|
+| Appointments | `/events/appointments/{availability,day-board,credits,offer,group}/` | 404 — feature disabled on this tenant |
+| Class groups | `/events/class-groups/`, `/events/class-groups/mine/` | ✅ |
+| Schedule admin | `/events/session-bundles/`, `/session-generators/`, `/schedule-configs/`, `/schedule-exceptions/`, `/unit-working-hours/`, `/room-working-hours/`, `/instructor-working-hours/`, `/services/`, `/service-requirements/` | ✅ |
+| Equipment | `/events/equipment-stocks/`, `/events/equipment-reservations/` | ✅ |
+| Reports | `/events/instructors/stats/`, `/events/reports/event-templates/` | ✅ |
+| Members | `/users/level/`, `/users/roles/`, `/users/roles/permissions/`, `/users/segments/`, `/users/staff-payments/` | ✅ |
+| Products | `/products/checkout-discount-rules/`, `/product-discount-rules/`, `/product-inventories/`, `/product-extra-packages/`, `/products-sql/` | ✅ |
+| Payments | `/payments/payment-splits/` | ✅ |
+| Sales | `/sales/pay-customers/`, `/sales/sales-channels/` | ✅ |
+| Workflow | `/workflow/{gympass,totalpass,omie,wehelp,zoom}-*`, `/workflow/webhook-apps/`, `/workflow/webhook-configs/` | ✅ |
+| WhatsApp | `/whatsapp-provider/`, `/whatsapp/templates/` | 404 on `prd.angulare.app` |
+
+Verified safe writes (created and deleted immediately):
+
+```json
+POST /api/v1/events/class-groups/   {"unit": 1, "templates": [91], "name": "..."}  -> 201
+POST /api/v1/users/roles/           {"code": "...", "name": "...", "scope": "unit", "permissions": []} -> 201
+POST /api/v1/users/segments/        {"name": "..."} -> 201
+```
+
+Other writes in these groups still have caller-supplied bodies and require
+`confirm=True`; their request schemas were not executed.

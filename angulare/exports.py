@@ -51,6 +51,8 @@ __all__ = [
     "angulare_my_bookings", "angulare_session_bookings",
     "angulare_book", "angulare_cancel_booking", "angulare_join_waitlist",
     "angulare_reschedule_booking",
+    "angulare_check_in", "angulare_undo_check_in", "angulare_no_show",
+    "angulare_undo_no_show", "angulare_check_out", "angulare_change_spot",
     # attendance / check-ins
     "angulare_attendance", "angulare_first_experience_checkins", "angulare_followup_candidates",
     "angulare_member_attendance", "angulare_aggregator_checkins", "angulare_instructor_stats",
@@ -115,6 +117,12 @@ angulare_book = _booking.book
 angulare_cancel_booking = _booking.cancel_booking
 angulare_join_waitlist = _booking.join_waitlist
 angulare_reschedule_booking = _booking.reschedule_booking
+angulare_check_in = _booking.check_in
+angulare_undo_check_in = _booking.undo_check_in
+angulare_no_show = _booking.no_show
+angulare_undo_no_show = _booking.undo_no_show
+angulare_check_out = _booking.check_out
+angulare_change_spot = _booking.change_spot
 
 # ── Attendance / check-ins ───────────────────────────────────────────────────
 angulare_attendance = _attendance.attendance

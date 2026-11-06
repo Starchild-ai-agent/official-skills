@@ -218,7 +218,7 @@ Checkout statuses observed: `Open`, `Submitted`.
 | POST | `/api/v1/checkouts/checkouts/{id}/clear/` | empty the cart |
 | PATCH/PUT | `/api/v1/checkouts/checkouts/{id}/` | set payment method, installments… |
 | PATCH | `/api/v1/events/event-books/{id}/` | edit a booking |
-| POST | `/api/v1/events/event-books/{id}/cancel/` | cancel a booking — **unreachable today** (see below) |
+| POST | `/api/v1/events/event-books/{token}/cancel/` | cancel a booking — **verified**; use booking `token` |
 | POST | `/api/v1/events/events/{id}/change-level/`, `/change-room/` | move a session |
 
 ### ⚠️ Correction: booking cancellation WAS possible — the id is `token`
@@ -240,16 +240,38 @@ the first; everything in the schedule endpoints takes the second.
 ### Booking write endpoints
 
 ```
-POST /events/events/{event_token}/book/                  {"user": <uid>, "map_spot_code": "<n>"}
-POST /events/event-books/{booking_token}/cancel/          {}   (optional ?timezone_from_unit=)
-POST /events/events/{event_token}/add-to-waiting-list/    {"user": <uid>}
-POST /events/event-books/{booking_token}/reschedule/      (body UNVERIFIED — see booking.py)
+POST /events/events/{event_token}/book/                         {"user": <uid>, "map_spot_code": "<n>"}  -> 201
+POST /events/events/{event_token}/add-to-waiting-list/         {"user": <uid>}                         -> 201, status waiting-list
+POST /events/event-books/{booking_token}/cancel/               {}                                      -> 200
+POST /events/event-books/{booking_token}/check-in/             {}                                      -> 200, status checked-in
+POST /events/event-books/{booking_token}/undo-check-in/        {}                                      -> 200, status booked
+POST /events/event-books/{booking_token}/check-out/            {}                                      -> 200 only after check-in
+POST /events/event-books/{booking_token}/noshow/               {}                                      -> 200, status no-show
+POST /events/event-books/{booking_token}/undo-noshow/          {}                                      -> 200, status booked
+POST /events/event-books/{booking_token}/change-spot/          {"map_spot_code": "05"}                  -> 200
+POST /events/event-books/{booking_token}/reschedule/           (body UNVERIFIED — see below)
 ```
 
-All four are wrapped by `tools/booking.py`. The first three were taken from
-NUMA's production bot, which has run them against real members; `reschedule` was
-found in the dashboard bundle but never executed, and `angulare_reschedule_booking`
-says so.
+All write calls above were executed against production on 2026-11-06 with the
+`SC Aladdin` test member (id 2246), then cleaned up by cancel. `check-out`
+returns an empty 200 and the booking detail continues to report `checked-in`;
+call it only after `check-in`. Calling it while merely `booked` returns
+`400 ["Usuario precisa estar no status de checkin"]`.
+
+`reschedule` remains unsupported. Tried bodies on a real booked row:
+
+```
+{"event": "cdc0f55b-00c2-45db-a915-30732ef0ac54"}      -> 400 ["Evento inválido"]
+{"event": 4031}                                         -> 400 ["Evento inválido"]
+{"event_id": 4031}                                      -> 400 ["Evento inválido"]
+{"to_event": 4031}                                      -> 400 ["Evento inválido"]
+{"event_token": "<target>"}                             -> 400 ["Evento inválido"]
+{"event": "<target>", "user": 2246}                     -> 400 ["Evento inválido"]
+```
+
+Use cancel-then-book, checking capacity before cancelling.
+
+All of the supported writes are wrapped by `tools/booking.py`.
 
 ### Reading bookings
 

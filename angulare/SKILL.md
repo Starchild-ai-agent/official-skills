@@ -5,7 +5,7 @@ description: |
   Angulare (Angular e-Commerce) gym and studio management: class schedule, member
   attendance and check-ins, first-experience detection, the per-class mat/seat map,
   sales orders and payment status, credit-card payment links, and booking writes —
-  book, cancel, reschedule and waitlist a member.
+  book, cancel, waitlist, check in/out, no-show and change a member's spot.
 
   Use when working with an Angulare-run studio or gym — finding which member is on which mat
   in a class, booking or cancelling a class for a member, finding who actually attended,
@@ -123,7 +123,13 @@ Every function returns `{"ok": True, "data": ...}` or
 | **`angulare_book(event_token, user_id, spot_code=None, check_credits=True, confirm=False)`** | **WRITE** — book a member in. Guards: already booked? has credits? then **reads back** to confirm. |
 | **`angulare_cancel_booking(booking_token, confirm=False)`** | **WRITE** — cancel. Read `can_cancel_until` first: past it the credit is forfeit, so say so before acting. |
 | **`angulare_join_waitlist(event_token, user_id, confirm=False)`** | **WRITE** — add to the waiting list. Reserves nothing; never promise a spot. |
-| **`angulare_reschedule_booking(booking_token, to_event_token, spot_code=None, confirm=False)`** | **WRITE** — move a booking. ⚠️ Body unverified; fall back to cancel-then-book after checking capacity. |
+| **`angulare_check_in(booking_token, confirm=False)`** | **WRITE** — check a member in. Verified: `POST .../check-in/` with `{}` → `checked-in`. |
+| **`angulare_undo_check_in(booking_token, confirm=False)`** | **WRITE** — undo check-in. Verified: `{}` → `booked`. |
+| **`angulare_no_show(booking_token, confirm=False)`** | **WRITE** — mark no-show. Verified: `{}` → `no-show`. |
+| **`angulare_undo_no_show(booking_token, confirm=False)`** | **WRITE** — undo no-show. Verified: `{}` → `booked`. |
+| **`angulare_check_out(booking_token, confirm=False)`** | **WRITE** — check out a checked-in member. Verified 200 only after check-in; status remains `checked-in` in the detail serializer. |
+| **`angulare_change_spot(booking_token, spot_code, confirm=False)`** | **WRITE** — move to another mat/bike spot. Verified: `{"map_spot_code":"05"}` → 200 and spot reads back. |
+| **`angulare_reschedule_booking(booking_token, to_event_token, spot_code=None, confirm=False)`** | **WRITE** — move a booking. ⚠️ Body still unverified; six body shapes returned `400 ["Evento inválido"]` on 2026-11-06. Fall back to cancel-then-book. |
 
 ### Attendance and check-ins
 

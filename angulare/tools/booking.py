@@ -11,7 +11,11 @@ Endpoints, and where each one came from:
     POST /events/events/{event_token}/book/              create
     POST /events/event-books/{booking_token}/cancel/     cancel
     POST /events/events/{event_token}/add-to-waiting-list/
-    POST /events/event-books/{booking_token}/reschedule/
+    POST /events/event-books/{booking_token}/check-in/   attendance
+    POST /events/event-books/{booking_token}/check-out/  attendance (after check-in)
+    POST /events/event-books/{booking_token}/noshow/     attendance
+    POST /events/event-books/{booking_token}/change-spot/
+    POST /events/event-books/{booking_token}/reschedule/ (body still unknown)
 
 **The booking id is the row's `token`, not its `id`.** The list serializer
 returns `id: null` on every row, which is why an earlier pass through this API
@@ -20,7 +24,7 @@ present and is what `.../cancel/` wants. Do not mix it up with the *event* token
 (`events/{event_token}/…`), which identifies the class, not the booking.
 
 Statuses on a booking row:
-    booked · waiting-list · allocated
+    booked · waiting-list · allocated · checked-in · no-show · canceled
 A row with `canceled_at` set is cancelled.
 
 The booking endpoints and the guard order below were taken from NUMA's
@@ -263,13 +267,91 @@ def join_waitlist(event_token, user_id, confirm=False):
     return ok({"waitlisted": True, "status": booking.get("status"), "booking": booking})
 
 
+def _booking_detail(booking_token):
+    """Read the booking row back after an attendance write."""
+    result = call("GET", f"/api/v1/events/event-books/{booking_token}/")
+    if not result["ok"]:
+        return result, None
+    return result, _normalize_booking(result.get("data") or {})
+
+
+def _attendance_action(booking_token, action, expected_status, confirm, label):
+    if not confirm:
+        return _fail(None, f"{label} is a write and requires confirm=True",
+                   hint="it changes a real member's attendance status")
+    result = call("POST", f"/api/v1/events/event-books/{booking_token}/{action}/", body={})
+    if not result["ok"]:
+        return result
+    read_back, booking = _booking_detail(booking_token)
+    if not read_back["ok"]:
+        return _fail(read_back.get("status"), "the attendance call returned OK but the read-back failed",
+                   hint="re-read the booking before reporting success", raw=result.get("data"))
+    if booking and expected_status and booking.get("status") != expected_status:
+        return _fail(None, f"attendance did not reach {expected_status}",
+                   status_actual=booking.get("status"), booking=booking,
+                   hint="do not report the change to the customer")
+    return ok({"changed": True, "action": action, "booking": booking, "raw": result.get("data")})
+
+
+def check_in(booking_token, confirm=False):
+    """Check a member in. Verified 2026-11-06: body `{}` -> status `checked-in`."""
+    return _attendance_action(booking_token, "check-in", "checked-in", confirm, "check_in")
+
+
+def undo_check_in(booking_token, confirm=False):
+    """Undo a check-in. Verified: body `{}` -> status `booked`."""
+    return _attendance_action(booking_token, "undo-check-in", "booked", confirm, "undo_check_in")
+
+
+def no_show(booking_token, confirm=False):
+    """Mark a no-show. Verified: body `{}` -> status `no-show`."""
+    return _attendance_action(booking_token, "noshow", "no-show", confirm, "no_show")
+
+
+def undo_no_show(booking_token, confirm=False):
+    """Undo a no-show. Verified: body `{}` -> status `booked`."""
+    return _attendance_action(booking_token, "undo-noshow", "booked", confirm, "undo_no_show")
+
+
+def check_out(booking_token, confirm=False):
+    """Check a checked-in member out.
+
+    Verified 2026-11-06: `{}` returns 200 only after check-in; calling it while
+    booked returns 400 `Usuario precisa estar no status de checkin`. The detail
+    serializer still reports `checked-in` after the 200, so treat the empty 200
+    as accepted, not as a status transition.
+    """
+    return _attendance_action(booking_token, "check-out", None, confirm, "check_out")
+
+
+def change_spot(booking_token, spot_code, confirm=False):
+    """Move a booking to another mat/bike spot.
+
+    Verified 2026-11-06: body `{"map_spot_code": "05"}` -> 200 and the booking
+    detail reads back `map_spot_code: "05"`.
+    """
+    if not confirm:
+        return _fail(None, "change_spot is a write and requires confirm=True",
+                   hint="it changes the member's assigned seat")
+    body = {"map_spot_code": str(spot_code)}
+    result = call("POST", f"/api/v1/events/event-books/{booking_token}/change-spot/", body=body)
+    if not result["ok"]:
+        return result
+    _, booking = _booking_detail(booking_token)
+    if booking and str(booking.get("spot")) != str(spot_code):
+        return _fail(None, "the spot did not read back as requested",
+                   spot_requested=str(spot_code), booking=booking)
+    return ok({"changed": True, "spot": str(spot_code), "booking": booking, "raw": result.get("data")})
+
+
 def reschedule_booking(booking_token, to_event_token, spot_code=None, confirm=False):
     """Move a booking to another session.
 
-    ⚠️ **The request body is not verified.** The endpoint exists
-    (`POST /events/event-books/{token}/reschedule/`) but NUMA's bot never uses
-    it, so unlike `book`/`cancel`/`join_waitlist` this has not been exercised
-    against production. Try it on a throwaway booking before relying on it.
+    ⚠️ **The request body is still unknown.** The endpoint exists
+    (`POST /events/event-books/{token}/reschedule/`), but on 2026-11-06 six
+    candidate bodies all returned `400 ["Evento inválido"]` against a real
+    booked row. Unlike `book`/`cancel`/`join_waitlist`/attendance, this is not
+    usable yet.
 
     If it fails, the safe fallback is cancel-then-book, with the caveat the
     product doc raises: if the cancel succeeds and the new booking fails, the

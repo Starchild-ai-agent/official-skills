@@ -1,0 +1,1 @@
+"""EVO (W12 / ABC Evo) gym management API skill package."""

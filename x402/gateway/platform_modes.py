@@ -105,7 +105,7 @@ ASSETS = {
 # so all agent containers automatically include Solana in their 402 accepts
 # without needing any extra env var. Override via X402_SOLANA_FEE_PAYER if
 # the facilitator key ever changes.
-_PLATFORM_SOL_FEE_PAYER = "FYgkFMkvHwVhUJBm9zhboJPtHxZT5Qtx1TN59zxPpQ7g"
+_PLATFORM_SOL_FEE_PAYER = "8mJFRnix9TYqffVkso1f7X1CoR9MwrPRYkfUA88qxbSZ"
 _sol_fee_payer = os.environ.get("X402_SOLANA_FEE_PAYER", "").strip() or _PLATFORM_SOL_FEE_PAYER
 ASSETS["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"] = (
     "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",

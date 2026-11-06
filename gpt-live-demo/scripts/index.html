@@ -52,7 +52,12 @@ details.panel summary{cursor:pointer;font-size:13px;color:var(--acc)}
 const $=id=>document.getElementById(id);
 const chat=$("chat"),log=$("log"),status=$("status");
 let pc,dc,stream,connected=false;
-let liveSessionId=null,utterBuf="";
+let liveSessionId=null,utterBuf="",utterFinal="",speechBuf="";
+// Thread binding (v0.3): ?thread_id=<uuid or full session id>. When bound, the
+// Starchild thread is the single source of truth: Live is seeded from it, every
+// delegation goes to it, and thread events flow back as silent thinking.
+const THREAD=new URLSearchParams(location.search).get("thread_id")||"";
+let evCursor=0,evTimer=null,lastThinkAt=0;
 const base=location.pathname.replace(/\/?$/,"/");
 const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 async function api(path,body){
@@ -135,7 +140,7 @@ let lastTaskId=null; // most recent brain task, for progress polling
 async function doAskStarchild(text,taskId){
   addEv("tool","Starchild",`Calling brain → session=${liveSessionId||"?"} text: ${text.slice(0,120)}`);
   addBubble("user",text);
-  const sub=await api("api/agent",{session_id:liveSessionId,text});
+  const sub=await api("api/agent",{session_id:liveSessionId,text,thread_id:THREAD||undefined});
   lastTaskId=sub.task_id;
   let reply=null,errMsg=null,tries=0,seenProg=0;
   for(;;){
@@ -170,14 +175,35 @@ function returnCommentary(delegationId,content){
   addEv("raw","Return","Result sent to voice playback");
 }
 
+// ---- thread mode: writeback + event inflow ----
+function voiceLog(role,text){
+  api("api/voice-log",{thread_id:THREAD,role,text}).then(r=>addEv("raw","Thread",`voice-only ${role} turn logged (pending ${r.pending})`)).catch(e=>addEv("err","Thread",esc(e.message)));
+}
+// Poll thread events and forward to Live as silent context, throttled ≤1 per 1.5s, merged.
+async function pumpThreadEvents(){
+  if(!THREAD||!dc||dc.readyState!=="open")return;
+  try{
+    const r=await api(`api/thread-events?thread_id=${encodeURIComponent(THREAD)}&since=${evCursor}`);
+    if(r.events&&r.events.length){
+      evCursor=r.seq;
+      const merged=r.events.map(e=>`[${e.kind}] ${e.text}`).join("\n").slice(0,1500);
+      const wait=Math.max(0,1500-(Date.now()-lastThinkAt));
+      setTimeout(()=>{if(!dc||dc.readyState!=="open")return;lastThinkAt=Date.now();
+        dc.send(JSON.stringify({type:"session.thinking.append",event_id:"thr_"+Date.now(),delegation_id:null,
+          content:`[Update from the conversation thread — for your awareness, do not read aloud unless relevant]\n${merged}`}));
+        addEv("raw","Thread",`${r.events.length} thread event(s) → Live`);},wait);
+    }
+  }catch(e){addEv("err","Thread",esc(e.message));}
+}
 function renderEvent(ev){
   const t=ev.type||"(unknown)";
   if(t==="session.delegation.created"){
     const d=ev.delegation||{};
     const did=d.id||ev.delegation_id||"";
     addEv("deleg","Delegation",`Request → delegation_id=${did} target=${d.target||"client"}`);
-    const text=(utterBuf||"").trim();
-    utterBuf="";
+    // Prefer the completed transcript (api-notes §1: deltas may be partial); fall back to the delta buffer.
+    const text=(utterFinal||utterBuf||"").trim();
+    utterBuf="";utterFinal="";
     if(!text){addEv("deleg","Delegation","No user text captured, skipping");return;}
     const route=routeTool(text);
     addEv("deleg","Routing",`Tool: ${route.name}`);
@@ -195,10 +221,18 @@ function renderEvent(ev){
   }
   if(/input.*(transcript|transcription)/.test(t)){
     if(ev.delta){utterBuf+=ev.delta;addEv("sys","Transcript",`You: ${ev.delta}`);}
+    const full=ev.transcript||ev.text;
+    if(/completed|done|final/.test(t)&&typeof full==="string"&&full.trim()){
+      utterFinal=full.trim();addEv("sys","Transcript",`You (final): ${utterFinal}`);
+      // Voice-only writeback: if no delegation follows within 1.5s, Live answered itself → log it for the thread.
+      if(THREAD){const snap=utterFinal;setTimeout(()=>{if(utterFinal===snap){utterFinal="";utterBuf="";voiceLog("user",snap);}},1500);}
+    }
     return;
   }
   if(/output.*(transcript|transcription)/.test(t)){
-    if(ev.delta)addEv("speech","Speech",`Starchild said: ${ev.delta}`);
+    if(ev.delta){speechBuf+=ev.delta;addEv("speech","Speech",`Starchild said: ${ev.delta}`);}
+    const full=ev.transcript||ev.text;
+    if(/completed|done|final/.test(t)){const said=(typeof full==="string"&&full.trim())||speechBuf.trim();speechBuf="";if(said&&THREAD)voiceLog("live",said);}
     return;
   }
   if(/error|failed/i.test(t)){
@@ -221,10 +255,17 @@ $("connect").onclick=async()=>{
     dc.onmessage=e=>{try{renderEvent(JSON.parse(e.data));}catch(_){}};
     await pc.setLocalDescription(await pc.createOffer());
     setStatus("Creating session…");
-    const data=await api("api/session",{sdp:pc.localDescription.sdp});
+    const data=await api("api/session",{sdp:pc.localDescription.sdp,thread_id:THREAD||undefined});
     await pc.setRemoteDescription(data.transport?.sdp?{type:"answer",sdp:data.transport.sdp}:data.answer??data);
     connected=true;$("close").disabled=false;
-    setStatus("Connected, start talking");
+    if(data.binding){
+      const b=data.binding;
+      addEv("result","Thread",`Bound to …${b.session_id.slice(-12)} — seeded ${b.snapshot_turns}/${b.thread_messages} msgs (${b.snapshot_chars} chars)`);
+      const snap=await api(`api/thread-events?thread_id=${encodeURIComponent(THREAD)}&since=0`).catch(()=>null);
+      if(snap)evCursor=snap.seq; // skip events that predate this session
+      clearInterval(evTimer);evTimer=setInterval(pumpThreadEvents,2000);
+    }
+    setStatus(THREAD?"Connected to thread, start talking":"Connected, start talking");
   }catch(err){
     setStatus("Failed: "+err.message,true);addEv("deleg","Failed",esc(err.message));
     $("connect").disabled=false;
@@ -237,6 +278,7 @@ function teardownAll(keepMic,cancelTasks){
   try{if(dc){dc.onmessage=null;dc.close();}}catch(_){}
   try{pc&&pc.close();}catch(_){}
   dc=null;pc=null;connected=false;
+  clearInterval(evTimer);evTimer=null;
   // design doc §6: hang-up keeps background tasks running (results stored);
   // only closing/refreshing the page cancels them, so they stop burning credits
   if(cancelTasks){try{fetch("api/tasks/all/cancel",{method:"POST",keepalive:true});}catch(_){}}

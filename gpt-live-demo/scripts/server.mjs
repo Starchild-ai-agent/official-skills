@@ -96,6 +96,110 @@ function histText(entries, n = MAX_HISTORY) {
 }
 
 // ---------------- routes ----------------
+// ---- Thread binding (v0.3): Starchild thread is the single source of truth ----
+// A Live session may bind to one Starchild thread. On start we seed Live with a
+// compressed snapshot of that thread; every delegation goes to the same thread
+// (so the runtime writes user turns + answers into it); thread events flow back
+// to Live as silent thinking.append; voice-only exchanges (turns Live answered
+// itself) are kept in a per-thread voice log and handed to the brain on the next
+// delegation, because the runtime has no public "append message" API yet.
+const BRAIN = process.env.STARCHILD_RUNTIME || "http://localhost:8000";
+const VOICE_LOG_FILE = resolve(DATA_DIR, "voice-log.json");
+const voiceLog = new Map(Object.entries(await loadJson(VOICE_LOG_FILE, {}))); // thread -> [{role,text,t,delegated}]
+const saveVoiceLog = (() => {
+  let timer = null;
+  return () => { clearTimeout(timer); timer = setTimeout(() => writeFile(VOICE_LOG_FILE, JSON.stringify(Object.fromEntries(voiceLog))).catch(() => {}), 300); };
+})();
+function vlog(thread) { if (!voiceLog.has(thread)) voiceLog.set(thread, []); return voiceLog.get(thread); }
+
+async function brainJson(path) {
+  const r = await fetch(BRAIN + path, { signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error(`runtime ${path} HTTP ${r.status}`);
+  return r.json();
+}
+// thread_id may be a bare thread uuid or a full session id (contains ':').
+async function resolveSession(threadId) {
+  if (!threadId) return null;
+  if (threadId.includes(":")) return threadId;
+  // /sessions is capped and may omit the most active thread, so first derive the
+  // "agent:main:thread:<agent_number>" prefix from any listed thread and probe
+  // GET /session directly; fall back to a suffix match on the list.
+  const d = await brainJson("/sessions");
+  const list = (Array.isArray(d) ? d : d.sessions || []).map((s) => String(s.session_id || s));
+  const hit = list.find((s) => s.endsWith(":" + threadId));
+  if (hit) return hit;
+  const prefix = process.env.STARCHILD_THREAD_PREFIX || list.find((s) => s.includes(":thread:"))?.replace(/:[^:]+$/, "");
+  if (!prefix) return null;
+  const candidate = `${prefix}:${threadId}`;
+  try {
+    const s = await brainJson(`/session?session_id=${encodeURIComponent(candidate)}`);
+    return Array.isArray(s.messages) && s.messages.length ? candidate : null;
+  } catch { return null; }
+}
+function msgText(m) {
+  const c = m.content;
+  if (typeof c === "string") return c;
+  if (Array.isArray(c)) return c.map((p) => (typeof p === "string" ? p : p.text || "")).join(" ");
+  return "";
+}
+// Compressed thread snapshot for session.input (report §2a). Size is bounded
+// because session.input limits are unverified (E8): last N turns, 400 chars each.
+async function threadSnapshot(sessionId, { turns = 10, perMsg = 400 } = {}) {
+  const d = await brainJson(`/session?session_id=${encodeURIComponent(sessionId)}`);
+  const msgs = (d.messages || []).filter((m) => (m.role === "user" || m.role === "assistant") && msgText(m).trim());
+  const recent = msgs.slice(-turns).map((m) => `${m.role === "user" ? "User" : "Starchild"}: ${msgText(m).replace(/\s+/g, " ").trim().slice(0, perMsg)}`);
+  const lines = [
+    `You are continuing an existing Starchild conversation thread (${msgs.length} prior messages).`,
+    `Answer from this context directly when you can; delegate anything that needs facts, tools, files, or reasoning.`,
+    `Do not recite this history unless asked.`,
+    ``,
+    `Recent turns:`,
+    ...recent,
+  ];
+  const v = vlog(sessionId).filter((e) => !e.delegated).slice(-6);
+  if (v.length) lines.push(``, `Recent voice-only exchanges (not yet in the thread):`, ...v.map((e) => `${e.role === "user" ? "User" : "You"}: ${e.text.slice(0, perMsg)}`));
+  return { text: lines.join("\n"), total: msgs.length, included: recent.length };
+}
+
+// Thread events -> Live (report §2c). One SSE subscription per bound thread,
+// buffered with a cursor; the browser polls /api/thread-events and forwards as
+// thinking.append (silent). Payload shape of /push/events is not documented, so
+// we forward any JSON with a text-like field, truncated to ~400 chars.
+const threadEvents = new Map(); // sessionId -> { seq, buf: [{seq,t,text}], ctrl }
+function ensureThreadSub(sessionId) {
+  if (threadEvents.has(sessionId)) return threadEvents.get(sessionId);
+  const st = { seq: 0, buf: [], ctrl: null, since: Date.now() };
+  threadEvents.set(sessionId, st);
+  (async function loop() {
+    for (;;) {
+      if (!threadEvents.has(sessionId)) return;
+      const ctrl = new AbortController(); st.ctrl = ctrl;
+      try {
+        const r = await fetch(`${BRAIN}/push/events?session_id=${encodeURIComponent(sessionId)}&listener_source=live-relay`, { signal: ctrl.signal });
+        if (!r.ok || !r.body) throw new Error("HTTP " + r.status);
+        const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
+        for (;;) {
+          const { value, done } = await reader.read(); if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split("\n"); buf = lines.pop();
+          for (const line of lines) {
+            if (!line.startsWith("data:")) continue;
+            let ev; try { ev = JSON.parse(line.slice(5).trim()); } catch { continue; }
+            const text = ev.message || ev.text || ev.content || ev.data?.message || ev.data?.text || ev.summary || "";
+            if (!text || typeof text !== "string") continue;
+            st.buf.push({ seq: ++st.seq, t: Date.now(), kind: ev.type || ev.event || "event", text: text.replace(/\s+/g, " ").slice(0, 400) });
+            if (st.buf.length > 100) st.buf.shift();
+          }
+        }
+      } catch (e) {
+        if (e.name !== "AbortError") console.error("thread-events", sessionId.slice(-12), e.message);
+      }
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+  })();
+  return st;
+}
+
 app.get("/", async (_req, res) => {
   res.type("html").send(await readFile(indexPath, "utf8"));
 });
@@ -108,15 +212,26 @@ app.post("/api/session", async (req, res) => {
   if (!process.env.OPENAI_API_KEY) {
     return res.status(503).json({ error: "OPENAI_API_KEY not set" });
   }
-  // Inject recent voice conversation history as initial context (§5 记忆回灌).
-  const entries = histArr();
-  const input = entries.length
-    ? [{
-        role: "developer",
-        content: [{ type: "input_text", text:
-          `以下是用户与本语音助手近期的对话历史（供上下文衔接，不要主动复述）：\n${histText(entries, 12)}` }],
-      }]
-    : undefined;
+  // Seed Live with context. Thread mode (thread_id given): compressed snapshot of
+  // the Starchild thread — the thread is the single source of truth. Legacy mode
+  // (no thread): recent shared voice history (§5 记忆回灌).
+  let input, binding = null;
+  try {
+    const sessionId = await resolveSession(String(req.body.thread_id || "").trim());
+    if (req.body.thread_id && !sessionId) return res.status(404).json({ error: `thread not found: ${req.body.thread_id}` });
+    if (sessionId) {
+      const snap = await threadSnapshot(sessionId);
+      ensureThreadSub(sessionId);
+      binding = { session_id: sessionId, thread_messages: snap.total, snapshot_turns: snap.included, snapshot_chars: snap.text.length };
+      input = [{ role: "developer", content: [{ type: "input_text", text: snap.text }] }];
+    } else {
+      const entries = histArr();
+      if (entries.length) input = [{ role: "developer", content: [{ type: "input_text", text:
+        `以下是用户与本语音助手近期的对话历史（供上下文衔接，不要主动复述）：\n${histText(entries, 12)}` }] }];
+    }
+  } catch (e) {
+    return res.status(502).json({ error: `runtime unreachable while building thread snapshot: ${e.message}` });
+  }
   try {
     const result = await client.live.create({
       session: {
@@ -127,7 +242,8 @@ app.post("/api/session", async (req, res) => {
       },
       transport: { type: "webrtc", sdp: req.body.sdp },
     });
-    res.status(201).json(result);
+    console.log("live session created", binding ? `thread=${binding.session_id.slice(-12)} snapshot=${binding.snapshot_turns}/${binding.thread_messages} msgs, ${binding.snapshot_chars} chars` : "legacy voice-history mode");
+    res.status(201).json({ ...result, binding });
   } catch (error) {
     if (!(error instanceof OpenAI.APIError)) throw error;
     console.error("Live session creation failed", error.status, error.message);
@@ -140,22 +256,39 @@ app.post("/api/session", async (req, res) => {
 let taskSeq = 0;
 
 app.post("/api/agent", async (req, res) => {
-  const { session_id: sessionId, text } = req.body || {};
+  const { session_id: sessionId, text, thread_id: threadIdRaw } = req.body || {};
   if (typeof text !== "string" || !text.trim()) {
     return res.status(400).json({ error: "text is required" });
   }
-  const h = histArr();
-  h.push({ role: "user", text: text.trim(), t: Date.now() });
-  if (h.length > MAX_HISTORY) h.splice(0, h.length - MAX_HISTORY);
-  saveHistory();
+  let boundSession = null;
+  try { boundSession = await resolveSession(String(threadIdRaw || "").trim()); } catch (e) { return res.status(502).json({ error: e.message }); }
+  if (threadIdRaw && !boundSession) return res.status(404).json({ error: `thread not found: ${threadIdRaw}` });
 
-  const message =
-    (h.length > 1
-      ? `以下是近期对话历史（供上下文参考）：\n${histText(h, 10).slice(0, 4000)}\n\n`
-      : "") + `用户现在说：${text.trim()}\n\n请简洁口语化地回答（1-2句话，适合语音播报），默认简体中文。`;
+  let message, chatBody;
+  if (boundSession) {
+    // Thread mode: the runtime owns history — do NOT re-paste it. Only hand over
+    // voice-only exchanges that never reached the thread, then mark them delegated.
+    const pending = vlog(boundSession).filter((e) => !e.delegated);
+    const voiceCtx = pending.length
+      ? `[Voice-only exchanges since the last delegation, for context]\n${pending.map((e) => `${e.role === "user" ? "User" : "Live"}: ${e.text}`).join("\n")}\n\n`
+      : "";
+    pending.forEach((e) => { e.delegated = true; }); saveVoiceLog();
+    message = `${voiceCtx}[Voice] ${text.trim()}\n\n(The user is speaking to you by voice. Answer in 1–2 spoken sentences first; put details in the thread rather than reading them aloud.)`;
+    chatBody = { message, thread_id: boundSession.split(":").pop(), call_source: "internal" };
+  } else {
+    const h = histArr();
+    h.push({ role: "user", text: text.trim(), t: Date.now() });
+    if (h.length > MAX_HISTORY) h.splice(0, h.length - MAX_HISTORY);
+    saveHistory();
+    message =
+      (h.length > 1
+        ? `以下是近期对话历史（供上下文参考）：\n${histText(h, 10).slice(0, 4000)}\n\n`
+        : "") + `用户现在说：${text.trim()}\n\n请简洁口语化地回答（1-2句话，适合语音播报），默认简体中文。`;
+    chatBody = { message, call_source: "internal" };
+  }
 
   const taskId = `t${Date.now()}_${++taskSeq}`;
-  tasks.set(taskId, { status: "running", progress: [], userText: text.trim(), createdAt: Date.now() });
+  tasks.set(taskId, { status: "running", progress: [], userText: text.trim(), createdAt: Date.now(), thread: boundSession || null });
   saveTasks();
   res.json({ task_id: taskId });
 
@@ -172,7 +305,7 @@ app.post("/api/agent", async (req, res) => {
       const r = await fetch("http://localhost:8000/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, call_source: "internal" }),
+        body: JSON.stringify(chatBody),
         signal: controller.signal,
       });
       if (!r.ok || !r.body) throw new Error(`agent HTTP ${r.status}`);
@@ -190,6 +323,8 @@ app.post("/api/agent", async (req, res) => {
           try {
             const ev = JSON.parse(line.slice(6));
             if (ev.type === "text_delta") reply += ev.data?.text || "";
+            else if (ev.type === "run_started" || ev.type === "run_id") { if (ev.data?.run_id) tasks.get(taskId).run_id = ev.data.run_id; }
+            else if (/thinking|reasoning/i.test(ev.type) && (ev.data?.text || ev.data?.summary)) push("think", (ev.data.summary || ev.data.text).slice(0, 160));
             else if (ev.type === "turn_start") push("turn", `Turn ${ev.data?.turn ?? "?"} thinking started`);
             else if (ev.type === "tool_start") push("tool", `Calling tool ${ev.data?.tool_name || ""}`);
             else if (ev.type === "tool_complete") push("tool_done", `Tool ${ev.data?.tool_name || ""} returned`);
@@ -198,9 +333,13 @@ app.post("/api/agent", async (req, res) => {
         }
       }
       if (tasks.get(taskId)?.status === "cancelled") return;
-      reply = reply.trim() || "(brain returned nothing yet)";
-      histArr().push({ role: "agent", text: reply, t: Date.now() });
-      saveHistory();
+      // Empty stream in thread mode = the thread was mid-run and the runtime merged
+      // our message into that run (verified in smoke test); the answer lands in the
+      // thread, not in this SSE. Tell Live so it can say so instead of going silent.
+      reply = reply.trim() || (boundSession
+        ? "Starchild was busy with another task in this thread, so your message was merged into it — the answer will show up in the conversation thread shortly."
+        : "(brain returned nothing yet)");
+      if (!boundSession) { histArr().push({ role: "agent", text: reply, t: Date.now() }); saveHistory(); }
       tasks.set(taskId, { ...tasks.get(taskId), status: "done", reply });
     } catch (err) {
       if (err.name === "AbortError" || tasks.get(taskId)?.status === "cancelled") return;
@@ -357,8 +496,35 @@ app.get("/api/memory", async (req, res) => {
   res.json({ query: q, mode: "search", total_results: results.length, results: results.slice(0, 12) });
 });
 
+// ---- thread mode helpers (v0.3) ----
+// Voice-only exchanges (turns Live handled itself) — written back on next delegation.
+app.post("/api/voice-log", async (req, res) => {
+  const { thread_id: t, role, text } = req.body || {};
+  if (!t || !text || !["user", "live"].includes(role)) return res.status(400).json({ error: "thread_id, role(user|live), text required" });
+  let sid; try { sid = await resolveSession(String(t)); } catch (e) { return res.status(502).json({ error: e.message }); }
+  if (!sid) return res.status(404).json({ error: "thread not found" });
+  const arr = vlog(sid); arr.push({ role, text: String(text).slice(0, 1000), t: Date.now(), delegated: false });
+  if (arr.length > 60) arr.splice(0, arr.length - 60);
+  saveVoiceLog(); res.json({ ok: true, pending: arr.filter((e) => !e.delegated).length });
+});
+// Thread events since cursor (browser forwards them to Live as thinking.append).
+app.get("/api/thread-events", async (req, res) => {
+  let sid; try { sid = await resolveSession(String(req.query.thread_id || "")); } catch (e) { return res.status(502).json({ error: e.message }); }
+  if (!sid) return res.status(404).json({ error: "thread not found" });
+  const st = ensureThreadSub(sid); const since = Number(req.query.since || 0);
+  res.json({ seq: st.seq, events: st.buf.filter((e) => e.seq > since) });
+});
+// Thread snapshot preview (debug: see exactly what Live is seeded with).
+app.get("/api/thread-snapshot", async (req, res) => {
+  try {
+    const sid = await resolveSession(String(req.query.thread_id || ""));
+    if (!sid) return res.status(404).json({ error: "thread not found" });
+    res.json({ session_id: sid, ...(await threadSnapshot(sid)) });
+  } catch (e) { res.status(502).json({ error: e.message }); }
+});
+
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, key: !!process.env.OPENAI_API_KEY, tasks: tasks.size, history: histArr().length });
+  res.json({ ok: true, key: !!process.env.OPENAI_API_KEY, tasks: tasks.size, history: histArr().length, runtime: BRAIN, bound_threads: [...threadEvents.keys()].map((s) => s.slice(-12)) });
 });
 
 // Expose the live voice agent's system prompt + tool list for the UI panel.

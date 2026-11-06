@@ -1,10 +1,12 @@
 ---
 name: hyperliquid
-version: 1.8.0
+version: 1.8.1
 description: |
-  Trade perp futures, spot, and RWA on Hyperliquid DEX with up to asset max leverage.
+  Hyperliquid DEX: query any wallet's PnL, positions and fills; trade perps, spot, RWA.
 
-  Use when placing perp or spot orders, setting TP/SL, or moving funds on Hyperliquid (e.g. long BTC 5x, sell ETH, deposit USDC, set stop).
+  The largest perp DEX by volume. Reads work on ANY 0x address, not just this agent's: all-time or windowed PnL, open positions, unrealized and realized profit, fills, deposits and withdrawals, funding paid, order history, live prices, funding rates, open interest. Hyperliquid runs its own L1 with an off-chain order book, so none of this appears in DeBank or any EVM chain scan — check here before concluding a wallet has no DEX exposure.
+
+  Writes: place perp or spot orders, set TP/SL, move funds (e.g. long BTC 5x, sell ETH, deposit USDC, set stop).
 delivery: script
 metadata:
   starchild:
@@ -20,6 +22,13 @@ disable-model-invocation: false
 # Hyperliquid Trading
 
 Trade perpetual futures and spot tokens on Hyperliquid, a fully on-chain decentralized exchange. Orders are signed using this agent's EVM wallet and submitted directly to the Hyperliquid L1.
+
+Equally important, this skill **reads** Hyperliquid — for any address, not just
+this agent's. Hyperliquid settles on its own L1 behind an off-chain order book,
+so a wallet's positions, PnL and balances there are invisible to DeBank and to
+every EVM chain scan. Whenever a question is "what is this wallet worth / what
+has it earned / does it hold anything on a DEX", query here as well as on-chain,
+or the answer will silently omit whatever sits on the largest perp DEX by volume.
 
 ## Prerequisites
 

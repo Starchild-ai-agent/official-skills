@@ -228,6 +228,10 @@ def cancel_booking(booking_token, confirm=False):
     server-computed deadline for a credit-refunding cancellation. Past it, the
     cancellation still works but the credit is forfeit — so say so first rather
     than reporting the outcome afterwards.
+
+    Only `booked`/`waiting-list` rows can be cancelled. A `checked-in` or
+    `no-show` row answers `400 ["Usuário não está pendente..."]`; call
+    `undo_check_in()` / `undo_no_show()` first.
     """
     if not confirm:
         return _fail(None, "cancel_booking is a write and requires confirm=True",

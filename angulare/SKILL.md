@@ -121,7 +121,7 @@ Every function returns `{"ok": True, "data": ...}` or
 | `angulare_my_bookings(user_id, days_ahead=7, include_past=False, take=50)` | A member's bookings. **The only source of the booking token** — start here before cancelling anything. |
 | `angulare_session_bookings(event_token, take=100)` | One session's roster, with each member's booking token. |
 | **`angulare_book(event_token, user_id, spot_code=None, check_credits=True, confirm=False)`** | **WRITE** — book a member in. Guards: already booked? has credits? then **reads back** to confirm. |
-| **`angulare_cancel_booking(booking_token, confirm=False)`** | **WRITE** — cancel. Read `can_cancel_until` first: past it the credit is forfeit, so say so before acting. |
+| **`angulare_cancel_booking(booking_token, confirm=False)`** | **WRITE** — cancel a `booked`/`waiting-list` row. Read `can_cancel_until` first: past it the credit is forfeit. `checked-in`/`no-show` rows return `400`; undo the attendance first. |
 | **`angulare_join_waitlist(event_token, user_id, confirm=False)`** | **WRITE** — add to the waiting list. Reserves nothing; never promise a spot. |
 | **`angulare_check_in(booking_token, confirm=False)`** | **WRITE** — check a member in. Verified: `POST .../check-in/` with `{}` → `checked-in`. |
 | **`angulare_undo_check_in(booking_token, confirm=False)`** | **WRITE** — undo check-in. Verified: `{}` → `booked`. |

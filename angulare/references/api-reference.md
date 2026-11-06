@@ -242,7 +242,7 @@ the first; everything in the schedule endpoints takes the second.
 ```
 POST /events/events/{event_token}/book/                         {"user": <uid>, "map_spot_code": "<n>"}  -> 201
 POST /events/events/{event_token}/add-to-waiting-list/         {"user": <uid>}                         -> 201, status waiting-list
-POST /events/event-books/{booking_token}/cancel/               {}                                      -> 200
+POST /events/event-books/{booking_token}/cancel/               {}                                      -> 200 (booked/waiting-list only; checked-in/no-show -> 400)
 POST /events/event-books/{booking_token}/check-in/             {}                                      -> 200, status checked-in
 POST /events/event-books/{booking_token}/undo-check-in/        {}                                      -> 200, status booked
 POST /events/event-books/{booking_token}/check-out/            {}                                      -> 200 only after check-in

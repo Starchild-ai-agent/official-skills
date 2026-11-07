@@ -1,0 +1,1 @@
+"""Angulare (Angular e-Commerce) gym/studio management API skill package."""

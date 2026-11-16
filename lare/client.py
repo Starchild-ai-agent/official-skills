@@ -23,10 +23,30 @@ def err(status: int, message: str, hint: str | None = None) -> dict[str, Any]:
     return out
 
 
+def _workspace_env(key: str) -> str:
+    """Read a key from workspace/.env (the agent mirrors the Lare config there)."""
+    path = os.path.join(os.environ.get("WORKSPACE_DIR", "./workspace"), ".env")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for line in fh:
+                name, _, value = line.strip().partition("=")
+                if name.strip() == key:
+                    return value.strip().strip('"').strip("'")
+    except OSError:
+        pass
+    return ""
+
+
 def _cfg() -> tuple[str, str, str]:
-    base = (os.environ.get("LARE_API_URL") or "http://br-lare-api.internal:8000").strip().rstrip("/")
-    tenant = (os.environ.get("LARE_TENANT_CODE") or "").strip()
-    tkey = (os.environ.get("LARE_TENANT_API_KEY") or "").strip()
+    base = (
+        os.environ.get("LARE_API_URL")
+        or _workspace_env("LARE_API_URL")
+        or "http://br-lare-api.internal:8000"
+    ).strip().rstrip("/")
+    tenant = (os.environ.get("LARE_TENANT_CODE") or _workspace_env("LARE_TENANT_CODE")).strip()
+    tkey = (
+        os.environ.get("LARE_TENANT_API_KEY") or _workspace_env("LARE_TENANT_API_KEY")
+    ).strip()
     return base, tenant, tkey
 
 

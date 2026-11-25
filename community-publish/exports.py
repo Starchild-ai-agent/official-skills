@@ -1256,18 +1256,8 @@ def create_paid_service(
         payload["project_slug"] = project_slug
     if cover_url:
         payload["cover_url"] = cover_url
-    # Solana wallet address (plans-292): auto-fetch from Privy if not provided
-    if not provider_sol_wallet:
-        try:
-            from core.skill_tools import wallet as _w
-            info = _w.wallet_info()
-            wallets = info.get("wallets") if isinstance(info, dict) else info
-            for w in wallets or []:
-                if isinstance(w, dict) and w.get("chain_type") == "solana":
-                    provider_sol_wallet = w.get("wallet_address") or w.get("address")
-                    break
-        except Exception:
-            pass  # Solana address unavailable — Solana network excluded from accepts
+    # Solana payout address (plans-292): only when the user provides one —
+    # without it Solana is excluded from the 402 accepts list.
     if provider_sol_wallet:
         payload["provider_sol_wallet"] = provider_sol_wallet
     if tags:

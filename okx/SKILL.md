@@ -1,12 +1,12 @@
 ---
 name: okx
-version: 1.1.0
+version: 1.2.0
 description: |
   OKX OnChainOS: on-chain trading, analytics, security, DeFi across 20+ chains.
 
   Use when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio).
 
-  Wallet: default to the user's Agent Wallet (via the `wallet` skill). Only use the OnchainOS TEE wallet (`onchainos wallet login <email>`) when the user explicitly asks for it.
+  Wallet: signing, sending and swaps use the OnchainOS TEE wallet (`onchainos wallet login <email>`).
 metadata:
   starchild:
     emoji: "⛓️"
@@ -78,15 +78,12 @@ irm https://raw.githubusercontent.com/okx/onchainos-skills/main/install.ps1 | ie
 
 ---
 
-## Wallet — default to the user's Agent Wallet
+## Wallet — OnchainOS TEE wallet
 
-Use the platform `wallet` skill for signing and broadcasting. OKX DEX
-endpoints return unsigned calldata (`{to, value, data, ...}`); feed it to
-`wallet_transfer(data=<calldata>)` and you're done. No separate OKX wallet
-needed.
-
-Only use the OnchainOS TEE wallet (`onchainos wallet login <email>`) when
-the user explicitly asks for it.
+Signing, sending and swaps go through the OnchainOS TEE wallet
+(`onchainos wallet login <email>`, Path B below). OKX DEX endpoints return
+unsigned calldata (`{to, value, data, ...}`); execute it with the
+`okx-agentic-wallet` flow.
 
 ---
 
@@ -206,7 +203,7 @@ account — it does NOT import your existing OKX App / extension wallet.
 | Scan a token / dApp for risk | `okx-agentic-wallet` (security scanning) | A (no key) |
 | Estimate gas / simulate a tx | `okx-agentic-wallet` (gateway) | A or B |
 | Manage / send from my own wallet | `okx-agentic-wallet` | B (requires login) |
-| Swap tokens | `okx-agentic-wallet` (DEX swap) REST + sign with the `wallet` skill (Agent Wallet) |
+| Swap tokens | `okx-agentic-wallet` (DEX swap) | B (requires login) |
 | Find best DeFi yield (any protocol) | `okx-defi` | B (signing) |
 | View my DeFi positions | `okx-defi` | A (no key) |
 | Use a specific DApp (Aave, Polymarket, …) | `okx-dapp-discovery` | B (full DApp flow) |
@@ -282,8 +279,7 @@ onchainos mcp
   `onchainos gateway chains` for the full list.
 - **Read-only ops** (market data, signals, security scan, public-address
   portfolios) work via Path A without any user-supplied API Key.
-- **Trading & sending** default to the user's Agent Wallet via the `wallet`
-  skill. Only fall back to `onchainos wallet login` when the user asks.
+- **Trading & sending** use the OnchainOS TEE wallet (`onchainos wallet login`).
 - **Security gate**: when `okx-agentic-wallet`'s security scanning reports a
   fail, the calling agent MUST block the related operation rather than proceed.
 

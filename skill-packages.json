@@ -5,20 +5,14 @@
       "name": "Crypto Trading Essentials",
       "name_zh": "加密货币交易包",
       "name_ko": "암호화폐 트레이딩 패키지",
-      "description": "Complete crypto trading ecosystem — perpetual futures, spot DEX, prices, derivatives data, on-chain TVL, multi-chain wallet, and yield strategies.",
-      "description_zh": "完整的加密货币交易生态 — 永续合约、现货 DEX、价格数据、衍生品分析、链上 TVL、多链钱包与收益策略",
-      "description_ko": "완전한 암호화폐 트레이딩 생태계 — 무기한 선물, 현물 DEX, 가격 데이터, 파생상품 분석, 온체인 TVL, 멀티체인 지갑 및 수익 전략",
+      "description": "Crypto trading toolkit — spot DEX swaps and bridging, prices, derivatives data, on-chain TVL, token unlocks, and market-structure analysis.",
+      "description_zh": "加密货币交易工具包 — 现货 DEX 兑换与跨链、价格数据、衍生品分析、链上 TVL、代币解锁与市场结构分析",
+      "description_ko": "암호화폐 트레이딩 툴킷 — 현물 DEX 스왑 및 브리지, 가격 데이터, 파생상품 분석, 온체인 TVL, 토큰 언락 및 시장 구조 분석",
       "skills": [
-        "hyperliquid",
         "coingecko",
         "coinglass",
         "market-structure-ta",
-        "wallet",
-        "1inch",
-        "jupiter",
         "defillama",
-        "ethena",
-        "aave",
         "tokenomist",
         "pancakeswap",
         "starchild-swap-and-bridge"
@@ -118,8 +112,7 @@
       "description_ko": "바이낸스, 바이빗, OKX 통합 읽기 전용 추적 — 잔고, 포지션, 주문, 체결 및 리스크 시나리오",
       "skills": [
         "binance-account",
-        "okx-account",
-        "wallet"
+        "okx-account"
       ]
     },
     {
@@ -142,11 +135,10 @@
       "name": "Prediction Markets",
       "name_zh": "预测市场包",
       "name_ko": "예측 시장 패키지",
-      "description": "Trade and analyze prediction markets on Polymarket and Kalshi, plus perpetual trading competitions.",
-      "description_zh": "Polymarket 和 Kalshi 预测市场交易与分析，以及永续合约交易竞赛",
-      "description_ko": "Polymarket과 Kalshi에서 예측 시장 거래 및 분석, 무기한 선물 트레이딩 대회",
+      "description": "Trade and analyze prediction markets on Kalshi, plus perpetual trading competitions.",
+      "description_zh": "Kalshi 预测市场交易与分析，以及永续合约交易竞赛",
+      "description_ko": "Kalshi에서 예측 시장 거래 및 분석, 무기한 선물 트레이딩 대회",
       "skills": [
-        "polymarket",
         "kalshi",
         "degenclaw"
       ]

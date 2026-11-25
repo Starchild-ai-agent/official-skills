@@ -4,7 +4,7 @@
 Usage:
   python3 skills/x402/scripts/preflight.py [--usd 0.05] [--network eip155:8453]
 
-Wraps client.payment_preflight (signer capability + wallet policy + live
+Wraps client.payment_preflight (session EOA signer capability + live
 USDC balances per rail, fail-closed). Prints ONE JSON object:
   {ok, payer{}, balances{}, funded_rails[], recommended_rail,
    blockers[], warnings[]}

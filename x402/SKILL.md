@@ -1,6 +1,6 @@
 ---
 name: x402
-version: 2.27.0
+version: 2.28.0
 description: |
   Monetize any user project/service with the x402 payment protocol on platform
   networks (Base + Monad + Robinhood + X Layer + Solana; Starchild platform billing: pay_per_use /
@@ -26,7 +26,7 @@ metadata:
 Turn any local HTTP service into a paid service on platform networks (Base +
 Monad + Robinhood + X Layer; x402 V2 protocol, `exact` scheme, USDC/USDG via EIP-3009 —
 buyer pays zero gas), and act as a buyer paying other agents' x402 services
-with the user's Privy wallet.
+from the local session EOA (`.x402/buyer.key`, EVM rails only).
 
 **Architecture: reverse-proxy sidecar.** The gateway (`gateway/app.py`) sits in
 front of the user's untouched service. One unified gateway, three billing modes
@@ -35,7 +35,7 @@ as config presets — the error contract is identical across all modes.
 ```
 buyer agent ──402/PAYMENT-SIGNATURE──> gateway :840x ──plain HTTP──> user service :port
                      │
-               facilitator (verify + settle on Base/Monad/Robinhood/X Layer/Solana) ──USDC/USDG──> user's Privy wallet
+               facilitator (verify + settle on Base/Monad/Robinhood/X Layer/Solana) ──USDC/USDG──> pay_to (user's address)
 ```
 
 ## Reference files (MUST read before the matching task)
@@ -78,11 +78,11 @@ FAC=https://starchild-x402-facilitator.fly.dev
 # pay_per_use: verify -> settle on EVERY request (simplest mode)
 # --networks defaults to "all" (Base + Monad + Robinhood + X Layer + Solana mainnet); the 402 challenge
 # returns a multi-accepts list — the buyer picks one chain per payment.
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode pay_per_use --price 0.01 --facilitator $FAC
 
 # lock to a single chain (custom)
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode pay_per_use --price 0.01 --networks eip155:8453 --facilitator $FAC
 ```
 
@@ -112,8 +112,10 @@ community-gateway for records.
 it has the exact commands, contract details, and template list.
 
 Output includes `gateway_port`. **Expose the GATEWAY port, not the upstream**
-(via `preview` or community-publish). `pay_to` defaults to the user's Privy
-EVM wallet — revenue lands there directly.
+(via `preview` or community-publish). `--pay-to` is REQUIRED: the user's EVM
+address that receives revenue (ask the user for it; never invent one). Add
+`--sol-pay-to <base58>` to also accept Solana; without it Solana is left out
+of the 402 accepts.
 Registry: `/data/workspace/.x402/services.json`; per-service config/log/state:
 `/data/workspace/.x402/<name>/`.
 
@@ -204,7 +206,7 @@ about balances/signatures/rail selection needed:
 python3 skills/x402/scripts/discover.py --url https://host/api/thing
 python3 skills/x402/scripts/discover.py --query "weather api"   # catalog search
 
-# 2. Preflight: signer + policy + live USDC per rail + recommended_rail
+# 2. Preflight: signer + live USDC per rail + recommended_rail
 python3 skills/x402/scripts/preflight.py --usd 0.05
 
 # 3. Pay — resolve → probe → pick final rail → preflight THAT rail's own
@@ -228,14 +230,12 @@ X402_MAX_ATOMIC=50000 python3 skills/x402/client.py POST https://host/x402/topup
 Before asking the user to confirm any purchase, run
 `client.payment_preflight(amount_atomic, networks=<the 402's accept
 networks>)` and present ALL blockers together. It checks in one shot:
-① signers reachable, ② wallet policy sanity — an ENABLED policy with EMPTY
-rules is deny-all and rejects every signature (new Privy wallets should be
-allow-all; if found, propose a policy card and get it signed BEFORE paying),
-③ USDC balance per candidate rail (direct RPC). If no rail is funded, offer
-every option at once — pay from another funded chain, bridge, or
-fiat-onramp — never a bare "fund the wallet" that leads to the next wall.
-Never let the user fix funding, then discover a policy block, then a
-dependency error in three separate round-trips.
+① session EOA signer available (EVM rails only — non-EVM accepts are
+excluded), ② USDC balance per candidate rail (direct RPC). If no rail is
+funded, offer every option at once — send USDC to the session EOA on a
+supported chain, bridge, or fiat-onramp — never a bare "fund the wallet"
+that leads to the next wall. Never let the user fix funding, then discover
+a dependency error in a separate round-trip.
 
 **Dependencies**: the buyer path needs `web3>=7`. If the machine pins an
 older web3 (trading bots often pin 6.x), NEVER upgrade it globally — run
@@ -267,10 +267,8 @@ which chain to use — **chain selection is fully automatic** in both
      of balance on the selected rail.
    - ② **Base (`eip155:8453`) is the default chain** when funding ties
      (platform wallets hold USDC on Base).
-   - ③ Static tiebreak (`network_rank`): Base (primary USDC chain) → Solana /
-     other EVM without EIP-7702 delegation (plain ECDSA, e.g. Monad) → EVM with
-     delegation code (Kernel EIP-1271). `signer_mode="eoa"`: Solana
-     excluded, all EVM equal.
+   - ③ Static tiebreak (`network_rank`): all EVM rails equal; Solana and
+     other non-EVM accepts are excluded (the session EOA cannot sign them).
    - ④ Within the same rank, cheaper amount / first accept wins.
    - Balance check failure = unknown, NOT unfunded (fail-open to ranking).
 
@@ -281,16 +279,13 @@ which chain to use — **chain selection is fully automatic** in both
    and selects the matching accept first (if present in the 402 challenge).
    Also available via env `X402_PREFER_NETWORK`. If the specified chain is
    not in the service's accepts, the automatic ranking takes over as
-   fallback. Common CAIP-2 ids: Base `eip155:8453`, Monad `eip155:143`,
-   Solana `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`.
+   fallback. Common CAIP-2 ids: Base `eip155:8453`, Monad `eip155:143`.
 
    ```python
    # User says "pay on Base"
    paid_request("GET", url, prefer_network="eip155:8453")
    # User says "pay on Monad"
    bazaar_pay(url, prefer_network="eip155:143")
-   # User says "pay on Solana" / "use Solana"
-   paid_request("GET", url, prefer_network="solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp")
    # Via env (CLI)
    X402_PREFER_NETWORK=eip155:8453 python3 skills/x402/client.py GET https://host/api
    ```
@@ -310,29 +305,16 @@ which chain to use — **chain selection is fully automatic** in both
 For lifetime/monthly services, repeat calls within the paid period verify but
 do NOT settle — the result has `paid: true` with no new on-chain tx.
 
-**Buyer signer = Privy wallet by default** (`signer_mode="auto"`); smart
-accounts are detected and signed via an ERC-1271-compatible path
-automatically. **Multi-accept routing prefers rails where Privy signs a
-plain signature** (max facilitator compatibility, no EOA funding needed):
-① Base (primary USDC chain) → ② Solana / EVM chains where the payer has no
-EIP-7702 code (plain ECDSA, e.g. Monad) → ③ EVM chains with delegation code (Kernel
-EIP-1271, e.g. Base) as last resort — spec-correct but some seller
-facilitators reject it; for Base-only sellers that do, use
-`signer_mode="eoa"`. Do NOT revoke the wallet's delegation (it powers gas
-sponsorship). `auto` is FAIL-CLOSED: if the Privy signer cannot be
-initialized, `paid_request` raises instead of paying from a different
-identity — allow the session-EOA fallback only explicitly via
-`allow_fallback_eoa=True` / env `X402_FALLBACK_EOA=1` / `signer_mode="eoa"`.
-Every result includes `signer_type` (`"privy"` | `"session_eoa"`); an
-opted-in fallback also sets `signer_warning` — check them to confirm which
-identity actually paid. ⚠️ The two signers are DIFFERENT payer identities:
-subscriptions/prepaid balances do NOT carry over between them.
-Similarly, EVM and Solana prepaid balances are separate (different
-pay_to addresses) — a deposit on Solana cannot be spent on EVM and
-vice versa. The gateway sums both balances for display but debits
-from the chain where the deposit was made.
+**Buyer signer = the session EOA** (`.x402/buyer.key`, created on first
+use; `signer_mode` `"auto"` and `"eoa"` both select it). It signs plain
+ECDSA on EVM rails only — Solana accepts are never paid. Every result
+includes `signer_type: "session_eoa"`. The EOA starts empty: tell the user
+its address (`payer` in the preflight output) and ask them to send a small
+USDC budget to it on the target chain; the budget is the hard spend cap.
+EVM and Solana prepaid balances on a seller are separate (different pay_to
+addresses); this buyer only ever creates EVM deposits.
 → **EOA funding steps and signer internals: read
-`references/buying-advanced.md` BEFORE using the session EOA.**
+`references/buying-advanced.md` BEFORE paying.**
 
 **Spend guard**: refuses to sign above `X402_MAX_ATOMIC` (default
 1_000_000 = 1 USDC). ⚠️ Signing = spending real money once settled — confirm
@@ -496,16 +478,11 @@ this sequence — everything needed is self-describing in the protocol:
    An unknown plan returns HTTP 400 listing the valid ones.
 3. **Pay & call**: `client.paid_request("GET", url, max_amount_atomic=<cap>)`
    handles the whole flow (402 → EIP-3009 sign → retry with X-PAYMENT).
-   Select a plan with `pricing_model="<plan>"`. Payer = the Privy wallet by
-   default (`signer_mode="auto"`). For **paid** quotes the wallet must hold USDC
-   on the service's network; for **free-promo amount 0** a signing wallet is enough
-   (no list-price USDC required). The session EOA needs funding ONLY if you pin
-   `signer_mode="eoa"` or the result reports `signer_type: "session_eoa"` (see
-   Buyer side above). cap = your spend guard (may be 0 during free). Confirm with
-   the user before paying real money. Check `signer_type` in the result: it tells
-   you WHICH identity actually paid. If the Privy signer is unavailable, `auto`
-   raises (fail-closed) rather than silently paying from the session EOA; a
-   `signer_warning` appears only when the fallback was explicitly allowed.
+   Select a plan with `pricing_model="<plan>"`. Payer = the session EOA (see
+   Buyer side above). For **paid** quotes it must hold USDC on the service's
+   EVM network; for **free-promo amount 0** the signature alone is enough (no
+   list-price USDC required). cap = your spend guard (may be 0 during free).
+   Confirm with the user before paying real money.
 4. **Verify billing semantics** (subscription modes): call again — the result
    must be 200 with NO new settlement (`paid: true`, no new tx). On multi-plan
    services, requesting a different plan while holding one must also NOT
@@ -539,16 +516,13 @@ bazaar_pay(url, max_usd=0.01)                  # proxy-first pay; refuse non-sta
 
 `probe_402` / `bazaar_pay` only pay `standard-v2` **exact** on known native
 USDC rails (see `bazaar.PAYABLE_USDC`): Base, Polygon, Arbitrum, World Chain,
-Solana mainnet, Monad, Avalanche, Ethereum, Optimism, Linea, Celo, Unichain.
-Multi-accept → prefer Privy-native rails (Base → Solana/no-code EVM → delegated
-EVM; see buyer signer section). The same selector (`client.network_rank`)
-drives bazaar's `probe_402` ordering, so the rail shown at probe time is the
-rail `auto` actually pays. `signer_mode="eoa"` never registers the SVM signer
-and hard-filters Solana accepts — the pinned session-EOA payer identity is
-never substituted. Results and ledger lines carry the ACTUAL selected
-`network`/`payer`/`signer_type` (Solana settlements report the Privy Solana
-address as payer). Solana signs via Privy `wallet_sol_sign` (base64
-raw message). Not yet: EURC/alt-stables, testnets. Other shapes (`wrong-rail`,
+Monad, X Layer, Robinhood USDG, Avalanche, Ethereum, Optimism, Linea, Celo,
+Unichain. Solana accepts are not payable (the session EOA is EVM-only).
+Multi-accept → funded rail first, then Base (see buyer signer section). The
+same selector (`client.network_rank`) drives bazaar's `probe_402` ordering,
+so the rail shown at probe time is the rail actually paid. Results and ledger
+lines carry the ACTUAL selected `network`/`payer`/`signer_type`. Not yet:
+EURC/alt-stables, testnets. Other shapes (`wrong-rail`,
 `tx-hash`, `non-standard`, `no-payment`) refused before any signature. Buyer
 signs; seller facilitator settles.
 

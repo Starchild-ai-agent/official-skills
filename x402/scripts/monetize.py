@@ -3,14 +3,14 @@
 Usage:
   python3 skills/x402/scripts/monetize.py \
       --name my-api --upstream-port 5173 --mode pay_per_use \
-      --price 0.01 [--networks all] [--pay-to 0x..]
+      --price 0.01 --pay-to 0x.. [--networks all]
 
   # lock to a single chain (custom)
-  python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+  python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
       --mode pay_per_use --price 0.01 --networks eip155:8453
 
   # subscription / metered (legacy/extended modes)
-  python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+  python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
       --mode subscription --price-per-credit 0.001 --min-credits 100 \
       --route "GET /api/*=1"        # =N means N credit units per call
 
@@ -65,26 +65,6 @@ def save_registry(reg: dict):
     with open(REG + ".tmp", "w") as f:
         json.dump(reg, f, indent=2)
     os.replace(REG + ".tmp", REG)
-
-
-def default_pay_to() -> str:
-    from core.skill_tools import wallet
-    info = wallet.wallet_info()
-    return next(w["wallet_address"] for w in info["wallets"] if w["chain_type"] == "ethereum")
-
-
-def default_sol_pay_to() -> str:
-    """Return the Solana pay_to address from Privy wallet, or empty string."""
-    try:
-        from core.skill_tools import wallet
-        info = wallet.wallet_info()
-        wallets = info.get("wallets") if isinstance(info, dict) else info
-        for w in wallets or []:
-            if isinstance(w, dict) and w.get("chain_type") == "solana":
-                return w.get("wallet_address") or w.get("address") or ""
-    except Exception:
-        pass
-    return ""
 
 
 def start_gateway(cfg_path: str, log_path: str) -> int:
@@ -203,7 +183,8 @@ def main():
                          "x402.org is REJECTED for mainnet (testnet-only).")
     ap.add_argument("--facilitator-token", default=os.environ.get("X402_FACILITATOR_TOKEN", ""),
                     help="bearer token if the facilitator enforces caller auth (X402_GATEWAY_TOKENS)")
-    ap.add_argument("--pay-to", default="")
+    ap.add_argument("--pay-to", default="",
+                    help="EVM address that receives payments (required)")
     ap.add_argument("--sol-pay-to", default="",
                     help="Solana wallet address (Base58) for receiving payments on Solana networks")
     ap.add_argument("--price-per-credit", type=float, default=0.01)
@@ -273,8 +254,10 @@ def main():
         else:
             sys.exit("at least one --route required")
 
-    pay_to = args.pay_to or default_pay_to()
-    sol_pay_to = getattr(args, "sol_pay_to", "") or default_sol_pay_to()
+    pay_to = (args.pay_to or "").strip()
+    if not pay_to:
+        sys.exit("--pay-to 0x… is required (EVM address that receives payments)")
+    sol_pay_to = getattr(args, "sol_pay_to", "") or ""
     port = args.port or free_port()
 
     # Upstream port conflict check: warn (not fail) if the upstream port is

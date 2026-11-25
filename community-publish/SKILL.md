@@ -1,6 +1,6 @@
 ---
 name: community-publish
-version: 0.36.0
+version: 0.37.0
 description: |
   Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.
 
@@ -421,7 +421,7 @@ create_paid_service(
     tags=["trading", "onchain-data"],
     project_slug="33-premium-signals",  # FULL published slug WITH user prefix (the URL path segment)
     api_endpoint="https://community.iamstarchild.com/33-premium-signals",
-    provider_wallet="0xAbC...yourEvmWallet",  # EVM address for Base/Monad/Robinhood/X Layer; Solana address auto-fetched from Privy wallet
+    provider_wallet="0xAbC...yourEvmWallet",  # EVM address for Base/Monad/Robinhood/X Layer; pass provider_sol_wallet to also accept Solana
     pricing_model="monthly",
     price=10,
     service_description="Subscribers get a dashboard with live trading signals.",
@@ -544,7 +544,7 @@ create_paid_service(
     service_type="paid_api",
     tags=["onchain-data", "wallet-portfolio", "trading"],
     api_endpoint="https://api.example.com/v1/whales",
-    provider_wallet="0xAbC...yourEvmWallet",  # EVM address for Base/Monad/Robinhood/X Layer; Solana address auto-fetched from Privy wallet
+    provider_wallet="0xAbC...yourEvmWallet",  # EVM address for Base/Monad/Robinhood/X Layer; pass provider_sol_wallet to also accept Solana
     pricing_model="pay_per_use",
     price=0.01,
     free_trial_count=3,
@@ -604,7 +604,7 @@ create_paid_service(
     tags=["developer-tools"],
     project_slug="33-random9-api",  # FULL slug WITH user prefix — links to the free project page
     api_endpoint="https://community.iamstarchild.com/33-random9-api/api/random",
-    provider_wallet="0xAbC...yourEvmWallet",  # EVM address for Base/Monad/Robinhood/X Layer; Solana address auto-fetched from Privy wallet
+    provider_wallet="0xAbC...yourEvmWallet",  # EVM address for Base/Monad/Robinhood/X Layer; pass provider_sol_wallet to also accept Solana
     pricing_model="pay_per_use",
     price=0.01,
     service_description="Paid access to the Random9 API endpoint; the docs page stays free.",  # required for paid_project
@@ -642,7 +642,7 @@ Each endpoint is listed separately in the marketplace detail view.
    # Default networks_mode is "all" (Base + Monad). Omit --networks to follow
    # the platform mainnet set; pass --networks eip155:8453 only if the user
    # explicitly wants to restrict to a single chain.
-   python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+   python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
      --mode pay_per_use --price 0.01 \
      --route "GET /api/basic=$0.01" --route "GET /api/premium=$0.10" \
      --route "POST /api/batch=$0.50" \
@@ -663,7 +663,7 @@ create_paid_service(
         {"path": "GET /api/premium", "price": 0.10, "label": "Premium Query"},
         {"path": "POST /api/batch", "price": 0.50, "label": "Batch Process"},
     ],
-    provider_wallet="0xAbC...yourEvmWallet",  # EVM address for Base/Monad/Robinhood/X Layer; Solana address auto-fetched from Privy wallet
+    provider_wallet="0xAbC...yourEvmWallet",  # EVM address for Base/Monad/Robinhood/X Layer; pass provider_sol_wallet to also accept Solana
     pricing_model="pay_per_use",
     price=0.01,  # price of the primary/default endpoint
     api_documentation="# Data API\n## GET /api/basic\nBasic data.\n## GET /api/premium\nPremium analytics.",
@@ -938,7 +938,7 @@ EOF
 - **Do NOT pass `project_slug` for standalone `paid_api` services.** `project_slug` belongs to `paid_project` only — including the "free webpage + paid API" pattern (Flow D, which uses `paid_project`; passing `paid_api` + `project_slug` gets auto-upgraded to `paid_project` with a `project_slug_warning`). Passing a preview slug or non-existent slug for a standalone API creates a phantom association. The backend silently clears non-existent slugs, but you should not pass `project_slug` unless the user explicitly wants to link a free project page with the paid API.
 - **When the user asks for multiple APIs, create ONE service with `api_endpoints`.** Do NOT call `create_paid_service()` multiple times for related APIs. Use the `api_endpoints` array to list all endpoints in a single service (Flow E). Only create multiple services if the APIs are truly unrelated (different domains, different audiences, different pricing models).
 - **Default payment networks to `all`.** Never hard-code a single chain (e.g. `['eip155:8453']`) as the default — that re-introduces the old Base-only behavior. Omit `networks_mode` / `supported_networks` (or pass `networks_mode="all"`) so the service follows the platform mainnet set (Base + Monad + Robinhood + X Layer + Solana; new chains picked up automatically). Only use `networks_mode="custom"` + a non-empty `supported_networks` when the user explicitly asks to restrict to a subset ("only Base", "only Monad", etc.).
-- **`provider_wallet` is an EVM address used on every enabled EVM chain.** The Starchild facilitator settles to the same address on each EVM chain; it is NOT Base-only. Do not describe it as a "Base wallet" to the user. **For Solana payments**, the platform automatically uses the user's Privy Solana wallet address (`provider_sol_wallet`). If the user has not explicitly provided a Solana address, `create_paid_service()` auto-fetches it from the Privy wallet. Services without a Solana address will not accept Solana payments (Solana is excluded from the 402 accepts list).
+- **`provider_wallet` is an EVM address used on every enabled EVM chain.** The Starchild facilitator settles to the same address on each EVM chain; it is NOT Base-only. Do not describe it as a "Base wallet" to the user. **For Solana payments**, pass the user's Solana address as `provider_sol_wallet`; ask for it if the user wants Solana payments. Services without a Solana address will not accept Solana payments (Solana is excluded from the 402 accepts list).
 - **Gas for settlement is paid by the platform**, not the provider. Do not tell the provider they need to fund ETH/MON for settler gas.
 
 ---

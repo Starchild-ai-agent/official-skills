@@ -1,6 +1,6 @@
 ---
 name: "layerzero-value-transfer"
-version: 1.0.1
+version: 1.1.0
 description: Cross-chain asset transfers via the LayerZero Value Transfer API. Quote, execute, and track bridging of 850 tokens across 170 chains (EVM, Solana, Aptos, TON) using OFT, Stargate, CCTP, and Aori routes. Quote-then-execute workflow with status polling.
 author: starchild
 tags: [layerzero, bridge, cross-chain, defi, stargate, cctp, oft]
@@ -113,7 +113,7 @@ you want to compare `feeUsd`.
 ### 3. Execute userSteps
 
 **EVM:** loop through `userSteps` in order; each contains ready-to-send transaction
-calldata. Sign with the agent wallet, send, and wait for confirmation before the next
+calldata. Sign with the user's wallet, send, and wait for confirmation before the next
 step. ERC-20 transfers typically yield two steps: `approve` then the bridge tx.
 
 **Solana:** transaction blockhashes expire in ~60s, so first regenerate fresh data:

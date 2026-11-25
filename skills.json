@@ -2,12 +2,6 @@
   "registry": "starchild-official",
   "skills": [
     {
-      "name": "1inch",
-      "path": "1inch/SKILL.md",
-      "version": "2.3.0",
-      "description": "1inch DEX aggregator: same-chain EVM swaps, SOL↔EVM cross-chain, limit orders.\n\nUse when swapping tokens with best routing or placing limit orders (e.g. ETH→USDC on Base, SOL→ETH cross-chain, limit buy ARB at 0.80)."
-    },
-    {
       "name": "PANews",
       "path": "PANews/SKILL.md",
       "version": "1.0.1",
@@ -20,22 +14,10 @@
       "description": "Shopify development skills: Admin GraphQL, Storefront, Hydrogen, Liquid, Polaris, Functions, POS, and more.\n\nUse when building, querying, or validating code for Shopify's development ecosystem (e.g. Admin API queries, Hydrogen components, Liquid themes, checkout extensions).\n\nSkills are installable via the `npx skill` CLI and provide Claude Code with API-specific context, documentation search, and code validation for each Shopify surface."
     },
     {
-      "name": "aave",
-      "path": "aave/SKILL.md",
-      "version": "1.2.0",
-      "description": "Aave V3 lending: supply tokens to earn yield, withdraw any time, view positions.\n\nUse when farming lending yield or checking Aave positions (e.g. supply 100 USDC on Arbitrum, withdraw all DAI, current Aave APY)."
-    },
-    {
       "name": "abstract",
       "path": "abstract/SKILL.md",
       "version": "1.0.4",
       "description": "Abstract L2 hub: wallets, contracts, multisig, prediction markets, agent identity.\n\nUse when building on Abstract L2 (e.g. deploy Anchor contract, set up AGW login, create a Safe, integrate Myriad markets, register ERC-8004 agent)."
-    },
-    {
-      "name": "across-bridge",
-      "path": "across-bridge/SKILL.md",
-      "version": "1.0.0",
-      "description": "Bridge ETH and ERC-20 tokens across EVM chains via Across Protocol v3.\nOne function for a quote, one function for the entire end-to-end bridge\n(approval + deposit + arrival verification).\n\nUse when the user wants to move tokens between chains (e.g. \"bridge 50 USDC\nfrom Base to Arbitrum\", \"send ETH from Ethereum to Optimism\", \"move USDT\nArbitrum → Base\"). Supports Ethereum, Arbitrum, Optimism, Base, Polygon,\nBSC, Linea, zkSync, Scroll, Mantle. Fast settlement (seconds to minutes)."
     },
     {
       "name": "agent-builder",
@@ -176,15 +158,9 @@
       "description": "Crypto derivatives data: funding rates, open interest, liquidations, long/short ratios.\n\nUse when researching perp markets or comparing ETF flows (e.g. BTC funding, ETH OI).\nNOTE: platform API key is Startup tier — liquidation heatmap, coins-markets detail,\nliquidation order book and Hyperliquid positions require higher plans (see Plan Tiers)."
     },
     {
-      "name": "collectorcrypt",
-      "path": "collectorcrypt/SKILL.md",
-      "version": "1.3.0",
-      "description": "CollectorCrypt: physical trading card NFTs on Solana — marketplace, gacha packs, vault redemption, P2P swaps. Use when buying/selling/trading collectible card NFTs, opening mystery packs, redeeming NFTs for physical cards, or swapping assets on Solana (e.g. list Pokemon card for 50 USDC, open gacha pack, ship card to address, swap NFTs peer-to-peer)."
-    },
-    {
       "name": "community-publish",
       "path": "community-publish/SKILL.md",
-      "version": "0.36.0",
+      "version": "0.37.0",
       "description": "Publish previews to a public URL, open-source projects to community GitHub, and list services (free or paid) on the Service Marketplace.\n\nUse when the user wants to share, publish, list, open-source, or monetize what they built (e.g. make this dashboard public, share my project, push to GitHub, 上架到服务市场, 上架付费服务, 提交审核)."
     },
     {
@@ -236,12 +212,6 @@
       "description": "ELFA AI — real-time crypto social intelligence and automated condition-engine skills for AI agents.\n\nTrack trending tokens, surface narratives, search mentions, run market analysis, and build automated trigger-based workflows."
     },
     {
-      "name": "ethena",
-      "path": "ethena/SKILL.md",
-      "version": "1.2.1",
-      "description": "Ethena staking: stake USDe for sUSDe yield, unstake with cooldown, view rates.\n\nUse when farming stablecoin yield via Ethena (e.g. stake 1000 USDe, check sUSDe APY, unstake my position, current cooldown)."
-    },
-    {
       "name": "feishu-binding",
       "path": "feishu-binding/SKILL.md",
       "version": "1.0.0",
@@ -266,12 +236,6 @@
       "description": "AI agent skills for image and video generation via Higgsfield AI. Use this skill when asked to\ngenerate images or videos from a prompt, create branded ad video (UGC, unboxing, TV spot) with\nMarketing Studio, produce product photography or marketplace cards, train a reusable face identity\n(Soul Character), score a finished video's virality, or build/edit/deploy a full-stack website.\nImage/video generation spans 30+ models (Nano Banana 2, Soul V2, Veo 3.1, Kling 3.0, Seedance 2.0,\nFlux 2, GPT Image 2, …). Bundles five skills: higgsfield-generate, higgsfield-soul-id,\nhiggsfield-product-photoshoot, higgsfield-marketplace-cards, and higgsfield-websites\nMarkdown-based agents."
     },
     {
-      "name": "hyperliquid",
-      "path": "hyperliquid/SKILL.md",
-      "version": "1.8.0",
-      "description": "Trade perp futures, spot, and RWA on Hyperliquid DEX with up to asset max leverage.\n\nUse when placing perp or spot orders, setting TP/SL, or moving funds on Hyperliquid (e.g. long BTC 5x, sell ETH, deposit USDC, set stop)."
-    },
-    {
       "name": "ibkr",
       "path": "ibkr/SKILL.md",
       "version": "1.0.1",
@@ -282,12 +246,6 @@
       "path": "image/SKILL.md",
       "version": "2.1.2",
       "description": "Generate, edit, cut out, and inspect images with the best hosted image models (Nano Banana 2 / Pro, GPT Image 2, Seedream, Bria). Use for ANY image request — create from text, edit or retouch a photo, swap a logo/text, change background, upscale, product shots, portraits, try-on, 3D renders. This is THE image skill on Starchild — the former image-create / image-edit / image-3d / image-ecommerce / image-portrait / image-tryon / image-bg-remove skills are retired and folded in here."
-    },
-    {
-      "name": "jupiter",
-      "path": "jupiter/SKILL.md",
-      "version": "1.3.0",
-      "description": "Solana DEX aggregator: token swaps, limit orders, dollar-cost averaging.\n\nUse when swapping SPL tokens, setting limit orders, or scheduling DCA on Solana (e.g. SOL→USDC swap, limit buy JUP, weekly DCA into BONK)."
     },
     {
       "name": "kalshi",
@@ -310,7 +268,7 @@
     {
       "name": "layerzero-value-transfer",
       "path": "layerzero-value-transfer/SKILL.md",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "description": "Cross-chain asset transfers via the LayerZero Value Transfer API. Quote, execute, and track bridging of 850 tokens across 170 chains (EVM, Solana, Aptos, TON) using OFT, Stargate, CCTP, and Aori routes. Quote-then-execute workflow with status polling."
     },
     {
@@ -370,8 +328,8 @@
     {
       "name": "okx",
       "path": "okx/SKILL.md",
-      "version": "1.1.0",
-      "description": "OKX OnChainOS: on-chain trading, analytics, security, DeFi across 20+ chains.\n\nUse when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio).\n\nWallet: default to the user's Agent Wallet (via the `wallet` skill). Only use the OnchainOS TEE wallet (`onchainos wallet login <email>`) when the user explicitly asks for it."
+      "version": "1.2.0",
+      "description": "OKX OnChainOS: on-chain trading, analytics, security, DeFi across 20+ chains.\n\nUse when running OKX-routed on-chain ops (e.g. swap on Ethereum, scan token risk, track smart money, check wallet portfolio).\n\nWallet: signing, sending and swaps use the OnchainOS TEE wallet (`onchainos wallet login <email>`)."
     },
     {
       "name": "okx-account",
@@ -380,15 +338,9 @@
       "description": "Read-only OKX tracking: unified-account equity, perp positions, orders, fills, bills.\n\nUse when monitoring OKX without trading (e.g. account equity, current PnL, recent fills, withdrawal history, margin level)."
     },
     {
-      "name": "openocean",
-      "path": "openocean/SKILL.md",
-      "version": "1.2.0",
-      "description": "OpenOcean DEX aggregator: quote and execute swaps with balance-delta verification.\n\nUse when comparing routes or executing a swap via OpenOcean (e.g. quote DAI→USDC, swap with slippage check, verify post-trade balance)."
-    },
-    {
       "name": "orderly-onboarding",
       "path": "orderly-onboarding/SKILL.md",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "description": "Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart. Also indexes executed Orderly fills into Starchild trade analytics.\n\nUse when starting on Orderly (e.g. install Orderly MCP, set up the DEX template, integrate the React SDK, use the orderly CLI), and after executing any Orderly trade — report the fill so it is indexed."
     },
     {
@@ -396,18 +348,6 @@
       "path": "pancakeswap/SKILL.md",
       "version": "1.0.0",
       "description": "PancakeSwap DeFi operations — token swaps, liquidity provision, yield farming, fee collection, reward harvesting, and PCS Hub integration. Use when the user mentions PancakeSwap, CAKE, swapping on BSC/BNB Chain, LP positions, farming, staking, syrup pools, or any PancakeSwap-related DeFi action."
-    },
-    {
-      "name": "pear-protocol",
-      "path": "pear-protocol/SKILL.md",
-      "version": "2.3.0",
-      "description": "Pear Protocol pair/basket trading on Hyperliquid — headless agent-wallet\nauth (SIWE), V3 gateway REST + Orchard MCP server: markets, pair ratios,\npositions, orders, and trade execution.\n\nUse when the user wants to pair trade (long one asset / short another),\ncheck pair ratios, correlation or funding, or manage Pear positions\n(e.g. long BTC short ETH, check my Pear positions, find trending pairs)."
-    },
-    {
-      "name": "polymarket",
-      "path": "polymarket/SKILL.md",
-      "version": "6.1.0",
-      "description": "Trade on Polymarket prediction markets (CLOB V2) from a Privy EOA wallet.\nSearch markets, place/cancel orders, manage positions. No private key handling.\n\nUse when the user wants to bet on event outcomes (e.g. \"buy YES at 0.65 on the\nceasefire market\", \"what are my open positions\", \"close my Trump bet\")."
     },
     {
       "name": "project-builder",
@@ -456,12 +396,6 @@
       "path": "solana-dev/SKILL.md",
       "version": "1.1.2",
       "description": "Solana development: Anchor and Pinocchio programs, Kit clients, wallet flows, testing.\n\nUse when building a Solana dapp or program (e.g. write Anchor escrow, create SPL token, wallet-standard login, debug PDA, deploy to devnet)."
-    },
-    {
-      "name": "sp3nd",
-      "path": "sp3nd/SKILL.md",
-      "version": "1.0.1",
-      "description": "Buy Amazon and eBay products with USDC on Solana via SP3ND x402 payments.\n\nUse when paying for real-world goods with crypto (e.g. order this Amazon listing, buy eBay item, ship to Tokyo with USDC)."
     },
     {
       "name": "starchild-auth",
@@ -524,12 +458,6 @@
       "description": "Thinking partner for trading theses: worldview, evidence, conviction, execution.\n\nUse when discussing market views, macro worries, or building a trade idea (e.g. \"I think dollar gets debased\", \"is DeFi undervalued\", asset allocation)."
     },
     {
-      "name": "treasures",
-      "path": "treasures/SKILL.md",
-      "version": "1.0.4",
-      "description": "Treasures Finance: tokenized stocks (xStocks / Ondo) trading, USDC bridging, and delegated wallet ops on Solana and Ethereum.\n\nUse when running Treasures-routed finance ops (e.g. discover tokenized stocks, quote/execute a trade, bridge USDC across chains, check a delegated wallet's portfolio).\n\nBase URL needs the `/public/v1` prefix (bare host 404s). Trade paths (`/quote/*`, `/trade/submit`, `/bridge/quote`) are geo-fenced at the AWS load balancer → 451 from US and GB, before auth — route those calls through the `sc-vpn` skill with a per-request proxy (DE/NL/SE/CH/SG/HK/JP are clear); reads work from anywhere. A 451 is never a signing problem. See the \"Read this before any trade attempt\" section.\n\nWallet: DEFAULT to the user's Privy wallet via `treasures-b2b-api` (the wallet signs `ownership_proof` for quotes + per-leg signed payloads for `/trade/submit` — use the `wallet` skill to sign). Route by where the assets live: assets in the Privy/EOA wallet → `treasures-b2b-api`; only use the `treasures-wallet` delegated skill when the user explicitly asks for the Treasures-provisioned wallet or the assets sit in it."
-    },
-    {
       "name": "truenorth",
       "path": "truenorth/SKILL.md",
       "version": "1.0.2",
@@ -574,7 +502,7 @@
     {
       "name": "user-onboarding",
       "path": "user-onboarding/SKILL.md",
-      "version": "1.2.6",
+      "version": "1.3.0",
       "description": "Onboarding script for first-time Starchild users: positioning, quick wins, discovery.\n\nUse when the user is new or vague (e.g. \"what can you do\", \"I don't know where to start\", first session with no context, generic hello)."
     },
     {
@@ -594,12 +522,6 @@
       "path": "video-analysis/SKILL.md",
       "version": "1.3.0",
       "description": "Video understanding for any model — native passthrough for small files,\nframe extraction + audio transcription fallback for large files.\n\nUse when the user asks to analyze, describe, or understand a video file\n(e.g. \"what's in this video\", \"summarize this clip\", \"transcribe this recording\")."
-    },
-    {
-      "name": "wallet",
-      "path": "wallet/SKILL.md",
-      "version": "3.7.0",
-      "description": "Multi-chain wallet: EVM and Solana balances, transfers, signing, and policy.\n\nUse when checking balances, sending tokens, signing typed data, or proposing a wallet policy (e.g. send 10 USDC on Base, sign EIP-712, Solana balance)."
     },
     {
       "name": "web-crawler",
@@ -640,7 +562,7 @@
     {
       "name": "x402",
       "path": "x402/SKILL.md",
-      "version": "2.27.0",
+      "version": "2.28.0",
       "description": "Monetize any user project/service with the x402 payment protocol on platform\nnetworks (Base + Monad + Robinhood + X Layer + Solana; Starchild platform billing: pay_per_use /\nlifetime / weekly / monthly / quarterly / yearly / prepaid, plus multi-plan\nservices), limited-time free promotions (amount-0 verify, no settle/debit),\nand pay other agents' x402 services.\n\nUse when the user wants to charge for an API/service, run a free promo on a paid\nlisting, accept USDC from other agents, or call a paid x402 endpoint."
     },
     {

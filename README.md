@@ -7,13 +7,13 @@ Official skills maintained by the Starchild team. Installed via [`npx skills`](h
 ## Install a Skill
 
 ```bash
-npx skills add Starchild-ai-agent/official-skills --skill hyperliquid
+npx skills add Starchild-ai-agent/official-skills --skill coingecko
 ```
 
 Or within a Starchild agent conversation:
 
 ```
-search_skills(query="hyperliquid")    # searches + auto-installs
+search_skills(query="coingecko")    # searches + auto-installs
 ```
 
 ## Repository Structure
@@ -54,7 +54,7 @@ Instructions, usage examples, API references, etc.
 
 | Field | Rules | Example |
 |-------|-------|---------|
-| `name` | Lowercase, alphanumeric + hyphens | `hyperliquid` |
+| `name` | Lowercase, alphanumeric + hyphens | `coingecko` |
 | `version` | Semver | `1.0.0` |
 | `description` | One-line summary for search | `Trade perpetual futures on Hyperliquid DEX` |
 
@@ -148,5 +148,5 @@ On every push to `main` that touches `*/SKILL.md`:
 - **Naming**: lowercase, hyphens only (e.g. `trading-strategy`, not `TradingStrategy`)
 - **Versioning**: semver — bump patch for fixes, minor for new features, major for breaking changes
 - **One skill per directory**: each directory = one installable unit
-- **Keep skills focused**: one skill = one integration or workflow (e.g. `hyperliquid`, not `all-exchanges`)
+- **Keep skills focused**: one skill = one integration or workflow (e.g. `coingecko`, not `all-market-data`)
 - **Description matters**: it's the primary search field — make it specific and keyword-rich

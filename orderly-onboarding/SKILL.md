@@ -1,6 +1,6 @@
 ---
 name: orderly-onboarding
-version: 1.2.0
+version: 1.3.0
 description: |
   Orderly Network onboarding: omnichain perps infra, MCP server, SDK and CLI quickstart. Also indexes executed Orderly fills into Starchild trade analytics.
 
@@ -517,8 +517,8 @@ Go to [dex.orderly.network](https://dex.orderly.network), select the **"Custom A
 ## Trade Indexing (Starchild Agents)
 
 Starchild indexes Orderly fills into `trade_events` via
-`POST {AI_AGENT_API_URL}/v1/trade-events` (same pipeline as hyperliquid /
-polymarket / DEX skills). **Two layers — use both:**
+`POST {AI_AGENT_API_URL}/v1/trade-events` (same pipeline as other trading
+skills). **Two layers — use both:**
 
 | Layer | Who | What it covers |
 |---|---|---|
@@ -526,18 +526,16 @@ polymarket / DEX skills). **Two layers — use both:**
 | **Central daily Public Info scan** | Platform cron (~10:30 Asia/Hong_Kong) | Agent EVM + personal/login EVM wallets (~thousands of addresses); catch-up / third-party wallets |
 
 > The private ed25519 `/v1/trades` endpoint alone is **not** enough for
-> platform analytics — API-key / SDK trading often binds to the **user's
-> personal wallet**, not the agent Privy wallet. Always record the wallet
-> that **actually executed** the trade.
+> platform analytics — API-key / SDK trading binds to the **user's own
+> wallet**. Always record the wallet that **actually executed** the trade.
 
 ### Critical: `wallet_address` = execution wallet
 
 When reporting, set `wallet_address` to the address that holds the Orderly
-account / signed the order — **not** always the agent Privy wallet.
+account / signed the order.
 
 | Situation | `wallet_address` value |
 |---|---|
-| Trade via agent Privy wallet | agent EVM address from wallet service |
 | Trade via user's own / third-party wallet (API key, SDK, broker UI) | that third-party `0x…` address |
 | Sync script with override | `--address 0x…` or `ORDERLY_WALLET_ADDRESS` |
 
@@ -556,7 +554,7 @@ duplicate send is harmless and a lost one is picked up by the daily scan.
 
 ```python
 from scripts._trade_report import report_trade_events
-# or: copy the same helper used by hyperliquid / other trading skills
+# or: copy the same helper used by other trading skills
 
 report_trade_events([{
     "source": "orderly",                 # realtime skill/agent report
@@ -607,9 +605,7 @@ Source tags used in analytics:
 
 ```bash
 pip install pynacl base58   # one-time
-# Agent wallet (default)
-python3 scripts/trade_sync.py --broker woofi_pro --days 90
-# User's third-party / login wallet that actually trades on Orderly
+# The wallet that actually trades on Orderly (required: --address or ORDERLY_WALLET_ADDRESS)
 python3 scripts/trade_sync.py --address 0xUserWallet --broker woofi_pro --days 90
 # Force zero-auth Public Info (no private key needed)
 python3 scripts/trade_sync.py --address 0xUserWallet --public-only
@@ -619,13 +615,12 @@ Env override (same as `--address`): `ORDERLY_WALLET_ADDRESS=0x…`
 
 What the script does (idempotent):
 
-1. Resolves **execution wallet**: `--address` → `ORDERLY_WALLET_ADDRESS` → agent EVM.
-2. Looks up Orderly account for that address + broker (registers only when the
-   address **is** the agent wallet and can EIP-712-sign).
-3. If a read-scope ed25519 key is available for that account → private
-   `GET /v1/trades`. Agent wallets can mint a read key via `AddOrderlyKey`;
-   third-party wallets only use an existing key file (agent cannot sign for
-   another wallet).
+1. Resolves **execution wallet**: `--address` → `ORDERLY_WALLET_ADDRESS`
+   (no default — the script exits if neither is set).
+2. Looks up the Orderly account for that address + broker (never registers one).
+3. If an existing read-scope ed25519 key file is available for that account →
+   private `GET /v1/trades` (the script does not mint keys; it cannot sign for
+   the wallet).
 4. Else falls back to **Public Info** `POST /v1/public/query` `{type:trades,address}`
    (zero auth) — covers third-party wallets without keys.
 5. Maps fills with `wallet_address=<execution wallet>` and

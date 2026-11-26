@@ -25,11 +25,11 @@ FAC=https://starchild-x402-facilitator.fly.dev
 # pay_per_use: verify -> settle on EVERY request
 # --networks defaults to "all" (Base + Monad + Robinhood + X Layer + Solana mainnet); omit it to follow the
 # platform full set. The 402 returns a multi-accepts list.
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode pay_per_use --price 0.01 --facilitator $FAC
 
 # custom: lock to a single chain (or a comma-separated list)
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode pay_per_use --price 0.01 --networks eip155:8453 --facilitator $FAC
 
 # lifetime: one payment = permanent access (checked via /facilitator/access-status)
@@ -38,26 +38,26 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 #   - Without it: proxies through community-gateway (COMMUNITY_PUBLIC_URL env,
 #     already set in user containers) with CONTAINER_JWT Bearer auth; gateway
 #     holds the admin token server-side (no COMMUNITY_GATEWAY_KEY)
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode lifetime --price 5.00 --facilitator $FAC
 
 # monthly: natural-month subscription (same day next month, clamped to month end;
 # expiry computed from /facilitator/settlements confirmed_at)
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode monthly --price 10.00 --facilitator $FAC
 
 # weekly / quarterly / yearly: fixed-length subscriptions (7/90/365 days after the
 # newest qualifying payment).
 # Facilitator contract: queried as access-status pricing_model=monthly +
 # period_days=7/90/365 (monthly WITHOUT period_days = natural-month semantics).
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode weekly --price 3.00 --facilitator $FAC
 
 # multi-plan (docs/pricing-models.md): --mode is the DEFAULT plan,
 # each --plan MODE=PRICE adds an option. Buyers pick a plan per request with the
 # X-Pricing-Model header; the 402 quotes THAT plan's amount (audit requirement).
 # pay_per_use cannot be combined with other plans.
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode monthly --price 10.00 --plan weekly=3 --plan yearly=90 \
     --facilitator $FAC
 
@@ -67,7 +67,7 @@ python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
 # (default 100 calls worth, min $0.10 = facilitator X402_MIN_DEPOSIT_AMOUNT).
 # Prepaid balance is cumulative across chains: a buyer who deposits on Monad
 # can spend on Base (same pooled (payer, pay_to) balance).
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode prepaid --price 0.001 --deposit 1.00 --facilitator $FAC
 ```
 
@@ -317,16 +317,16 @@ buyers must pay again. Already-paid buyers keep paid rights; free history alone 
 
 ```bash
 # per-call pricing via x402 SDK middleware (V2 PAYMENT-REQUIRED headers)
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode payperuse --route 'GET /api/*=$0.01'
 
 # subscription: buyers top up via x402 -> get API key + credits, 1 credit/call
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode subscription --price-per-credit 0.001 --min-credits 100 \
     --route 'GET /api/*=1'
 
 # metered: same as subscription but routes cost different unit weights
-python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 \
+python3 skills/x402/scripts/monetize.py --name my-api --upstream-port 5173 --pay-to 0xYourEvmAddress \
     --mode metered --price-per-credit 0.001 --min-credits 100 \
     --route 'GET /api/cheap/*=1' --route 'POST /api/heavy=25'
 ```
@@ -338,8 +338,8 @@ instead of a local SQLite file); use these modes only when you need
 `timepass` (no platform equivalent) or to keep an existing deployment running.
 
 Output includes `gateway_port`. **Expose the GATEWAY port, not the upstream**
-(via `preview` or community-publish). `pay_to` defaults to the user's Privy
-EVM wallet — revenue lands there directly.
+(via `preview` or community-publish). `--pay-to` (the user's EVM address that
+receives revenue) is required; add `--sol-pay-to` to also accept Solana.
 
 Registry of all monetized services: `/data/workspace/.x402/services.json`.
 Per-service config/log/state: `/data/workspace/.x402/<name>/`.

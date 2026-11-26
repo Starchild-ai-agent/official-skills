@@ -1,6 +1,6 @@
 ---
 name: starchild-auth
-version: 1.11.0
+version: 1.12.0
 description: |
   Starchild Auth SDK: add OAuth login to any web app with one SDK.
 
@@ -238,7 +238,7 @@ await auth.threads.list()
 | `auth.shares` | `create`, `list`, `get`, `delete`, `fork` |
 | `auth.feedback` | `rate`, `delete` |
 | `auth.jobs` | `list`, `create`, `get`, `pause`, `resume`, `restart` |
-| `auth.wallet` | `getPortfolio`, `list`, `create`, `delete`, `exportPrivateKey`, `createOnrampSession` |
+| `auth.wallet` | `createOnrampSession`（仅购买 credit；agent 钱包已下线） |
 | `auth.credit` | 余额/流水/Stripe/礼品卡/**Points**/**KYC**/**Referral**/migration/WOO（见场景八） |
 
 > Points 兑换、KYC、Referral **已对 OAuth 开放**（需 `credit:read` / `credit:write`），不是主站专属。
@@ -567,21 +567,12 @@ await auth.deleteFeedback(messageId)
 
 ---
 
-## 场景七：钱包与计费
+## 场景七：计费
+
+> Agent 钱包服务已下线：`getPortfolio` / `listWallets` / `createWallet` / `deleteWallet` / `exportPrivateKey` 对应的接口已删除，调用会返回 404，不要再使用。
 
 ```typescript
-// 获取投资组合
-const portfolio = await auth.getPortfolio()
-// portfolio = { total_value_usd, tokens: [...] }
-
-// 列出钱包
-const { wallets } = await auth.listWallets()
-
-// 创建/删除钱包
-const wallet = await auth.createWallet()
-await auth.deleteWallet(walletAddress)
-
-// Coinbase Onramp
+// Coinbase Onramp（购买 credit）
 const session = await auth.createOnrampSession({
   amount: '100',  // USD
   currency: 'USD',
@@ -1595,7 +1586,7 @@ try {
 
 ### JSON API：`StarchildAuthError`
 
-`getCredits` / `listThreads` / wallet / credit 等 JSON helper 在非 2xx 时 **throw** `StarchildAuthError`（已从 `starchild-auth-sdk` 导出）：
+`getCredits` / `listThreads` / credit 等 JSON helper 在非 2xx 时 **throw** `StarchildAuthError`（已从 `starchild-auth-sdk` 导出）：
 
 ```typescript
 import { StarchildAuth, StarchildAuthError } from 'starchild-auth-sdk'
@@ -1686,10 +1677,6 @@ if (!stream.ok) {
 | | `/api/clawd/shares/{id}/fork` | POST | chat |
 | **Feedback** | `/api/clawd/feedback` | PUT/DELETE | chat |
 | **Jobs** | `/scheduled-jobs` | GET/POST | chat |
-| **Wallet** | `/api/cloud/containers/portfolio/evm` | GET | chat |
-| | `/api/cloud/containers/wallets` | GET | chat |
-| | `/api/cloud/containers/wallet` | POST/DELETE | chat |
-| | `/wallet/export` | POST | chat |
 | **Billing** | `/coinbase/onramp-session` | POST | chat |
 | **WebSocket** | `/ws/sync` | WS | chat |
 | | `/ws/terminal/{id}` | WS | chat |

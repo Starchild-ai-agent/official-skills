@@ -8,7 +8,7 @@ Layer A (no funds needed):
      (expected outcome without funds: insufficient_balance -> chain proven)
   3. subscription mode: topup challenge, API-key auth, credit deduction,
      insufficient-credits error, refund on upstream failure
-Layer B (--funded, requires testnet/mainnet USDC in the Privy wallet):
+Layer B (--funded, requires testnet/mainnet USDC in the session EOA .x402/buyer.key):
   4. real payment -> settlement receipt -> ledger credit
 """
 from __future__ import annotations

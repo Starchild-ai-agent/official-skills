@@ -1,6 +1,6 @@
 ---
 name: user-onboarding
-version: 1.2.6
+version: 1.3.0
 description: |
   Onboarding script for first-time Starchild users: positioning, quick wins, discovery.
 
@@ -270,7 +270,6 @@ If users ask for a deeper tour, pick **1-2** topics that fit them and demo live:
 - Connectors (Gmail/Calendar/etc.)
 - Build+preview+publish a tiny project
 - Skills install/build
-- Agent wallet (crypto users only)
 - Self-improvement loop (correct + remember + save as skill)
 
 Never dump all topics in one message. This section is optional and secondary to quick wins.

@@ -184,11 +184,9 @@ Full seller/buyer contract: `references/selling.md` → **Limited-time free prom
   this must be a Solana address. The gateway's `platform_modes.py`
   handles this by including the correct pay_to per network in the
   multi-accepts list.
-- **`signer_mode="eoa"` excludes Solana**: when the buyer uses an
-  explicit session EOA (`signer_mode="eoa"`), Solana accepts are
-  filtered out because the EVM EOA cannot sign Solana transactions.
-  Only `signer_mode="auto"` (default) enables Solana payments via the
-  Privy SVM signer.
+- **Buyer never pays Solana accepts**: the x402 client signs with the
+  session EOA, which cannot sign Solana transactions, so Solana accepts
+  are filtered out on the buyer side.
 - **Solana not in `/supported`**: ensure `X402_SOLANA_SETTLER_PRIVATE_KEY`
   is set in the facilitator's environment and the facilitator was
   restarted. Check startup logs for `[x402-facilitator] Solana: enabled`.

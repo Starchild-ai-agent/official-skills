@@ -1,21 +1,16 @@
 """x402 buyer client — lets THIS agent pay other agents' x402 services.
 
-Default signer (signer_mode="auto"): the PRIVY wallet. PrivySigner detects
-EIP-7702 delegation on the payer address (Privy gas sponsorship installs
-ZeroDev Kernel) and transparently signs through Kernel's EIP-712 wrapper
-(0x00 sudo prefix + 65B ECDSA), which USDC accepts via ERC-1271. By default,
-auto FAILS CLOSED if the Privy signer is unavailable — no payment is signed.
-Use allow_fallback_eoa=True, env X402_FALLBACK_EOA=1, or signer_mode="eoa" /
-env X402_SIGNER=eoa to explicitly pay from the session EOA
-(`.x402/buyer.key`). NOTE: the two signers are different payer identities —
-subscriptions/prepaid balances don't transfer.
+Signer: the local session EOA (`.x402/buyer.key`, created on first use).
+EVM rails only (EIP-3009 USDC/USDG); fund the EOA address with a small USDC
+budget from any wallet — the budget is the hard spend cap. signer_mode
+"auto" and "eoa" both select it.
 
 Usage (bash):
     python3 skills/x402/client.py GET  https://host/api/thing
     python3 skills/x402/client.py POST https://host/x402/topup '{"json":"body"}'
 
 Or from Python:
-    from client import paid_request, PrivySigner
+    from client import paid_request
     r = paid_request("GET", url)            # auto-handles 402 -> sign -> retry
 """
 from __future__ import annotations
@@ -41,173 +36,33 @@ if _ca and not os.environ.get("X402_NO_PROXY"):
     os.environ["NO_PROXY"] = os.environ.get("NO_PROXY", "") + ",127.0.0.1,localhost"
 
 
-class PrivySigner:
-    """ClientEvmSigner backed by the Starchild wallet skill (Privy)."""
-
-    REGISTERED_PATH = "/data/workspace/.x402/privy.registered"
-
-    def __init__(self, max_amount_atomic: int = 1_000_000):
-        """max_amount_atomic: refuse to sign payments above this (default 1 USDC)."""
-        from core.skill_tools import wallet
-        self._wallet = wallet
-        self.max_amount_atomic = max_amount_atomic
-        info = wallet.wallet_info()
-        self._address = next(w["wallet_address"] for w in info["wallets"]
-                             if w["chain_type"] == "ethereum")
-        # Register the Privy payer address to ai-agent's session_wallets so
-        # community-gateway can attribute payments (by-wallet lookup only
-        # covers user_info login wallets + session_wallets — the Privy AGENT
-        # wallet lives in the wallet service's own DB and is NOT resolvable
-        # otherwise; without this, purchases record buyer_user_id=NULL).
-        # Best-effort: a failed registration must not block payments.
-        try:
-            self._register_privy_wallet()
-        except Exception:
-            pass
-
-    def _register_privy_wallet(self) -> None:
-        if os.path.exists(self.REGISTERED_PATH):
-            return
-        jwt = os.environ.get("CONTAINER_JWT", "") or os.environ.get("USER_JWT", "")
-        base = os.environ.get("AI_AGENT_API_URL", "").rstrip("/")
-        if not jwt or not base:
-            return  # outside the platform — nothing to register against
-        payload = {"wallet_address": self._address,
-                   "wallet_type": "x402_privy_wallet",
-                   "chain_type": "ethereum"}
-        cid = os.environ.get("CONTAINER_ID") or os.environ.get("FLY_MACHINE_ID") or ""
-        if cid:
-            payload["container_id"] = cid
-        req = urllib.request.Request(
-            base + "/v1/agent/profile/register-session-wallet",
-            data=json.dumps(payload).encode(), method="POST")
-        req.add_header("Authorization", f"Bearer {jwt}")
-        req.add_header("Content-Type", "application/json")
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            result = json.loads(resp.read().decode() or "{}")
-        if result.get("status") in ("created", "updated"):
-            os.makedirs(os.path.dirname(self.REGISTERED_PATH), exist_ok=True)
-            with open(self.REGISTERED_PATH, "w") as f:
-                f.write(self._address)
-
-    @property
-    def address(self) -> str:
-        return self._address
-
-    # EIP-7702 delegation handling: when the Privy address carries delegated
-    # code (Privy gas sponsorship installs ZeroDev Kernel), USDC verifies via
-    # ERC-1271, so the payment must be signed through Kernel's EIP-712 wrapper:
-    #   inner = EIP-3009 digest -> sign Kernel(bytes32 hash) under Kernel's
-    #   domain -> final sig = 0x00 (root/sudo validator prefix) + 65B ECDSA.
-    # Public RPCs for EIP-1271 / EIP-7702 delegation probe only (signing is off-chain).
-    _RPC = {
-        1: "https://ethereum.publicnode.com",
-        10: "https://optimism.publicnode.com",
-        130: "https://mainnet.unichain.org",
-        137: "https://polygon-bor.publicnode.com",
-        143: "https://rpc.monad.xyz",
-        480: "https://worldchain-mainnet.g.alchemy.com/public",
-        4663: "https://rpc.mainnet.chain.robinhood.com",
-        8453: "https://mainnet.base.org",
-        196: "https://rpc.xlayer.tech",
-        1952: "https://testrpc.xlayer.tech",
-        42161: "https://arbitrum-one.publicnode.com",
-        42220: "https://forno.celo.org",
-        43114: "https://avalanche-c-chain-rpc.publicnode.com",
-        46630: "https://rpc.testnet.chain.robinhood.com",
-        59144: "https://rpc.linea.build",
-        84532: "https://sepolia.base.org",
-    }
-
-    def _delegation(self, chain_id: int):
-        """Returns (name, version) of the delegate's EIP-712 domain, or None."""
-        if not hasattr(self, "_deleg_cache"):
-            self._deleg_cache = {}
-        if chain_id in self._deleg_cache:
-            return self._deleg_cache[chain_id]
-        result = None
-        rpc = self._RPC.get(chain_id)
-        if rpc:
-            try:
-                from web3 import Web3
-                w3 = Web3(Web3.HTTPProvider(rpc))
-                addr = Web3.to_checksum_address(self._address)
-                if w3.eth.get_code(addr):
-                    dom = w3.eth.contract(address=addr, abi=[{
-                        "name": "eip712Domain", "type": "function",
-                        "stateMutability": "view", "inputs": [],
-                        "outputs": [{"type": "bytes1"}, {"type": "string"},
-                                    {"type": "string"}, {"type": "uint256"},
-                                    {"type": "address"}, {"type": "bytes32"},
-                                    {"type": "uint256[]"}]}]).functions.eip712Domain().call()
-                    result = (dom[1], dom[2])  # e.g. ("Kernel", "0.3.3")
-            except Exception:
-                result = None  # RPC hiccup -> fall through to raw signing
-        self._deleg_cache[chain_id] = result
-        return result
-
-    def _sign_raw(self, d, t, primary_type, msg) -> bytes:
-        res = self._wallet.wallet_sign_typed_data(
-            domain=d, types=t, primaryType=primary_type, message=msg)
-        sig = res.get("signature") if isinstance(res, dict) else None
-        if not sig:
-            raise RuntimeError(f"wallet signing failed: {res}")
-        return bytes.fromhex(sig[2:] if sig.startswith("0x") else sig)
-
-    def sign_typed_data(self, domain, types, primary_type, message) -> bytes:
-        # spending guard — hard cap per single signature
-        val = int(message.get("value", 0)) if str(message.get("value", "0")).isdigit() else 0
-        if val > self.max_amount_atomic:
-            raise ValueError(
-                f"x402 spend guard: {val} atomic units exceeds cap "
-                f"{self.max_amount_atomic}. Raise PrivySigner(max_amount_atomic=...) explicitly.")
-        d = {"name": domain.name, "version": domain.version,
-             "chainId": domain.chain_id, "verifyingContract": domain.verifying_contract}
-        t = {tn: [{"name": f.name, "type": f.type} for f in fields]
-             for tn, fields in types.items()}
-        # wallet API is JSON — normalize bytes -> 0x hex, int -> str
-        msg = {}
-        for k, v in message.items():
-            if isinstance(v, (bytes, bytearray)):
-                msg[k] = "0x" + v.hex()
-            elif isinstance(v, int):
-                msg[k] = str(v)
-            else:
-                msg[k] = v
-
-        deleg = self._delegation(int(domain.chain_id))
-        if deleg is None:
-            return self._sign_raw(d, t, primary_type, msg)
-
-        # Delegated (smart) account: sign the wrapper over the inner digest.
-        from eth_account.messages import encode_typed_data, _hash_eip191_message
-        inner = _hash_eip191_message(encode_typed_data(full_message={
-            "domain": {**d, "chainId": int(domain.chain_id)},
-            "types": {**{tn: fields for tn, fields in t.items()},
-                      "EIP712Domain": [
-                          {"name": "name", "type": "string"},
-                          {"name": "version", "type": "string"},
-                          {"name": "chainId", "type": "uint256"},
-                          {"name": "verifyingContract", "type": "address"}]},
-            "primaryType": primary_type,
-            "message": message}))
-        wrap_sig = self._sign_raw(
-            {"name": deleg[0], "version": deleg[1],
-             "chainId": int(domain.chain_id), "verifyingContract": self._address},
-            {"Kernel": [{"name": "hash", "type": "bytes32"}]},
-            "Kernel", {"hash": "0x" + inner.hex()})
-        return b"\x00" + wrap_sig  # 0x00 = Kernel root (sudo) validator prefix
+# Public EVM RPCs for USDC balance reads and DOMAIN_SEPARATOR() reads.
+_EVM_RPC = {
+    1: "https://ethereum.publicnode.com",
+    10: "https://optimism.publicnode.com",
+    130: "https://mainnet.unichain.org",
+    137: "https://polygon-bor.publicnode.com",
+    143: "https://rpc.monad.xyz",
+    480: "https://worldchain-mainnet.g.alchemy.com/public",
+    4663: "https://rpc.mainnet.chain.robinhood.com",
+    8453: "https://mainnet.base.org",
+    196: "https://rpc.xlayer.tech",
+    1952: "https://testrpc.xlayer.tech",
+    42161: "https://arbitrum-one.publicnode.com",
+    42220: "https://forno.celo.org",
+    43114: "https://avalanche-c-chain-rpc.publicnode.com",
+    46630: "https://rpc.testnet.chain.robinhood.com",
+    59144: "https://rpc.linea.build",
+    84532: "https://sepolia.base.org",
+}
 
 
 class SessionEOASigner:
     """Local session EOA buyer key (.x402/buyer.key).
 
-    Why this exists: the Privy wallet address carries EIP-7702 delegation code,
-    so USDC's transferWithAuthorization verifies its signatures via EIP-1271
-    (contract path) and REJECTS plain ECDSA — Privy signatures fail on-chain
-    with 'FiatTokenV2: invalid signature'. A plain EOA has no code, signs pure
-    ECDSA, and works. Fund it with a small USDC budget from the Privy wallet;
-    the budget itself acts as the hard spend cap.
+    A plain EOA has no code and signs pure ECDSA, which USDC's
+    transferWithAuthorization accepts. Fund it with a small USDC budget from
+    any wallet; the budget itself acts as the hard spend cap.
     """
 
     KEY_PATH = "/data/workspace/.x402/buyer.key"
@@ -321,7 +176,7 @@ class SessionEOASigner:
             # (e.g. local marker file lost but ai-agent DB has the record),
             # a re-registration returns 200 with status=updated. However,
             # if we get a 400 with address_conflict, the EOA address collides
-            # with a Privy wallet — that's a real error, block usage.
+            # with another registered wallet — that's a real error, block usage.
             # Other 4xx/5xx errors also block usage.
             raise RuntimeError(
                 f"x402: session wallet registration failed: "
@@ -406,208 +261,39 @@ def _body(text: str, *, full: bool = False) -> str:
         cap = 2000
     return text if cap <= 0 else text[:cap]
 
-def _make_signer(signer_mode: str, max_amount_atomic: int,
-                 allow_fallback_eoa: bool = False):
-    """signer_mode: 'privy' | 'eoa' | 'auto'.
-
-    'auto' -> Privy wallet (PrivySigner transparently handles the smart-account
-    ERC-1271 wrapping). FAIL-CLOSED: if the Privy signer cannot be initialized,
-    auto raises instead of silently paying from a different identity. To allow
-    the session-EOA fallback, opt in explicitly with allow_fallback_eoa=True
-    or env X402_FALLBACK_EOA=1.
-    Env override: X402_SIGNER=privy|eoa forces a mode in 'auto'.
-
-    ⚠️ Payer identity: Privy wallet and session EOA are DIFFERENT payer
-    addresses. Subscriptions / prepaid balances bought under one do NOT
-    carry over to the other — pin signer_mode explicitly for such services.
-    """
-    if signer_mode == "privy":
-        s = PrivySigner(max_amount_atomic=max_amount_atomic)
-        s.signer_type, s.signer_warning = "privy", None
-        return s
-    if signer_mode == "eoa":
-        s = SessionEOASigner(max_amount_atomic=max_amount_atomic)
-        s.signer_type, s.signer_warning = "session_eoa", None
-        return s
-    env = os.environ.get("X402_SIGNER", "").strip().lower()
-    if env in ("privy", "eoa"):
-        return _make_signer(env, max_amount_atomic)
-    try:
-        s = PrivySigner(max_amount_atomic=max_amount_atomic)
-        s.signer_type, s.signer_warning = "privy", None
-        return s
-    except Exception as e:
-        # Most common cause: `from core.skill_tools import wallet` fails when
-        # PYTHONPATH lacks /app (script run outside the agent runtime) — NOT a
-        # protocol incompatibility.
-        if not (allow_fallback_eoa
-                or os.environ.get("X402_FALLBACK_EOA", "").strip() == "1"):
-            raise RuntimeError(
-                f"Privy signer unavailable ({type(e).__name__}: {e}). "
-                f"Refusing to pay from the session EOA (different payer "
-                f"identity). Fix the wallet-service access (ImportError → "
-                f"run with PYTHONPATH=/app), or opt in explicitly with "
-                f"allow_fallback_eoa=True / X402_FALLBACK_EOA=1 / "
-                f"X402_SIGNER=eoa.") from e
-        warn = (f"Privy signer unavailable ({type(e).__name__}: {e}) — "
-                f"fell back to session EOA (DIFFERENT payer identity) "
-                f"per explicit opt-in.")
-        print(f"[x402] auto: {warn}", file=sys.stderr)
-        s = SessionEOASigner(max_amount_atomic=max_amount_atomic)
-        s.signer_type, s.signer_warning = "session_eoa", warn
-        return s
+def _make_signer(signer_mode: str, max_amount_atomic: int):
+    """signer_mode: 'auto' | 'eoa' — both select the session EOA
+    (`.x402/buyer.key`)."""
+    if signer_mode not in ("auto", "eoa"):
+        raise ValueError(f"unknown signer_mode {signer_mode!r} (use 'auto' or 'eoa')")
+    s = SessionEOASigner(max_amount_atomic=max_amount_atomic)
+    s.signer_type, s.signer_warning = "session_eoa", None
+    return s
 
 
-def _register_session_wallet(address: str, chain_type: str, marker: str) -> None:
-    """Register a payer address to ai-agent session_wallets so the community
-    proxy can attribute payments to this user (buyer_user_id). Best-effort."""
-    if os.path.exists(marker):
-        return
-    jwt = os.environ.get("CONTAINER_JWT", "") or os.environ.get("USER_JWT", "")
-    base = os.environ.get("AI_AGENT_API_URL", "").rstrip("/")
-    if not jwt or not base:
-        return
-    payload = {"wallet_address": address,
-               "wallet_type": "x402_privy_wallet",
-               "chain_type": chain_type}
-    cid = os.environ.get("CONTAINER_ID") or os.environ.get("FLY_MACHINE_ID") or ""
-    if cid:
-        payload["container_id"] = cid
-    req = urllib.request.Request(
-        base + "/v1/agent/profile/register-session-wallet",
-        data=json.dumps(payload).encode(), method="POST")
-    req.add_header("Authorization", f"Bearer {jwt}")
-    req.add_header("Content-Type", "application/json")
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        result = json.loads(resp.read().decode() or "{}")
-    if result.get("status") in ("created", "updated"):
-        os.makedirs(os.path.dirname(marker), exist_ok=True)
-        with open(marker, "w") as f:
-            f.write(address)
-
-
-class PrivySvmSigner:
-    """Solana buyer signer via Privy wallet_sol_sign (base64 raw message bytes).
-
-    ExactSvmScheme only needs `.address` + `.keypair.sign_message(bytes)`.
-    We don't expose the Privy key; sign_message proxies to wallet skill.
-    """
-
-    REGISTERED_PATH = "/data/workspace/.x402/privy.sol.registered"
-
-    def __init__(self):
-        from core.skill_tools import wallet as _w
-        info = _w.wallet_info()
-        wallets = info.get("wallets") if isinstance(info, dict) else info
-        addr = None
-        for w in wallets or []:
-            if isinstance(w, dict) and w.get("chain_type") == "solana":
-                addr = w.get("wallet_address") or w.get("address")
-                break
-        if not addr:
-            raise RuntimeError("no Solana wallet address from wallet_info()")
-        self._address = addr
-        self._wallet = _w
-        self.keypair = self  # ExactSvmScheme calls signer.keypair.sign_message
-        # Register the Solana payer for buyer attribution (mirrors PrivySigner;
-        # without this, Solana purchases record buyer_user_id=NULL).
-        try:
-            _register_session_wallet(addr, "solana", self.REGISTERED_PATH)
-        except Exception:
-            pass
-
-    @property
-    def address(self) -> str:
-        return self._address
-
-    def sign_message(self, message: bytes):
-        import base64
-        from solders.signature import Signature
-        # wallet_sol_sign accepts base64 of raw bytes and returns base64 sig.
-        r = self._wallet.wallet_sol_sign(
-            message=base64.b64encode(bytes(message)).decode())
-        sig_b64 = r.get("signature") if isinstance(r, dict) else None
-        if not sig_b64:
-            raise RuntimeError(f"wallet_sol_sign failed: {r!r}")
-        return Signature.from_bytes(base64.b64decode(sig_b64))
-
-    def sign_transaction(self, tx):
-        # Not used by ExactSvmScheme.create_payment_payload (signs msg directly).
-        raise NotImplementedError("use ExactSvmScheme partial-sign path")
-
-
-def network_rank(network: str, signer=None, signer_mode: str = "auto") -> int:
+def network_rank(network: str) -> int:
     """Shared rail preference (lower = preferred). Used by BOTH paid_request
     routing and bazaar probe display so the rail a user sees/confirms at probe
-    time is the rail actually selected for payment.
-
-    auto: ① Base (primary USDC chain, most users have balance here) →
-    ② Solana / other EVM where the payer has NO 7702 delegation code (plain
-    ECDSA, e.g. Monad) — Solana is treated equally with plain-ECDSA EVM,
-    selected when funded → ③ delegated EVM (Kernel EIP-1271) — spec-correct
-    but some facilitators reject it.
-    eoa: EVM only; Solana is excluded (session EOA can't sign SVM).
+    time is the rail actually selected for payment. The session EOA signs EVM
+    rails only, so non-EVM rails (e.g. Solana) rank last and are never paid.
     """
     net = "eip155:8453" if network == "base" else str(network or "")
-    if signer_mode == "eoa":
-        return 0 if net.startswith("eip155:") else 9
-    if net.startswith("eip155:"):
-        # Base is the primary USDC chain — always prefer it over other EVM.
-        if net == "eip155:8453":
-            return 0
-        try:
-            cid = int(net.split(":", 1)[1])
-            deleg = getattr(signer, "_delegation", None)
-            if deleg is not None and signer._delegation(cid) is None:
-                return 2  # no 7702 code -> plain ECDSA (e.g. Monad)
-        except Exception:
-            pass
-        return 3  # delegated (EIP-1271) or unknown -> last resort
-    if net.startswith("solana"):
-        return 2  # same tier as plain-ECDSA EVM; selected when funded
-    return 4
-
-
-_RANK_SIGNER = None
-
-
-def rank_signer_cached():
-    """Best-effort Privy signer used ONLY for delegation probing in
-    network_rank (never signs). Raises outside the agent runtime."""
-    global _RANK_SIGNER
-    if _RANK_SIGNER is None:
-        _RANK_SIGNER = PrivySigner(max_amount_atomic=1)
-    return _RANK_SIGNER
+    return 0 if net.startswith("eip155:") else 9
 
 
 def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
-                  allow_fallback_eoa: bool = False, prefer_network: str = ""):
+                  prefer_network: str = ""):
     from x402 import x402Client
     from x402.client_base import max_amount, prefer_network, prefer_scheme
     from x402.mechanisms.evm.exact.register import register_exact_evm_client
-    signer = _make_signer(signer_mode, max_amount_atomic, allow_fallback_eoa)
-    is_eoa = getattr(signer, "signer_type", "") == "session_eoa"
+    signer = _make_signer(signer_mode, max_amount_atomic)
     client = x402Client()
-    # EVM rails (Base/Polygon/Arbitrum/Monad/…).
+    # EVM rails (Base/Polygon/Arbitrum/Monad/…). The session EOA cannot sign
+    # SVM, so no Solana scheme is registered.
     register_exact_evm_client(client, signer)
-    # Solana mainnet exact (Privy SVM signer). Best-effort: skip if
-    # solders/wallet missing. NEVER registered in explicit-EOA mode — the
-    # session EOA cannot sign SVM, and paying from the Privy Solana wallet
-    # would violate the user's pinned payer identity.
-    svm_signer = None
-    if not is_eoa:
-        try:
-            from x402.mechanisms.svm.exact.register import register_exact_svm_client
-            svm_signer = PrivySvmSigner()
-            register_exact_svm_client(
-                client, svm_signer,
-                networks=["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "solana"])
-        except Exception as e:
-            print(f"[x402] SVM buyer register skipped: {e}", file=sys.stderr)
     # Rail preference: see network_rank() — shared with bazaar probe so the
     # rail shown/confirmed at probe time is the rail actually paid.
     client.register_policy(prefer_scheme("exact"))
-    _mode = "eoa" if is_eoa else "auto"
 
     def _net_of(r):
         return str(getattr(r, "network", None) or
@@ -626,10 +312,10 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
         # bazaar._amount_int).
         return 1 << 62
 
-    def _prefer_privy_native(version, reqs):
-        if is_eoa:  # hard-filter non-EVM: pinned payer cannot sign these
-            reqs = [r for r in reqs if _net_of(r).startswith("eip155:")
-                    or _net_of(r) == "base"]
+    def _prefer_funded_rail(version, reqs):
+        # hard-filter non-EVM: the session EOA cannot sign these
+        reqs = [r for r in reqs if _net_of(r).startswith("eip155:")
+                or _net_of(r) == "base"]
         _pn = prefer_network
         # Priority: ① explicit prefer_network ② verified-funded rails first,
         # verified-empty last, unknown neutral (RPC flake must never block a
@@ -639,20 +325,18 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
             from bazaar import _canon_network as _cn
             bals = usdc_balances(
                 {_net_of(r) for r in reqs},
-                evm_addr=getattr(signer, "address", None),
-                sol_addr=(getattr(svm_signer, "address", None)
-                          if svm_signer is not None else None))
+                evm_addr=getattr(signer, "address", None))
         except Exception:
             bals, _cn = {}, (lambda n: n)
         return sorted(reqs, key=lambda r: (
             0 if _pn and _net_of(r) == _pn else 1,
             _rail_funded_state(_cn(_net_of(r)), _amt_of(r), bals),
             0 if _cn(_net_of(r)) == "eip155:8453" else 1,
-            network_rank(_net_of(r), signer=signer, signer_mode=_mode),
+            network_rank(_net_of(r)),
             _amt_of(r)))  # cheapest wins within the same rail rank
             # (matches bazaar._sort_payable so probe display == paid rail)
 
-    client.register_policy(_prefer_privy_native)
+    client.register_policy(_prefer_funded_rail)
     client.register_policy(max_amount(max_amount_atomic))
 
     def _only_known_usdc_rails(version, reqs):
@@ -664,12 +348,9 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
             ok_assets = {
                 "eip155:8453": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
                 "base": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
-                "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp":
-                    "epjfwdd5aufqssqem2qn1xzybapc8g4weggkzwytdt1v",
             }
             def _canon_network(n):  # noqa: E306
-                return "eip155:8453" if n == "base" else (
-                    "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp" if n == "solana" else n)
+                return "eip155:8453" if n == "base" else n
         kept = []
         for r in reqs:
             net = getattr(r, "network", None) or (r.get("network") if isinstance(r, dict) else None)
@@ -681,12 +362,6 @@ def _build_client(max_amount_atomic: int = 1_000_000, signer_mode: str = "auto",
         return kept
 
     client.register_policy(_only_known_usdc_rails)
-    # Return EVM signer for payer metadata; attach svm for diagnostics.
-    if svm_signer is not None:
-        try:
-            signer.svm_address = svm_signer.address
-        except Exception:
-            pass
     return client, signer
 
 
@@ -734,7 +409,7 @@ def _read_domain_separator(chain_id: int, asset: str) -> bytes:
     if cached is not None:
         return cached
 
-    rpc = PrivySigner._RPC.get(chain_id)
+    rpc = _EVM_RPC.get(chain_id)
     if not rpc:
         raise RuntimeError(f"No RPC URL for chain {chain_id}")
     w3 = Web3(Web3.HTTPProvider(rpc))
@@ -749,11 +424,6 @@ def _sign_raw_digest(signer, digest: bytes) -> bytes:
     """Sign a raw 32-byte EIP-712 digest with the signer's private key.
 
     SessionEOASigner: uses eth_account.unsafe_sign_hash directly.
-    PrivySigner: the Privy wallet API only exposes wallet_sign_typed_data
-    (EIP-712 structured signing), not raw hash signing. For Robinhood
-    chains, PrivySigner falls back to the standard typed-data path which
-    may produce invalid_signature — this is a known limitation until Privy
-    adds a raw-sign API. SessionEOASigner (the default signer) works.
     """
     # SessionEOASigner has _acct (eth_account.Account)
     acct = getattr(signer, "_acct", None)
@@ -764,15 +434,14 @@ def _sign_raw_digest(signer, digest: bytes) -> bytes:
     raise RuntimeError(
         "Cannot sign raw EIP-712 digest: signer does not expose a private "
         "key (_acct). Robinhood USDG payments require SessionEOASigner or "
-        "a signer with raw hash signing support. PrivySigner's "
-        "wallet_sign_typed_data cannot produce raw-digest signatures.")
+        "a signer with raw hash signing support.")
 
 
 def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -> str:
     """Sign an EIP-3009 authorization for a platform-shape 402 (JSON-body
     `accepts` dict with pricingModel — Starchild community-gateway contract).
     Returns the base64 X-PAYMENT header value. Works with any signer that
-    implements sign_typed_data (SessionEOASigner or PrivySigner)."""
+    implements sign_typed_data (e.g. SessionEOASigner)."""
     import time as _t
 
     signer = signer or SessionEOASigner(max_amount_atomic=max_amount_atomic)
@@ -794,9 +463,7 @@ def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -
 
     # Chain-read DOMAIN_SEPARATOR path for Diamond proxy contracts (Robinhood
     # USDG). Only used when the signer exposes a private key (_acct) for raw
-    # digest signing. PrivySigner uses wallet_sign_typed_data (no raw-sign API),
-    # so it falls through to the standard typed-data path — the facilitator's
-    # ERC-1271 fallback handles Privy's Kernel-delegated signatures.
+    # digest signing.
     _use_chain_read = (
         chain_id in _CHAIN_DOMAIN_SEP_CHAIN_IDS
         and getattr(signer, "_acct", None) is not None
@@ -819,9 +486,7 @@ def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -
         digest = Web3.keccak(b"\x19\x01" + domain_sep + struct_hash)
         sig = _sign_raw_digest(signer, digest)
     else:
-        # Standard EIP-712 typed-data signing (Base, Monad, and PrivySigner
-        # on any chain including Robinhood — Privy's Kernel delegation is
-        # verified via ERC-1271 on the facilitator side).
+        # Standard EIP-712 typed-data signing (Base, Monad, …).
         class _NS:
             def __init__(self, **kw): self.__dict__.update(kw)
         domain = _NS(name=extra.get("name", "USD Coin"), version=extra.get("version", "2"),
@@ -837,160 +502,6 @@ def _sign_platform_payment(accepts: dict, max_amount_atomic: int, signer=None) -
 
     payload = {"x402Version": 2, "scheme": "exact", "network": network,
                "payload": {"authorization": auth, "signature": "0x" + sig.hex()}}
-    return base64.b64encode(json.dumps(payload).encode()).decode()
-
-
-def _sign_solana_payment(accepts: dict, max_amount_atomic: int,
-                         svm_signer=None) -> str:
-    """Sign a Solana SPL TransferChecked payment for a platform-shape 402.
-
-    Mirrors the logic of x402 SDK's ExactSvmScheme.create_payment_payload:
-    builds a VersionedTransaction with ComputeBudget + TransferChecked + Memo
-    instructions, partially signed by the buyer (facilitator co-signs later).
-    Returns the base64 X-PAYMENT header value.
-    """
-    import binascii
-
-    from solana.rpc.api import Client as SolanaClient
-    from solders.instruction import AccountMeta, Instruction
-    from solders.message import MessageV0
-    from solders.pubkey import Pubkey
-    from solders.signature import Signature
-    from solders.transaction import VersionedTransaction
-
-    if svm_signer is None:
-        svm_signer = PrivySvmSigner()
-
-    amount = int(accepts["amount"])
-    if amount > max_amount_atomic:
-        raise ValueError(
-            f"x402 spend guard: {amount} atomic units exceeds cap {max_amount_atomic}.")
-
-    network = accepts["network"]
-    extra = accepts.get("extra") or {}
-    fee_payer_str = extra.get("feePayer")
-    if not fee_payer_str:
-        raise ValueError("feePayer is required in accepts.extra for Solana payments")
-
-    fee_payer = Pubkey.from_string(fee_payer_str)
-    mint = Pubkey.from_string(accepts["asset"])
-    payer_pubkey = Pubkey.from_string(svm_signer.address)
-
-    # Derive token program and decimals from on-chain mint account
-    _SOL_RPC_URL = "https://api.mainnet-beta.solana.com"
-    sol_client = SolanaClient(_SOL_RPC_URL)
-
-    _TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-    _TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
-    mint_info = sol_client.get_account_info(mint)
-    if not mint_info.value:
-        raise ValueError(f"Token mint not found: {mint}")
-    mint_owner = str(mint_info.value.owner)
-    if mint_owner == _TOKEN_PROGRAM:
-        token_program = Pubkey.from_string(_TOKEN_PROGRAM)
-    elif mint_owner == _TOKEN_2022_PROGRAM:
-        token_program = Pubkey.from_string(_TOKEN_2022_PROGRAM)
-    else:
-        raise ValueError(f"Unknown token program: {mint_owner}")
-    decimals = mint_info.value.data[44]
-
-    # Derive ATAs (Associated Token Accounts)
-    _ATA_PROGRAM = Pubkey.from_string("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL")
-
-    def _derive_ata(owner_str: str, mint_str: str, tp: Pubkey) -> Pubkey:
-        owner_pk = Pubkey.from_string(owner_str)
-        mint_pk = Pubkey.from_string(mint_str)
-        seeds = [bytes(owner_pk), bytes(tp), bytes(mint_pk)]
-        ata, _bump = Pubkey.find_program_address(seeds, _ATA_PROGRAM)
-        return ata
-
-    source_ata = _derive_ata(svm_signer.address, accepts["asset"], token_program)
-    # payTo may be an EVM address (0x...) for platform services — the
-    # facilitator resolves it to the seller's Solana ATA on settlement.
-    # But we still need a destination ATA for the transaction. For platform
-    # services the feePayer IS the facilitator's Solana address, and the
-    # actual settlement routing is handled server-side. Use feePayer as
-    # the destination for the transfer (facilitator receives, then routes).
-    pay_to = accepts.get("payTo", "")
-    if pay_to.startswith("0x"):
-        # EVM payTo on a Solana accept — facilitator handles routing.
-        # Transfer to facilitator (feePayer) who settles to the seller.
-        dest_ata = _derive_ata(fee_payer_str, accepts["asset"], token_program)
-    else:
-        dest_ata = _derive_ata(pay_to, accepts["asset"], token_program)
-
-    # Build instructions
-    _COMPUTE_BUDGET = Pubkey.from_string(
-        "ComputeBudget111111111111111111111111111111")
-    _MEMO_PROGRAM = Pubkey.from_string(
-        "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr")
-
-    # 1. SetComputeUnitLimit: [2, u32 LE]
-    set_cu_limit_data = bytes([2]) + (20000).to_bytes(4, "little")
-    set_cu_limit_ix = Instruction(
-        program_id=_COMPUTE_BUDGET, accounts=[], data=set_cu_limit_data)
-
-    # 2. SetComputeUnitPrice: [3, u64 LE]  (1 microlamport)
-    set_cu_price_data = bytes([3]) + (1).to_bytes(8, "little")
-    set_cu_price_ix = Instruction(
-        program_id=_COMPUTE_BUDGET, accounts=[], data=set_cu_price_data)
-
-    # 3. TransferChecked: [12, u64 amount LE, u8 decimals]
-    transfer_data = (bytes([12])
-                     + amount.to_bytes(8, "little")
-                     + bytes([decimals]))
-    transfer_ix = Instruction(
-        program_id=token_program,
-        accounts=[
-            AccountMeta(source_ata, is_signer=False, is_writable=True),
-            AccountMeta(mint, is_signer=False, is_writable=False),
-            AccountMeta(dest_ata, is_signer=False, is_writable=True),
-            AccountMeta(payer_pubkey, is_signer=True, is_writable=False),
-        ],
-        data=transfer_data)
-
-    # 4. Memo (random nonce for uniqueness, or seller-defined)
-    seller_memo = extra.get("memo")
-    if seller_memo and isinstance(seller_memo, str):
-        memo_data = seller_memo.encode("utf-8")[:256]
-    else:
-        memo_data = binascii.hexlify(os.urandom(16))
-    memo_ix = Instruction(
-        program_id=_MEMO_PROGRAM, accounts=[], data=memo_data)
-
-    # Get latest blockhash
-    blockhash_resp = sol_client.get_latest_blockhash()
-    blockhash = blockhash_resp.value.blockhash
-
-    # Build MessageV0
-    message = MessageV0.try_compile(
-        payer=fee_payer,
-        instructions=[set_cu_limit_ix, set_cu_price_ix, transfer_ix, memo_ix],
-        address_lookup_table_accounts=[],
-        recent_blockhash=blockhash)
-
-    # Partial sign: prepend 0x80 version byte before signing (MessageV0)
-    msg_bytes_with_version = bytes([0x80]) + bytes(message)
-    client_signature = svm_signer.keypair.sign_message(msg_bytes_with_version)
-
-    # index 0 = fee_payer (facilitator placeholder), index 1 = buyer
-    signatures = [Signature.default(), client_signature]
-    tx = VersionedTransaction.populate(message, signatures)
-    tx_base64 = base64.b64encode(bytes(tx)).decode("utf-8")
-
-    # Build x402 V2 payment payload.
-    # Include authorization.from so the community-gateway's decode_payment_header
-    # can extract the payer address (it only looks at payload.authorization.from;
-    # Solana payloads have no authorization field natively).
-    payload = {
-        "x402Version": 2,
-        "scheme": "exact",
-        "network": network,
-        "payload": {
-            "transaction": tx_base64,
-            "authorization": {"from": svm_signer.address, "value": str(amount)},
-        },
-    }
     return base64.b64encode(json.dumps(payload).encode()).decode()
 
 
@@ -1032,15 +543,9 @@ def _ledger_append(entry: dict):
 def paid_request(method: str, url: str, json_body=None, headers=None,
                  max_amount_atomic: int = 1_000_000, timeout: float = 60.0,
                  signer_mode: str = "auto", pricing_model: str = "",
-                 allow_fallback_eoa: bool = False,
                  prefer_network: str = ""):
     """One-shot request with automatic x402 payment. Returns dict summary.
-
-    allow_fallback_eoa: 'auto' signer mode is FAIL-CLOSED — if the Privy
-    signer cannot be initialized it raises rather than paying from the
-    session EOA (a different payer identity). Pass True (or set env
-    X402_FALLBACK_EOA=1) to permit the fallback; the result then carries
-    signer_type="session_eoa" and a signer_warning.
+    Payer: the session EOA (EVM rails only).
 
     pricing_model: for MULTI-PLAN services — sends X-Pricing-Model so the
     gateway quotes that plan's price in its 402 (e.g. "weekly", "yearly").
@@ -1086,13 +591,11 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
             r0 = await plain.request(method.upper(), url, json=json_body, headers=headers or {})
 
         if r0.status_code != 402:
-            # No payment happens on this path — report identity best-effort
-            # (fallback allowed here since nothing is signed).
+            # No payment happens on this path — report identity best-effort.
             out = {"status": r0.status_code, "body": _body(r0.text),
                    "paid": False}
             try:
-                signer = _make_signer(signer_mode, max_amount_atomic,
-                                      allow_fallback_eoa=True)
+                signer = _make_signer(signer_mode, max_amount_atomic)
                 out.update({"payer": signer.address, **_signer_meta(signer)})
             except Exception:
                 pass
@@ -1100,10 +603,8 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
 
         # Platform-shape detection: if the 402 body is a Starchild platform
         # challenge (accepts list with pricingModel), skip the V2 SDK path
-        # and fall through to the platform path below.  The platform path
-        # uses _sign_platform_payment (EVM) or _sign_solana_payment (SVM)
-        # which correctly handle Privy's Kernel delegation wrapper and
-        # Privy SVM signing respectively; the V2 SDK does not handle
+        # and fall through to the platform path below (signed with
+        # _sign_platform_payment); the V2 SDK does not handle
         # body-based V2 challenges (x402Version: 2 in JSON body without
         # PAYMENT-REQUIRED header), causing Invalid payment required response.
         _is_platform = False
@@ -1126,7 +627,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 or _is_v2_body):
             # V2 header challenge -> x402 SDK path (non-platform services)
             client, signer = _build_client(max_amount_atomic, signer_mode,
-                                           allow_fallback_eoa, prefer_network)
+                                           prefer_network)
             _ledger_append({"event": "attempt", "url": url,
                             "method": method.upper(), "payer": signer.address,
                             "flavor": "v2-header", **_signer_meta(signer)})
@@ -1141,17 +642,11 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                         out["settlement"] = json.loads(base64.b64decode(pr))
                     except Exception:
                         out["settlement_raw"] = pr[:200]
-                # Report the ACTUAL selected rail/payer — the SDK may have
-                # paid on a different network (e.g. Solana) than the EVM
-                # signer's address implies.
+                # Report the ACTUAL selected rail.
                 sett = out.get("settlement") if isinstance(out.get("settlement"), dict) else {}
                 net = sett.get("network")
                 if net:
                     out["network"] = net
-                    if str(net).startswith("solana") \
-                            and getattr(signer, "svm_address", None):
-                        out["payer"] = signer.svm_address
-                        out["signer_type"] = "privy_svm"
                 _ledger_append({
                     "event": "result", "url": url, "method": method.upper(),
                     "payer": out["payer"], "status": r.status_code,
@@ -1184,47 +679,22 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         if not accepts_list:
             return {"status": 402, "error": "unrecognized 402 challenge",
                     "body": _body(r0.text)}
-        signer = _make_signer(signer_mode, max_amount_atomic,
-                              allow_fallback_eoa)
-        _mode = ("eoa" if getattr(signer, "signer_type", "") == "session_eoa"
-                 else "auto")
+        signer = _make_signer(signer_mode, max_amount_atomic)
 
         def _pick_accept(cands: list, prefer_network: str | None = None) -> dict | None:
             """Select one accept for the platform JSON-body path.
 
-            EVM rails: signed via _sign_platform_payment (EIP-3009).
-            Solana rails: signed via _sign_solana_payment (SPL TransferChecked).
-
-            When prefer_network is a Solana network, Solana accepts are kept
-            and preferred. Otherwise only EVM accepts are candidates (Solana
-            is dropped so network_rank cannot pick a rail we cannot sign).
+            EVM rails only, signed via _sign_platform_payment (EIP-3009);
+            Solana / other non-EVM accepts are dropped (the session EOA
+            cannot sign them).
 
             Selection: keep prefer_network on prepaid deposit retry; else rank
-            rails with network_rank (Base first as primary USDC chain,
-            then plain-ECDSA e.g. Monad, then delegated EVM).
+            rails with network_rank (Base first as primary USDC chain).
             """
             exact = [a for a in cands
                      if isinstance(a, dict) and a.get("scheme") == "exact"]
             if not exact:
                 return None
-            _prefer_solana = (prefer_network
-                              and str(prefer_network).startswith("solana"))
-            if _prefer_solana:
-                # When Solana is explicitly preferred, try Solana accepts first
-                sol = [a for a in exact
-                       if str(a.get("network") or "").startswith("solana")]
-                if sol:
-                    def _amt_s(a):
-                        try:
-                            return int(str(a.get("amount")))
-                        except (TypeError, ValueError):
-                            return 1 << 62
-                    same = [a for a in sol
-                            if str(a.get("network") or "") == prefer_network]
-                    if same:
-                        return sorted(same, key=_amt_s)[0]
-                    return sorted(sol, key=_amt_s)[0]
-                # No Solana accepts available — fall through to EVM
             # EVM EIP-3009 path. Drop Solana/other non-EVM so network_rank
             # cannot pick a rail we cannot sign via _sign_platform_payment.
             exact = [a for a in exact
@@ -1243,7 +713,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 if same:
                     return sorted(same, key=_amt)[0]  # cheapest on that chain
             # Funded rails first, Base as default chain, then network_rank
-            # (see _prefer_privy_native for rationale — same ordering).
+            # (see _prefer_funded_rail for rationale — same ordering).
             try:
                 from bazaar import _canon_network as _cn
                 bals = usdc_balances(
@@ -1255,8 +725,7 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 _rail_funded_state(_cn(str(a.get("network") or "")),
                                    _amt(a), bals),
                 0 if _cn(str(a.get("network") or "")) == "eip155:8453" else 1,
-                network_rank(str(a.get("network") or ""),
-                             signer=signer, signer_mode=_mode),
+                network_rank(str(a.get("network") or "")),
                 _amt(a),  # cheapest within same rank — matches probe sort
             ))[0]
 
@@ -1274,50 +743,28 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
         # surfaces the gateway's error.
         r2 = r0
         chosen_network = str(accepts.get("network") or "")
-        _is_solana_rail = chosen_network.startswith("solana")
-        # Lazily create the SVM signer only when a Solana rail is selected.
-        _svm_signer = None
-        if _is_solana_rail:
-            try:
-                _svm_signer = PrivySvmSigner()
-            except Exception as _e:
-                return {"status": 402,
-                        "error": f"Solana signer unavailable: {_e}",
-                        "body": _body(r0.text)}
         for _ in range(2):
-            if chosen_network.startswith("solana"):
-                xp = _sign_solana_payment(accepts, max_amount_atomic,
-                                          svm_signer=_svm_signer)
-                _payer_addr = _svm_signer.address if _svm_signer else "unknown"
-                _flavor = "platform-svm"
-            else:
-                xp = _sign_platform_payment(accepts, max_amount_atomic,
-                                            signer=signer)
-                _payer_addr = signer.address
-                _flavor = "platform"
+            xp = _sign_platform_payment(accepts, max_amount_atomic,
+                                        signer=signer)
             _ledger_append({"event": "signed", "url": url,
-                            "method": method.upper(), "payer": _payer_addr,
+                            "method": method.upper(), "payer": signer.address,
                             "amount_atomic": accepts.get("amount"),
                             "pricing_model": accepts.get("pricingModel"),
                             "network": accepts.get("network"),
                             "pay_to": accepts.get("payTo"),
-                            "flavor": _flavor,
-                            **({"signer_type": "privy_svm"}
-                               if chosen_network.startswith("solana")
-                               else _signer_meta(signer))})
+                            "flavor": "platform",
+                            **_signer_meta(signer)})
             async with _httpx.AsyncClient(timeout=timeout, follow_redirects=True) as plain:
                 r2 = await plain.request(method.upper(), url, json=json_body,
                                          headers={**(headers or {}), "X-PAYMENT": xp})
             _ledger_append({"event": "result", "url": url,
-                            "method": method.upper(), "payer": _payer_addr,
+                            "method": method.upper(), "payer": signer.address,
                             "amount_atomic": accepts.get("amount"),
                             "status": r2.status_code,
                             "paid": r2.status_code == 200,
                             "network": accepts.get("network"),
-                            "flavor": _flavor,
-                            **({"signer_type": "privy_svm"}
-                               if chosen_network.startswith("solana")
-                               else _signer_meta(signer))})
+                            "flavor": "platform",
+                            **_signer_meta(signer)})
             if r2.status_code != 402:
                 break
             try:
@@ -1347,16 +794,9 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
                 _last_error = json.loads(r2.text or "{}").get("error", "")
             except Exception:
                 pass
-        _final_payer = (_svm_signer.address if _svm_signer
-                        and chosen_network.startswith("solana")
-                        else signer.address)
-        _final_signer_meta = ({"signer_type": "privy_svm"}
-                              if _svm_signer
-                              and chosen_network.startswith("solana")
-                              else _signer_meta(signer))
-        out = {"status": r2.status_code, "payer": _final_payer,
+        out = {"status": r2.status_code, "payer": signer.address,
                "paid": r2.status_code < 400,
-               **_final_signer_meta,
+               **_signer_meta(signer),
                "pricing_model": accepts.get("pricingModel"),
                "network": accepts.get("network"),
                "body": _body(r2.text, full=True)}
@@ -1370,12 +810,12 @@ def paid_request(method: str, url: str, json_body=None, headers=None,
 _BAL_CACHE: dict = {}   # (canonical_net, payer_addr) -> (ts, atomic_balance)
 
 
-def usdc_balances(networks, evm_addr=None, sol_addr=None,
+def usdc_balances(networks, evm_addr=None,
                   ttl: float = 60.0) -> dict:
-    """Best-effort USDC balance (atomic units) per canonical network.
+    """Best-effort USDC balance (atomic units) per canonical EVM network.
 
-    None = unknown (RPC failure, unsupported network, or no address for that
-    chain type). Cached ``ttl`` seconds per (network, address) so the several
+    None = unknown (RPC failure, unsupported or non-EVM network, or no
+    address). Cached ``ttl`` seconds per (network, address) so the several
     routing checks inside one payment share RPC round-trips. ``ttl=0`` forces
     live reads (preflight) while still refreshing the cache for the payment
     that follows.
@@ -1389,8 +829,8 @@ def usdc_balances(networks, evm_addr=None, sol_addr=None,
     for raw in networks or []:
         net = _canon_network(str(raw or ""))
         usdc = PAYABLE_USDC.get(net)
-        addr = sol_addr if net.startswith("solana") else evm_addr
-        if not usdc or not addr:
+        addr = evm_addr
+        if not usdc or not addr or not net.startswith("eip155:"):
             out[net] = None
             continue
         ck = (net, addr)
@@ -1400,35 +840,15 @@ def usdc_balances(networks, evm_addr=None, sol_addr=None,
             continue
         bal = None
         try:
-            if net.startswith("solana"):
-                import httpx
-                resp = httpx.post("https://api.mainnet-beta.solana.com", json={
-                    "jsonrpc": "2.0", "id": 1,
-                    "method": "getTokenAccountsByOwner",
-                    "params": [addr,
-                               {"mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"},
-                               {"encoding": "jsonParsed"}]}, timeout=15)
-                resp.raise_for_status()
-                r = resp.json()
-                # RPC error / malformed result = UNKNOWN, never zero —
-                # a flaky RPC must not demote a funded rail.
-                if "error" in r or not isinstance(
-                        r.get("result", {}).get("value"), list):
-                    raise RuntimeError(f"solana rpc error: "
-                                       f"{str(r.get('error'))[:120]}")
-                bal = sum(int(v["account"]["data"]["parsed"]["info"]
-                              ["tokenAmount"]["amount"])
-                          for v in r["result"]["value"])
-            else:
-                from web3 import Web3
-                rpc = PrivySigner._RPC.get(int(net.split(":")[1]))
-                if rpc:
-                    w3 = Web3(Web3.HTTPProvider(
-                        rpc, request_kwargs={"timeout": 10}))
-                    data = "0x70a08231" + addr[2:].lower().rjust(64, "0")
-                    raw_b = w3.eth.call({"to": Web3.to_checksum_address(usdc),
-                                         "data": data})
-                    bal = int.from_bytes(raw_b, "big")
+            from web3 import Web3
+            rpc = _EVM_RPC.get(int(net.split(":")[1]))
+            if rpc:
+                w3 = Web3(Web3.HTTPProvider(
+                    rpc, request_kwargs={"timeout": 10}))
+                data = "0x70a08231" + addr[2:].lower().rjust(64, "0")
+                raw_b = w3.eth.call({"to": Web3.to_checksum_address(usdc),
+                                     "data": data})
+                bal = int.from_bytes(raw_b, "big")
         except Exception:
             bal = None
         if bal is not None:
@@ -1457,114 +877,58 @@ def payment_preflight(amount_atomic: int, networks=None,
     serial round-trips.
 
     Checks: ① signer capability per candidate rail (fail-closed: a rail the
-    selected signer cannot sign is NOT a candidate) ② wallet policy sanity
-    (an ENABLED policy with EMPTY rules = deny-all → blocks every signature;
-    new Privy wallets should be allow-all, so this is an anomaly to fix via
-    a policy card BEFORE payment) ③ USDC balance per signable rail — ok
-    requires at least ONE rail that is both signable AND verified funded;
-    unknown (RPC-failed) balances never count as funded.
+    session EOA cannot sign — any non-EVM rail — is NOT a candidate)
+    ② USDC balance per signable rail — ok requires at least ONE rail that
+    is both signable AND verified funded; unknown (RPC-failed) balances
+    never count as funded.
 
     networks: candidate rails from the service's 402 accepts (canonical ids,
-    e.g. ["eip155:8453", "solana:5eykt..."]). Default: Base+Monad+Robinhood+X Layer+Solana.
+    e.g. ["eip155:8453", "eip155:143"]). Default: Base+Monad+Robinhood.
     Returns {ok, blockers[], warnings[], payer{}, funded_rails[], balances{}}.
     """
-    from bazaar import PAYABLE_USDC, _canon_network, SOLANA_MAINNET
+    from bazaar import PAYABLE_USDC, _canon_network
     out = {"ok": True, "blockers": [], "warnings": [], "payer": {},
            "balances": {}, "funded_rails": []}
     nets = [_canon_network(n) for n in (networks or
-            ["eip155:8453", "eip155:143", "eip155:4663", SOLANA_MAINNET])]
+            ["eip155:8453", "eip155:143", "eip155:4663"])]
 
-    # ① signers — branch by signer_mode FIRST. Explicit EOA never touches
-    # the Privy wallet service or its policy.
-    evm_addr = sol_addr = None
-    if signer_mode == "eoa":
-        try:
-            eoa = SessionEOASigner()
-            evm_addr = eoa.address
-        except Exception as e:
-            out["blockers"].append(f"session EOA signer unavailable: {e}")
+    # ① signer: the session EOA (EVM rails only).
+    evm_addr = None
+    if signer_mode not in ("auto", "eoa"):
+        out["blockers"].append(
+            f"unknown signer_mode {signer_mode!r} (use 'auto' or 'eoa')")
     else:
         try:
-            from core.skill_tools import wallet as _w
-            info = _w.wallet_info()
-            for w in (info.get("wallets") if isinstance(info, dict) else info) or []:
-                if w.get("chain_type") == "ethereum":
-                    evm_addr = w.get("wallet_address") or w.get("address")
-                elif w.get("chain_type") == "solana":
-                    sol_addr = w.get("wallet_address") or w.get("address")
+            evm_addr = SessionEOASigner().address
         except Exception as e:
-            out["blockers"].append(f"wallet skill unavailable: {e}")
-    out["payer"] = {"evm": evm_addr, "solana": sol_addr}
+            out["blockers"].append(f"session EOA signer unavailable: {e}")
+    out["payer"] = {"evm": evm_addr}
 
-    # Capability filter: keep only rails the selected signer can sign.
+    # Capability filter: keep only rails the session EOA can sign.
     def _signable(net):
-        if net.startswith("eip155:"):
-            return evm_addr is not None
-        if net.startswith("solana"):
-            return signer_mode != "eoa" and sol_addr is not None
-        return False
+        return net.startswith("eip155:") and evm_addr is not None
 
-    unsignable = [n for n in nets if PAYABLE_USDC.get(n) and not _signable(n)]
+    unsignable = [n for n in nets if not (PAYABLE_USDC.get(n) and _signable(n))]
     nets = [n for n in nets if PAYABLE_USDC.get(n) and _signable(n)]
     if unsignable:
         out["warnings"].append(
-            f"rails excluded (signer '{signer_mode}' cannot sign them): "
-            f"{unsignable}")
+            f"rails excluded (session EOA cannot sign them): {unsignable}")
     if not nets:
         out["blockers"].append(
-            f"no signable payment rail: signer_mode='{signer_mode}' cannot "
+            f"no signable payment rail: the session EOA (EVM-only) cannot "
             f"sign any of the service's accepted networks "
-            f"({unsignable or networks}). "
-            + ("Session EOA is EVM-only — use signer_mode='auto' for Solana."
-               if signer_mode == "eoa" else
-               "Check wallet availability for the required chain types."))
+            f"({unsignable or networks}).")
 
-    # ② policy sanity — PER-RAIL, not global. The Ethereum policy only
-    # gates EVM rails: a deny-all EVM policy must not block a payment that
-    # will route via Solana. A rail whose policy blocks signing is removed
-    # from the candidates (with a warning); it escalates to a blocker only
-    # if NO signable rail remains.
-    evm_nets = [n for n in nets if n.startswith("eip155:")]
-    if signer_mode != "eoa" and evm_addr and evm_nets:
-        try:
-            from core.skill_tools import wallet as _w
-            pol = _w.wallet_get_policy(chain_type="ethereum")
-            rules = (pol or {}).get("rules") or []
-            if (pol or {}).get("enabled") and not rules:
-                nets = [n for n in nets if not n.startswith("eip155:")]
-                msg = ("EVM wallet policy is ENABLED with EMPTY rules "
-                       "(deny-all) — EVM payment signatures will be "
-                       "rejected. Propose a policy update (deny "
-                       "exportPrivateKey, allow rest) and have the user "
-                       "sign it before paying on an EVM rail.")
-                if nets:  # other rails (e.g. Solana) remain usable
-                    out["warnings"].append(
-                        msg + f" EVM rails excluded: {evm_nets}; "
-                        f"continuing with {nets}.")
-                else:
-                    out["blockers"].append(
-                        msg + " No non-EVM rail is available for this "
-                        "service, so this blocks the payment.")
-            elif rules and not any(
-                    r.get("action") == "ALLOW" and r.get("method") in ("*",
-                    "signTypedData", "eth_signTypedData_v4") for r in rules):
-                out["warnings"].append(
-                    "wallet policy has no ALLOW rule covering typed-data "
-                    "signing — EVM payment may be denied.")
-        except Exception as e:
-            out["warnings"].append(f"policy check failed (non-fatal): {e}")
-
-    # ③ balances per signable rail (direct RPC; no DeBank round-trip).
+    # ② balances per signable rail (direct RPC; no DeBank round-trip).
     # ttl=0: preflight always reads LIVE, but refreshes the shared routing
     # cache so the payment that follows reuses these balances for rail
-    # selection (funded-first ordering in _prefer_privy_native).
-    out["balances"] = usdc_balances(nets, evm_addr=evm_addr,
-                                    sol_addr=sol_addr, ttl=0)
+    # selection (funded-first ordering in _prefer_funded_rail).
+    out["balances"] = usdc_balances(nets, evm_addr=evm_addr, ttl=0)
     for net, bal in out["balances"].items():
         if bal is not None and bal >= amount_atomic:
             out["funded_rails"].append(net)
 
-    # ④ dependency sanity: buyer path needs web3>=7. NEVER upgrade a pinned
+    # ③ dependency sanity: buyer path needs web3>=7. NEVER upgrade a pinned
     # global web3 (trading bots) — bootstrap the isolated venv instead.
     try:
         import web3 as _web3
@@ -1589,8 +953,8 @@ def payment_preflight(amount_atomic: int, networks=None,
             out["blockers"].append(
                 f"could not verify USDC balance on ANY signable rail "
                 f"(all RPC queries failed: {bal_view}) — fail-closed. "
-                "Retry, or verify balances via the wallet skill before "
-                "proceeding.")
+                "Retry, or verify the payer's balances on a block explorer "
+                "before proceeding.")
         else:
             out["blockers"].append(
                 f"no signable rail holds ≥ {need} USDC "

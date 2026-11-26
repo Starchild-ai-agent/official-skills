@@ -3,26 +3,22 @@
 
 Flow (idempotent, safe to re-run / schedule):
   1. Resolve the execution wallet address:
-       --address / ORDERLY_WALLET_ADDRESS, else agent Privy EVM wallet.
+       --address / ORDERLY_WALLET_ADDRESS (required).
        Never invent an address — wallet_address in events MUST be the
-       address that actually holds the Orderly account / placed the trades
-       (agent Privy OR user's own third-party wallet).
+       address that actually holds the Orderly account / placed the trades.
   2. Look up the Orderly account for BROKER_ID under that address.
-  3. Prefer private GET /v1/trades when a read-scope ed25519 key is available
-     for that account (agent can mint one via EIP-712 only for its own wallet;
-     third-party wallets need an existing key file).
+  3. Prefer private GET /v1/trades when an existing read-scope ed25519 key
+     file is available for that account (this script never mints keys).
   4. Else fall back to Public Info API (zero-auth) by address — covers
      third-party / login wallets without keys.
   5. Fire-and-forget report to POST {AI_AGENT_API_URL}/v1/trade-events
      (server dedupes on (user_id, dedupe_key)).
 
-Requires: pynacl, base58; wallet service only needed for agent-wallet key mint.
+Requires: pynacl, base58.
 Usage:
-  python3 scripts/trade_sync.py [--broker woofi_pro] [--days 90]
-  python3 scripts/trade_sync.py --address 0xUserWallet --broker woofi_pro
+  python3 scripts/trade_sync.py --address 0xUserWallet [--broker woofi_pro] [--days 90]
 """
 import argparse
-import asyncio
 import base64
 import hashlib
 import json
@@ -40,28 +36,13 @@ from _trade_report import report_trade_events  # noqa: E402
 
 BASE = "https://api-evm.orderly.org"
 PUBLIC_QUERY = "https://api.orderly.org/v1/public/query"
-CHAIN_ID = 42161  # Arbitrum (registration chain; account is omnichain)
 WORKSPACE = os.environ.get("WORKSPACE_DIR", "/data/workspace")
 
 
 def key_file_for(account_id: str) -> str:
-    """Per-account key path so agent + third-party accounts don't clobber each other."""
+    """Per-account key path so different accounts don't clobber each other."""
     safe = (account_id or "unknown").replace("/", "_")[:32]
     return os.path.join(WORKSPACE, f".orderly_key_{safe}.json")
-
-
-DOMAIN = {
-    "name": "Orderly",
-    "version": "1",
-    "chainId": CHAIN_ID,
-    "verifyingContract": "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
-}
-EIP712_DOMAIN = [
-    {"name": "name", "type": "string"},
-    {"name": "version", "type": "string"},
-    {"name": "chainId", "type": "uint256"},
-    {"name": "verifyingContract", "type": "address"},
-]
 
 
 def http(method, path, body=None, headers=None, base=BASE):
@@ -82,50 +63,13 @@ def http(method, path, body=None, headers=None, base=BASE):
             return e.code, {"success": False, "error": str(e)}
 
 
-async def sign712(primary, types, message):
-    from core.wallet_runtime import wallet_request  # Starchild agent runtime
-
-    payload = {
-        "domain": DOMAIN,
-        "types": {"EIP712Domain": EIP712_DOMAIN, **types},
-        "primaryType": primary,
-        "message": message,
-    }
-    result = await wallet_request("POST", "/agent/sign-typed-data", payload)
-    return result.get("signature") or result.get("data", {}).get("signature")
-
-
-async def get_agent_wallet_address():
-    from core.wallet_runtime import wallet_request
-
-    data = await wallet_request("GET", "/agent/wallet", None)
-    wallets = data if isinstance(data, list) else data.get("wallets", [])
-    for w in wallets:
-        if w.get("chain_type") == "ethereum":
-            return w["wallet_address"]
-    raise RuntimeError("no ethereum agent wallet")
-
-
-async def resolve_execution_address(cli_address: str | None) -> tuple[str, bool]:
-    """Return (execution_wallet, is_agent_wallet).
-
-    Priority: --address > ORDERLY_WALLET_ADDRESS > agent Privy EVM wallet.
-    """
+def resolve_execution_address(cli_address: str | None) -> str:
+    """Return the execution wallet: --address > ORDERLY_WALLET_ADDRESS."""
     addr = (cli_address or os.environ.get("ORDERLY_WALLET_ADDRESS") or "").strip()
-    agent = None
-    try:
-        agent = await get_agent_wallet_address()
-    except Exception:
-        agent = None
-
     if addr:
-        is_agent = bool(agent and addr.lower() == agent.lower())
-        return addr, is_agent
-    if agent:
-        return agent, True
+        return addr
     raise RuntimeError(
-        "no execution wallet: pass --address / set ORDERLY_WALLET_ADDRESS, "
-        "or run on a machine with an agent EVM wallet"
+        "no execution wallet: pass --address or set ORDERLY_WALLET_ADDRESS"
     )
 
 
@@ -134,45 +78,7 @@ def lookup_account(addr, broker):
     return acc.get("data", {}).get("account_id")
 
 
-async def ensure_account(addr, broker, can_sign: bool):
-    account_id = lookup_account(addr, broker)
-    if account_id:
-        return account_id
-    if not can_sign:
-        raise RuntimeError(
-            f"no Orderly account for {addr} under broker={broker}; "
-            "cannot register without agent-wallet EIP-712 signature for that address"
-        )
-    st, n = http("GET", "/v1/registration_nonce")
-    msg = {
-        "brokerId": broker,
-        "chainId": CHAIN_ID,
-        "timestamp": int(time.time() * 1000),
-        "registrationNonce": int(n["data"]["registration_nonce"]),
-    }
-    sig = await sign712(
-        "Registration",
-        {
-            "Registration": [
-                {"name": "brokerId", "type": "string"},
-                {"name": "chainId", "type": "uint256"},
-                {"name": "timestamp", "type": "uint64"},
-                {"name": "registrationNonce", "type": "uint256"},
-            ]
-        },
-        msg,
-    )
-    st, reg = http(
-        "POST",
-        "/v1/register_account",
-        {"message": msg, "signature": sig, "userAddress": addr},
-    )
-    if not reg.get("success"):
-        raise RuntimeError(f"register_account failed: {reg}")
-    return reg["data"]["account_id"]
-
-
-async def ensure_key(addr, broker, account_id, can_sign: bool):
+def load_key(account_id):
     path = key_file_for(account_id)
     if os.path.exists(path):
         k = json.load(open(path))
@@ -184,51 +90,7 @@ async def ensure_key(addr, broker, account_id, can_sign: bool):
         k = json.load(open(legacy))
         if k.get("account_id") == account_id and k.get("expiration", 0) > time.time() * 1000:
             return k
-    if not can_sign:
-        return None  # caller falls back to public API
-    sk = nacl.signing.SigningKey.generate()
-    pub = "ed25519:" + base58.b58encode(bytes(sk.verify_key)).decode()
-    exp = int(time.time() * 1000) + 364 * 86400 * 1000
-    msg = {
-        "brokerId": broker,
-        "chainId": CHAIN_ID,
-        "orderlyKey": pub,
-        "scope": "read",
-        "timestamp": int(time.time() * 1000),
-        "expiration": exp,
-    }
-    sig = await sign712(
-        "AddOrderlyKey",
-        {
-            "AddOrderlyKey": [
-                {"name": "brokerId", "type": "string"},
-                {"name": "chainId", "type": "uint256"},
-                {"name": "orderlyKey", "type": "string"},
-                {"name": "scope", "type": "string"},
-                {"name": "timestamp", "type": "uint64"},
-                {"name": "expiration", "type": "uint64"},
-            ]
-        },
-        msg,
-    )
-    st, ak = http(
-        "POST",
-        "/v1/orderly_key",
-        {"message": msg, "signature": sig, "userAddress": addr},
-    )
-    if not ak.get("success"):
-        raise RuntimeError(f"orderly_key failed: {ak}")
-    k = {
-        "account_id": account_id,
-        "pub": pub,
-        "seed_b58": base58.b58encode(bytes(sk)).decode(),
-        "expiration": exp,
-        "wallet_address": addr,
-    }
-    with open(path, "w") as f:
-        json.dump(k, f)
-    os.chmod(path, 0o600)
-    return k
+    return None  # caller falls back to public API
 
 
 def signed_get(key, path):
@@ -370,7 +232,7 @@ def fetch_public_fills(addr):
         cursor = next_c
 
 
-async def main():
+def main():
     ap = argparse.ArgumentParser(
         description="Sync Orderly fills for the execution wallet into trade_events"
     )
@@ -379,8 +241,7 @@ async def main():
     ap.add_argument(
         "--address",
         default=None,
-        help="Execution wallet (0x…). Defaults to ORDERLY_WALLET_ADDRESS or agent wallet. "
-        "Use the wallet that actually trades — not always the agent Privy wallet.",
+        help="Execution wallet (0x…) that actually trades. Defaults to ORDERLY_WALLET_ADDRESS.",
     )
     ap.add_argument(
         "--public-only",
@@ -389,12 +250,9 @@ async def main():
     )
     args = ap.parse_args()
 
-    addr, is_agent = await resolve_execution_address(args.address)
-    can_sign = is_agent and not args.public_only
+    addr = resolve_execution_address(args.address)
 
     account_id = lookup_account(addr, args.broker)
-    if not account_id and can_sign:
-        account_id = await ensure_account(addr, args.broker, can_sign=True)
     if not account_id and not args.public_only:
         print(f"no Orderly account for {addr} broker={args.broker}; trying public API")
 
@@ -404,7 +262,7 @@ async def main():
 
     key = None
     if account_id and not args.public_only:
-        key = await ensure_key(addr, args.broker, account_id, can_sign=can_sign)
+        key = load_key(account_id)
 
     if key:
         mode = "private"
@@ -417,7 +275,7 @@ async def main():
 
     print(
         f"wallet={addr} account={(account_id or 'n/a')[:12]}… "
-        f"mode={mode} is_agent={is_agent} fills={len(events)}"
+        f"mode={mode} fills={len(events)}"
     )
     if events:
         # blocking=True is REQUIRED here: this is a short-lived script and a
@@ -429,4 +287,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

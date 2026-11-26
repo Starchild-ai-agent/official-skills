@@ -38,12 +38,11 @@ _SKILL_DIR = "/data/workspace/skills/x402"
 _COMMUNITY_PUBLISH = "/data/workspace/skills/community-publish"
 _COMMUNITY_HOST = "community.iamstarchild.com"
 
-# Networks the buyer client can sign. Settlement is seller-side facilitator.
-# EVM = EIP-3009 exact + native Circle USDC. SVM = exact + mainnet USDC mint.
+# Networks the buyer client can sign (session EOA: EVM only). Settlement is
+# seller-side facilitator. EVM = EIP-3009 exact + native Circle USDC.
 # No testnets in prod pay path.
 PAYABLE_SCHEMES = {"exact"}
 USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
-USDC_SOLANA = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
 SOLANA_MAINNET = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp"
 # Canonical network id → native Circle USDC (comparisons always .lower()).
 PAYABLE_USDC = {
@@ -61,8 +60,6 @@ PAYABLE_USDC = {
     "eip155:59144":"0x176211869ca2b568f2a7d4ee941e073a821ee1ff",   # Linea
     "eip155:42220":"0xceba9300f2b948710d2653dd7b07f33a8b32118c",   # Celo
     "eip155:130":  "0x078d782b760474a361dda0af3839290b0ef57ad6",   # Unichain
-    SOLANA_MAINNET: USDC_SOLANA.lower(),
-    "solana": USDC_SOLANA.lower(),  # V1 alias
 }
 PAYABLE_NETWORKS = set(PAYABLE_USDC.keys())
 # Static FALLBACK preference, used only when client.network_rank is
@@ -71,7 +68,6 @@ PAYABLE_NETWORKS = set(PAYABLE_USDC.keys())
 # this order live at pay time.
 NETWORK_PREFERENCE = (
     "eip155:8453", "base",
-    SOLANA_MAINNET, "solana",
     "eip155:143",
     "eip155:196",
     "eip155:4663",
@@ -112,30 +108,27 @@ def _amount_int(a: dict) -> int:
         return 1 << 62
 
 
-def _sort_payable(accepts: list, signer_mode: str = "auto") -> list:
+def _sort_payable(accepts: list) -> list:
     """Order accepts exactly like paid_request's routing policy (shared
     selector: client.network_rank), so the rail shown by probe_402 is the
     rail auto actually pays. Falls back to the static NETWORK_PREFERENCE
-    when the client/signer is unavailable."""
+    when the client is unavailable."""
     try:
-        from client import (network_rank, rank_signer_cached,
+        from client import (network_rank, SessionEOASigner,
                             usdc_balances, _rail_funded_state)
-        signer = rank_signer_cached()
         try:
             bals = usdc_balances(
                 {_canon_network(a.get("network")) for a in accepts},
-                evm_addr=getattr(signer, "address", None),
-                sol_addr=getattr(signer, "svm_address", None))
+                evm_addr=SessionEOASigner._load_address() or None)
         except Exception:
             bals = {}
         # Funded rails first → Base default → network_rank → cheapest.
-        # Matches client._prefer_privy_native so probe shows the paid rail.
+        # Matches client._prefer_funded_rail so probe shows the paid rail.
         return sorted(accepts, key=lambda a: (
             _rail_funded_state(_canon_network(a.get("network")),
                                _amount_int(a), bals),
             0 if _canon_network(a.get("network")) == "eip155:8453" else 1,
-            network_rank(_canon_network(a.get("network")),
-                         signer=signer, signer_mode=signer_mode),
+            network_rank(_canon_network(a.get("network"))),
             _amount_int(a)))
     except Exception:
         pass
@@ -621,7 +614,7 @@ def bazaar_pay(url: str, method: str = "GET", json_body=None,
     prefer_network: CAIP-2 network id (e.g. "eip155:8453") to prefer when
     the service offers multiple chains. Passed through to paid_request.
 
-    Payment runs through client.paid_request (Privy signer, fail-closed).
+    Payment runs through client.paid_request (session EOA signer).
     """
     resolution = {"via": "direct", "pay_url": url, "matched": False,
                   "original_url": url}

@@ -44,16 +44,12 @@ Purpose of this local note: keep the key guidance inside the `user-onboarding` s
 - Resource limits are real (CPU/RAM/disk).
 - Periodically check usage, clean stale files/processes, and avoid silent resource drift.
 
-### 8) Wallet is a built-in capability
-- Agent wallet supports EVM + Solana flows.
-- Use policy controls and explicit verification for safety-sensitive operations.
-
-### 9) Teach the agent intentionally
+### 8) Teach the agent intentionally
 - Correct mistakes explicitly.
 - Persist stable preferences/methods to memory.
 - Convert proven workflows into skills.
 
-### 10) If blocked, ask directly
+### 9) If blocked, ask directly
 - Encourage users to state desired outcome clearly.
 - Agent should search docs/tools/skills and work backward to execution.
 
@@ -78,4 +74,4 @@ If users report persistent missing features or broken workflows, direct them to:
 
 ## Maintenance note
 
-This file is intentionally concise and operational. Update when the product guide changes materially (routing, connectors, channel flow, scheduling, wallet safety, or onboarding sequence).
+This file is intentionally concise and operational. Update when the product guide changes materially (routing, connectors, channel flow, scheduling, or onboarding sequence).

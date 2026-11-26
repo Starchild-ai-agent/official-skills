@@ -1,7 +1,7 @@
 # Contributing a Skill to Starchild Official Skills
 
 This guide walks you through building a skill that meets the Starchild official
-standard — the same bar the `across-bridge`, `wallet`, and `hyperliquid` skills
+standard — the same bar the `coingecko`, `us-stock`, and `x402` skills
 are held to. Follow it end-to-end and your skill will install cleanly, show up
 in search, and feel native to any agent that calls it.
 
@@ -125,11 +125,11 @@ What it returns, what side effects it has.
 ## Key Facts / Gotchas
 - Things that surprised you during development
 - Auth model, rate limits, settlement times
-- "Gas is sponsored" / "Wallet is the Agent Wallet" type facts
+- "Gas is sponsored" / "Results are cached for 60s" type facts
 
 ## Dependencies
 - pip packages
-- other skills (e.g. "uses core.skill_tools.wallet for signing")
+- other skills / platform modules (e.g. "uses core.http_client for proxied requests")
 ```
 
 **Do NOT** include:
@@ -177,14 +177,14 @@ __all__ = ["do_thing", "get_quote"]   # only these are exposed
 
 ### 4.2 Hyphenated skill names
 
-Skill names use hyphens (`across-bridge`, `us-stock`), but Python identifiers
-can't. So `from core.skill_tools import across_bridge` does **not** work. Use
-the `_modules` dict instead:
+Skill names use hyphens (`us-stock`, `market-structure-ta`), but Python
+identifiers can't. So `from core.skill_tools import us_stock` does **not**
+work. Use the `_modules` dict instead:
 
 ```python
 from core.skill_tools import _modules
-across = _modules["across-bridge"]
-across.bridge_execute(...)
+us = _modules["us-stock"]
+us.get_realtime_quote("AAPL")
 ```
 
 This is the official pattern — document it in your SKILL.md so agents don't
@@ -272,12 +272,13 @@ both human and machine fields:
 
 ### 5.4 Lazy-import platform dependencies
 
-`core.skill_tools.wallet` only exists at runtime in the platform container.
-If your skill needs it, import it inside the function, not at module top:
+`core.*` modules (e.g. `core.http_client`) only exist at runtime in the
+platform container. If your skill needs one, import it inside the function,
+not at module top:
 
 ```python
 def bridge_execute(...):
-    from core.skill_tools import wallet as w   # lazy
+    from core.http_client import proxied_post   # lazy
     ...
 ```
 
@@ -435,11 +436,9 @@ Read these before building your own — they embody the standard:
 
 | Skill | Why study it |
 |-------|-------------|
-| `wallet` | Lazy-imports platform deps; clean read/write split |
-| `hyperliquid` | `exports.py` + `client.py` + `tools.py` separation |
-| `across-bridge` | One-function end-to-end + quote pair; hyphenated name pattern |
 | `coingecko` | Simple read-only skill with `tools/` layout |
-| `1inch` | `delivery: script` + `requires.env` for API keys |
+| `us-stock` | Hyphenated name pattern (`_modules["us-stock"]`) |
+| `debank` | `delivery: script` + `requires.env` for API keys; `exports.py` + `tools/` separation |
 
 ---
 
@@ -450,7 +449,7 @@ Read these before building your own — they embody the standard:
 | `from core.skill_tools import my_skill` fails | Hyphenated name — use `_modules["my-skill"]` |
 | CI rejects the build | Missing `name`/`version`/`description` in frontmatter |
 | Agent calls 5 functions to do one thing | Package the workflow into one `*_execute()` |
-| Skill works locally, fails in container | Hardcoded path or top-level `from core.skill_tools import wallet` — lazy-import instead |
+| Skill works locally, fails in container | Hardcoded path or top-level `from core.http_client import ...` — lazy-import instead |
 | `description` too vague | Add a "Use when…" sentence with concrete examples |
 | No logo | Fetch favicon or brand SVG; see §6 |
 | Exposing `os`, `requests` as "functions" | You don't need to — the loader filters them out |

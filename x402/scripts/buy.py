@@ -34,7 +34,7 @@ def main() -> int:
                    help="Preferred CAIP-2 network (optional; default = "
                         "funded-first with Base as default chain)")
     p.add_argument("--skip-preflight", action="store_true",
-                   help="Skip the balance/policy preflight gate")
+                   help="Skip the balance preflight gate")
     args = p.parse_args()
 
     cap = int(round(args.max_usd * 1_000_000))

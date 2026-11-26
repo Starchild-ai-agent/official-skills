@@ -1,6 +1,6 @@
 ---
 name: starchild-auth
-version: 1.11.0
+version: 1.11.1
 description: |
   Starchild Auth SDK: add OAuth login to any web app with one SDK.
 
@@ -23,7 +23,7 @@ Integrate Starchild OAuth login into any web application. The SDK handles OAuth 
 | 产物 | 当前版本 | 何时 bump |
 |------|---------|-----------|
 | npm `starchild-auth-sdk` | **0.4.1** | 代码 / 公开 API 变更 |
-| 本 Skill `starchild-auth` | **1.11.0** | 集成指南 / 场景文档变更（可与 package 独立） |
+| 本 Skill `starchild-auth` | **1.11.1** | 集成指南 / 场景文档变更（可与 package 独立） |
 
 两套 semver **互不绑定**：只改文档可只升 skill；只改实现必须升 package（skill 通常同步升 minor/patch 说明新能力）。
 
@@ -238,7 +238,7 @@ await auth.threads.list()
 | `auth.shares` | `create`, `list`, `get`, `delete`, `fork` |
 | `auth.feedback` | `rate`, `delete` |
 | `auth.jobs` | `list`, `create`, `get`, `pause`, `resume`, `restart` |
-| `auth.wallet` | `getPortfolio`, `list`, `create`, `delete`, `exportPrivateKey`, `createOnrampSession` |
+| `auth.wallet` | `createOnrampSession` only (agent wallet APIs removed with wallet-service shutdown) |
 | `auth.credit` | 余额/流水/Stripe/礼品卡/**Points**/**KYC**/**Referral**/migration/WOO（见场景八） |
 
 > Points 兑换、KYC、Referral **已对 OAuth 开放**（需 `credit:read` / `credit:write`），不是主站专属。
@@ -571,7 +571,8 @@ await auth.deleteFeedback(messageId)
 
 ```typescript
 // 获取投资组合
-const portfolio = await auth.getPortfolio()
+// REMOVED: agent wallet APIs (getPortfolio/listWallets/createWallet/exportPrivateKey)
+// const portfolio = await auth.getPortfolio()
 // portfolio = { total_value_usd, tokens: [...] }
 
 // 列出钱包
@@ -1686,10 +1687,10 @@ if (!stream.ok) {
 | | `/api/clawd/shares/{id}/fork` | POST | chat |
 | **Feedback** | `/api/clawd/feedback` | PUT/DELETE | chat |
 | **Jobs** | `/scheduled-jobs` | GET/POST | chat |
-| **Wallet** | `/api/cloud/containers/portfolio/evm` | GET | chat |
-| | `/api/cloud/containers/wallets` | GET | chat |
-| | `/api/cloud/containers/wallet` | POST/DELETE | chat |
-| | `/wallet/export` | POST | chat |
+| **Wallet** | `/api/cloud/containers/portfolio/evm` | GET | chat | ~~removed~~
+| | `/api/cloud/containers/wallets` | GET | chat | ~~removed~~
+| | `/api/cloud/containers/wallet` | POST/DELETE | chat | ~~removed~~
+| | `/wallet/export` | POST | chat | ~~removed~~
 | **Billing** | `/coinbase/onramp-session` | POST | chat |
 | **WebSocket** | `/ws/sync` | WS | chat |
 | | `/ws/terminal/{id}` | WS | chat |
